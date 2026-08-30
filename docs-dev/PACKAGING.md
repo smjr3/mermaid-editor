@@ -73,11 +73,8 @@ The chosen approach is to keep the `package-lock.json` generated in the consumin
 repository:
 
 1. Run `npm install` when importing a new package version.
-2. Run `npm install` once more and verify that `package-lock.json` no longer changes. This
-   avoids retaining an incomplete lockfile if npm changes peer-dependency resolution during
-   the first install.
-3. Review and commit `package-lock.json` in the consuming repository.
-4. Use `npm ci` in subsequent CI jobs, then run `npm run build`.
+2. Review and commit `package-lock.json` in the consuming repository.
+3. Use `npm ci` in subsequent CI jobs, then run `npm run build`.
 
 ```sh
 npm ci
@@ -96,18 +93,11 @@ making the required npm-only build reproducible.
 
 ## Verified round trip
 
-On 2026-08-30, `npm pack` produced a 127.7 kB archive containing 168 files (398.9 kB
-unpacked). In a new directory, `npm install` installed 723 packages and exited successfully;
-`npm run build` also exited successfully and produced the required files in `docs/`.
-
-The first generated lockfile needed a second `npm install` to settle Playwright's peer
-dependency metadata. After that second install, deleting `node_modules/` and running
-`npm ci` installed 724 packages and exited successfully. This is why the reproducible-install
-procedure above explicitly checks the lockfile after a second install.
-
-The verification environment used Node.js 22.22.2 because Node.js 24 was unavailable. npm
-correctly emitted an `EBADENGINE` warning because the supported minimum is Node.js 24.16.0;
-the install and build still completed, but deployments must use the supported version.
+On 2026-08-30, using the supported Node.js 24.16.0 runtime, `npm pack` produced a 128 kB
+archive containing 169 files. In a new directory, `npm install` installed 667 packages and
+exited successfully; `npm run build` also exited successfully and produced the required
+files in `docs/`. Immediately after that first install, deleting `node_modules/` and
+`.svelte-kit` and running `npm ci` against the generated lockfile also exited successfully.
 
 Other observed warnings were the deprecated `husky install` command, the absence of `.git`
 in the unpacked directory, deprecations for `plausible-tracker` and `lucide-svelte`, large

@@ -1,0 +1,43 @@
+image: node:24.16.0
+
+stages:
+  - deploy
+
+pages:
+  stage: deploy
+  variables:
+    MERMAID_BASE_PATH: '/$CI_PROJECT_NAME'
+  before_script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+  script:
+    - pnpm build
+    - mv docs public
+  artifacts:
+    paths:
+      - public
+  pages: true
+
+# Alternative: build the published npm package obtained through an internal registry.
+# Enable this job instead of the source-based `pages` job above, and define the masked
+# CI variables NPM_REGISTRY_URL and NPM_TOKEN. Keep the package version pinned.
+# pages:
+#   stage: deploy
+#   variables:
+#     MERMAID_BASE_PATH: "/$CI_PROJECT_NAME"
+#     MERMAID_EDITOR_VERSION: "0.1.0"
+#   before_script:
+#     - printf 'registry=%s\n//%s/:_authToken=%s\n' "$NPM_REGISTRY_URL" "${NPM_REGISTRY_URL#*://}" "$NPM_TOKEN" > "$CI_PROJECT_DIR/.npmrc"
+#     - mkdir "$CI_PROJECT_DIR/package"
+#     - cd "$CI_PROJECT_DIR/package"
+#     - npm pack "@smjr3/mermaid-editor@$MERMAID_EDITOR_VERSION"
+#     - tar -xzf smjr3-mermaid-editor-*.tgz --strip-components=1
+#     - npm install
+#   script:
+#     - cd "$CI_PROJECT_DIR/package"
+#     - npm run build
+#     - mv docs "$CI_PROJECT_DIR/public"
+#   artifacts:
+#     paths:
+#       - public
+#   pages: true

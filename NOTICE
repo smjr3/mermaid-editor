@@ -1,0 +1,93 @@
+NOTICE
+
+mermaid-editor (npm package name: @smjr3/mermaid-editor)
+An unofficial derivative distribution of Mermaid Live Editor.
+https://github.com/smjr3/mermaid-editor
+
+
+------------------------------------------------------------------------------
+1. UPSTREAM ATTRIBUTION
+------------------------------------------------------------------------------
+
+This product includes software developed by the Mermaid Live Editor project.
+
+    Mermaid Live Editor
+    Copyright (c) 2020 - 2023 Knut Sveidqvist
+    Licensed under the MIT License
+    https://github.com/mermaid-js/mermaid-live-editor
+    Imported upstream commit: 990dd241f2acf39c10db9da94464cbb833150426
+    Upstream version: 2.0.67
+
+The full text of the upstream MIT License is reproduced, unmodified, in the
+file LICENSE at the root of this distribution. That license text and its
+copyright notice apply to all upstream-derived material in this product and
+must be retained in any redistribution.
+
+This product is an unofficial derivative work. It is not affiliated with,
+endorsed by, or supported by the Mermaid team. The official Mermaid Live
+Editor instance is https://mermaid.live.
+
+
+------------------------------------------------------------------------------
+2. DERIVATIVE WORK
+------------------------------------------------------------------------------
+
+Copyright (c) 2026 smjr3 (https://github.com/smjr3)
+
+Material added on top of the upstream import - customization, configuration,
+packaging and documentation authored for this distribution - is licensed under
+the MIT License, the same terms as the upstream work.
+
+
+------------------------------------------------------------------------------
+3. THIRD-PARTY COMPONENTS REQUIRING SPECIFIC NOTICE
+------------------------------------------------------------------------------
+
+The following components are called out individually. They are used unmodified
+and their code is included in the built static site.
+
+  mermaid
+      License: MIT
+      Called out because it is the diagram rendering engine this product is
+      built around and the largest upstream-authored dependency bundled into
+      the build output; its MIT notice must travel with that output.
+
+  elkjs
+      License: EPL-2.0 (Eclipse Public License 2.0)
+      Called out because EPL-2.0 is a file-level (weak) copyleft license. It
+      reaches this product through @mermaid-js/layout-elk and its code ends up
+      inside the built JavaScript of the static site. It is used unmodified,
+      so redistribution is permitted, but the license and the availability of
+      its source must be noted: the unmodified source is published on the npm
+      registry as the "elkjs" package and at https://github.com/kieler/elkjs.
+
+  dompurify
+      License: dual-licensed, "MPL-2.0 OR Apache-2.0"
+      Called out because a dual license requires the recipient's choice to be
+      recorded: this project elects Apache-2.0, which avoids MPL-2.0's
+      file-level copyleft obligations. dompurify is used unmodified.
+
+  @fontsource-variable/recursive
+      License: OFL-1.1 (SIL Open Font License 1.1)
+      Called out because OFL-1.1 requires its license to travel with the font
+      files wherever they are redistributed and forbids selling the font by
+      itself. The Reserved Font Name rules apply to modified copies; this
+      project ships the font unmodified.
+
+  Font Awesome Free (@fortawesome/fontawesome-free)
+      Copyright Fonticons, Inc.
+      Fonts: SIL Open Font License 1.1 (OFL-1.1)
+      Code: MIT License
+      Icons: Creative Commons Attribution 4.0 International (CC BY 4.0)
+      Font Awesome fonts, CSS and icons are included in the built static site.
+      The icons require attribution under CC BY 4.0. License information is
+      available at https://fontawesome.com/license/free.
+
+
+------------------------------------------------------------------------------
+4. FULL DEPENDENCY LICENSE PICTURE
+------------------------------------------------------------------------------
+
+See THIRD-PARTY-LICENSES.md at the root of this distribution for the license
+summary of the complete production dependency tree, the components that need
+specific attention, and instructions for regenerating the audit.

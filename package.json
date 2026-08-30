@@ -50,7 +50,7 @@
     "dev": "vite build --config vite.embed.config.js && vite dev",
     "dev:force": "MERMAID_LOCAL=true pnpm dev --force",
     "dev:test": "pnpm dev",
-    "build": "vite build --config vite.embed.config.js && vite build",
+    "build": "node scripts/copy-legal-files.js && vite build --config vite.embed.config.js && vite build",
     "build:embed": "vite build --config vite.embed.config.js",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

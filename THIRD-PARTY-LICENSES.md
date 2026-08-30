@@ -7,12 +7,16 @@ This project is a derivative of [Mermaid Live Editor](https://github.com/mermaid
 
 ## Scope
 
-This document covers the **production dependency tree** — the packages whose code is bundled into
-the built static site and therefore redistributed with it.
+This document covers **everything emitted into `docs/` by the build** and therefore redistributed
+with the static site. Whether the source package is listed in `dependencies` or `devDependencies`
+does not determine whether its code or assets are redistributed.
 
-Development-only dependencies (the build toolchain: Vite, SvelteKit, ESLint, Playwright, Vitest and
-so on) are **not** covered here. They are not redistributed in the build output, and they are not
-present in the published npm tarball's dependency closure at runtime.
+The production dependency-tree counts below describe the bundled runtime dependency baseline, but
+they are not the boundary of the audit. Inspection of the actual build output also identifies code
+or assets originating in development dependencies. In this snapshot that includes Font Awesome
+fonts, CSS and icons; Iconify icon collections compiled into application code; and Svelte UI
+components and their runtime code. Build-only tooling that emits none of its own code or assets is
+outside the redistributed output.
 
 ## License summary
 
@@ -67,6 +71,13 @@ they are redistributed — including inside the built static site and the npm ta
 selling the font on its own. The Reserved Font Name provisions apply only to modified copies; this
 project does not modify the font, so no renaming is required.
 
+### `@fortawesome/fontawesome-free` — OFL-1.1, MIT and CC BY 4.0
+
+Font Awesome Free is included through a development dependency, but its fonts, CSS and icons are
+emitted into the built static site. Its fonts are licensed under OFL-1.1, its code under MIT, and
+its icons under CC BY 4.0. The icons' CC BY 4.0 terms require attribution. Font Awesome Free is
+Copyright Fonticons, Inc.; see <https://fontawesome.com/license/free>.
+
 ### `khroma` — MIT (reported as "Unknown")
 
 `khroma` ships **no `license` field in its `package.json`**, so license-scanning tools report it as
@@ -84,6 +95,11 @@ tooling artifact for an unresolved license.
 pnpm licenses list --prod          # human-readable
 pnpm licenses list --prod --json   # machine-readable
 ```
+
+The production-tree report is only the starting point. After every build, inspect the JavaScript,
+CSS, font, icon and other assets under `docs/`, trace each emitted asset back to its source package,
+and include packages from `devDependencies` whenever their code or assets are present. Do not infer
+redistribution solely from the dependency section in `package.json`.
 
 ## Snapshot caveat
 

@@ -74,6 +74,15 @@ and their code is included in the built static site.
       itself. The Reserved Font Name rules apply to modified copies; this
       project ships the font unmodified.
 
+  Font Awesome Free (@fortawesome/fontawesome-free)
+      Copyright Fonticons, Inc.
+      Fonts: SIL Open Font License 1.1 (OFL-1.1)
+      Code: MIT License
+      Icons: Creative Commons Attribution 4.0 International (CC BY 4.0)
+      Font Awesome fonts, CSS and icons are included in the built static site.
+      The icons require attribution under CC BY 4.0. License information is
+      available at https://fontawesome.com/license/free.
+
 
 ------------------------------------------------------------------------------
 4. FULL DEPENDENCY LICENSE PICTURE

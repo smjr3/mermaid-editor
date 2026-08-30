@@ -1,13 +1,56 @@
 {
-  "name": "mermaid-live-editor",
-  "version": "2.0.67",
+  "name": "@smjr3/mermaid-editor",
+  "version": "0.1.0",
+  "description": "Customizable distribution of Mermaid Live Editor, delivered as an npm package and buildable into a static site. Unofficial derivative of mermaid-js/mermaid-live-editor.",
+  "keywords": [
+    "diagram",
+    "editor",
+    "mermaid",
+    "static-site",
+    "svelte"
+  ],
+  "homepage": "https://github.com/smjr3/mermaid-editor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smjr3/mermaid-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/smjr3/mermaid-editor/issues"
+  },
+  "author": "smjr3",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    ".env",
+    ".node-version",
+    ".prettierignore",
+    ".prettierrc",
+    "CLAUDE.md",
+    "NOTICE",
+    "README.upstream.md",
+    "THIRD-PARTY-LICENSES.md",
+    "bin/",
+    "components.json",
+    "docs-dev/",
+    "eslint.config.js",
+    "playwright.config.ts",
+    "scripts/",
+    "src/",
+    "static/",
+    "svelte.config.js",
+    "tests/",
+    "tsconfig.json",
+    "vite.config.js",
+    "vite.embed.config.js"
+  ],
   "license": "MIT",
   "scripts": {
-    "dev": "pnpm build:embed && vite dev",
+    "dev": "vite build --config vite.embed.config.js && vite dev",
     "dev:force": "MERMAID_LOCAL=true pnpm dev --force",
     "dev:test": "pnpm dev",
-    "build": "pnpm build:embed && vite build",
+    "build": "vite build --config vite.embed.config.js && vite build",
     "build:embed": "vite build --config vite.embed.config.js",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -16,7 +59,7 @@
     "lint:fix": "prettier --write --cache . && eslint --fix .",
     "format": "prettier --write --cache .",
     "pre-commit": "lint-staged",
-    "postinstall": "husky install && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || true)",
+    "postinstall": "(husky install || true) && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || true)",
     "test:unit": "vitest",
     "test:unit:ui": "vitest --ui",
     "test:unit:coverage": "vitest run --coverage",

@@ -1,122 +1,113 @@
-[![Join our Discord!](https://img.shields.io/static/v1?message=join%20chat&color=9cf&logo=discord&label=discord)](https://discord.gg/sKeNQX4Wtj)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/27fa023d-7c73-4a3f-9791-b3b657a47100/deploy-status)](https://app.netlify.com/sites/mermaidjs/deploys)
+# @smjr3/mermaid-editor
 
-# Mermaid Live Editor
+A customizable distribution of Mermaid Live Editor — delivered as an npm package and deployable as
+a static site.
 
-Edit, preview and share mermaid charts/diagrams.
+> **Unofficial derivative.** This project is not affiliated with, endorsed by, or supported by the
+> Mermaid team. The official Mermaid Live Editor instance is <https://mermaid.live>.
 
-## Features
+- Repository: <https://github.com/smjr3/mermaid-editor>
+- npm package name: `@smjr3/mermaid-editor`
 
-- Edit and preview flowcharts, sequence diagrams, gantt diagrams in real time.
-- Save the result as a svg
-- Get a link to a viewer of the diagram so that you can share it with others.
-- Get a link to edit the diagram so that someone else can tweak it and send a new link back
+## 概要
 
-## Live demo
+本プロジェクトは [Mermaid Live Editor](https://github.com/mermaid-js/mermaid-live-editor) の派生版
+（フォーク）です。カスタマイズ可能なディストリビューションとして npm パッケージ
+`@smjr3/mermaid-editor` で配布し、静的サイトとしてデプロイできます。
 
-You can try out a [live version](https://mermaid.live/).
+- 上流: mermaid-js/mermaid-live-editor（MIT ライセンス、Copyright (c) 2020 - 2023 Knut Sveidqvist）
+- 取り込み元コミット: `990dd241f2acf39c10db9da94464cbb833150426`（上流バージョン 2.0.67）
+- 本プロジェクトは**非公式**の派生版です。Mermaid チームによる承認・関連付けはありません。
+  公式インスタンスは <https://mermaid.live> です。
+- ライセンスは MIT。上流の MIT ライセンスを継承します。詳細は `LICENSE` / `NOTICE` /
+  `THIRD-PARTY-LICENSES.md` を参照してください。
+- 動作要件: Node.js >= 24.16.0、開発には pnpm が必要です。
+- 開発は `pnpm install` の後に `pnpm dev`、ビルドは `pnpm build`（出力先は `docs/`）。
+- 上流のオリジナル README は [`README.upstream.md`](README.upstream.md) にそのまま保存しています。
 
-# Contributors are welcome!
+## Attribution
 
-If you want to speed up the progress for mermaid-live-editor, join the Discord channel and contact knsv.
+This project is based on **Mermaid Live Editor** by Knut Sveidqvist and contributors, which is
+distributed under the MIT License.
 
-## Docker
+- **Upstream project:** Mermaid Live Editor
+- **Upstream repository:** <https://github.com/mermaid-js/mermaid-live-editor>
+- **Upstream copyright:** Copyright (c) 2020 - 2023 Knut Sveidqvist
+- **Upstream license:** MIT
+- **Imported commit:** `990dd241f2acf39c10db9da94464cbb833150426` (branch `master`)
+- **Upstream version:** 2.0.67
+- **Snapshot date:** 2026-08-25
 
-### Run published image
+Upstream publishes no git tags, so the import is identified by commit SHA.
 
-```bash
-docker run --platform linux/amd64 --publish 8000:8080 ghcr.io/mermaid-js/mermaid-live-editor
-```
+## Unofficial derivative
 
-The published docker image is built using our default environment variables. You cannot override them when running the image. If you need to customize them, you will need to build the image yourself.
+This is an unofficial derivative work. It is **not** affiliated with, endorsed by, or supported by
+the Mermaid team or the Mermaid Live Editor maintainers, and nothing here should be read as an
+endorsement by them. <https://mermaid.live> is the official Mermaid Live Editor instance — use it
+for anything that should reflect the official project. Problems with this distribution belong in
+this repository's issue tracker, not upstream's.
 
-### To configure renderer URL
+## Licensing
 
-When building set the MERMAID_RENDERER_URL build argument to the rendering
-service.
-Example:
-Default is`https://mermaid.ink`.
-Set to empty string to disable PNG and SVG links under Actions
+This project is released under the **MIT License** and inherits upstream's MIT License.
 
-### To configure Kroki Instance URL
+- [`LICENSE`](LICENSE) — upstream's MIT license text, preserved unmodified, including the original
+  copyright line (Copyright (c) 2020 - 2023 Knut Sveidqvist). MIT requires this notice to travel
+  with the work, so this file is never edited.
+- [`NOTICE`](NOTICE) — redistribution notice: upstream attribution, this project's own copyright
+  for material added on top, and the third-party components that require an explicit notice.
+- [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md) — license summary for the production
+  dependency tree that is bundled into the built static site.
 
-When building set the MERMAID_KROKI_RENDERER_URL build argument to your Kroki
-instance.
-Default is `https://kroki.io`
-Set to empty string to disable Kroki link under Actions
+## Included feature set
 
-### To configure Analytics
+Upstream's editor feature set is included as-is at version 2.0.67:
 
-When building set the MERMAID_ANALYTICS_URL build argument to your plausible instance, and MERMAID_DOMAIN to your domain.
+- Live editing and preview of mermaid diagrams, with inline error markers
+- Monaco editor on desktop, CodeMirror on mobile
+- Shareable view and edit links — the diagram state is encoded in the URL
+- SVG export, PNG/SVG links via the configured renderer, and Kroki links
+- Pan/zoom, hand-drawn ("rough") rendering, sample diagrams, and a session diagram history
+- Additional layout and renderer plugins: ELK layout, tidy-tree layout, and ZenUML
 
-Default is empty, disabling analytics.
-
-### To enable Mermaid Chart links and promotion
-
-When building set the MERMAID_IS_ENABLED_MERMAID_CHART_LINKS build argument to `true`
-
-Default is empty, disabling button to save to Mermaid Chart and promotional banner.
-
-### To update the Security modal
-
-The modal shown on clicking the security link assumes analytics, renderer, Kroki
-and Mermaid chart are enabled. You can update it by modifying `Privacy.svelte`
-if you wish.
-
-### Development
-
-```bash
-docker compose up --build
-```
-
-Then open http://localhost:3000
-
-### Building and running images locally
-
-#### Build
-
-```bash
-docker build -t mermaid-js/mermaid-live-editor .
-```
-
-#### Run
-
-```bash
-docker run --detach --name mermaid-live-editor --publish 8080:8080 mermaid-js/mermaid-live-editor
-```
-
-Visit: <http://localhost:8080>
-
-#### Stop
-
-```bash
-docker stop mermaid-live-editor
-```
-
-## Setup
-
-Below link will help you making a copy of the repository in your local system.
-
-https://docs.github.com/en/get-started/quickstart/fork-a-repo
+Rendering uses `mermaid` `^11.17.2`, so the mermaid 11.17 diagram set is available — including
+swimlane diagrams (`swimlane-beta`), which were added in mermaid 11.16.0.
 
 ## Requirements
 
-- [Node.js](https://nodejs.org/en/) current LTS version
-- [pnpm](https://pnpm.io/) package manager. Install with `corepack enable pnpm`
+- Node.js >= 24.16.0 (declared in `package.json` `engines`; `.node-version` pins 24.16.0)
+- [pnpm](https://pnpm.io/) for development — `corepack enable pnpm`
 
 ## Development
 
 ```sh
 pnpm install
-pnpm dev -- --open
+pnpm dev
 ```
 
-This app is created with Svelte Kit.
+The dev server runs on <http://localhost:3000>.
 
-## Release
+## Build
 
-When a PR is created targeting master, it will be built and deployed by Netlify.
+```sh
+pnpm build
+```
 
-The URL will be indicated in a Comment in the PR.
+The build produces a static site; output goes to `docs/`.
 
-Once the PR is merged, it will automatically be released.
+## Relationship to upstream
+
+The repository is layered so that upstream code and local customization stay separable:
+
+1. **The first commit is a byte-exact import** of the upstream tree at
+   `990dd241f2acf39c10db9da94464cbb833150426`. No local edits are mixed into it.
+2. **All local changes sit on top of that import** as separate commits, so diffing against the
+   import always shows exactly what this distribution changes.
+3. **Upstream updates are pulled in via a vendor branch rooted at that import commit.** New
+   upstream snapshots land on the vendor branch and are merged forward, which keeps the derivative
+   layer intact and keeps merge conflicts limited to files this project actually customizes.
+
+## Upstream README
+
+Upstream's original README is preserved verbatim in [`README.upstream.md`](README.upstream.md).

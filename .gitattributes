@@ -1,0 +1,15 @@
+# Normalise line endings so a Windows checkout is byte-identical to a Linux one.
+#
+# Without this, Git for Windows checks files out with CRLF by default
+# (core.autocrlf=true). Prettier's endOfLine defaults to "lf", so `pnpm lint`
+# would fail on every file on a Windows runner, and the shell scripts below
+# would be rejected by bash for their carriage returns.
+* text=auto eol=lf
+
+# Scripts that a shell executes directly must keep LF on every platform.
+*.sh text eol=lf
+.husky/* text eol=lf
+
+# Binary files: never touch their contents.
+*.ico binary
+*.png binary

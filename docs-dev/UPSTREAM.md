@@ -134,6 +134,31 @@ unguarded and will not be caught by a merge conflict. After each merge, re-check
 running app for new external links; `docs-dev/FEATURE-FLAGS.md` lists the ones known
 to remain.
 
+### Cross-platform guards
+
+The production runner may be Windows, so the build and deploy path uses only
+package-manager invocations and Node scripts — never a shell builtin or a
+Unix-only command. Details in `docs-dev/CROSS-PLATFORM.md`; at merge time:
+
+| Path                       | Local change                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `.gitattributes`           | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF |
+| `scripts/postinstall.js`   | Added. Replaces a `(… \|\| true)` shell chain — `true` does not exist on cmd.exe                    |
+| `scripts/prepare-pages.js` | Added. Replaces `mv docs public` in CI                                                              |
+| `vite.embed.config.js`     | Adds `publicDir: false`                                                                             |
+| `package.json`             | `postinstall` and `build:pages` point at those scripts                                              |
+| `.gitignore`               | Ignores `/public`                                                                                   |
+
+`publicDir: false` is load-bearing, not tidying. That config has no SvelteKit
+plugin, so Vite defaults `publicDir` to `public` while its `outDir` is `static`.
+Once `pnpm build:pages` creates `public/`, a later build copies the whole
+generated site into the tracked `static/` directory. If a merge drops that line,
+CI starts committing its own output.
+
+Should upstream reintroduce a shell-only step in `postinstall` or a CI script,
+it will merge cleanly and only fail on the Windows runner. Re-read
+`docs-dev/CROSS-PLATFORM.md` after a merge that touches `package.json` scripts.
+
 ### Deleted upstream files
 
 Eight upstream files are deleted in this fork because they serve mermaid.live's own
@@ -217,6 +242,8 @@ conflict by keeping upstream's version.
    [Deleted upstream files](#deleted-upstream-files)).
 6. Confirm the feature-flag guards survived and no new promotional, AI or outbound-link
    surface appeared (see [Feature-flag guards](#feature-flag-guards-in-src-and-tests)).
+7. Confirm the cross-platform guards survived, in particular `publicDir: false` in
+   `vite.embed.config.js` (see [Cross-platform guards](#cross-platform-guards)).
 
 ## Current local file layer
 
@@ -241,6 +268,7 @@ modifications as if they were local customizations.
 | Status   | Path                                             |
 | -------- | ------------------------------------------------ |
 | Modified | `.env`                                           |
+| Added    | `.gitattributes`                                 |
 | Deleted  | `.github/FUNDING.yml`                            |
 | Modified | `.github/pull_request_template.md`               |
 | Deleted  | `.github/workflows/close-broken-link-issues.yml` |
@@ -256,6 +284,8 @@ modifications as if they were local customizations.
 | Modified | `README.md`                                      |
 | Added    | `README.upstream.md`                             |
 | Added    | `THIRD-PARTY-LICENSES.md`                        |
+| Added    | `docs-dev/CROSS-PLATFORM.md`                     |
+| Added    | `docs-dev/FEATURE-FLAGS.md`                      |
 | Added    | `docs-dev/GITLAB-PAGES.md`                       |
 | Added    | `docs-dev/PACKAGING.md`                          |
 | Added    | `docs-dev/UPSTREAM.md`                           |
@@ -266,6 +296,8 @@ modifications as if they were local customizations.
 | Deleted  | `netlify.toml`                                   |
 | Modified | `package.json`                                   |
 | Added    | `scripts/copy-legal-files.js`                    |
+| Added    | `scripts/postinstall.js`                         |
+| Added    | `scripts/prepare-pages.js`                       |
 | Added    | `scripts/update-upstream.sh`                     |
 | Modified | `src/lib/components/DesktopEditor.svelte`        |
 | Modified | `src/lib/components/MainMenu.svelte`             |
@@ -274,5 +306,6 @@ modifications as if they were local customizations.
 | Modified | `src/routes/(app)/edit/+page.svelte`             |
 | Modified | `tests/actions.spec.ts`                          |
 | Modified | `tests/errorDisplay.spec.ts`                     |
+| Modified | `vite.embed.config.js`                           |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

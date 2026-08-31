@@ -1,104 +1,107 @@
-# npm packaging and reproducible consumer builds
+# Packaging and rebuilding
 
-This project publishes its source as `@smjr3/mermaid-editor`. The package is intended
-to be unpacked and built into the static site in `docs/`; it is not a prebuilt copy of
-that site.
+This project is published as the npm package `@smjr3/mermaid-editor`. The package contains
+the application source, not the generated site. A consumer installs the dependencies and
+builds the static site into `docs/`.
 
-## Prerequisites
+## Requirements
 
-- Use the Node version in `.node-version`. The package's `engines.node` is the
-  authoritative minimum.
-- Use npm for the package-consumer workflow described here. pnpm remains the
-  repository's development package manager.
-- Authenticate npm to the target registry before publishing or downloading. For an
-  internal JFrog registry, configure its registry URL and credentials outside this
-  package; npm excludes `.npmrc` from published tarballs.
+- Node.js 24.16.0 or newer (see `.node-version` and `package.json`)
+- npm credentials that can publish to, or download from, the intended registry
+- network access to that registry and to every registry used for dependencies
+
+The package does not contain `.npmrc`, authentication details, or a dependency lockfile.
+Keep registry URLs and tokens in the consumer's npm configuration or CI variables, never in
+the package.
 
 ## Build the package
 
-From a clean repository checkout, run:
+From the repository root, run:
 
 ```sh
 npm pack
 ```
 
-Inspect the resulting tarball before publishing:
+This creates `smjr3-mermaid-editor-<version>.tgz`. Before distributing it, inspect the file
+list and confirm that it does not contain credentials, `node_modules/`, `.git/`, `docs/`, or
+`.env.local`:
 
 ```sh
 tar -tzf smjr3-mermaid-editor-<version>.tgz
 ```
 
-The archive must not contain generated or local state such as `node_modules/`, `.git/`,
-`docs/`, `.env.local`, `.npmrc`, or credentials.
+## Publish the package
 
-## Publish
-
-Publishing is a deliberate release action and is not part of the build:
+After authenticating npm against the target registry, run:
 
 ```sh
-npm publish ./smjr3-mermaid-editor-<version>.tgz --access public
+npm publish
 ```
 
-The `--access public` flag is required for a public scoped package. It is also recorded
-in `publishConfig`, but keeping it in the release command makes the intended access
-explicit. Substitute the configured JFrog registry with `--registry` when publishing
-internally. Never publish a test tarball merely to verify packaging.
+`package.json` already sets `publishConfig.access` to `public`, which is required for a
+public scoped package. For a private internal registry, confirm its scoped-package and
+access-policy settings before publishing. Do not publish as part of a test.
 
-## First consumer import
+## Rebuild the static site from the package
 
-Extract the package into an empty project directory, then create and validate the npm
-lockfile that belongs to the consuming build repository:
+Use an empty working directory so that files from the source repository cannot affect the
+result:
 
 ```sh
 mkdir mermaid-editor-build
-tar -xzf smjr3-mermaid-editor-<version>.tgz \
-  -C mermaid-editor-build --strip-components=1
 cd mermaid-editor-build
+npm pack @smjr3/mermaid-editor
+tar -xzf smjr3-mermaid-editor-*.tgz --strip-components=1
 npm install
-rm -rf node_modules .svelte-kit docs
-npm ci
 npm run build
 ```
 
-Verify that `docs/` contains at least `index.html`, `edit.html`, `view.html`, and `_app/`.
-Commit the generated `package-lock.json` to the consuming build repository only after
-the clean `npm ci` validation succeeds. If that validation reports that the manifest
-and lockfile are out of sync, run `npm install` again, repeat the clean `npm ci`
-validation, and review the lockfile changes before committing them.
+The completed site is in `docs/`. It must contain at least `index.html`, `edit.html`,
+`view.html`, and the `_app/` directory.
 
-## Subsequent reproducible builds
+When downloading through JFrog or another internal registry, that registry must proxy or
+contain all transitive dependencies as well as this package. The first install can otherwise
+fail even when `@smjr3/mermaid-editor` itself is available.
 
-Once the consumer has committed its validated `package-lock.json`, every CI build uses:
+## Reproducible installs
+
+npm always removes a root `pnpm-lock.yaml` from a package tarball. Therefore, the first
+`npm install` shown above resolves the allowed dependency versions available at that time;
+it is **not reproducible by itself**.
+
+The chosen approach is to keep the `package-lock.json` generated in the consuming build
+repository:
+
+1. Run `npm install` when importing a new package version.
+2. Review and commit `package-lock.json` in the consuming repository.
+3. Use `npm ci` in subsequent CI jobs, then run `npm run build`.
 
 ```sh
 npm ci
 npm run build
 ```
 
-When importing a new package version, replace the extracted source, run `npm install`,
-review the resulting lockfile diff, repeat the clean `npm ci` validation above, and
-commit the source-version and lockfile updates together.
+This keeps one lockfile in the repository that actually performs the build. It avoids a
+second, easily outdated copy of `pnpm-lock.yaml` in the published package. The trade-off is
+that the very first dependency resolution is not reproducible; it must be reviewed and
+captured before production use. Update the committed lockfile deliberately whenever the
+package version changes.
 
-## Lockfile decision and caveat
+The alternative of shipping a nested copy of `pnpm-lock.yaml` was rejected because npm does
+not use it for `npm install` or `npm ci`. It would add a synchronization mechanism without
+making the required npm-only build reproducible.
 
-npm unconditionally excludes a root `pnpm-lock.yaml` from packed archives. Therefore a
-fresh install directly from the published package is **not reproducible**: dependency
-versions can float within the ranges in `package.json`.
+## Verified round trip
 
-The chosen policy is for the consuming build repository to own a generated
-`package-lock.json` and use `npm ci` after the first validated import. This makes the
-actual npm dependency tree reproducible, records npm's peer-dependency resolution, and
-does not add a second copy of the upstream pnpm lockfile that could silently drift.
+On 2026-08-30, using the supported Node.js 24.16.0 runtime, `npm pack` produced a 128 kB
+archive containing 169 files. In a new directory, `npm install` installed 667 packages and
+exited successfully; `npm run build` also exited successfully and produced the required
+files in `docs/`. Immediately after that first install, deleting `node_modules/` and
+`.svelte-kit` and running `npm ci` against the generated lockfile also exited successfully.
 
-We deliberately do not copy `pnpm-lock.yaml` under a nested packaging path. Although
-that bypasses npm's root-only exclusion and a prepack check could prevent drift, npm
-does not consume a pnpm lockfile for `npm ci`; restoring it to the root would still not
-lock an npm installation. We also do not commit a `package-lock.json` to this pnpm-based
-source repository because it would create a second independently maintained dependency
-resolution. The reproducibility boundary is instead the internal consumer/build
-repository, whose package lock must be reviewed whenever the packaged source changes.
-
-JFrog does not change this model: it can proxy or host the tarball and dependency
-artifacts, but the consumer still needs registry authentication and a populated proxy
-for every dependency selected by its lockfile. For an air-gapped build, mirror all
-locked artifacts before running `npm ci`.
+Other observed warnings were the deprecated `husky install` command, the absence of `.git`
+in the unpacked directory, deprecations for `plausible-tracker` and `lucide-svelte`, large
+generated JavaScript chunks, and 8 audit findings (6 low and 2 moderate). None stopped the
+build. Dependency upgrades and vulnerability remediation are separate maintenance work and
+must not be performed automatically with `npm audit fix --force` because it may introduce
+breaking changes.

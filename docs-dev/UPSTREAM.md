@@ -102,21 +102,21 @@ The following list is accurate as of **2026-08-30**. It is a snapshot, not a
 permanent allowlist. It is derived from `git diff --name-status d4f0d43 HEAD` plus
 the two files introduced by this documentation change:
 
-| Status | Path |
-| --- | --- |
-| Modified | `.gitignore` |
-| Added | `.upstream-version.json` |
-| Added | `NOTICE` |
-| Modified | `README.md` |
-| Added | `README.upstream.md` |
-| Added | `THIRD-PARTY-LICENSES.md` |
-| Added | `docs-dev/UPSTREAM.md` |
-| Added | `docs-dev/codex/README.md` |
-| Added | `docs-dev/codex/task-04-npm-roundtrip.md` |
-| Added | `docs-dev/codex/task-05-gitlab-pages.md` |
-| Added | `docs-dev/codex/task-06-upstream-docs.md` |
-| Modified | `package.json` |
-| Added | `scripts/copy-legal-files.js` |
-| Added | `scripts/update-upstream.sh` |
+| Status   | Path                                      |
+| -------- | ----------------------------------------- |
+| Modified | `.gitignore`                              |
+| Added    | `.upstream-version.json`                  |
+| Added    | `NOTICE`                                  |
+| Modified | `README.md`                               |
+| Added    | `README.upstream.md`                      |
+| Added    | `THIRD-PARTY-LICENSES.md`                 |
+| Added    | `docs-dev/UPSTREAM.md`                    |
+| Added    | `docs-dev/codex/README.md`                |
+| Added    | `docs-dev/codex/task-04-npm-roundtrip.md` |
+| Added    | `docs-dev/codex/task-05-gitlab-pages.md`  |
+| Added    | `docs-dev/codex/task-06-upstream-docs.md` |
+| Modified | `package.json`                            |
+| Added    | `scripts/copy-legal-files.js`             |
+| Added    | `scripts/update-upstream.sh`              |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

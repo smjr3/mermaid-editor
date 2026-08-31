@@ -1,0 +1,40 @@
+image: node:24.16.0
+
+variables:
+  MERMAID_BASE_PATH: '/$CI_PROJECT_NAME'
+
+pages:
+  stage: deploy
+  script:
+    - npm install --global pnpm@10.34.5
+    - pnpm install --frozen-lockfile
+    - pnpm build
+    - rm -rf public
+    - mv docs public
+  artifacts:
+    paths:
+      - public
+
+# Alternative: publish the site from the package stored in an internal npm registry.
+# Define NPM_PACKAGE_SPEC (for example, @scope/package@version), NPM_REGISTRY_URL,
+# NPM_REGISTRY_HOST_PATH, and NPM_TOKEN as protected or masked CI/CD variables.
+# Replace the active `pages` job above with this job when deploying from the package.
+# pages:
+#   image: node:24.16.0
+#   stage: deploy
+#   before_script:
+#     - npm config set registry "$NPM_REGISTRY_URL"
+#     - npm config set "//$NPM_REGISTRY_HOST_PATH/:_authToken" "$NPM_TOKEN"
+#   script:
+#     - npm pack "$NPM_PACKAGE_SPEC"
+#     - mkdir package-source
+#     - tar -xzf ./*.tgz -C package-source --strip-components=1
+#     - cd package-source
+#     - npm install
+#     - npm run build
+#     - cd ..
+#     - rm -rf public
+#     - mv package-source/docs public
+#   artifacts:
+#     paths:
+#       - public

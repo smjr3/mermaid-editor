@@ -1,6 +1,7 @@
 import type { State } from './types';
 
 export const TID = {
+  actionsCard: 'actions-card',
   aiHelpText: 'ai-help-text',
   aiRepairButton: 'ai-repair-button',
   copyMarkdown: 'copy-markdown',
@@ -17,6 +18,9 @@ export const TID = {
   embedSnippet: 'embed-snippet',
   embedToolbar: 'embed-toolbar',
   errorContainer: 'error-container',
+  historyCard: 'history-card',
+  historyRevisionsTab: 'history-revisions-tab',
+  sampleDiagramsCard: 'sample-diagrams-card',
   themeToggleButton: 'theme-toggle-button'
 } as const;
 

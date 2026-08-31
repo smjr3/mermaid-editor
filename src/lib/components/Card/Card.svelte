@@ -10,6 +10,8 @@
     isClosable?: boolean;
     isOpen?: boolean;
     isStackable?: boolean;
+    /** Lets tests target this card's header without depending on its (translated) title. */
+    testID?: string;
     tabs?: Tab[];
     activeTabID?: string;
     title?: string;
@@ -26,6 +28,7 @@
     isClosable = true,
     isOpen = false,
     isStackable = false,
+    testID,
     tabs = [],
     activeTabID = '',
     title,
@@ -53,6 +56,7 @@
   <div
     role="toolbar"
     tabindex="0"
+    data-testid={testID}
     class={[
       'flex h-11 flex-none cursor-pointer items-center justify-between bg-muted p-2 whitespace-nowrap',
       isTabsShown && 'pb-1'

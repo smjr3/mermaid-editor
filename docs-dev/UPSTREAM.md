@@ -99,19 +99,46 @@ Review the regenerated diff and include it with the merge.
 Seven upstream files are deleted in this fork because they automate mermaid.live's
 own release and hosting, and they misfire when they run under `smjr3/mermaid-editor`:
 
-| Path                                             | Why it is gone                                                                                    |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `.github/workflows/deploy.yml`                   | Publishes to GitHub Pages; this fork deploys through GitLab Pages (`.gitlab-ci.yml`).             |
-| `.github/workflows/docker-publish.yml`           | Pushes an image to `ghcr.io/${{ github.repository }}` — under this fork it publishes real images. |
-| `.github/workflows/close-broken-link-issues.yml` | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues. |
-| `.github/workflows/update-browserlist.yml`       | Scheduled PR against a `develop` base branch that does not exist here.                            |
-| `.github/workflows/release-pr.yml`               | Triggers on pushes to `develop`, which does not exist here.                                       |
-| `netlify.toml`                                   | Netlify build config carrying mermaid.live environment values.                                    |
-| `CNAME`                                          | GitHub Pages custom domain `mermaid.live`.                                                        |
+| Path                                             | Why it is gone                                                                                                                                                                                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/deploy.yml`                   | Publishes to GitHub Pages; this fork deploys through GitLab Pages (`.gitlab-ci.yml`).                                                                                                                                                 |
+| `.github/workflows/docker-publish.yml`           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it publishes for real rather than failing on upstream's. See the note below on what its pull-request path also did. |
+| `.github/workflows/close-broken-link-issues.yml` | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                     |
+| `.github/workflows/update-browserlist.yml`       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                |
+| `.github/workflows/release-pr.yml`               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                           |
+| `netlify.toml`                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                        |
+| `CNAME`                                          | GitHub Pages custom domain `mermaid.live`.                                                                                                                                                                                            |
 
 `.github/workflows/tests.yml`, `unit-tests.yml`, and `codeql-analysis.yml` are kept —
 they run CI, not releases — as are `Dockerfile`, `docker-compose.yml`, and
 `nginx.conf`, which are useful for local container runs and publish nothing.
+
+#### Accepted consequence: nothing builds the container any more
+
+`docker-publish.yml` was not only a publisher. It also triggered on
+`pull_request` against `master` and `develop`, and on that path it published
+nothing: its login, push and attestation steps were each gated on
+`github.event_name == 'push'` (`push: ${{ github.event_name == 'push' }}` on
+`docker/build-push-action`). So on pull requests it was a build-only check of the
+`mermaid` target, across `linux/amd64` and `linux/arm64`.
+
+Deleting it removed that check, and nothing replaced it: `.gitlab-ci.yml` builds no
+container, and the only `container:` key left in `.github/workflows/` is in
+`tests.yml`, which _runs_ jobs inside a prebuilt image rather than building this
+repository's `Dockerfile`. The retained `Dockerfile` is therefore unvalidated by CI,
+and a change that breaks it can merge unnoticed.
+
+This is a deliberate trade, not an oversight. This fork ships an npm package that an
+internal GitLab CI builds into a static site for GitLab Pages; it never publishes a
+container, so the image is a local-development convenience. Restoring a trimmed
+pull-request-only build would mean carrying a _modified_ upstream workflow — a
+permanent conflict surface on every upstream merge — and paying for the slowest job
+in the repository (a two-platform QEMU build) on every pull request, to validate an
+artifact nothing consumes.
+
+If the `Dockerfile` does break, the options are to fix it, to restore a
+pull-request-only build, or to drop `Dockerfile`, `docker-compose.yml` and
+`nginx.conf` along with it. Nothing in this repository depends on the image.
 
 **A merge will bring deleted files back whenever upstream touches them.** Git treats
 "deleted here, modified there" as a conflict and, if upstream only adds files, it

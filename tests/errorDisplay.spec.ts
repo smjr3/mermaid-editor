@@ -1,16 +1,20 @@
 import { test } from './test';
 
 test.describe('Error display tests', () => {
-  test('should show AI Repair button for syntax errors in Code tab', async ({ editPage }) => {
+  // Upstream shows an AI Repair button beside a Code-tab syntax error, which links
+  // out to Mermaid Chart. This fork disables AI affordances for organisational use
+  // (MERMAID_IS_ENABLED_AI_FEATURES / MERMAID_IS_ENABLED_MERMAID_CHART_LINKS), so the
+  // error itself must still surface while the AI affordance stays away.
+  test('should report a Code tab syntax error without offering AI Repair', async ({ editPage }) => {
     // Enter code with syntax error
     await editPage.clearEditor();
     await editPage.typeInEditor('graph TD\nA --> B -->');
 
-    // Verify error is displayed
+    // The error itself must still be reported to the user
     await editPage.checkError('Syntax error');
 
-    // Verify AI Repair button and help text is shown in Code tab
-    await editPage.checkAIHelperVisibility(true);
+    // ...but no AI Repair button or help text
+    await editPage.checkAIHelperVisibility(false);
   });
 
   test('should not show AI Repair button for errors in Config tab', async ({ editPage }) => {

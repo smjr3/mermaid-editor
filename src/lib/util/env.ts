@@ -3,6 +3,8 @@ export const env = {
   docsUrl: import.meta.env.MERMAID_DOCS_URL ?? 'https://mermaid.js.org',
   domain: import.meta.env.MERMAID_DOMAIN ?? '',
   hidePrivacyPolicy: import.meta.env.MERMAID_HIDE_PRIVACY_POLICY === 'true',
+  isEnabledAiFeatures: import.meta.env.MERMAID_IS_ENABLED_AI_FEATURES === 'true',
+  isEnabledCommunityLinks: import.meta.env.MERMAID_IS_ENABLED_COMMUNITY_LINKS === 'true',
   isEnabledMermaidChartLinks: import.meta.env.MERMAID_IS_ENABLED_MERMAID_CHART_LINKS === 'true',
   krokiRendererUrl: import.meta.env.MERMAID_KROKI_RENDERER_URL ?? '',
   privacyPolicyUrl: import.meta.env.MERMAID_PRIVACY_POLICY_URL ?? '',

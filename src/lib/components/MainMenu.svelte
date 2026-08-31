@@ -54,12 +54,16 @@
       href: `${env.docsUrl}/intro/`,
       renderer: menuItem
     },
-    {
-      label: 'Community',
-      icon: CommunityIcon,
-      href: 'https://discord.gg/sKeNQX4Wtj',
-      renderer: menuItem
-    },
+    ...(env.isEnabledCommunityLinks
+      ? [
+          {
+            label: 'Community',
+            icon: CommunityIcon,
+            href: 'https://discord.gg/sKeNQX4Wtj',
+            renderer: menuItem
+          }
+        ]
+      : []),
     {
       checkDiagramType: false,
       href: urls.current.mermaidChart({ medium: 'main_menu' }).plugins,

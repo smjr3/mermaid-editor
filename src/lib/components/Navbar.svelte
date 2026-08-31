@@ -12,6 +12,7 @@
   import MainMenu from '$/components/MainMenu.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
+  import { env } from '$/util/env';
   import { dismissPromotion, getActivePromotion } from '$lib/util/promos/promo.svelte';
   import { untrack, type ComponentProps, type Snippet } from 'svelte';
   import MermaidIcon from '~icons/custom/mermaid';
@@ -94,8 +95,10 @@
   <div
     id="menu"
     class="hidden flex-nowrap items-center justify-between gap-3 overflow-hidden md:flex">
-    <DropdownNavMenu icon={GithubIcon} links={githubLinks} />
-    <Separator orientation="vertical" />
+    {#if env.isEnabledCommunityLinks}
+      <DropdownNavMenu icon={GithubIcon} links={githubLinks} />
+      <Separator orientation="vertical" />
+    {/if}
     {@render children()}
   </div>
   {@render mobileToggle?.()}

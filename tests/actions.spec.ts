@@ -5,10 +5,22 @@ test.describe('Check actions', () => {
     await editPage.toggleActions();
   });
 
-  test('should update markdown code', async ({ editPage }) => {
-    const oldText = await editPage.markdownInput.inputValue();
+  // Upstream offers a "Copy Markdown" field holding a mermaid.ink image URL, which
+  // carries the diagram source to an external renderer. This fork empties
+  // MERMAID_RENDERER_URL so no such link is produced. Local PNG/SVG export is
+  // unaffected and still covered below.
+  test('should not offer a Markdown link that sends the diagram off-site', async ({ editPage }) => {
+    await expect(editPage.markdownInput).toBeHidden();
     await editPage.typeInEditor('C --> HistoryTest', { bottom: true, newline: true });
-    await expect(editPage.markdownInput).not.toHaveValue(oldText);
+    await expect(editPage.markdownInput).toBeHidden();
+  });
+
+  test('should still export PNG and SVG locally', async ({ page }) => {
+    await expect(page.getByTestId('download-PNG')).toBeVisible();
+    await expect(page.getByTestId('download-SVG')).toBeVisible();
+    const download = page.waitForEvent('download');
+    await page.getByTestId('download-PNG').click();
+    expect((await download).suggestedFilename()).toContain('.png');
   });
 
   test.skip('should load gists from URL', async ({ page }) => {

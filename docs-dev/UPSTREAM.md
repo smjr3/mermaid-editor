@@ -108,6 +108,32 @@ re-breaks both:
 Everything else in the file is upstream's and should track upstream. Keep the two
 local lines and take upstream's changes for the rest.
 
+### Feature-flag guards in `src/` and `tests/`
+
+Six source files carry small local guards that switch off upstream's promotional, AI
+and community features, plus the two e2e specs that covered them. The full rationale
+and the variables are in `docs-dev/FEATURE-FLAGS.md`; what matters at merge time:
+
+| Path                                                  | Local change                                                                                                |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/env.ts`                                 | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks` |
+| `src/lib/components/DesktopEditor.svelte`             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`                                                  |
+| `src/routes/(app)/edit/+page.svelte`                  | Wraps `<EnhancedEditsButton>` in the same guard                                                             |
+| `src/lib/components/Navbar.svelte`                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                          |
+| `src/lib/components/MainMenu.svelte`                  | Spreads the Discord "Community" entry in conditionally                                                      |
+| `.env`                                                | Sets the organisational defaults                                                                            |
+| `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts` | Assert the configured behaviour rather than upstream's                                                      |
+
+These are additive guards, not rewrites: the guarded markup is upstream's own. On a
+conflict, take upstream's version of the inner content and re-apply the surrounding
+`{#if}`. Do **not** resolve by dropping the guard — that silently re-enables an AI or
+promotional surface in an organisational build.
+
+If upstream introduces a new promotional, AI or outbound-link surface, it arrives
+unguarded and will not be caught by a merge conflict. After each merge, re-check the
+running app for new external links; `docs-dev/FEATURE-FLAGS.md` lists the ones known
+to remain.
+
 ### Deleted upstream files
 
 Eight upstream files are deleted in this fork because they serve mermaid.live's own
@@ -189,6 +215,8 @@ conflict by keeping upstream's version.
    the pristine vendor commit's tree.
 5. Confirm none of the eight deleted upstream files reappeared (see
    [Deleted upstream files](#deleted-upstream-files)).
+6. Confirm the feature-flag guards survived and no new promotional, AI or outbound-link
+   surface appeared (see [Feature-flag guards](#feature-flag-guards-in-src-and-tests)).
 
 ## Current local file layer
 
@@ -212,6 +240,7 @@ modifications as if they were local customizations.
 
 | Status   | Path                                             |
 | -------- | ------------------------------------------------ |
+| Modified | `.env`                                           |
 | Deleted  | `.github/FUNDING.yml`                            |
 | Modified | `.github/pull_request_template.md`               |
 | Deleted  | `.github/workflows/close-broken-link-issues.yml` |
@@ -238,5 +267,12 @@ modifications as if they were local customizations.
 | Modified | `package.json`                                   |
 | Added    | `scripts/copy-legal-files.js`                    |
 | Added    | `scripts/update-upstream.sh`                     |
+| Modified | `src/lib/components/DesktopEditor.svelte`        |
+| Modified | `src/lib/components/MainMenu.svelte`             |
+| Modified | `src/lib/components/Navbar.svelte`               |
+| Modified | `src/lib/util/env.ts`                            |
+| Modified | `src/routes/(app)/edit/+page.svelte`             |
+| Modified | `tests/actions.spec.ts`                          |
+| Modified | `tests/errorDisplay.spec.ts`                     |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

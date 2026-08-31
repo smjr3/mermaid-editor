@@ -94,10 +94,25 @@ Never hand-merge the lockfile. Resolve `package.json` first, remove the conflict
 lockfile, and regenerate it with the repository-pinned pnpm using `pnpm install`.
 Review the regenerated diff and include it with the merge.
 
+### `.github/pull_request_template.md`
+
+Two checklist lines are changed locally, and taking upstream's side of a conflict
+re-breaks both:
+
+- upstream links its own contribution guidelines at mermaid.js.org, which describe
+  contributing to `mermaid-js/mermaid-live-editor`, not to this fork. The local line
+  points at `docs-dev/UPSTREAM.md` instead.
+- upstream asks contributors to target `develop`. That branch does not exist here;
+  pull requests target `master`.
+
+Everything else in the file is upstream's and should track upstream. Keep the two
+local lines and take upstream's changes for the rest.
+
 ### Deleted upstream files
 
-Seven upstream files are deleted in this fork because they automate mermaid.live's
-own release and hosting, and they misfire when they run under `smjr3/mermaid-editor`:
+Eight upstream files are deleted in this fork because they serve mermaid.live's own
+release, hosting and funding, and they misfire when they run under
+`smjr3/mermaid-editor`:
 
 | Path                                             | Why it is gone                                                                                                                                                                                                                        |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -108,6 +123,7 @@ own release and hosting, and they misfire when they run under `smjr3/mermaid-edi
 | `.github/workflows/release-pr.yml`               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                           |
 | `netlify.toml`                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                        |
 | `CNAME`                                          | GitHub Pages custom domain `mermaid.live`.                                                                                                                                                                                            |
+| `.github/FUNDING.yml`                            | `github: [sidharthv96, knsv]` — renders a "Sponsor this project" button on this repository that pays the upstream maintainers.                                                                                                        |
 
 `.github/workflows/tests.yml`, `unit-tests.yml`, and `codeql-analysis.yml` are kept —
 they run CI, not releases — as are `Dockerfile`, `docker-compose.yml`, and
@@ -143,7 +159,7 @@ pull-request-only build, or to drop `Dockerfile`, `docker-compose.yml` and
 **A merge will bring deleted files back whenever upstream touches them.** Git treats
 "deleted here, modified there" as a conflict and, if upstream only adds files, it
 restores them with no conflict at all. After every merge, re-check that none of the
-seven have reappeared:
+eight have reappeared:
 
 ```sh
 git ls-files -- \
@@ -152,7 +168,7 @@ git ls-files -- \
   .github/workflows/close-broken-link-issues.yml \
   .github/workflows/update-browserlist.yml \
   .github/workflows/release-pr.yml \
-  netlify.toml CNAME
+  netlify.toml CNAME .github/FUNDING.yml
 ```
 
 It prints one line per file that is tracked again. Silence means the deletions
@@ -171,7 +187,7 @@ conflict by keeping upstream's version.
    current production dependency licenses.
 4. Update and JSON-parse `.upstream-version.json`; verify that its imported tree is
    the pristine vendor commit's tree.
-5. Confirm none of the seven deleted upstream files reappeared (see
+5. Confirm none of the eight deleted upstream files reappeared (see
    [Deleted upstream files](#deleted-upstream-files)).
 
 ## Current local file layer
@@ -196,6 +212,8 @@ modifications as if they were local customizations.
 
 | Status   | Path                                             |
 | -------- | ------------------------------------------------ |
+| Deleted  | `.github/FUNDING.yml`                            |
+| Modified | `.github/pull_request_template.md`               |
 | Deleted  | `.github/workflows/close-broken-link-issues.yml` |
 | Deleted  | `.github/workflows/deploy.yml`                   |
 | Deleted  | `.github/workflows/docker-publish.yml`           |

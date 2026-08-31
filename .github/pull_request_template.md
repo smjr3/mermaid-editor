@@ -12,6 +12,6 @@ Describe the way your implementation works or what design decisions you made if 
 
 Make sure you
 
-- [ ] :book: have read the [contribution guidelines](https://mermaid.js.org/community/contributing.html)
+- [ ] :book: have read `docs-dev/UPSTREAM.md` if this PR touches files inherited from upstream
 - [ ] :computer: have added unit/e2e tests (if appropriate)
-- [ ] :bookmark: targeted `develop` branch
+- [ ] :bookmark: targeted the `master` branch

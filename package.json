@@ -23,6 +23,7 @@
     "access": "public"
   },
   "files": [
+    ".upstream-version.json",
     ".env",
     ".node-version",
     ".prettierignore",

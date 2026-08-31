@@ -11,31 +11,10 @@
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
     <link rel="apple-touch-icon" href="%sveltekit.assets%/favicon.png" />
     <link rel="mask-icon" href="%sveltekit.assets%/favicon.svg" color="#000000" />
-    <meta name="theme-color" content="#29cbe0" />
+    <!-- The app follows the OS colour scheme, so the browser chrome does too. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#096790" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#29cbe0" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.json" />
-    <script>
-      /*
-        Default this editor to dark, while leaving an explicit user choice alone.
-
-        Setting <ModeWatcher defaultMode="dark" /> alone does not work: mode-watcher's
-        UserPrefersMode singleton is constructed at module-import time with its own
-        hardcoded "system" default and persists it, so by the time the component's
-        onMount reads localStorage the key already holds a valid mode and defaultMode
-        is never reached. Seeding the key here, above SvelteKit's head placeholder
-        below and therefore before any module loads, is what changes the default.
-
-        Someone who picks light has "light" stored, so this leaves it untouched.
-      */
-      try {
-        var modeKey = 'mode-watcher-mode';
-        if (!localStorage.getItem(modeKey)) {
-          localStorage.setItem(modeKey, 'dark');
-        }
-      } catch (error) {
-        // Storage can be unavailable (private mode, blocked cookies). ModeWatcher's
-        // defaultMode prop still applies in that case.
-      }
-    </script>
     %sveltekit.head%
   </head>
   <body>

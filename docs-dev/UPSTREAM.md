@@ -161,24 +161,22 @@ it will merge cleanly and only fail on the Windows runner. Re-read
 
 ### Theme changes
 
-`docs-dev/THEME.md` has the full rationale and the measured contrast figures.
-At merge time:
+`docs-dev/THEME.md` has the rationale and the measured contrast figures. At merge
+time:
 
-| Path                              | Local change                                                                                         |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `src/app.css`                     | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark |
-| `src/app.html`                    | Seeds `mode-watcher-mode` to `dark` above the head placeholder; `theme-color` meta                   |
-| `src/routes/(app)/+layout.svelte` | `<ModeWatcher defaultMode="dark" />`                                                                 |
-| `tests/themes.spec.ts`            | Asserts the dark default and stored-preference behaviour                                             |
+| Path           | Local change                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/app.css`  | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark |
+| `src/app.html` | `theme-color` meta as a `prefers-color-scheme` pair instead of the pink                              |
 
-Two things a merge must not undo. The dark `--accent-foreground` is near-black
-**because** the dark accent is bright: restoring upstream's near-white value drops
-accent-button labels to 1.9:1. And the seed in `src/app.html` is what actually
-sets the default — `defaultMode` alone is pre-empted by mode-watcher's persisted
-singleton, so removing the seed silently returns the app to following the OS.
+The dark `--accent-foreground` is near-black **because** the dark accent is
+bright. Restoring upstream's near-white value there drops accent-button labels to
+1.9:1, well under AA, so a merge must not take upstream's side of that line on
+its own.
 
-Never write the literal SvelteKit head-placeholder token inside that comment; a
-second occurrence makes the real placeholder render as text on every page.
+The light/dark mechanism is upstream's and untouched: the editor follows the
+operating system. `docs-dev/THEME.md` records why `<ModeWatcher defaultMode>`
+cannot change that on its own, should a fixed default ever be wanted.
 
 ### Deleted upstream files
 
@@ -265,8 +263,8 @@ conflict by keeping upstream's version.
    surface appeared (see [Feature-flag guards](#feature-flag-guards-in-src-and-tests)).
 7. Confirm the cross-platform guards survived, in particular `publicDir: false` in
    `vite.embed.config.js` (see [Cross-platform guards](#cross-platform-guards)).
-8. Confirm the theme defaults survived: the seed in `src/app.html` and the dark
-   `--accent-foreground` (see [Theme changes](#theme-changes)).
+8. Confirm the dark `--accent-foreground` survived as a near-black value (see
+   [Theme changes](#theme-changes)).
 
 ## Current local file layer
 
@@ -329,11 +327,9 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/MainMenu.svelte`             |
 | Modified | `src/lib/components/Navbar.svelte`               |
 | Modified | `src/lib/util/env.ts`                            |
-| Modified | `src/routes/(app)/+layout.svelte`                |
 | Modified | `src/routes/(app)/edit/+page.svelte`             |
 | Modified | `tests/actions.spec.ts`                          |
 | Modified | `tests/errorDisplay.spec.ts`                     |
-| Modified | `tests/themes.spec.ts`                           |
 | Modified | `vite.embed.config.js`                           |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

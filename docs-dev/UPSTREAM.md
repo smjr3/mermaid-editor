@@ -94,6 +94,73 @@ Never hand-merge the lockfile. Resolve `package.json` first, remove the conflict
 lockfile, and regenerate it with the repository-pinned pnpm using `pnpm install`.
 Review the regenerated diff and include it with the merge.
 
+### Deleted upstream files
+
+Seven upstream files are deleted in this fork because they automate mermaid.live's
+own release and hosting, and they misfire when they run under `smjr3/mermaid-editor`:
+
+| Path                                             | Why it is gone                                                                                                                                                                                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/deploy.yml`                   | Publishes to GitHub Pages; this fork deploys through GitLab Pages (`.gitlab-ci.yml`).                                                                                                                                                 |
+| `.github/workflows/docker-publish.yml`           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it publishes for real rather than failing on upstream's. See the note below on what its pull-request path also did. |
+| `.github/workflows/close-broken-link-issues.yml` | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                     |
+| `.github/workflows/update-browserlist.yml`       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                |
+| `.github/workflows/release-pr.yml`               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                           |
+| `netlify.toml`                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                        |
+| `CNAME`                                          | GitHub Pages custom domain `mermaid.live`.                                                                                                                                                                                            |
+
+`.github/workflows/tests.yml`, `unit-tests.yml`, and `codeql-analysis.yml` are kept —
+they run CI, not releases — as are `Dockerfile`, `docker-compose.yml`, and
+`nginx.conf`, which are useful for local container runs and publish nothing.
+
+#### Accepted consequence: nothing builds the container any more
+
+`docker-publish.yml` was not only a publisher. It also triggered on
+`pull_request` against `master` and `develop`, and on that path it published
+nothing: its login, push and attestation steps were each gated on
+`github.event_name == 'push'` (`push: ${{ github.event_name == 'push' }}` on
+`docker/build-push-action`). So on pull requests it was a build-only check of the
+`mermaid` target, across `linux/amd64` and `linux/arm64`.
+
+Deleting it removed that check, and nothing replaced it: `.gitlab-ci.yml` builds no
+container, and the only `container:` key left in `.github/workflows/` is in
+`tests.yml`, which _runs_ jobs inside a prebuilt image rather than building this
+repository's `Dockerfile`. The retained `Dockerfile` is therefore unvalidated by CI,
+and a change that breaks it can merge unnoticed.
+
+This is a deliberate trade, not an oversight. This fork ships an npm package that an
+internal GitLab CI builds into a static site for GitLab Pages; it never publishes a
+container, so the image is a local-development convenience. Restoring a trimmed
+pull-request-only build would mean carrying a _modified_ upstream workflow — a
+permanent conflict surface on every upstream merge — and paying for the slowest job
+in the repository (a two-platform QEMU build) on every pull request, to validate an
+artifact nothing consumes.
+
+If the `Dockerfile` does break, the options are to fix it, to restore a
+pull-request-only build, or to drop `Dockerfile`, `docker-compose.yml` and
+`nginx.conf` along with it. Nothing in this repository depends on the image.
+
+**A merge will bring deleted files back whenever upstream touches them.** Git treats
+"deleted here, modified there" as a conflict and, if upstream only adds files, it
+restores them with no conflict at all. After every merge, re-check that none of the
+seven have reappeared:
+
+```sh
+git ls-files -- \
+  .github/workflows/deploy.yml \
+  .github/workflows/docker-publish.yml \
+  .github/workflows/close-broken-link-issues.yml \
+  .github/workflows/update-browserlist.yml \
+  .github/workflows/release-pr.yml \
+  netlify.toml CNAME
+```
+
+It prints one line per file that is tracked again. Silence means the deletions
+survived the merge; any output is a file to delete again.
+
+Delete any that returned (`git rm`) before pushing the merge. Do not resolve such a
+conflict by keeping upstream's version.
+
 ## Verification after every merge
 
 1. Install dependencies and run `pnpm build`.
@@ -104,6 +171,8 @@ Review the regenerated diff and include it with the merge.
    current production dependency licenses.
 4. Update and JSON-parse `.upstream-version.json`; verify that its imported tree is
    the pristine vendor commit's tree.
+5. Confirm none of the seven deleted upstream files reappeared (see
+   [Deleted upstream files](#deleted-upstream-files)).
 
 ## Current local file layer
 
@@ -125,24 +194,31 @@ at upstream 2.0.67. Once any upstream update has been merged, `HEAD` carries ups
 code newer than `d4f0d43`, so diffing against it reports upstream's own additions and
 modifications as if they were local customizations.
 
-| Status   | Path                                      |
-| -------- | ----------------------------------------- |
-| Modified | `.gitignore`                              |
-| Added    | `.upstream-version.json`                  |
-| Added    | `NOTICE`                                  |
-| Modified | `README.md`                               |
-| Added    | `README.upstream.md`                      |
-| Added    | `THIRD-PARTY-LICENSES.md`                 |
-| Added    | `.gitlab-ci.yml`                          |
-| Added    | `docs-dev/GITLAB-PAGES.md`                |
-| Added    | `docs-dev/PACKAGING.md`                   |
-| Added    | `docs-dev/UPSTREAM.md`                    |
-| Added    | `docs-dev/codex/README.md`                |
-| Added    | `docs-dev/codex/task-04-npm-roundtrip.md` |
-| Added    | `docs-dev/codex/task-05-gitlab-pages.md`  |
-| Added    | `docs-dev/codex/task-06-upstream-docs.md` |
-| Modified | `package.json`                            |
-| Added    | `scripts/copy-legal-files.js`             |
-| Added    | `scripts/update-upstream.sh`              |
+| Status   | Path                                             |
+| -------- | ------------------------------------------------ |
+| Deleted  | `.github/workflows/close-broken-link-issues.yml` |
+| Deleted  | `.github/workflows/deploy.yml`                   |
+| Deleted  | `.github/workflows/docker-publish.yml`           |
+| Deleted  | `.github/workflows/release-pr.yml`               |
+| Deleted  | `.github/workflows/update-browserlist.yml`       |
+| Modified | `.gitignore`                                     |
+| Added    | `.gitlab-ci.yml`                                 |
+| Added    | `.upstream-version.json`                         |
+| Deleted  | `CNAME`                                          |
+| Added    | `NOTICE`                                         |
+| Modified | `README.md`                                      |
+| Added    | `README.upstream.md`                             |
+| Added    | `THIRD-PARTY-LICENSES.md`                        |
+| Added    | `docs-dev/GITLAB-PAGES.md`                       |
+| Added    | `docs-dev/PACKAGING.md`                          |
+| Added    | `docs-dev/UPSTREAM.md`                           |
+| Added    | `docs-dev/codex/README.md`                       |
+| Added    | `docs-dev/codex/task-04-npm-roundtrip.md`        |
+| Added    | `docs-dev/codex/task-05-gitlab-pages.md`         |
+| Added    | `docs-dev/codex/task-06-upstream-docs.md`        |
+| Deleted  | `netlify.toml`                                   |
+| Modified | `package.json`                                   |
+| Added    | `scripts/copy-legal-files.js`                    |
+| Added    | `scripts/update-upstream.sh`                     |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

@@ -74,9 +74,11 @@ either action defeats the exact-tree guarantee.
 
 ### `package.json`
 
-The intended local delta is five replaced lines only: `name`, `version`, `dev`,
-`build`, and `postinstall`. Reapply those deliberate values to the new upstream file,
-while accepting upstream changes everywhere else. Confirm the resulting diff rather
+Preserve every intentional local addition and replacement while accepting upstream
+changes everywhere else. The local delta includes replacements such as `name`,
+`version`, `dev`, `build`, and `postinstall`, as well as added package metadata and
+packaging configuration. In particular, do not lose `files` or `publishConfig`:
+removing either changes the published npm output. Confirm the resulting diff rather
 than choosing an entire side of the conflict.
 
 ### `pnpm-lock.yaml`
@@ -98,25 +100,37 @@ Review the regenerated diff and include it with the merge.
 
 ## Current local file layer
 
-The following list is accurate as of **2026-08-30**. It is a snapshot, not a
-permanent allowlist. It is derived from `git diff --name-status d4f0d43 HEAD` plus
-the two files introduced by this documentation change:
+The following list is accurate as of **2026-08-31**. It is a snapshot, not a
+permanent allowlist. It is derived by comparing the customization branch with the
+current tip of `vendor/upstream`:
 
-| Status | Path |
-| --- | --- |
-| Modified | `.gitignore` |
-| Added | `.upstream-version.json` |
-| Added | `NOTICE` |
-| Modified | `README.md` |
-| Added | `README.upstream.md` |
-| Added | `THIRD-PARTY-LICENSES.md` |
-| Added | `docs-dev/UPSTREAM.md` |
-| Added | `docs-dev/codex/README.md` |
-| Added | `docs-dev/codex/task-04-npm-roundtrip.md` |
-| Added | `docs-dev/codex/task-05-gitlab-pages.md` |
-| Added | `docs-dev/codex/task-06-upstream-docs.md` |
-| Modified | `package.json` |
-| Added | `scripts/copy-legal-files.js` |
-| Added | `scripts/update-upstream.sh` |
+```sh
+git diff --name-status vendor/upstream HEAD
+```
+
+The `vendorBaseCommit` in `.upstream-version.json` may be used as the baseline when
+it records that same current vendor tip. Do not return to the frozen initial import
+(`d4f0d43`) after an upstream update: doing so would misclassify upstream's own newer
+changes as local customizations. Update the recorded vendor base on every import.
+
+| Status   | Path                                      |
+| -------- | ----------------------------------------- |
+| Modified | `.gitignore`                              |
+| Added    | `.gitlab-ci.yml`                          |
+| Added    | `.upstream-version.json`                  |
+| Added    | `NOTICE`                                  |
+| Modified | `README.md`                               |
+| Added    | `README.upstream.md`                      |
+| Added    | `THIRD-PARTY-LICENSES.md`                 |
+| Added    | `docs-dev/GITLAB-PAGES.md`                |
+| Added    | `docs-dev/PACKAGING.md`                   |
+| Added    | `docs-dev/UPSTREAM.md`                    |
+| Added    | `docs-dev/codex/README.md`                |
+| Added    | `docs-dev/codex/task-04-npm-roundtrip.md` |
+| Added    | `docs-dev/codex/task-05-gitlab-pages.md`  |
+| Added    | `docs-dev/codex/task-06-upstream-docs.md` |
+| Modified | `package.json`                            |
+| Added    | `scripts/copy-legal-files.js`             |
+| Added    | `scripts/update-upstream.sh`              |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

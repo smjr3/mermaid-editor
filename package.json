@@ -25,6 +25,7 @@
   "files": [
     ".env",
     ".node-version",
+    ".upstream-version.json",
     ".prettierignore",
     ".prettierrc",
     "CLAUDE.md",

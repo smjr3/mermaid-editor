@@ -15,7 +15,6 @@
   import { env } from '$/util/env';
   import { dismissPromotion, getActivePromotion } from '$lib/util/promos/promo.svelte';
   import { untrack, type ComponentProps, type Snippet } from 'svelte';
-  import MermaidIcon from '~icons/custom/mermaid';
   import CloseIcon from '~icons/material-symbols/close-rounded';
   import GithubIcon from '~icons/mdi/github';
   import DropdownNavMenu from './DropdownNavMenu.svelte';
@@ -84,7 +83,6 @@
 <nav class="z-50 flex p-4 sm:p-6">
   <div class="flex flex-1 items-center gap-2">
     <MainMenu />
-    <MermaidIcon class="size-6" />
     <a href={resolve('/', {})} class="whitespace-nowrap text-accent">
       {#if !mobileToggle}
         Mermaid

@@ -164,10 +164,14 @@ it will merge cleanly and only fail on the Windows runner. Re-read
 `docs-dev/THEME.md` has the rationale and the measured contrast figures. At merge
 time:
 
-| Path           | Local change                                                                                         |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| `src/app.css`  | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark |
-| `src/app.html` | `theme-color` meta as a `prefers-color-scheme` pair instead of the pink                              |
+| Path                               | Local change                                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/app.css`                      | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark |
+| `src/app.html`                     | `theme-color` meta as a `prefers-color-scheme` pair instead of the pink                              |
+| `src/lib/components/Navbar.svelte` | Upstream's Mermaid logo removed from the header                                                      |
+| `static/icons/mermaid.svg`         | Deleted — the brand mark, now unused                                                                 |
+| `static/favicon.{svg,png,ico}`     | Brand mark replaced with a generic diagram glyph                                                     |
+| `static/manifest.json`             | `background_color` and `theme_color` moved off the brand pink                                        |
 
 The dark `--accent-foreground` is near-black **because** the dark accent is
 bright. Restoring upstream's near-white value there drops accent-button labels to
@@ -328,6 +332,11 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/Navbar.svelte`               |
 | Modified | `src/lib/util/env.ts`                            |
 | Modified | `src/routes/(app)/edit/+page.svelte`             |
+| Modified | `static/favicon.ico`                             |
+| Modified | `static/favicon.png`                             |
+| Modified | `static/favicon.svg`                             |
+| Deleted  | `static/icons/mermaid.svg`                       |
+| Modified | `static/manifest.json`                           |
 | Modified | `tests/actions.spec.ts`                          |
 | Modified | `tests/errorDisplay.spec.ts`                     |
 | Modified | `vite.embed.config.js`                           |

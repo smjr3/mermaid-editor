@@ -40,13 +40,35 @@ All three keep their structural role; only the hue changes.
 app follows the OS scheme, it is now a `prefers-color-scheme` pair rather than
 one fixed value, so the mobile browser chrome matches whichever mode is showing.
 
-## Still pink: the logo
+## Brand marks removed
 
-`static/icons/mermaid.svg` hardcodes `#ff3670` for the logo's rounded square. It
-is deliberately untouched — it is upstream's brand mark, and MIT covers the code
-rather than the trademark, so recolouring it is a branding decision rather than a
-styling one. Replacing it with an own mark, or dropping it, are the other
-options.
+Upstream's Mermaid logo is gone from anything that identifies **this** app.
+Removing a third party's mark carries no licensing risk — the risk runs the other
+way, since displaying another project's brand on a derivative can suggest
+endorsement. MIT requires the copyright notice and licence text, which `LICENSE`,
+`NOTICE` and `THIRD-PARTY-LICENSES.md` carry; it does not require a logo.
+
+| Asset                      | Action                                                                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `static/icons/mermaid.svg` | Deleted, along with `<MermaidIcon>` in `Navbar.svelte` — the pink square beside the title                                                                                |
+| `static/favicon.svg`       | Replaced with a plain flowchart glyph (one node branching to two) on the light accent                                                                                    |
+| `static/favicon.png`       | Regenerated from that SVG at 512×512                                                                                                                                     |
+| `static/favicon.ico`       | Regenerated as a 256×256 PNG-in-ICO. Nothing links to it; browsers request `/favicon.ico` on their own, and `app.html` declares the SVG icon, so this is a fallback only |
+| `static/manifest.json`     | `background_color` and `theme_color` moved off the brand pink                                                                                                            |
+
+The replacement glyph is deliberately generic. It depicts a diagram rather than
+claiming a mark of its own, so it can be swapped for real branding later without
+anything depending on it.
+
+`static/icons/mermaid-tail.svg` is **kept**. It is monochrome, inherits
+`currentColor`, and labels the main menu's link to mermaid.js.org — naming the
+project a link points at is descriptive use, not brand appropriation. The app
+title still reads "Mermaid Live Editor" for the same reason; `README.md` states
+the fork is unofficial and unaffiliated.
+
+`static/mermaidchart-logo.svg` is also kept: `MermaidChartIcon.svelte` imports it,
+and although every use sits behind a disabled flag, deleting the asset would break
+that import.
 
 ## Default mode: deliberately left to the OS
 

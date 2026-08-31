@@ -74,8 +74,8 @@ either action defeats the exact-tree guarantee.
 
 ### `package.json`
 
-The local delta is **not** only the replaced lines. Measured against the vendor base
-it is 48 insertions and 5 deletions:
+The local delta is **not** only the replaced lines. Two distinct groups exist, and
+both must survive the merge:
 
 - **Replaced** (5): `name`, `version`, `dev`, `build`, `postinstall`
 - **Added** (local, absent upstream): `description`, `keywords`, `homepage`,
@@ -110,12 +110,14 @@ Review the regenerated diff and include it with the merge.
 The following list is accurate as of **2026-08-31**. It is a snapshot, not a
 permanent allowlist.
 
-Re-derive it against the **current tip of `vendor/upstream`** — equivalently, the
-`vendorBaseCommit` recorded in `.upstream-version.json`, which is updated on every
-import:
+Re-derive it against the **current vendor base** — the `vendorBaseCommit` recorded in
+`.upstream-version.json`, which is updated on every import. Read it from the record
+rather than naming the `vendor/upstream` branch, so the command works in a fresh
+clone that has not fetched that branch:
 
 ```sh
-git diff --name-status vendor/upstream HEAD
+vendor_base=$(node -p "require('./.upstream-version.json').vendorBaseCommit")
+git diff --name-status "$vendor_base" HEAD
 ```
 
 Do **not** re-derive it against the original import `d4f0d43`. That commit is frozen

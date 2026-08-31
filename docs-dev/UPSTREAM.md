@@ -74,10 +74,19 @@ either action defeats the exact-tree guarantee.
 
 ### `package.json`
 
-The intended local delta is five replaced lines only: `name`, `version`, `dev`,
-`build`, and `postinstall`. Reapply those deliberate values to the new upstream file,
-while accepting upstream changes everywhere else. Confirm the resulting diff rather
-than choosing an entire side of the conflict.
+The local delta is **not** only the replaced lines. Measured against the vendor base
+it is 48 insertions and 5 deletions:
+
+- **Replaced** (5): `name`, `version`, `dev`, `build`, `postinstall`
+- **Added** (local, absent upstream): `description`, `keywords`, `homepage`,
+  `repository`, `bugs`, `author`, `publishConfig`, `files`
+
+Preserve **every** intentional local addition, not just the replacements. Taking
+upstream wholesale for anything outside the five replaced keys silently drops the
+added ones — and losing `files` or `publishConfig` changes what the published npm
+tarball contains and how it is published. Reapply the local values to the new
+upstream file and confirm the resulting diff rather than choosing an entire side of
+the conflict.
 
 ### `pnpm-lock.yaml`
 
@@ -98,9 +107,21 @@ Review the regenerated diff and include it with the merge.
 
 ## Current local file layer
 
-The following list is accurate as of **2026-08-30**. It is a snapshot, not a
-permanent allowlist. It is derived from `git diff --name-status d4f0d43 HEAD` plus
-the two files introduced by this documentation change:
+The following list is accurate as of **2026-08-31**. It is a snapshot, not a
+permanent allowlist.
+
+Re-derive it against the **current tip of `vendor/upstream`** — equivalently, the
+`vendorBaseCommit` recorded in `.upstream-version.json`, which is updated on every
+import:
+
+```sh
+git diff --name-status vendor/upstream HEAD
+```
+
+Do **not** re-derive it against the original import `d4f0d43`. That commit is frozen
+at upstream 2.0.67. Once any upstream update has been merged, `HEAD` carries upstream
+code newer than `d4f0d43`, so diffing against it reports upstream's own additions and
+modifications as if they were local customizations.
 
 | Status   | Path                                      |
 | -------- | ----------------------------------------- |
@@ -110,6 +131,9 @@ the two files introduced by this documentation change:
 | Modified | `README.md`                               |
 | Added    | `README.upstream.md`                      |
 | Added    | `THIRD-PARTY-LICENSES.md`                 |
+| Added    | `.gitlab-ci.yml`                          |
+| Added    | `docs-dev/GITLAB-PAGES.md`                |
+| Added    | `docs-dev/PACKAGING.md`                   |
 | Added    | `docs-dev/UPSTREAM.md`                    |
 | Added    | `docs-dev/codex/README.md`                |
 | Added    | `docs-dev/codex/task-04-npm-roundtrip.md` |

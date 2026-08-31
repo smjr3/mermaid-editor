@@ -159,6 +159,27 @@ Should upstream reintroduce a shell-only step in `postinstall` or a CI script,
 it will merge cleanly and only fail on the Windows runner. Re-read
 `docs-dev/CROSS-PLATFORM.md` after a merge that touches `package.json` scripts.
 
+### Theme changes
+
+`docs-dev/THEME.md` has the full rationale and the measured contrast figures.
+At merge time:
+
+| Path                              | Local change                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/app.css`                     | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark |
+| `src/app.html`                    | Seeds `mode-watcher-mode` to `dark` above the head placeholder; `theme-color` meta                   |
+| `src/routes/(app)/+layout.svelte` | `<ModeWatcher defaultMode="dark" />`                                                                 |
+| `tests/themes.spec.ts`            | Asserts the dark default and stored-preference behaviour                                             |
+
+Two things a merge must not undo. The dark `--accent-foreground` is near-black
+**because** the dark accent is bright: restoring upstream's near-white value drops
+accent-button labels to 1.9:1. And the seed in `src/app.html` is what actually
+sets the default — `defaultMode` alone is pre-empted by mode-watcher's persisted
+singleton, so removing the seed silently returns the app to following the OS.
+
+Never write the literal SvelteKit head-placeholder token inside that comment; a
+second occurrence makes the real placeholder render as text on every page.
+
 ### Deleted upstream files
 
 Eight upstream files are deleted in this fork because they serve mermaid.live's own
@@ -244,6 +265,8 @@ conflict by keeping upstream's version.
    surface appeared (see [Feature-flag guards](#feature-flag-guards-in-src-and-tests)).
 7. Confirm the cross-platform guards survived, in particular `publicDir: false` in
    `vite.embed.config.js` (see [Cross-platform guards](#cross-platform-guards)).
+8. Confirm the theme defaults survived: the seed in `src/app.html` and the dark
+   `--accent-foreground` (see [Theme changes](#theme-changes)).
 
 ## Current local file layer
 
@@ -288,6 +311,7 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/FEATURE-FLAGS.md`                      |
 | Added    | `docs-dev/GITLAB-PAGES.md`                       |
 | Added    | `docs-dev/PACKAGING.md`                          |
+| Added    | `docs-dev/THEME.md`                              |
 | Added    | `docs-dev/UPSTREAM.md`                           |
 | Added    | `docs-dev/codex/README.md`                       |
 | Added    | `docs-dev/codex/task-04-npm-roundtrip.md`        |
@@ -299,13 +323,17 @@ modifications as if they were local customizations.
 | Added    | `scripts/postinstall.js`                         |
 | Added    | `scripts/prepare-pages.js`                       |
 | Added    | `scripts/update-upstream.sh`                     |
+| Modified | `src/app.css`                                    |
+| Modified | `src/app.html`                                   |
 | Modified | `src/lib/components/DesktopEditor.svelte`        |
 | Modified | `src/lib/components/MainMenu.svelte`             |
 | Modified | `src/lib/components/Navbar.svelte`               |
 | Modified | `src/lib/util/env.ts`                            |
+| Modified | `src/routes/(app)/+layout.svelte`                |
 | Modified | `src/routes/(app)/edit/+page.svelte`             |
 | Modified | `tests/actions.spec.ts`                          |
 | Modified | `tests/errorDisplay.spec.ts`                     |
+| Modified | `tests/themes.spec.ts`                           |
 | Modified | `vite.embed.config.js`                           |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

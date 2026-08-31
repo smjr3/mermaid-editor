@@ -37,7 +37,7 @@
   });
 </script>
 
-<ModeWatcher />
+<ModeWatcher defaultMode="dark" />
 <Toaster />
 
 <main class="h-dvh">

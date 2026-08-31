@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { t } from '$/i18n';
   import { logEvent, logMermaidChartClick } from '$lib/util/stats';
   import { version } from 'mermaid/package.json';
 
@@ -66,7 +67,7 @@
     </div>
     {#snippet closeBanner()}
       <Button
-        title="Dismiss banner"
+        title={t('nav.dismissBanner')}
         variant="ghost"
         class="hover:bg-transparent hover:text-[#261A56]"
         size="sm"

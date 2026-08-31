@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import FloatingToolbar from '$/components/FloatingToolbar.svelte';
   import Privacy from '$/components/Privacy.svelte';
   import { Button } from '$/components/ui/button';
@@ -13,7 +14,7 @@
 <FloatingToolbar>
   <span class="text-sm font-semibold opacity-60">v{version}</span>
   {#if !env.hidePrivacyPolicy}
-    <Button variant="ghost" size="icon" title="Privacy & Security">
+    <Button variant="ghost" size="icon" title={t('toolbar.privacySecurity')}>
       <Privacy />
     </Button>
 

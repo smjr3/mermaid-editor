@@ -1,4 +1,5 @@
 <script>
+  import { t } from '$/i18n';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
@@ -16,6 +17,6 @@
   <div class="container mx-auto p-8">
     <h1 class="mb-4 text-2xl font-bold">Error {page.status}</h1>
     <p class="mb-4">{page.error?.message || 'An unexpected error occurred'}</p>
-    <a href={resolve('/')} class="text-blue-500 hover:underline">Return to Home</a>
+    <a href={resolve('/')} class="text-blue-500 hover:underline">{t('error.returnHome')}</a>
   </div>
 {/if}

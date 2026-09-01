@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import { validatedState } from '$/util/state.svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import type { ComponentProps, Snippet } from 'svelte';
@@ -9,7 +10,7 @@
     domain,
     shouldCheckDiagramType = true,
     side = 'bottom',
-    labelPrefix = 'Opens your diagram in',
+    labelPrefix = t('external.opensIn'),
     isVisible = true,
     sharesData = true,
     showPopup = true
@@ -41,12 +42,10 @@
         <Tooltip.Content {side} class="bg-secondary shadow-xl">
           <div
             class="flex cursor-help items-center gap-2"
-            title={sharesData
-              ? 'Your diagram will be sent to the external service'
-              : 'Your diagram is not shared'}>
+            title={sharesData ? t('external.sendsDiagram') : t('external.notShared')}>
             {#if shouldDisableComponent}
               <div class="text-muted-foreground">
-                This diagram type is not supported in {domain}
+                {t('external.unsupported', { domain })}
               </div>
             {:else}
               <ExternalLinkIcon />

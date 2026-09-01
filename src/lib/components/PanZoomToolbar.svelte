@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import FloatingToolbar from '$/components/FloatingToolbar.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -24,7 +25,11 @@
 </script>
 
 <FloatingToolbar>
-  <Button variant="ghost" size="icon" title="Reset view" onclick={() => panZoomState.reset()}>
+  <Button
+    variant="ghost"
+    size="icon"
+    title={t('panzoom.resetView')}
+    onclick={() => panZoomState.reset()}>
     <ArrowsToCircleIcon />
   </Button>
   <Separator orientation="vertical" />
@@ -32,7 +37,7 @@
     variant="ghost"
     size="icon"
     class={zoomClass}
-    title="Zoom out"
+    title={t('panzoom.zoomOut')}
     onclick={() => panZoomState.zoomOut()}>
     <MagnifyingGlassMinusIcon />
   </Button>
@@ -40,13 +45,18 @@
     variant="ghost"
     size="icon"
     class={zoomClass}
-    title="Zoom in"
+    title={t('panzoom.zoomIn')}
     onclick={() => panZoomState.zoomIn()}>
     <MagnifyingGlassPlusIcon />
   </Button>
   {#if fullScreenHref}
     <Separator orientation="vertical" class={zoomClass} />
-    <Button variant="ghost" size="icon" title="Full Screen" href={fullScreenHref} target="_blank">
+    <Button
+      variant="ghost"
+      size="icon"
+      title={t('panzoom.fullScreen')}
+      href={fullScreenHref}
+      target="_blank">
       <ExpandIcon />
     </Button>
   {/if}

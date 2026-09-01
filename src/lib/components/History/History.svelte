@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import Card from '$lib/components/Card/Card.svelte';
   import type { HistoryEntry, HistoryType, State, Tab } from '$lib/types';
   import { notify, prompt } from '$lib/util/notify';
@@ -32,10 +33,10 @@
   dayjs.extend(dayjsRelativeTime);
 
   const baseTabs: Tab[] = [
-    { id: 'manual', title: 'Saved', icon: BookmarkIcon },
-    { id: 'auto', title: 'Timeline', icon: HistoryIcon }
+    { id: 'manual', title: t('history.tabSaved'), icon: BookmarkIcon },
+    { id: 'auto', title: t('history.tabTimeline'), icon: HistoryIcon }
   ];
-  const loaderTab: Tab = { id: 'loader', title: 'Revisions', icon: GitAltIcon };
+  const loaderTab: Tab = { id: 'loader', title: t('history.tabRevisions'), icon: GitAltIcon };
 
   const tabs = $derived(
     historyState.loaderEntries.length > 0 ? [loaderTab, ...baseTabs] : baseTabs
@@ -62,9 +63,7 @@
   };
 
   const emptyMessage = $derived(
-    historyState.mode === 'auto'
-      ? 'No timeline snapshots yet.\nThe Timeline is saved automatically every minute.'
-      : 'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.'
+    historyState.mode === 'auto' ? t('history.emptyTimeline') : t('history.emptySaved')
   );
 
   const tabSelectHandler = (tab: Tab) => {
@@ -94,14 +93,20 @@
       }
       const data: HistoryEntry[] = JSON.parse(await file.text());
       const { restored, invalid, duplicates } = restoreEntries(data);
-      notify(`${restored} restored, ${duplicates} duplicate, ${invalid} invalid.`);
+      notify(
+        t('history.importSummary', {
+          duplicates: String(duplicates),
+          invalid: String(invalid),
+          restored: String(restored)
+        })
+      );
     });
     input.click();
   };
 
   const saveHistory = () => {
     if (!addManualEntry($state.snapshot(inputState))) {
-      notify('State already saved.');
+      notify(t('history.alreadySaved'));
     }
   };
 
@@ -133,14 +138,14 @@
         variant="ghost"
         id="uploadHistory"
         onclick={uploadHistory}
-        title="Upload history"><UploadIcon /></Button>
+        title={t('history.upload')}><UploadIcon /></Button>
       {#if historyState.entries.length > 0}
         <Button
           id="downloadHistory"
           size="icon"
           variant="ghost"
           onclick={downloadHistory}
-          title="Download history"><DownloadIcon /></Button>
+          title={t('history.download')}><DownloadIcon /></Button>
       {/if}
       <Separator orientation="vertical" />
       <Button
@@ -148,7 +153,7 @@
         size="icon"
         variant="ghost"
         onclick={saveHistory}
-        title="Save current state"><SaveIcon /></Button>
+        title={t('history.save')}><SaveIcon /></Button>
       {#if historyState.mode !== 'loader'}
         <Button
           id="clearHistory"
@@ -156,7 +161,7 @@
           variant="ghost"
           class="hover:text-destructive"
           onclick={clearAll}
-          title="Delete all saved states"><TrashAltIcon /></Button>
+          title={t('history.deleteAll')}><TrashAltIcon /></Button>
       {/if}
     </div>
   {/snippet}
@@ -172,13 +177,13 @@
                     href={url}
                     target="_blank"
                     rel="noopener"
-                    title="Open revision in new tab"
+                    title={t('history.openRevisionNewTab')}
                     class="min-w-0 truncate text-blue-500 hover:underline">{name}</a>
                 {:else if editingId === id}
                   <input
                     class="min-w-0 flex-1 rounded border px-1 text-sm"
                     bind:value={editValue}
-                    aria-label="Rename entry"
+                    aria-label={t('history.renameEntry')}
                     onkeydown={(event) => {
                       if (event.key === 'Enter') {
                         commitRename();
@@ -193,7 +198,7 @@
                     <button
                       type="button"
                       class="shrink-0 opacity-50 hover:opacity-100"
-                      title="Rename"
+                      title={t('history.rename')}
                       onclick={() => {
                         editingId = id;
                         editValue = name ?? '';
@@ -218,13 +223,13 @@
                 rel="noopener"
                 size="icon"
                 variant="ghost"
-                title="Open in new tab">
+                title={t('history.openNewTab')}>
                 <OpenInNewIcon />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                title="Restore this version"
+                title={t('history.restoreVersion')}
                 onclick={() => restoreHistoryItem(state)}>
                 <UndoIcon />
               </Button>
@@ -233,7 +238,7 @@
                   size="icon"
                   variant="ghost"
                   class="hover:text-destructive"
-                  title="Delete this version"
+                  title={t('history.deleteVersion')}
                   onclick={() => removeEntry(id)}>
                   <TrashAltIcon />
                 </Button>

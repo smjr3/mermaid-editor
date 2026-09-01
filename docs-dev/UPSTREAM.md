@@ -108,6 +108,113 @@ re-breaks both:
 Everything else in the file is upstream's and should track upstream. Keep the two
 local lines and take upstream's changes for the rest.
 
+### Feature-flag guards in `src/` and `tests/`
+
+Six source files carry small local guards that switch off upstream's promotional, AI
+and community features, plus the two e2e specs that covered them. The full rationale
+and the variables are in `docs-dev/FEATURE-FLAGS.md`; what matters at merge time:
+
+| Path                                                  | Local change                                                                                                |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/env.ts`                                 | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks` |
+| `src/lib/components/DesktopEditor.svelte`             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`                                                  |
+| `src/routes/(app)/edit/+page.svelte`                  | Wraps `<EnhancedEditsButton>` in the same guard                                                             |
+| `src/lib/components/Navbar.svelte`                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                          |
+| `src/lib/components/MainMenu.svelte`                  | Spreads the Discord "Community" entry in conditionally                                                      |
+| `.env`                                                | Sets the organisational defaults                                                                            |
+| `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts` | Assert the configured behaviour rather than upstream's                                                      |
+
+These are additive guards, not rewrites: the guarded markup is upstream's own. On a
+conflict, take upstream's version of the inner content and re-apply the surrounding
+`{#if}`. Do **not** resolve by dropping the guard — that silently re-enables an AI or
+promotional surface in an organisational build.
+
+If upstream introduces a new promotional, AI or outbound-link surface, it arrives
+unguarded and will not be caught by a merge conflict. After each merge, re-check the
+running app for new external links; `docs-dev/FEATURE-FLAGS.md` lists the ones known
+to remain.
+
+### Cross-platform guards
+
+The production runner may be Windows, so the build and deploy path uses only
+package-manager invocations and Node scripts — never a shell builtin or a
+Unix-only command. Details in `docs-dev/CROSS-PLATFORM.md`; at merge time:
+
+| Path                       | Local change                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `.gitattributes`           | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF |
+| `scripts/postinstall.js`   | Added. Replaces a `(… \|\| true)` shell chain — `true` does not exist on cmd.exe                    |
+| `scripts/prepare-pages.js` | Added. Replaces `mv docs public` in CI                                                              |
+| `vite.embed.config.js`     | Adds `publicDir: false`                                                                             |
+| `package.json`             | `postinstall` and `build:pages` point at those scripts                                              |
+| `.gitignore`               | Ignores `/public`                                                                                   |
+
+`publicDir: false` is load-bearing, not tidying. That config has no SvelteKit
+plugin, so Vite defaults `publicDir` to `public` while its `outDir` is `static`.
+Once `pnpm build:pages` creates `public/`, a later build copies the whole
+generated site into the tracked `static/` directory. If a merge drops that line,
+CI starts committing its own output.
+
+Should upstream reintroduce a shell-only step in `postinstall` or a CI script,
+it will merge cleanly and only fail on the Windows runner. Re-read
+`docs-dev/CROSS-PLATFORM.md` after a merge that touches `package.json` scripts.
+
+### Theme changes
+
+`docs-dev/THEME.md` has the rationale and the measured contrast figures. At merge
+time:
+
+| Path                               | Local change                                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/app.css`                      | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark |
+| `src/app.html`                     | `theme-color` meta as a `prefers-color-scheme` pair instead of the pink                              |
+| `src/lib/components/Navbar.svelte` | Upstream's Mermaid logo removed from the header                                                      |
+| `static/icons/mermaid.svg`         | Deleted — the brand mark, now unused                                                                 |
+| `static/favicon.{svg,png,ico}`     | Brand mark replaced with a generic diagram glyph                                                     |
+| `static/manifest.json`             | `background_color` and `theme_color` moved off the brand pink                                        |
+
+The dark `--accent-foreground` is near-black **because** the dark accent is
+bright. Restoring upstream's near-white value there drops accent-button labels to
+1.9:1, well under AA, so a merge must not take upstream's side of that line on
+its own.
+
+The light/dark mechanism is upstream's and untouched: the editor follows the
+operating system. `docs-dev/THEME.md` records why `<ModeWatcher defaultMode>`
+cannot change that on its own, should a fixed default ever be wanted.
+
+### UI language
+
+`docs-dev/I18N.md` has the design. At merge time the shape matters more than the
+strings: nearly every component that renders text now reads it from
+`src/lib/i18n/messages.ts` through `t('some.key')`, so an upstream change to a
+label arrives as a conflict on a line this fork replaced with a lookup.
+
+Resolving one is mechanical — take upstream's structural change, keep the `t()`
+call, and update the message in the catalogue if the wording moved. Two rules
+keep that honest:
+
+- The `en` catalogue is upstream's wording. If upstream rewords a string, the
+  edit belongs in `messages.ts`, not at the call site.
+- Keys are typed off `en`, and `src/lib/i18n/i18n.test.ts` asserts both locales
+  carry the same keys and the same `{placeholders}`. Adding a key to one locale
+  only fails `pnpm check` or the unit suite, not review.
+
+| Path                                  | Local change                                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/lib/i18n/`                       | Added: the catalogue, `t()`, and their test                                                              |
+| `src/lib/util/env.ts`                 | Added `locale`, read from `MERMAID_LOCALE`                                                               |
+| `src/lib/util/state.svelte.ts`        | The broken-URL diagram comes from the catalogue, and no longer links to upstream's issue tracker (below) |
+| `src/lib/components/Card/Card.svelte` | Added a `testID` prop so tests can target panels without depending on a translated title                 |
+| `tests/test.ts`                       | Exports a test-side `t()`; the specs select by catalogue key rather than by English text                 |
+
+The one place this fork does **not** keep upstream's wording is the flowchart
+`state.svelte.ts` renders when a shared URL fails to parse. Upstream ends it with
+a `click` handler filing a bug against `mermaid-js/mermaid-live-editor`. A fork
+must not send its users to upstream's issue tracker for a link its own
+deployment produced, so both locales point at the deployment's administrator and
+the handler is gone. Re-taking upstream's side of that string reintroduces the
+link.
+
 ### Deleted upstream files
 
 Eight upstream files are deleted in this fork because they serve mermaid.live's own
@@ -189,10 +296,16 @@ conflict by keeping upstream's version.
    the pristine vendor commit's tree.
 5. Confirm none of the eight deleted upstream files reappeared (see
    [Deleted upstream files](#deleted-upstream-files)).
+6. Confirm the feature-flag guards survived and no new promotional, AI or outbound-link
+   surface appeared (see [Feature-flag guards](#feature-flag-guards-in-src-and-tests)).
+7. Confirm the cross-platform guards survived, in particular `publicDir: false` in
+   `vite.embed.config.js` (see [Cross-platform guards](#cross-platform-guards)).
+8. Confirm the dark `--accent-foreground` survived as a near-black value (see
+   [Theme changes](#theme-changes)).
 
 ## Current local file layer
 
-The following list is accurate as of **2026-08-31**. It is a snapshot, not a
+The following list is accurate as of **2026-09-01**. It is a snapshot, not a
 permanent allowlist.
 
 Re-derive it against the **current vendor base** — the `vendorBaseCommit` recorded in
@@ -210,33 +323,83 @@ at upstream 2.0.67. Once any upstream update has been merged, `HEAD` carries ups
 code newer than `d4f0d43`, so diffing against it reports upstream's own additions and
 modifications as if they were local customizations.
 
-| Status   | Path                                             |
-| -------- | ------------------------------------------------ |
-| Deleted  | `.github/FUNDING.yml`                            |
-| Modified | `.github/pull_request_template.md`               |
-| Deleted  | `.github/workflows/close-broken-link-issues.yml` |
-| Deleted  | `.github/workflows/deploy.yml`                   |
-| Deleted  | `.github/workflows/docker-publish.yml`           |
-| Deleted  | `.github/workflows/release-pr.yml`               |
-| Deleted  | `.github/workflows/update-browserlist.yml`       |
-| Modified | `.gitignore`                                     |
-| Added    | `.gitlab-ci.yml`                                 |
-| Added    | `.upstream-version.json`                         |
-| Deleted  | `CNAME`                                          |
-| Added    | `NOTICE`                                         |
-| Modified | `README.md`                                      |
-| Added    | `README.upstream.md`                             |
-| Added    | `THIRD-PARTY-LICENSES.md`                        |
-| Added    | `docs-dev/GITLAB-PAGES.md`                       |
-| Added    | `docs-dev/PACKAGING.md`                          |
-| Added    | `docs-dev/UPSTREAM.md`                           |
-| Added    | `docs-dev/codex/README.md`                       |
-| Added    | `docs-dev/codex/task-04-npm-roundtrip.md`        |
-| Added    | `docs-dev/codex/task-05-gitlab-pages.md`         |
-| Added    | `docs-dev/codex/task-06-upstream-docs.md`        |
-| Deleted  | `netlify.toml`                                   |
-| Modified | `package.json`                                   |
-| Added    | `scripts/copy-legal-files.js`                    |
-| Added    | `scripts/update-upstream.sh`                     |
+| Status   | Path                                                   |
+| -------- | ------------------------------------------------------ |
+| Modified | `.env`                                                 |
+| Added    | `.gitattributes`                                       |
+| Deleted  | `.github/FUNDING.yml`                                  |
+| Modified | `.github/pull_request_template.md`                     |
+| Deleted  | `.github/workflows/close-broken-link-issues.yml`       |
+| Deleted  | `.github/workflows/deploy.yml`                         |
+| Deleted  | `.github/workflows/docker-publish.yml`                 |
+| Deleted  | `.github/workflows/release-pr.yml`                     |
+| Deleted  | `.github/workflows/update-browserlist.yml`             |
+| Modified | `.gitignore`                                           |
+| Added    | `.gitlab-ci.yml`                                       |
+| Added    | `.upstream-version.json`                               |
+| Deleted  | `CNAME`                                                |
+| Added    | `NOTICE`                                               |
+| Modified | `README.md`                                            |
+| Added    | `README.upstream.md`                                   |
+| Added    | `THIRD-PARTY-LICENSES.md`                              |
+| Added    | `docs-dev/CROSS-PLATFORM.md`                           |
+| Added    | `docs-dev/FEATURE-FLAGS.md`                            |
+| Added    | `docs-dev/GITLAB-PAGES.md`                             |
+| Added    | `docs-dev/I18N.md`                                     |
+| Added    | `docs-dev/PACKAGING.md`                                |
+| Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                 |
+| Added    | `docs-dev/THEME.md`                                    |
+| Added    | `docs-dev/UPSTREAM.md`                                 |
+| Added    | `docs-dev/codex/README.md`                             |
+| Added    | `docs-dev/codex/task-04-npm-roundtrip.md`              |
+| Added    | `docs-dev/codex/task-05-gitlab-pages.md`               |
+| Added    | `docs-dev/codex/task-06-upstream-docs.md`              |
+| Deleted  | `netlify.toml`                                         |
+| Modified | `package.json`                                         |
+| Added    | `scripts/copy-legal-files.js`                          |
+| Added    | `scripts/postinstall.js`                               |
+| Added    | `scripts/prepare-pages.js`                             |
+| Added    | `scripts/update-upstream.sh`                           |
+| Modified | `src/app.css`                                          |
+| Modified | `src/app.html`                                         |
+| Modified | `src/lib/components/Actions.svelte`                    |
+| Modified | `src/lib/components/Card/Card.svelte`                  |
+| Modified | `src/lib/components/CopyButton.svelte`                 |
+| Modified | `src/lib/components/CopyInput.svelte`                  |
+| Modified | `src/lib/components/DesktopEditor.svelte`              |
+| Modified | `src/lib/components/DiagramDocumentationButton.svelte` |
+| Modified | `src/lib/components/Editor.svelte`                     |
+| Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
+| Modified | `src/lib/components/History/History.svelte`            |
+| Modified | `src/lib/components/MainMenu.svelte`                   |
+| Modified | `src/lib/components/Navbar.svelte`                     |
+| Modified | `src/lib/components/PanZoomToolbar.svelte`             |
+| Modified | `src/lib/components/Preset.svelte`                     |
+| Modified | `src/lib/components/Privacy.svelte`                    |
+| Modified | `src/lib/components/Share.svelte`                      |
+| Modified | `src/lib/components/SyncRoughToolbar.svelte`           |
+| Modified | `src/lib/components/VersionSecurityToolbar.svelte`     |
+| Modified | `src/lib/constants.ts`                                 |
+| Added    | `src/lib/i18n/i18n.test.ts`                            |
+| Added    | `src/lib/i18n/index.ts`                                |
+| Added    | `src/lib/i18n/messages.ts`                             |
+| Modified | `src/lib/util/embed.ts`                                |
+| Modified | `src/lib/util/env.ts`                                  |
+| Modified | `src/lib/util/state.svelte.ts`                         |
+| Modified | `src/routes/(app)/edit/+page.svelte`                   |
+| Modified | `src/routes/+error.svelte`                             |
+| Modified | `src/routes/embed/+page.svelte`                        |
+| Modified | `static/favicon.ico`                                   |
+| Modified | `static/favicon.png`                                   |
+| Modified | `static/favicon.svg`                                   |
+| Deleted  | `static/icons/mermaid.svg`                             |
+| Modified | `static/manifest.json`                                 |
+| Modified | `tests/actions.spec.ts`                                |
+| Modified | `tests/embed.spec.ts`                                  |
+| Modified | `tests/errorDisplay.spec.ts`                           |
+| Modified | `tests/history.spec.ts`                                |
+| Modified | `tests/loadSite.spec.ts`                               |
+| Modified | `tests/test.ts`                                        |
+| Modified | `vite.embed.config.js`                                 |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

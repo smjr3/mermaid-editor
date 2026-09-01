@@ -1,3 +1,10 @@
+# GitLab Pages deployment.
+#
+# The job below targets a Linux Docker executor. The `script` steps themselves
+# are platform-neutral — they run Node, never a shell builtin — so the same
+# steps work unchanged on a Windows runner; see the Windows section at the
+# bottom for the two keys that differ.
+
 image: node:24.16.0
 
 stages:
@@ -8,19 +15,51 @@ pages:
   variables:
     MERMAID_BASE_PATH: '/$CI_PROJECT_NAME'
   before_script:
-    - corepack enable
+    - corepack enable pnpm
     - pnpm install --frozen-lockfile
   script:
     - pnpm build
-    - mv docs public
+    - pnpm build:pages
   artifacts:
     paths:
       - public
   pages: true
 
-# Alternative: build the published npm package obtained through an internal registry.
-# Enable this job instead of the source-based `pages` job above, and define the masked
-# CI variables NPM_REGISTRY_URL and NPM_TOKEN. Keep the package version pinned.
+# ---------------------------------------------------------------------------
+# Windows runner
+#
+# `image:` applies only to Docker executors and names a Linux image, so a
+# Windows shell runner needs it removed and Node installed on the runner
+# itself. Nothing else changes: `pnpm build:pages` replaces what used to be
+# `mv docs public`, and runs the same on cmd.exe, PowerShell and sh.
+#
+# pages:
+#   stage: deploy
+#   tags:
+#     - windows
+#   variables:
+#     MERMAID_BASE_PATH: "/$CI_PROJECT_NAME"
+#   before_script:
+#     - corepack enable pnpm
+#     - pnpm install --frozen-lockfile
+#   script:
+#     - pnpm build
+#     - pnpm build:pages
+#   artifacts:
+#     paths:
+#       - public
+#   pages: true
+#
+# ---------------------------------------------------------------------------
+# Alternative: build the published npm package obtained through an internal
+# registry. Enable this job instead of the source-based `pages` job above, and
+# define the masked CI variables NPM_REGISTRY_URL and NPM_TOKEN. Keep the
+# package version pinned.
+#
+# The npm/tar steps below are POSIX-shell specific; on a Windows runner obtain
+# and unpack the tarball with the runner's own tooling, then the build steps are
+# again `npm run build` followed by `npm run build:pages`.
+#
 # pages:
 #   stage: deploy
 #   variables:
@@ -36,7 +75,8 @@ pages:
 #   script:
 #     - cd "$CI_PROJECT_DIR/package"
 #     - npm run build
-#     - mv docs "$CI_PROJECT_DIR/public"
+#     - npm run build:pages
+#     - mv public "$CI_PROJECT_DIR/public"
 #   artifacts:
 #     paths:
 #       - public

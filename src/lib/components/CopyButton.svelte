@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Button } from '$/components/ui/button';
+  import { t } from '$/i18n';
   import { notify } from '$/util/notify';
   import { scale } from 'svelte/transition';
   import CheckIcon from '~icons/material-symbols/check-rounded';
@@ -7,7 +8,7 @@
 
   let {
     onclick,
-    label = 'Copy'
+    label = t('actions.copy')
   }: { onclick: (event?: Event) => Promise<unknown>; label?: string } = $props();
 
   let showCheckIcon = $state(false);
@@ -22,7 +23,7 @@
       }, 1000);
       await onclick(event);
     } catch {
-      notify('Failed to copy');
+      notify(t('notify.copyFailed'));
     }
   }}>
   <div class="grid">

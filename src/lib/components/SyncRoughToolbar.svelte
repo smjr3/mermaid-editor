@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import FloatingToolbar from '$/components/FloatingToolbar.svelte';
   import { Toggle } from '$/components/ui/toggle';
   import { defaultState, inputState, updateCodeStore } from '$/util/state.svelte';
@@ -15,13 +16,13 @@
   <Toggle
     bind:pressed={() => inputState.rough, (rough) => updateCodeStore({ rough })}
     size="sm"
-    title="Hand-Drawn">
+    title={t('toolbar.handDrawn')}>
     <RoughIcon />
   </Toggle>
   <Toggle
     bind:pressed={() => inputState.grid ?? defaultState.grid, (grid) => updateCodeStore({ grid })}
     size="sm"
-    title="Background Grid">
+    title={t('toolbar.backgroundGrid')}>
     <BackgroundIcon />
   </Toggle>
 </FloatingToolbar>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import DesktopEditor from '$/components/DesktopEditor.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
   import MermaidChartIcon from '$/components/MermaidChartIcon.svelte';
@@ -52,7 +53,7 @@
         <div class="flex w-fit items-center gap-2">
           <ExclamationCircleIcon class="size-6 text-destructive" aria-hidden="true" />
           <div class="flex flex-col">
-            <p>Syntax error</p>
+            <p>{t('editor.syntaxError')}</p>
             {#if env.isEnabledMermaidChartLinks && validatedState.current.editorMode === 'code'}
               <p class="text-xs text-white/60" data-testid={TID.aiHelpText}>
                 Create a free account to repair with AI

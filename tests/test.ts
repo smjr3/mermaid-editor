@@ -1,4 +1,17 @@
 import { C, TID } from '$/constants';
+import { messages } from '$/i18n/messages';
+
+// The app resolves its locale from import.meta.env, which does not exist in
+// Playwright's Node process, so read the same build-time variable directly.
+const testLocale = (process.env.MERMAID_LOCALE ?? 'ja') as keyof typeof messages;
+
+/** Look up the UI string the build under test actually renders. */
+export const t = (key: keyof (typeof messages)['en'], params?: Record<string, string>): string => {
+  const template: string = messages[testLocale][key] ?? messages.en[key];
+  return params
+    ? template.replaceAll(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match)
+    : template;
+};
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
 
@@ -39,11 +52,11 @@ export class EditorPage {
   }
 
   async toggleActions() {
-    await this.page.getByText('Actions', { exact: true }).click();
+    await this.page.getByTestId(TID.actionsCard).click();
   }
 
   async toggleSampleDiagrams() {
-    await this.page.getByText('Sample Diagrams', { exact: true }).click();
+    await this.page.getByTestId(TID.sampleDiagramsCard).click();
   }
 
   async checkAndDownloadPNG(expectedSize: number) {
@@ -86,7 +99,8 @@ export class EditorPage {
   }
 
   async setEditorMode(mode: 'Code' | 'Config') {
-    await this.page.getByRole('tab').getByText(mode).click();
+    const label = mode === 'Code' ? t('editor.textTab') : t('editor.configTab');
+    await this.page.getByRole('tab').getByText(label).click();
   }
 
   async checkDocURL(url: string | RegExp) {
@@ -103,7 +117,7 @@ export class EditorPage {
   async checkTheme(theme: 'light' | 'dark') {
     await expect(this.page.getByTestId(TID.themeToggleButton)).toHaveAttribute(
       'title',
-      `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`
+      theme === 'light' ? t('toolbar.switchToDark') : t('toolbar.switchToLight')
     );
   }
 

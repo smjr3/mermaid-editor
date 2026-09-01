@@ -1,6 +1,7 @@
 <script lang="ts">
   import ExternalLinkWrapper from '$/components/ExternalLinkWrapper.svelte';
   import * as Dialog from '$/components/ui/dialog';
+  import { t } from '$/i18n';
   import { env } from '$/util/env';
   import { isOnMermaidLive } from '$/util/migration/domainMigration';
   import ShieldIcon from '~icons/material-symbols/shield-lock-outline-rounded';
@@ -19,46 +20,43 @@
       <Dialog.Header>
         <Dialog.Title class="flex items-center gap-2 text-xl">
           <ShieldIcon class="size-8 text-green-700" />
-          Data security
+          {t('privacy.dataSecurity')}
         </Dialog.Title>
       </Dialog.Header>
 
       {#if isOnMermaidLive()}
-        <p class="text-xl font-semibold">Your diagrams never leave your browser.</p>
-        <p>They're only stored in the URL and your browser's local storage.</p>
+        <p class="text-xl font-semibold">{t('privacy.heading')}</p>
+        <p>{t('privacy.body')}</p>
         <p>
-          This is a fully open source, client-side app deployed on <a
+          {t('privacy.hostedIntro')}<a
             href="https://github.com/mermaid-js/mermaid-live-editor/deployments"
             class="underline"
-            target="_blank">GitHub Pages</a>
-          that works offline as a
-          <a href="https://web.dev/explore/progressive-web-apps" target="_blank"
-            >Progressive Web App</a
-          >.
+            target="_blank">{t('privacy.githubPages')}</a
+          >{t('privacy.hostedMid')}<a
+            href="https://web.dev/explore/progressive-web-apps"
+            target="_blank">{t('privacy.pwa')}</a
+          >{t('privacy.hostedEnd')}
         </p>
         <p>
-          We use self hosted, privacy-friendly Plausible Analytics to collect anonymous usage
-          metadata (diagram types, feature usage, etc.). All data is <a
+          {t('privacy.analyticsIntro')}<a
             href="https://p.mermaid.live/mermaid.live"
             class="underline"
-            target="_blank">publicly available</a
-          >.
+            target="_blank">{t('privacy.publiclyAvailable')}</a
+          >{t('privacy.analyticsEnd')}
         </p>
         <ExternalLinkWrapper domain="example.com" isVisible>
-          <p class="text-left">
-            External services (PNG/SVG/Kroki exports, "Save to Mermaid Chart", "Repair with AI",
-            etc) will share your diagram with those 3rd parties, and are highlighted in the UI on
-            hover.
-          </p>
+          <p class="text-left">{t('privacy.externalServices')}</p>
         </ExternalLinkWrapper>
       {:else}
-        <p>No privacy policy has been configured for this deployment.</p>
+        <p>{t('privacy.noPolicy')}</p>
         <p>
-          If you are self-hosting the Mermaid Live Editor, set the
+          {t('privacy.selfHostIntro')}
           <code class="rounded bg-muted px-1.5 py-0.5 text-sm">MERMAID_PRIVACY_POLICY_URL</code>
-          environment variable at build time to link to your privacy policy, or set
+          {t('privacy.selfHostEnvVar')}
           <code class="rounded bg-muted px-1.5 py-0.5 text-sm">MERMAID_HIDE_PRIVACY_POLICY</code>
-          to <code class="rounded bg-muted px-1.5 py-0.5 text-sm">true</code> to hide this button.
+          {t('privacy.selfHostTo')}
+          <code class="rounded bg-muted px-1.5 py-0.5 text-sm">true</code>
+          {t('privacy.selfHostHide')}
         </p>
       {/if}
     </Dialog.Content>

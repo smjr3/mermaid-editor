@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { t } from './test';
 
 const config = '{\n  "theme": "default"\n}';
 
@@ -24,7 +25,12 @@ const autoHistory = [
   entry('a-1', 'needy-mosquito', 'auto', 'Fireworks')
 ];
 
-const openHistory = (page: Page) => page.getByRole('button', { name: 'History' }).click();
+// The empty-state messages are two lines; assert on the first so the check
+// does not depend on how Playwright normalises the newline.
+const firstLine = (message: string): string => message.split('\n')[0];
+
+const openHistory = (page: Page) =>
+  page.getByRole('button', { name: t('editor.historyToggle') }).click();
 
 test.describe('History', () => {
   test.beforeEach(async ({ page }) => {
@@ -53,17 +59,23 @@ test.describe('History', () => {
     await expect(page.locator('#historyList')).toContainText('hollow-art');
     await expect(page.locator('#historyList')).toContainText('helpful-ocean');
 
-    await page.getByRole('button', { name: 'Restore this version' }).first().click();
+    await page
+      .getByRole('button', { name: t('history.restoreVersion') })
+      .first()
+      .click();
     await expect(page.locator('#view')).toContainText('Halloween');
 
     // Switching to the Timeline tab shows the auto entries only.
-    await page.getByRole('tab', { name: 'Timeline' }).click();
+    await page.getByRole('tab', { name: t('history.tabTimeline') }).click();
     await expect(page.locator('#historyList li')).toHaveCount(2);
     await expect(page.locator('#historyList')).toContainText('barking-dog');
     await expect(page.locator('#historyList')).toContainText('needy-mosquito');
     await expect(page.locator('#historyList')).not.toContainText('hollow-art');
 
-    await page.getByRole('button', { name: 'Restore this version' }).first().click();
+    await page
+      .getByRole('button', { name: t('history.restoreVersion') })
+      .first()
+      .click();
     await expect(page.locator('#view')).toContainText('NewYear');
   });
 
@@ -76,7 +88,7 @@ test.describe('History', () => {
     await openHistory(page);
 
     // It is a real link (so it can be copied / opened in a new tab), not a button.
-    const link = page.getByRole('link', { name: 'Open in new tab' }).first();
+    const link = page.getByRole('link', { name: t('history.openNewTab') }).first();
     await expect(link).toHaveAttribute('target', '_blank');
     const href = await link.getAttribute('href');
     expect(href).toContain('/edit#pako:');
@@ -88,8 +100,8 @@ test.describe('History', () => {
 
   test('keeps the active tab highlighted when switching modes', async ({ page }) => {
     await openHistory(page);
-    const saved = page.getByRole('tab', { name: 'Saved' });
-    const timeline = page.getByRole('tab', { name: 'Timeline' });
+    const saved = page.getByRole('tab', { name: t('history.tabSaved') });
+    const timeline = page.getByRole('tab', { name: t('history.tabTimeline') });
 
     await expect(saved).toHaveClass(/border-b-2/);
     await expect(timeline).not.toHaveClass(/border-b-2/);
@@ -108,7 +120,7 @@ test.describe('History', () => {
 
     // Saving again without changes does not add a duplicate and notifies the user.
     await page.locator('#saveHistory').click();
-    await expect(page.getByText('State already saved.')).toBeVisible();
+    await expect(page.getByText(t('history.alreadySaved'))).toBeVisible();
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
     // Loading a different sample changes the state, so it saves as a new entry.
@@ -123,9 +135,9 @@ test.describe('History', () => {
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
-    await page.getByRole('tab', { name: 'Timeline' }).click();
+    await page.getByRole('tab', { name: t('history.tabTimeline') }).click();
     // A manual save must not appear under Timeline.
-    await expect(page.locator('#historyList')).toContainText('No timeline snapshots yet.');
+    await expect(page.locator('#historyList')).toContainText(firstLine(t('history.emptyTimeline')));
   });
 
   test('deletes a single entry and clears all after confirmation', async ({ page }) => {
@@ -136,13 +148,16 @@ test.describe('History', () => {
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(2);
 
-    await page.getByRole('button', { name: 'Delete this version' }).first().click();
+    await page
+      .getByRole('button', { name: t('history.deleteVersion') })
+      .first()
+      .click();
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
     page.on('dialog', (dialog) => dialog.accept());
     await page.locator('#clearHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(0);
-    await expect(page.locator('#historyList')).toContainText('No saved states yet.');
+    await expect(page.locator('#historyList')).toContainText(firstLine(t('history.emptySaved')));
   });
 
   test('renames a saved entry inline', async ({ page }) => {
@@ -150,8 +165,11 @@ test.describe('History', () => {
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
-    await page.getByRole('button', { name: 'Rename' }).first().click();
-    const input = page.getByRole('textbox', { name: 'Rename entry' });
+    await page
+      .getByRole('button', { name: t('history.rename') })
+      .first()
+      .click();
+    const input = page.getByRole('textbox', { name: t('history.renameEntry') });
     await input.fill('my-custom-name');
     await input.press('Enter');
 

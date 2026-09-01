@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { t } from '$/i18n';
   import { logEvent, logMermaidChartClick } from '$lib/util/stats';
   import { version } from 'mermaid/package.json';
 
@@ -12,9 +13,9 @@
   import MainMenu from '$/components/MainMenu.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
+  import { env } from '$/util/env';
   import { dismissPromotion, getActivePromotion } from '$lib/util/promos/promo.svelte';
   import { untrack, type ComponentProps, type Snippet } from 'svelte';
-  import MermaidIcon from '~icons/custom/mermaid';
   import CloseIcon from '~icons/material-symbols/close-rounded';
   import GithubIcon from '~icons/mdi/github';
   import DropdownNavMenu from './DropdownNavMenu.svelte';
@@ -66,7 +67,7 @@
     </div>
     {#snippet closeBanner()}
       <Button
-        title="Dismiss banner"
+        title={t('nav.dismissBanner')}
         variant="ghost"
         class="hover:bg-transparent hover:text-[#261A56]"
         size="sm"
@@ -83,7 +84,6 @@
 <nav class="z-50 flex p-4 sm:p-6">
   <div class="flex flex-1 items-center gap-2">
     <MainMenu />
-    <MermaidIcon class="size-6" />
     <a href={resolve('/', {})} class="whitespace-nowrap text-accent">
       {#if !mobileToggle}
         Mermaid
@@ -94,8 +94,10 @@
   <div
     id="menu"
     class="hidden flex-nowrap items-center justify-between gap-3 overflow-hidden md:flex">
-    <DropdownNavMenu icon={GithubIcon} links={githubLinks} />
-    <Separator orientation="vertical" />
+    {#if env.isEnabledCommunityLinks}
+      <DropdownNavMenu icon={GithubIcon} links={githubLinks} />
+      <Separator orientation="vertical" />
+    {/if}
     {@render children()}
   </div>
   {@render mobileToggle?.()}

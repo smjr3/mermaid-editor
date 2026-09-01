@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import { buttonVariants } from '$/components/ui/button';
   import * as Dialog from '$/components/ui/dialog';
   import { Input } from '$/components/ui/input';
@@ -60,7 +61,7 @@
       <Dialog.Title class="flex items-center gap-2 text-xl">
         <ShareIcon class="size-5" /> Shareable links
       </Dialog.Title>
-      <Dialog.Description>Share your diagrams with others.</Dialog.Description>
+      <Dialog.Description>{t('share.subtitle')}</Dialog.Description>
     </Dialog.Header>
 
     <div class="flex flex-col gap-4">
@@ -156,7 +157,7 @@
           <iframe
             data-testid={TID.embedPreview}
             src={embedUrls.url}
-            title="Embed preview"
+            title={t('share.embedPreview')}
             class="h-52 w-full rounded-lg border"
             sandbox={EMBED_IFRAME_SANDBOX}></iframe>
         {/if}

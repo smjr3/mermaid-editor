@@ -25,7 +25,8 @@ const autoHistory = [
   entry('a-1', 'needy-mosquito', 'auto', 'Fireworks')
 ];
 
-const openHistory = (page: Page) => page.getByRole('button', { name: 'History' }).click();
+const openHistory = (page: Page) =>
+  page.getByRole('button', { name: t('editor.historyToggle') }).click();
 
 test.describe('History', () => {
   test.beforeEach(async ({ page }) => {

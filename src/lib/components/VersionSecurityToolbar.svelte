@@ -24,7 +24,7 @@
     variant="ghost"
     size="icon"
     data-testid={TID.themeToggleButton}
-    title="Switch to {mode.current === 'dark' ? 'light' : 'dark'} theme"
+    title={mode.current === 'dark' ? t('toolbar.switchToLight') : t('toolbar.switchToDark')}
     class="[&_svg]:size-5"
     onclick={() => setMode(mode.current === 'dark' ? 'light' : 'dark')}>
     <ThemeIcon />

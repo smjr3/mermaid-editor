@@ -95,7 +95,8 @@ export class EditorPage {
   }
 
   async setEditorMode(mode: 'Code' | 'Config') {
-    await this.page.getByRole('tab').getByText(mode).click();
+    const label = mode === 'Code' ? t('editor.textTab') : t('editor.configTab');
+    await this.page.getByRole('tab').getByText(label).click();
   }
 
   async checkDocURL(url: string | RegExp) {
@@ -112,7 +113,7 @@ export class EditorPage {
   async checkTheme(theme: 'light' | 'dark') {
     await expect(this.page.getByTestId(TID.themeToggleButton)).toHaveAttribute(
       'title',
-      `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`
+      theme === 'light' ? t('toolbar.switchToDark') : t('toolbar.switchToLight')
     );
   }
 

@@ -24,6 +24,7 @@ export const messages = {
     'actions.title': 'Actions',
     'editor.configTab': 'Config',
     'editor.docsTab': 'Docs',
+    'editor.historyToggle': 'History',
     'editor.syntaxError': 'Syntax error',
     'editor.textTab': 'Code',
     'error.returnHome': 'Return to Home',
@@ -51,6 +52,12 @@ export const messages = {
     'panzoom.zoomIn': 'Zoom in',
     'panzoom.zoomOut': 'Zoom out',
     'preset.title': 'Sample Diagrams',
+    'privacy.body': "They're only stored in the URL and your browser's local storage.",
+    'privacy.githubPages': 'GitHub Pages',
+    'privacy.heading': 'Your diagrams never leave your browser.',
+    'privacy.noPolicy': 'No privacy policy has been configured for this deployment.',
+    'privacy.publiclyAvailable': 'publicly available',
+    'privacy.pwa': 'Progressive Web App',
     'share.embedPreview': 'Embed preview',
     'share.iframe': 'iframe',
     'share.subtitle': 'Share your diagrams with others.',
@@ -60,7 +67,9 @@ export const messages = {
     'share.webComponent': 'Web component',
     'toolbar.backgroundGrid': 'Background Grid',
     'toolbar.handDrawn': 'Hand-Drawn',
-    'toolbar.privacySecurity': 'Privacy & Security'
+    'toolbar.privacySecurity': 'Privacy & Security',
+    'toolbar.switchToDark': 'Switch to dark theme',
+    'toolbar.switchToLight': 'Switch to light theme'
   },
   ja: {
     'actions.copyImage': '画像をコピー',
@@ -74,6 +83,7 @@ export const messages = {
     'actions.title': '操作',
     'editor.configTab': '設定',
     'editor.docsTab': 'ドキュメント',
+    'editor.historyToggle': '履歴',
     'editor.syntaxError': '構文エラー',
     'editor.textTab': 'コード',
     'error.returnHome': 'ホームに戻る',
@@ -101,6 +111,12 @@ export const messages = {
     'panzoom.zoomIn': '拡大',
     'panzoom.zoomOut': '縮小',
     'preset.title': 'サンプル図',
+    'privacy.body': '図は URL とブラウザのローカルストレージにのみ保存されます。',
+    'privacy.githubPages': 'GitHub Pages',
+    'privacy.heading': '作成した図がブラウザの外に出ることはありません。',
+    'privacy.noPolicy': 'この配備にはプライバシーポリシーが設定されていません。',
+    'privacy.publiclyAvailable': '公開されています',
+    'privacy.pwa': 'Progressive Web App',
     'share.embedPreview': '埋め込みプレビュー',
     'share.iframe': 'iframe',
     'share.subtitle': '作成した図を共有できます。',
@@ -110,7 +126,9 @@ export const messages = {
     'share.webComponent': 'Web コンポーネント',
     'toolbar.backgroundGrid': '背景グリッド',
     'toolbar.handDrawn': '手描き風',
-    'toolbar.privacySecurity': 'プライバシーとセキュリティ'
+    'toolbar.privacySecurity': 'プライバシーとセキュリティ',
+    'toolbar.switchToDark': 'ダークテーマに切り替え',
+    'toolbar.switchToLight': 'ライトテーマに切り替え'
   }
 } as const;
 

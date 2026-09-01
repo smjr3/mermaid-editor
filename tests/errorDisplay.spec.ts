@@ -1,4 +1,4 @@
-import { test } from './test';
+import { t, test } from './test';
 
 test.describe('Error display tests', () => {
   // Upstream shows an AI Repair button beside a Code-tab syntax error, which links
@@ -11,7 +11,7 @@ test.describe('Error display tests', () => {
     await editPage.typeInEditor('graph TD\nA --> B -->');
 
     // The error itself must still be reported to the user
-    await editPage.checkError('Syntax error');
+    await editPage.checkError(t('editor.syntaxError'));
 
     // ...but no AI Repair button or help text
     await editPage.checkAIHelperVisibility(false);
@@ -30,7 +30,7 @@ test.describe('Error display tests', () => {
     await editPage.typeInEditor('{\n  "theme": "default",\n  invalid json');
 
     // Verify error is displayed
-    await editPage.checkError('Syntax error');
+    await editPage.checkError(t('editor.syntaxError'));
 
     // Verify AI Repair button and help text is NOT shown in Config tab
     await editPage.checkAIHelperVisibility(false);

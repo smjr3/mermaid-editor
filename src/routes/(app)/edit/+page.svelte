@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import Actions from '$/components/Actions.svelte';
   import Card from '$/components/Card/Card.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
@@ -43,12 +44,12 @@
     {
       icon: CodeIcon,
       id: 'code',
-      title: 'Code'
+      title: t('editor.textTab')
     },
     {
       icon: GearIcon,
       id: 'config',
-      title: 'Config'
+      title: t('editor.configTab')
     }
   ];
 
@@ -92,7 +93,11 @@
   {/snippet}
 
   <Navbar mobileToggle={isMobile ? mobileToggle : undefined}>
-    <Toggle bind:pressed={isHistoryOpen} size="sm" title="History" aria-label="History">
+    <Toggle
+      bind:pressed={isHistoryOpen}
+      size="sm"
+      title={t('editor.historyToggle')}
+      aria-label={t('editor.historyToggle')}>
       <HistoryIcon />
     </Toggle>
     <Share />

@@ -94,8 +94,11 @@ a second full run on every pull request. Tests in that set are tagged `@smoke`; 
 `firefox` project in `playwright.config.ts` selects them by that tag.
 
 WebKit is deliberately out of scope rather than untested-and-unmentioned. Nothing is
-known to be broken there; it simply is not exercised, so it is not claimed. Adding it is
-one more project in `playwright.config.ts` — worth doing if Safari users appear.
+known to be broken there; it simply is not exercised, so it is not claimed. The exclusion
+is tracked in `docs-dev/QUALITY-AUDIT-2026-08-31.md` under finding 3, with the condition
+that reopens it: any request to support Safari, or any macOS or iOS user of this
+deployment. Acting on it is one more project in `playwright.config.ts`, mirroring the
+`firefox` one.
 
 ## Development
 

@@ -205,9 +205,22 @@ Treat this as the open half of finding 1. It is the part that matters for users,
 ### What this changes
 
 The audit's suggested priority stands, with one correction inside item 1: the high-severity count is
-build-machine exposure, and the user-facing question is the DOMPurify attribution above. Findings 2
-(the `vi.mock` placement, still warning on every run) and 3 (Chromium-only e2e CI) are unchanged and
-still open.
+build-machine exposure, and the user-facing question is the DOMPurify attribution above.
+
+Findings 2 and 3 were open when this section was written and have since been resolved; see the two
+follow-ups below.
+
+## Follow-up — finding 2 resolved (2026-09-01)
+
+`vi.mock('$app/environment', …)` moved from inside `beforeAll` to module scope in
+`src/tests/setup.ts`. Vitest hoists `vi.mock` above every import wherever it is written, so the
+wrapper never delayed anything — it only hid the real execution order from the reader.
+
+The factory is unchanged, so `browser: 'window' in globalThis` still resolves lazily on first
+import, at the same moment as before. The audit asked for that dynamic value to be preserved.
+
+**Both acceptance criteria are met:** all unit tests pass (110 now, up from the 104 the audit saw)
+and the non-top-level `vi.mock` warning is absent from the output.
 
 ## Follow-up — finding 3 resolved as Chromium + Firefox (2026-09-01)
 
@@ -234,8 +247,21 @@ What changed:
 
 Nothing is known to be broken in WebKit. It is simply not exercised, so it is not claimed
 — which is the honest form of the audit's "browser-specific exclusions include a reason".
-The deployment this fork serves is Windows-centric; Safari is not on the path. Adding it
-later is one more project in `playwright.config.ts`.
+The deployment this fork serves is Windows-centric; Safari is not on the path.
+
+**Open item — WebKit coverage.** The audit asks an exclusion to carry a tracking issue as
+well as a reason. This repository tracks its findings in this document rather than in the
+issue tracker: the audit itself was written as "ready-to-post issue drafts" because the
+reviewing environment held no credentials to file them. So the exclusion is recorded here,
+with the condition that reopens it rather than an open-ended "someday":
+
+> Reopen if any of these becomes true — a request to support Safari, a macOS or iOS user
+> of this deployment, or a WebKit-only defect reported by a user. The work is one more
+> project in `playwright.config.ts` mirroring the `firefox` one, plus a row in the
+> README's supported-browser table.
+
+If the project later moves finding tracking into GitHub issues, this item and the DOMPurify
+attribution above are the two that should be filed.
 
 ### What is not verified here
 

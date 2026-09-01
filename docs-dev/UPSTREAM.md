@@ -333,6 +333,7 @@ modifications as if they were local customizations.
 | Deleted  | `.github/workflows/deploy.yml`                         |
 | Deleted  | `.github/workflows/docker-publish.yml`                 |
 | Deleted  | `.github/workflows/release-pr.yml`                     |
+| Modified | `.github/workflows/tests.yml`                          |
 | Deleted  | `.github/workflows/update-browserlist.yml`             |
 | Modified | `.gitignore`                                           |
 | Added    | `.gitlab-ci.yml`                                       |

@@ -46,6 +46,12 @@ jobs:
         run: pnpm test:e2e
         env:
           CI: true
+          # Firefox refuses to start as root when $HOME belongs to another user,
+          # and the Actions container sets HOME=/github/home (owned by uid 1001).
+          # This is the workaround Playwright itself prints on the failure.
+          # Chromium does not check, which is why it only surfaced once the
+          # firefox project was added.
+          HOME: /root
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

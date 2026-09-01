@@ -13,14 +13,18 @@ const failOnDialog = (page: Page): void => {
 };
 
 base.describe('Embed page', () => {
-  base('should render a diagram from the URL hash with footer links', async ({ page }) => {
-    failOnDialog(page);
-    await page.goto(`/embed#${embedHash({ code: 'graph TD\n  A[Hello embed] --> B[World]' })}`);
-    await expect(page.locator('#embed-container svg')).toBeVisible();
-    await expect(page.locator('#embed-view')).toContainText('Hello embed');
-    await expect(page.getByTestId(TID.embedFooter)).toBeVisible();
-    await expect(page.getByTestId(TID.embedEditLink)).toHaveAttribute('href', /\/edit#pako:/);
-  });
+  base(
+    'should render a diagram from the URL hash with footer links',
+    { tag: '@smoke' },
+    async ({ page }) => {
+      failOnDialog(page);
+      await page.goto(`/embed#${embedHash({ code: 'graph TD\n  A[Hello embed] --> B[World]' })}`);
+      await expect(page.locator('#embed-container svg')).toBeVisible();
+      await expect(page.locator('#embed-view')).toContainText('Hello embed');
+      await expect(page.getByTestId(TID.embedFooter)).toBeVisible();
+      await expect(page.getByTestId(TID.embedEditLink)).toHaveAttribute('href', /\/edit#pako:/);
+    }
+  );
 
   base('should hide the toolbar and mode toggle with ?controls=0', async ({ page }) => {
     failOnDialog(page);

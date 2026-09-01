@@ -333,6 +333,7 @@ modifications as if they were local customizations.
 | Deleted  | `.github/workflows/deploy.yml`                         |
 | Deleted  | `.github/workflows/docker-publish.yml`                 |
 | Deleted  | `.github/workflows/release-pr.yml`                     |
+| Modified | `.github/workflows/tests.yml`                          |
 | Deleted  | `.github/workflows/update-browserlist.yml`             |
 | Modified | `.gitignore`                                           |
 | Added    | `.gitlab-ci.yml`                                       |
@@ -356,6 +357,7 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/codex/task-06-upstream-docs.md`              |
 | Deleted  | `netlify.toml`                                         |
 | Modified | `package.json`                                         |
+| Modified | `playwright.config.ts`                                 |
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/postinstall.js`                               |
 | Added    | `scripts/prepare-pages.js`                             |
@@ -389,12 +391,14 @@ modifications as if they were local customizations.
 | Modified | `src/routes/(app)/edit/+page.svelte`                   |
 | Modified | `src/routes/+error.svelte`                             |
 | Modified | `src/routes/embed/+page.svelte`                        |
+| Modified | `src/tests/setup.ts`                                   |
 | Modified | `static/favicon.ico`                                   |
 | Modified | `static/favicon.png`                                   |
 | Modified | `static/favicon.svg`                                   |
 | Deleted  | `static/icons/mermaid.svg`                             |
 | Modified | `static/manifest.json`                                 |
 | Modified | `tests/actions.spec.ts`                                |
+| Modified | `tests/diagramUpdate.spec.ts`                          |
 | Modified | `tests/embed.spec.ts`                                  |
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Modified | `tests/history.spec.ts`                                |

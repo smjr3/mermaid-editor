@@ -41,43 +41,45 @@ test.describe('History', () => {
     await page.goto('/edit');
   });
 
-  test('loads Saved and Timeline history from localStorage and restores entries', async ({
-    page
-  }) => {
-    await page.evaluate(
-      ([manual, auto]) => {
-        localStorage.setItem('manualHistoryStore', manual);
-        localStorage.setItem('autoHistoryStore', auto);
-      },
-      [JSON.stringify(manualHistory), JSON.stringify(autoHistory)]
-    );
-    await page.reload();
-    await openHistory(page);
+  test(
+    'loads Saved and Timeline history from localStorage and restores entries',
+    { tag: '@smoke' },
+    async ({ page }) => {
+      await page.evaluate(
+        ([manual, auto]) => {
+          localStorage.setItem('manualHistoryStore', manual);
+          localStorage.setItem('autoHistoryStore', auto);
+        },
+        [JSON.stringify(manualHistory), JSON.stringify(autoHistory)]
+      );
+      await page.reload();
+      await openHistory(page);
 
-    // Saved tab is active by default.
-    await expect(page.locator('#historyList li')).toHaveCount(2);
-    await expect(page.locator('#historyList')).toContainText('hollow-art');
-    await expect(page.locator('#historyList')).toContainText('helpful-ocean');
+      // Saved tab is active by default.
+      await expect(page.locator('#historyList li')).toHaveCount(2);
+      await expect(page.locator('#historyList')).toContainText('hollow-art');
+      await expect(page.locator('#historyList')).toContainText('helpful-ocean');
 
-    await page
-      .getByRole('button', { name: t('history.restoreVersion') })
-      .first()
-      .click();
-    await expect(page.locator('#view')).toContainText('Halloween');
+      await page
+        .getByRole('button', { name: t('history.restoreVersion') })
+        .first()
+        .click();
+      await expect(page.locator('#view')).toContainText('Halloween');
 
-    // Switching to the Timeline tab shows the auto entries only.
-    await page.getByRole('tab', { name: t('history.tabTimeline') }).click();
-    await expect(page.locator('#historyList li')).toHaveCount(2);
-    await expect(page.locator('#historyList')).toContainText('barking-dog');
-    await expect(page.locator('#historyList')).toContainText('needy-mosquito');
-    await expect(page.locator('#historyList')).not.toContainText('hollow-art');
+      // Switching to the Timeline tab shows the auto entries only.
+      await page.getByRole('tab', { name: t('history.tabTimeline') }).click();
+      await expect(page.locator('#historyList li')).toHaveCount(2);
+      await expect(page.locator('#historyList')).toContainText('barking-dog');
+      await expect(page.locator('#historyList')).toContainText('needy-mosquito');
+      await expect(page.locator('#historyList')).not.toContainText('hollow-art');
 
-    await page
-      .getByRole('button', { name: t('history.restoreVersion') })
-      .first()
-      .click();
-    await expect(page.locator('#view')).toContainText('NewYear');
-  });
+      await page
+        .getByRole('button', { name: t('history.restoreVersion') })
+        .first()
+        .click();
+      await expect(page.locator('#view')).toContainText('NewYear');
+    }
+  );
 
   test('each entry has a copyable link that opens it in a new tab', async ({ page }) => {
     await page.evaluate(

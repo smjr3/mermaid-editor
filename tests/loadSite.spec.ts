@@ -1,6 +1,6 @@
 import type { State } from '$/types';
 import assert from 'node:assert';
-import { expect, test } from './test';
+import { expect, t, test } from './test';
 
 test.describe('Site Loads', () => {
   test('Check Home page load', async ({ editPage }) => {
@@ -38,9 +38,9 @@ test.describe('Site Loads', () => {
       await editPage.start(
         `/edit?gist=https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a`
       );
-      await page.getByText('History').click();
+      await page.getByText(t('editor.historyToggle')).click();
       await editPage.checkTextInView('Go shopping!!');
-      await expect(page.getByText('Revisions')).toBeVisible();
+      await expect(page.getByText(t('history.tabRevisions'))).toBeVisible();
       await expect(page.getByText('sidharthv96 v8f8f1e2')).toBeVisible();
       await expect(page.getByText('sidharthv96 v7851e19')).toBeVisible();
       const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
@@ -51,9 +51,9 @@ test.describe('Site Loads', () => {
       await editPage.start(
         '/edit?gist=https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a/ec9b4ab0e41e4ff6287326cd3cb47affd7851e19'
       );
-      await page.getByText('History').click();
+      await page.getByText(t('editor.historyToggle')).click();
       await editPage.checkTextInView('Party');
-      await expect(page.getByText('Revisions')).toBeVisible();
+      await expect(page.getByText(t('history.tabRevisions'))).toBeVisible();
       await expect(page.getByText('sidharthv96 v7851e19')).toBeVisible();
       const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
       expect(codeStore).toBeTruthy();
@@ -110,7 +110,11 @@ test.describe('Site Loads', () => {
   test('should show troubleshooting steps if loading fails', async ({ editPage, page }) => {
     await editPage.start('/#/edit/eyJjb2RlIjoiZ3JhcGggVERcbiAg');
     await page.reload({ waitUntil: 'networkidle' });
-    await editPage.checkTextInView('Please Click here to Raise an issue in github.');
+    // Node A of the troubleshooting diagram, taken from the catalogue so the
+    // assertion follows the translation instead of drifting from it.
+    const heading = /A\[([^\]]+)]/.exec(t('error.urlParseFailedDiagram'))?.[1];
+    assert(heading);
+    await editPage.checkTextInView(heading);
   });
 });
 

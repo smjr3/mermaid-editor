@@ -63,9 +63,7 @@
   };
 
   const emptyMessage = $derived(
-    historyState.mode === 'auto'
-      ? 'No timeline snapshots yet.\nThe Timeline is saved automatically every minute.'
-      : 'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.'
+    historyState.mode === 'auto' ? t('history.emptyTimeline') : t('history.emptySaved')
   );
 
   const tabSelectHandler = (tab: Tab) => {
@@ -95,14 +93,20 @@
       }
       const data: HistoryEntry[] = JSON.parse(await file.text());
       const { restored, invalid, duplicates } = restoreEntries(data);
-      notify(`${restored} restored, ${duplicates} duplicate, ${invalid} invalid.`);
+      notify(
+        t('history.importSummary', {
+          duplicates: String(duplicates),
+          invalid: String(invalid),
+          restored: String(restored)
+        })
+      );
     });
     input.click();
   };
 
   const saveHistory = () => {
     if (!addManualEntry($state.snapshot(inputState))) {
-      notify('State already saved.');
+      notify(t('history.alreadySaved'));
     }
   };
 

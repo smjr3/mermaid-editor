@@ -1,4 +1,4 @@
-import { expect, test } from './test';
+import { expect, t, test } from './test';
 
 test.describe('Check actions', () => {
   test.beforeEach(async ({ editPage }) => {
@@ -27,7 +27,7 @@ test.describe('Check actions', () => {
     await page
       .locator('#gist')
       .fill('https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a');
-    await page.getByText('Load Gist').click();
+    await page.getByText(t('actions.loadGist')).click();
     await expect(page.getByText('Go shopping!!')).toBeVisible();
   });
 

@@ -25,6 +25,10 @@ const autoHistory = [
   entry('a-1', 'needy-mosquito', 'auto', 'Fireworks')
 ];
 
+// The empty-state messages are two lines; assert on the first so the check
+// does not depend on how Playwright normalises the newline.
+const firstLine = (message: string): string => message.split('\n')[0];
+
 const openHistory = (page: Page) =>
   page.getByRole('button', { name: t('editor.historyToggle') }).click();
 
@@ -116,7 +120,7 @@ test.describe('History', () => {
 
     // Saving again without changes does not add a duplicate and notifies the user.
     await page.locator('#saveHistory').click();
-    await expect(page.getByText('State already saved.')).toBeVisible();
+    await expect(page.getByText(t('history.alreadySaved'))).toBeVisible();
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
     // Loading a different sample changes the state, so it saves as a new entry.
@@ -133,7 +137,7 @@ test.describe('History', () => {
 
     await page.getByRole('tab', { name: t('history.tabTimeline') }).click();
     // A manual save must not appear under Timeline.
-    await expect(page.locator('#historyList')).toContainText('No timeline snapshots yet.');
+    await expect(page.locator('#historyList')).toContainText(firstLine(t('history.emptyTimeline')));
   });
 
   test('deletes a single entry and clears all after confirmation', async ({ page }) => {
@@ -153,7 +157,7 @@ test.describe('History', () => {
     page.on('dialog', (dialog) => dialog.accept());
     await page.locator('#clearHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(0);
-    await expect(page.locator('#historyList')).toContainText('No saved states yet.');
+    await expect(page.locator('#historyList')).toContainText(firstLine(t('history.emptySaved')));
   });
 
   test('renames a saved entry inline', async ({ page }) => {

@@ -82,13 +82,15 @@
 <div class="flex h-full flex-col overflow-hidden">
   {#snippet mobileToggle()}
     <div class="flex items-center gap-2">
-      Edit <Switch
+      {t('editor.mobileEdit')}
+      <Switch
         id="editorMode"
         class="data-[state=checked]:bg-accent"
         bind:checked={isViewMode}
         onclick={() => {
           logEvent('mobileViewToggle');
-        }} /> View
+        }} />
+      {t('editor.mobileView')}
     </div>
   {/snippet}
 

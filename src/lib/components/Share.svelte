@@ -55,11 +55,12 @@
 </script>
 
 <Dialog.Root>
-  <Dialog.Trigger class={buttonVariants({ size: 'sm' })}>Share</Dialog.Trigger>
+  <Dialog.Trigger class={buttonVariants({ size: 'sm' })}>{t('share.title')}</Dialog.Trigger>
   <Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-xl">
     <Dialog.Header>
       <Dialog.Title class="flex items-center gap-2 text-xl">
-        <ShareIcon class="size-5" /> Shareable links
+        <ShareIcon class="size-5" />
+        {t('share.shareableLinks')}
       </Dialog.Title>
       <Dialog.Description>{t('share.subtitle')}</Dialog.Description>
     </Dialog.Header>
@@ -71,9 +72,7 @@
           Mermaid Live Editor
         </h2>
         <CopyInput value={window.location.href} />
-        <Dialog.Description>
-          The content of the diagrams you create never leaves your browser.
-        </Dialog.Description>
+        <Dialog.Description>{t('share.linkDescription')}</Dialog.Description>
       </div>
       {#if env.isEnabledMermaidChartLinks}
         <Separator />
@@ -92,14 +91,12 @@
       <div class="flex flex-col gap-3">
         <h2 class="flex items-center gap-2">
           <CodeIcon class="size-5" />
-          Embed
+          {t('share.embedHeading')}
         </h2>
-        <Dialog.Description>
-          Embed a live, interactive diagram in your own website or blog.
-        </Dialog.Description>
+        <Dialog.Description>{t('share.embedDescription')}</Dialog.Description>
         <div class="grid grid-cols-2 gap-3">
           <label class="flex flex-col gap-1 text-sm">
-            Theme
+            {t('share.theme')}
             <select
               bind:value={theme}
               class="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground">
@@ -109,7 +106,7 @@
             </select>
           </label>
           <label class="flex flex-col gap-1 text-sm">
-            Look
+            {t('share.look')}
             <select
               bind:value={look}
               class="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground">
@@ -119,11 +116,11 @@
             </select>
           </label>
           <label class="flex flex-col gap-1 text-sm">
-            Width
+            {t('share.width')}
             <Input bind:value={width} />
           </label>
           <label class="flex flex-col gap-1 text-sm">
-            Height
+            {t('share.height')}
             <Input bind:value={height} />
           </label>
         </div>
@@ -137,20 +134,20 @@
                 mode = value;
               }
             }}>
-            <ToggleGroup.Item value="light">Light</ToggleGroup.Item>
-            <ToggleGroup.Item value="dark">Dark</ToggleGroup.Item>
+            <ToggleGroup.Item value="light">{t('share.themeLight')}</ToggleGroup.Item>
+            <ToggleGroup.Item value="dark">{t('share.themeDark')}</ToggleGroup.Item>
           </ToggleGroup.Root>
           <label class="flex items-center gap-2 text-sm">
             <Switch bind:checked={controls} />
-            Controls
+            {t('share.controls')}
           </label>
           <label class="flex items-center gap-2 text-sm">
             <Switch bind:checked={grid} />
-            Grid
+            {t('share.grid')}
           </label>
           <label class="flex items-center gap-2 text-sm">
             <Switch bind:checked={showPreview} />
-            Preview
+            {t('share.preview')}
           </label>
         </div>
         {#if showPreview}
@@ -172,8 +169,8 @@
                   format = value;
                 }
               }}>
-              <ToggleGroup.Item value="iframe">iframe</ToggleGroup.Item>
-              <ToggleGroup.Item value="webComponent">Web component</ToggleGroup.Item>
+              <ToggleGroup.Item value="iframe">{t('share.iframe')}</ToggleGroup.Item>
+              <ToggleGroup.Item value="webComponent">{t('share.webComponent')}</ToggleGroup.Item>
             </ToggleGroup.Root>
             <textarea
               data-testid={TID.embedSnippet}

@@ -2,7 +2,7 @@ import { defaultState, TID } from '$/constants';
 import type { State } from '$/types';
 import { serializeState } from '$/util/serde';
 import { expect, test as base, type Page } from '@playwright/test';
-import { test as editorTest } from './test';
+import { t, test as editorTest } from './test';
 
 const embedHash = (state: Partial<State>): string => serializeState({ ...defaultState, ...state });
 
@@ -100,13 +100,13 @@ base.describe('Embed page', () => {
 editorTest.describe('Share dialog embed section', () => {
   editorTest('should offer iframe and web component snippets', async ({ editPage, page }) => {
     void editPage;
-    await page.getByRole('button', { name: 'Share' }).click();
+    await page.getByRole('button', { name: t('share.title') }).click();
     const snippet = page.getByTestId(TID.embedSnippet);
     await expect(snippet).toBeVisible();
     await expect(snippet).toHaveValue(/\/embed\?.*#pako:/);
     await expect(snippet).toHaveValue(/<iframe/);
     await expect(snippet).toHaveValue(/sandbox="allow-scripts allow-same-origin/);
-    await page.getByRole('radio', { name: 'Web component' }).click();
+    await page.getByRole('radio', { name: t('share.webComponent') }).click();
     await expect(snippet).toHaveValue(/<mermaid-embed/);
   });
 });

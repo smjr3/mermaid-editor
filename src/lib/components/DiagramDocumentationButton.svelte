@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
+  import { t } from '$/i18n';
   import type { DocumentationConfig } from '$/types';
   import { env } from '$/util/env';
   import { standardizeDiagramType } from '$/util/mermaid';
@@ -110,7 +111,7 @@
   data-testid={TID.diagramDocumentationButton}
   href={doc.url}
   target="_blank"
-  title="View documentation for {doc.key.replace('Diagram', '')} diagram">
+  title={t('editor.docsTitle', { type: doc.key.replace('Diagram', '') })}>
   <BookIcon />
-  Docs
+  {t('editor.docsTab')}
 </Button>

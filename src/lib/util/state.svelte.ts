@@ -1,4 +1,5 @@
 import { defaultState } from '$/constants';
+import { t } from '$/i18n';
 import type { ErrorHash, MarkerData, State, ValidatedState } from '$/types';
 import { resolve } from '$app/paths';
 import { debounce, get as lodashGet } from 'lodash-es';
@@ -18,16 +19,12 @@ import { errorDebug, formatJSON, getUTMSource, MCBaseURL } from './util';
 
 export { defaultState };
 
-const urlParseFailedState = `flowchart TD
-    A[Loading URL failed. We can try to figure out why.] -->|Decode JSON| B(Please check the console to see the JSON and error details.)
-    B --> C{Is the JSON correct?}
-    C -->|Yes| D(Please Click here to Raise an issue in github.<br/>Including the broken link in the issue <br/> will speed up the fix.)
-    C -->|No| E{Did someone <br/>send you this link?}
-    E -->|Yes| F[Ask them to send <br/>you the complete link]
-    E -->|No| G{Did you copy <br/> the complete URL?}
-    G --> |Yes| D
-    G --> |"No :("| H(Try using the Timeline tab in History <br/>from same browser you used to create the diagram.)
-    click D href "https://github.com/mermaid-js/mermaid-live-editor/issues/new?assignees=&labels=bug&template=bug_report.md&title=Broken%20link" "Raise issue"`;
+// The whole diagram is one catalogue entry: each locale owns its own mermaid
+// source, which is the only way the node labels can be translated safely.
+// Upstream's version ends in a `click` handler filing a bug against
+// mermaid-js/mermaid-live-editor; a fork must not send its users there, so the
+// advice points at whoever runs the deployment instead.
+const urlParseFailedState = t('error.urlParseFailedDiagram');
 
 const CODE_STORE_KEY = 'codeStore';
 

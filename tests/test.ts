@@ -6,8 +6,12 @@ import { messages } from '$/i18n/messages';
 const testLocale = (process.env.MERMAID_LOCALE ?? 'ja') as keyof typeof messages;
 
 /** Look up the UI string the build under test actually renders. */
-export const t = (key: keyof (typeof messages)['en']): string =>
-  messages[testLocale][key] ?? messages.en[key];
+export const t = (key: keyof (typeof messages)['en'], params?: Record<string, string>): string => {
+  const template: string = messages[testLocale][key] ?? messages.en[key];
+  return params
+    ? template.replaceAll(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match)
+    : template;
+};
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
 

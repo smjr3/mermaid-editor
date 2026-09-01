@@ -347,6 +347,7 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/GITLAB-PAGES.md`                             |
 | Added    | `docs-dev/I18N.md`                                     |
 | Added    | `docs-dev/PACKAGING.md`                                |
+| Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                 |
 | Added    | `docs-dev/THEME.md`                                    |
 | Added    | `docs-dev/UPSTREAM.md`                                 |
 | Added    | `docs-dev/codex/README.md`                             |

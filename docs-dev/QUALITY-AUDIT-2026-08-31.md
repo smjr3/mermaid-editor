@@ -156,3 +156,55 @@ Start small to avoid unnecessary CI cost:
 1. Dependency advisories — security-sensitive and already reproducible.
 2. Vitest mock placement — small preventive maintenance before an upgrade.
 3. Cross-browser matrix — portability protection, introduced incrementally to control CI cost.
+
+---
+
+## Follow-up — reachability of finding 1 (2026-09-01)
+
+Finding 1 asks for the step an audit report cannot take on its own: whether the vulnerable code is
+reachable in the shipped bundle. This section records that check on Node.js 24.16.0, the runtime the
+project actually requires, which was unavailable when the audit above was written.
+
+`pnpm audit --prod` still reports **26 advisories — 3 high, 17 moderate, 6 low**, unchanged. Grouping
+them by path, though, changes the priority order the audit proposes.
+
+### The three high-severity advisories do not ship
+
+All three resolve to one build-time path:
+
+```
+@mermaid-js/mermaid-zenuml -> @zenuml/core -> tailwindcss -> postcss -> nanoid   (2 × nanoid)
+@mermaid-js/mermaid-zenuml -> @zenuml/core -> tailwindcss -> postcss             (1 × postcss)
+```
+
+PostCSS and nanoid are a CSS toolchain that runs at build time. Searching the whole 27 MB production
+build — 346 files, all types, no compressed archives — finds **zero** occurrences of `nanoid`,
+`urlAlphabet`, `postcss`, or `tailwindcss/lib`. The same search finds 9 occurrences of
+`DOMPurify`/`createPolicy`, so the method does detect a library that is present.
+
+These three are therefore exposure of the **build machine**, not of anyone using the editor. That is
+still worth patching, but it is a different risk class from the one "3 high advisories in production
+dependencies" suggests, and it should not outrank a shipped moderate.
+
+### DOMPurify does ship, and its attribution is unresolved
+
+Every remaining advisory (all 17 moderate and all 6 low) is DOMPurify. Two versions are installed:
+
+| Version | Reached via                       |
+| ------- | --------------------------------- |
+| 3.2.7   | `monaco-editor@0.55.1`            |
+| 3.4.8   | `mermaid@11.17.2`, `@zenuml/core` |
+
+DOMPurify is present in the built output, in both the Monaco vendor chunk and the mermaid chunks.
+Which installed copy each advisory applies to is **not** established here: the copies are minified
+with renamed identifiers, so attributing a bundled copy to a version needs more than a string search,
+and the answer decides whether any of these are live for editor users.
+
+Treat this as the open half of finding 1. It is the part that matters for users, and it is unfinished.
+
+### What this changes
+
+The audit's suggested priority stands, with one correction inside item 1: the high-severity count is
+build-machine exposure, and the user-facing question is the DOMPurify attribution above. Findings 2
+(the `vi.mock` placement, still warning on every run) and 3 (Chromium-only e2e CI) are unchanged and
+still open.

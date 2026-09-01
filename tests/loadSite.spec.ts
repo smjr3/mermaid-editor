@@ -3,13 +3,13 @@ import assert from 'node:assert';
 import { expect, t, test } from './test';
 
 test.describe('Site Loads', () => {
-  test('Check Home page load', async ({ editPage }) => {
+  test('Check Home page load', { tag: '@smoke' }, async ({ editPage }) => {
     await editPage.setEditorMode('Config');
     const codeStore = await editPage.page.evaluate(() => localStorage.getItem('codeStore'));
     expect(codeStore).toBeTruthy();
   });
 
-  test('should keep code after reload', async ({ editPage, page }) => {
+  test('should keep code after reload', { tag: '@smoke' }, async ({ editPage, page }) => {
     await editPage.checkInEditor('Car');
     await editPage.checkTextInView('Car');
     await page.reload();
@@ -119,7 +119,7 @@ test.describe('Site Loads', () => {
 });
 
 test.describe('Verify types of URLs', () => {
-  test('should load compressed URL', async ({ editPage }) => {
+  test('should load compressed URL', { tag: '@smoke' }, async ({ editPage }) => {
     await editPage.start(
       '/edit#pako:eNpVkM2KwkAQhF-l6dMK5gVyEDRxvYi7sF6WjIcm0zqDzg_jBJEk725Hd2G3Tw31VVFUj23QjCWeEkUD-1p5kFs2O77BN1M6QFEshg1ncMHzfYDV2ybA1YQYrT_NXvhqgqDqtxPGkI315_ElVU__h-cB6mZLMYd4-Kvsb2GAdWM_jcT_V0xicb03RyqPVLSUoJI-OEfHyZHV0rqfDAqzYccKS3k1pbNC5Ufhuqgp81rbHBJKxuXKc6Quh6-7b7HMqeNfqLYkC7gfanwAlW1ZvQ'
     );

@@ -79,6 +79,24 @@ swimlane diagrams (`swimlane-beta`), which were added in mermaid 11.16.0.
 - Node.js >= 24.16.0 (declared in `package.json` `engines`; `.node-version` pins 24.16.0)
 - [pnpm](https://pnpm.io/) for development — `corepack enable pnpm`
 
+## Supported browsers
+
+| Browser                       | Support       | Covered by CI         |
+| ----------------------------- | ------------- | --------------------- |
+| Chromium-based (Chrome, Edge) | Supported     | Full end-to-end suite |
+| Firefox                       | Supported     | The `@smoke` journeys |
+| Safari / WebKit               | Not supported | Not run               |
+
+Chromium carries the full suite because it is where the editor is developed and where
+most of this deployment's users are. Firefox runs a smaller set — load, edit/render,
+persistence and embed — which is enough to catch a portability break without paying for
+a second full run on every pull request. Tests in that set are tagged `@smoke`; the
+`firefox` project in `playwright.config.ts` selects them by that tag.
+
+WebKit is deliberately out of scope rather than untested-and-unmentioned. Nothing is
+known to be broken there; it simply is not exercised, so it is not claimed. Adding it is
+one more project in `playwright.config.ts` — worth doing if Safari users appear.
+
 ## Development
 
 ```sh

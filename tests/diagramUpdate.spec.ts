@@ -22,7 +22,7 @@ A & B & C & D & E --> F & G & H & I & J & K & LongTest`
     await editPage.checkTextInView('LongTest');
   });
 
-  test('supports commenting code out/in', async ({ editPage }) => {
+  test('supports commenting code out/in', { tag: '@smoke' }, async ({ editPage }) => {
     await editPage.toggleComment('fa-car');
     await editPage.checkTextNotInView('Car');
     await editPage.toggleComment('fa-car');

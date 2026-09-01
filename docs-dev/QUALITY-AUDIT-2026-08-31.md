@@ -208,3 +208,42 @@ The audit's suggested priority stands, with one correction inside item 1: the hi
 build-machine exposure, and the user-facing question is the DOMPurify attribution above. Findings 2
 (the `vi.mock` placement, still warning on every run) and 3 (Chromium-only e2e CI) are unchanged and
 still open.
+
+## Follow-up — finding 3 resolved as Chromium + Firefox (2026-09-01)
+
+The acceptance criteria for finding 3 include a statement of which browsers the project
+officially supports. That is a policy decision, not a technical one, and it was made:
+**Chromium-based browsers and Firefox are supported; WebKit is not.** `README.md` says so
+in a table, which is where a user looks.
+
+What changed:
+
+- `playwright.config.ts` gains a `firefox` project selecting `grep: /@smoke/`. Chromium
+  keeps the full suite, per the audit's own advice to start small.
+- Six tests carry `{ tag: '@smoke' }`, one or two per journey the audit names — load
+  (`Check Home page load`, `should load compressed URL`), edit/render
+  (`supports commenting code out/in`), persistence (`should keep code after reload`,
+  `loads Saved and Timeline history from localStorage and restores entries`) and embed
+  (`should render a diagram from the URL hash with footer links`).
+- `permissions: ['clipboard-read', 'clipboard-write']` moves from the shared `use` into
+  the `chromium` project. Those permission names are Chromium-only and Playwright rejects
+  them when granting on Firefox, so leaving them shared would have failed every Firefox
+  test at context creation, before a single assertion ran.
+
+### WebKit, and why it is an exclusion rather than a gap
+
+Nothing is known to be broken in WebKit. It is simply not exercised, so it is not claimed
+— which is the honest form of the audit's "browser-specific exclusions include a reason".
+The deployment this fork serves is Windows-centric; Safari is not on the path. Adding it
+later is one more project in `playwright.config.ts`.
+
+### What is not verified here
+
+Firefox is **not installed in the development sandbox** — only Chromium 1194 is. The
+Firefox project's test selection was verified locally (`--list --project=firefox` returns
+exactly the six tagged tests) and the full Chromium suite was re-run against the reworked
+config with no change in results. But whether those six journeys actually _pass_ in
+Firefox is unknown until CI runs them, because CI's
+`mcr.microsoft.com/playwright:v1.60.0-jammy` image is the only place a Firefox binary
+exists. A first red run there is information, not a regression: it is the portability gap
+this finding was opened to expose.

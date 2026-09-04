@@ -75,8 +75,21 @@ export class EditorPage {
     await this.page.getByText(diagramName, { exact: true }).click();
   }
 
+  /**
+   * The view renders asynchronously — a debounced state update, then an async
+   * mermaid parse, then the render itself — and the app deliberately defers
+   * rendering for large diagrams. Playwright's default 5s expect timeout races
+   * all of that, which is what made three separate tests flake under CI's
+   * parallel workers while passing locally. `test.slow()` does not help: it
+   * extends the test's overall budget, not the per-assertion timeout.
+   *
+   * A longer window costs nothing when the text does appear, because the
+   * assertion polls and returns immediately; it only changes how long a
+   * genuinely broken render takes to report. `checkError` below already
+   * carries a raised timeout for the same reason.
+   */
   async checkTextInView(text: string) {
-    await expect(this.view).toContainText(text);
+    await expect(this.view).toContainText(text, { timeout: 15_000 });
   }
 
   async checkTextNotInView(text: string) {

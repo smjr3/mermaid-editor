@@ -2,9 +2,15 @@
 
 The production runner may be Windows, so every step the build and deploy path
 takes has to behave identically on both. The rule this repository follows is:
-**anything CI runs is either a package-manager invocation or a Node script.**
-No shell builtins, no Unix-only commands, no shell operators beyond `&&` between
-whole commands.
+**every step CI invokes directly is either a package-manager invocation or a Node
+script** — no shell builtins, no Unix-only commands, no shell operators beyond
+`&&` between whole commands.
+
+One thing sits outside that rule and is called out rather than hidden by it:
+`postinstall`, which `pnpm install` triggers rather than CI invoking it, still uses
+`||` and parenthesised groups. Both are cmd.exe syntax as well as POSIX syntax, so
+the form is believed portable — but **that has not been executed on Windows**, and
+the section below says what would settle it.
 
 ## What CI runs
 
@@ -58,11 +64,20 @@ It is now the same chain with each `|| true` replaced by
 identically on both platforms, so the guard no longer depends on a Unix builtin;
 `svelte-kit sync` stays unguarded and fails the install, as it should.
 
+This is the one place the rule at the top of this document is bent. `||` and
+parenthesised groups are valid in cmd.exe as well as in POSIX shells, so the chain
+should work — but "should" is doing real work in that sentence, and unlike the rest
+of this document it is **not backed by an execution**. Running `pnpm install` once
+on the Windows runner settles it; until then treat the postinstall path as the
+weakest Windows claim here.
+
 **`scripts/postinstall.js` is in the tree but nothing invokes it.** An earlier
-version of this work routed `postinstall` through that wrapper; `eafb559` chose
-the inline form instead and the file was left behind. Until that is resolved it
-is a decoy: editing it changes nothing. Do not debug it expecting `npm install`
-to run it.
+version of this work routed `postinstall` through that wrapper, which needed no
+shell operators at all; `eafb559` chose the inline form instead and the file was
+left behind. Until that is resolved it is a decoy: editing it changes nothing. Do
+not debug it expecting `npm install` to run it. Restoring the wrapper is also the
+change that would bring `postinstall` back inside the rule above, if the Windows
+run turns out badly.
 
 ## A trap worth knowing about
 

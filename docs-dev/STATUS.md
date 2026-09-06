@@ -114,11 +114,14 @@ WebKit-only defect reported by a user.
   count unchanged and the table still wrong. Diff the two sets, which is what actually found
   the missed path:
 
+  Compare the **status letter as well as the path**: an upstream update that starts tracking a
+  file this fork added flips its row from `A` to `M`, which a path-only comparison cannot see.
+
   ```sh
   vendor_base=$(node -p "require('./.upstream-version.json').vendorBaseCommit")
-  git diff --name-status "$vendor_base" HEAD | awk '{print $2}' | sort > /tmp/actual
+  git diff --name-status "$vendor_base" HEAD | awk '{print $1, $2}' | sort > /tmp/actual
   grep -oE '^\| (Modified|Added|Deleted) +\| `[^`]+`' docs-dev/UPSTREAM.md \
-    | sed 's/.*`\(.*\)`/\1/' | sort > /tmp/table
+    | sed -E 's/^\| (.)[a-z]+ +\| `(.*)`/\1 \2/' | sort > /tmp/table
   diff /tmp/actual /tmp/table
   ```
 

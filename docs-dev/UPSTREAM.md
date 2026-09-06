@@ -97,7 +97,7 @@ reading, because the earlier hand-written list had drifted and omitted exactly
 these two.
 
 Preserve **every** intentional local addition, not just the replacements. Taking
-upstream wholesale for anything outside the five replaced keys silently drops the
+upstream wholesale for anything outside the six replaced keys silently drops the
 added ones — and losing `files` or `publishConfig` changes what the published npm
 tarball contains and how it is published. Reapply the local values to the new
 upstream file and confirm the resulting diff rather than choosing an entire side of

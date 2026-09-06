@@ -38,6 +38,13 @@ scripts/update-upstream.sh master
 git merge vendor/upstream
 ```
 
+The update script requires Bash and standard Unix command-line tools; it is not a
+PowerShell or Command Prompt script. On Windows, prefer WSL. Git Bash may also run
+the script, but Windows checkout behavior for line endings, executable bits, or
+symbolic links can make the exact-tree check fail. If it does, stop and repeat the
+import in an environment that preserves the upstream tree (such as a WSL filesystem).
+Never bypass the check or commit a tree with a different hash.
+
 The script adds a correctly configured `upstream` remote if necessary, fetches the
 requested ref, replaces the vendor branch tree, verifies that its tree hash exactly
 matches upstream, commits the pristine snapshot, and returns to the starting branch.

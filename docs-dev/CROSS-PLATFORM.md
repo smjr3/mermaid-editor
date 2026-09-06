@@ -67,15 +67,29 @@ every CI run and dirtying the working tree. The config now sets
 `publicDir: false`; the embed bundle is a single library entry with no public
 assets. `public/` is also gitignored.
 
-## Known Unix-only script, deliberately unchanged
+## `dev:force`, and a judgement that was overruled
 
-`dev:force` is `MERMAID_LOCAL=true pnpm dev --force`. Inline environment
-assignment is POSIX-shell syntax and fails on cmd.exe. It is left as upstream
-wrote it because `MERMAID_LOCAL` is read by nothing in this repository
-(`git grep MERMAID_LOCAL` matches only that line), so the script is equivalent
-to `pnpm dev --force` — which is what a Windows developer should run instead. It
-is a developer convenience and never runs on the production runner, so changing
-it would add upstream delta for no behavioural gain.
+`dev:force` was `MERMAID_LOCAL=true pnpm dev --force`. Inline environment
+assignment is POSIX-shell syntax and fails on cmd.exe, so the script was broken on
+Windows like the others — but this document argued for leaving it alone, on the
+grounds that `MERMAID_LOCAL` is read by nothing in the repository, making the
+script equivalent to `pnpm dev --force`, which a Windows developer could run
+instead.
+
+An adversarial review rejected that, and was right to. The premise held — nothing
+reads `MERMAID_LOCAL` even now — but the conclusion did not follow: a developer who
+runs the script the project documents gets a failure, and "there is an equivalent
+command you could have run instead" is no help to someone who did not know that.
+Every other entry point in this repository was made to work on Windows; leaving one
+that fails is a worse outcome than one more small local file.
+
+`dev:force` is now `node scripts/dev-force.js`, which spawns the package manager
+through `process.execPath` and passes `MERMAID_LOCAL` in the child's environment.
+It runs on cmd.exe, PowerShell and sh alike.
+
+The general lesson, since this document exists to record them: "a broken thing has
+a working equivalent" is not a reason to leave it broken. It only relocates the
+cost onto whoever hits it first.
 
 ## Verified
 

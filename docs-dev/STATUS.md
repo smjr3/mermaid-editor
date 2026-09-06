@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-04**, `master` at the merge of PR #24.
+Accurate as of **2026-09-06**, `master` at the merge of PR #25.
 
 ## What this is
 
@@ -17,7 +17,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **82**.
+  every locally changed path — currently **83**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -101,10 +101,14 @@ WebKit-only defect reported by a user.
 - **`vendor/upstream` must not be deleted.** It is the base against which upstream updates
   are merged, and `.upstream-version.json` records the commit (`vendorBaseCommit`) the
   inventory is derived from.
-- **Regenerate the inventory last.** `UPSTREAM.md`'s table of locally changed paths is
-  produced by the command that document names. Regenerating it before other edits in the same
-  commit leaves it stale by exactly those edits — that has happened once and was caught in
-  review.
+- **Regenerate the inventory last, and against the merge base you will actually land on.**
+  `UPSTREAM.md`'s table of locally changed paths is produced by the command that document
+  names. Two ways it goes stale, both of which have now happened:
+  - Regenerating it _before_ the other edits in the same commit leaves it short by exactly
+    those edits. Caught in review.
+  - Regenerating it on a branch whose base has since moved leaves it short by whatever landed
+    on `master` meanwhile — `scripts/dev-force.js` was missed this way. Re-check the count
+    after merging, not only before.
 - **Node.js 24.16.0** is required (`engines`, and `.node-version`). pnpm 10.34.5 via
   `corepack enable pnpm`.
 - eslint enforces alphabetically sorted keys on objects with 5+ keys under `src/`, which the

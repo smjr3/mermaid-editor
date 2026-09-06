@@ -312,7 +312,7 @@ conflict by keeping upstream's version.
 
 ## Current local file layer
 
-The following list is accurate as of **2026-09-04**. It is a snapshot, not a
+The following list is accurate as of **2026-09-06**. It is a snapshot, not a
 permanent allowlist.
 
 Re-derive it against the **current vendor base** — the `vendorBaseCommit` recorded in
@@ -368,6 +368,7 @@ modifications as if they were local customizations.
 | Modified | `package.json`                                         |
 | Modified | `playwright.config.ts`                                 |
 | Added    | `scripts/copy-legal-files.js`                          |
+| Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/postinstall.js`                               |
 | Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/update-upstream.sh`                           |

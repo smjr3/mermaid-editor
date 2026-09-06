@@ -273,3 +273,33 @@ Firefox is unknown until CI runs them, because CI's
 `mcr.microsoft.com/playwright:v1.60.0-jammy` image is the only place a Firefox binary
 exists. A first red run there is information, not a regression: it is the portability gap
 this finding was opened to expose.
+
+## Follow-up — release dependency refresh (2026-09-06)
+
+The lockfile was refreshed within the version ranges already allowed by `package.json`. This
+updates the affected transitive packages without adding an override or changing the application's
+declared direct dependencies:
+
+| Package                    | Before | After  |
+| -------------------------- | ------ | ------ |
+| `dompurify` (Mermaid path) | 3.4.8  | 3.4.15 |
+| `postcss`                  | 8.5.15 | 8.5.28 |
+| `nanoid`                   | 3.3.12 | 3.3.18 |
+| `postcss-selector-parser`  | 6.1.2  | 6.1.4  |
+
+`pnpm audit --prod` now reports **18 advisories — 0 high, 14 moderate, and 4 low**, down
+from 27 advisories (3 high, 17 moderate, and 7 low) immediately before this refresh. The high
+severity `postcss` and `nanoid` findings are resolved, as are the findings against the Mermaid
+copy of DOMPurify and the affected `postcss-selector-parser` copy.
+
+Every remaining advisory follows the single path `monaco-editor@0.55.1 -> dompurify@3.2.7`.
+Monaco pins that version exactly rather than accepting a compatible range. This refresh therefore
+does not force a different DOMPurify version underneath Monaco: doing so without upstream
+compatibility evidence would exchange a known security finding for an unmeasured editor risk.
+Revisit the remaining findings when Monaco publishes a compatible update, or separately test and
+document an override before applying one.
+
+The required-runtime checks passed after the refresh: type checking, linting, all 110 unit tests,
+and the production build. The Playwright browser download was blocked by a `403 Domain forbidden`
+response from the browser CDN in this environment, so end-to-end execution remains a CI check and
+must not be represented as locally verified for this release.

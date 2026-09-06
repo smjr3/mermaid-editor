@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { t } from '$/i18n';
   import Actions from '$/components/Actions.svelte';
   import Card from '$/components/Card/Card.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
   import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
+  import { env } from '$/util/env';
   import History from '$/components/History/History.svelte';
   import { startAutoSave } from '$/components/History/historyState.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
@@ -42,12 +44,12 @@
     {
       icon: CodeIcon,
       id: 'code',
-      title: 'Code'
+      title: t('editor.textTab')
     },
     {
       icon: GearIcon,
       id: 'config',
-      title: 'Config'
+      title: t('editor.configTab')
     }
   ];
 
@@ -80,18 +82,24 @@
 <div class="flex h-full flex-col overflow-hidden">
   {#snippet mobileToggle()}
     <div class="flex items-center gap-2">
-      Edit <Switch
+      {t('editor.mobileEdit')}
+      <Switch
         id="editorMode"
         class="data-[state=checked]:bg-accent"
         bind:checked={isViewMode}
         onclick={() => {
           logEvent('mobileViewToggle');
-        }} /> View
+        }} />
+      {t('editor.mobileView')}
     </div>
   {/snippet}
 
   <Navbar mobileToggle={isMobile ? mobileToggle : undefined}>
-    <Toggle bind:pressed={isHistoryOpen} size="sm" title="History" aria-label="History">
+    <Toggle
+      bind:pressed={isHistoryOpen}
+      size="sm"
+      title={t('editor.historyToggle')}
+      aria-label={t('editor.historyToggle')}>
       <HistoryIcon />
     </Toggle>
     <Share />
@@ -141,7 +149,9 @@
         <Resizable.Handle class="mr-1 hidden opacity-0 sm:block" />
         <Resizable.Pane minSize={15} class="relative flex h-full flex-1 flex-col overflow-hidden">
           <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
-          <div class="absolute top-0 left-5 hidden md:block"><EnhancedEditsButton /></div>
+          {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
+              <EnhancedEditsButton />
+            </div>{/if}
           <div class="absolute top-0 right-0">
             <PanZoomToolbar {panZoomState} fullScreenHref={urls.current.view} />
           </div>

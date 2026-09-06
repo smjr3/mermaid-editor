@@ -1,4 +1,17 @@
 import { C, TID } from '$/constants';
+import { messages } from '$/i18n/messages';
+
+// The app resolves its locale from import.meta.env, which does not exist in
+// Playwright's Node process, so read the same build-time variable directly.
+const testLocale = (process.env.MERMAID_LOCALE ?? 'ja') as keyof typeof messages;
+
+/** Look up the UI string the build under test actually renders. */
+export const t = (key: keyof (typeof messages)['en'], params?: Record<string, string>): string => {
+  const template: string = messages[testLocale][key] ?? messages.en[key];
+  return params
+    ? template.replaceAll(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match)
+    : template;
+};
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
 
@@ -39,11 +52,11 @@ export class EditorPage {
   }
 
   async toggleActions() {
-    await this.page.getByText('Actions', { exact: true }).click();
+    await this.page.getByTestId(TID.actionsCard).click();
   }
 
   async toggleSampleDiagrams() {
-    await this.page.getByText('Sample Diagrams', { exact: true }).click();
+    await this.page.getByTestId(TID.sampleDiagramsCard).click();
   }
 
   async checkAndDownloadPNG(expectedSize: number) {
@@ -62,8 +75,21 @@ export class EditorPage {
     await this.page.getByText(diagramName, { exact: true }).click();
   }
 
+  /**
+   * The view renders asynchronously — a debounced state update, then an async
+   * mermaid parse, then the render itself — and the app deliberately defers
+   * rendering for large diagrams. Playwright's default 5s expect timeout races
+   * all of that, which is what made three separate tests flake under CI's
+   * parallel workers while passing locally. `test.slow()` does not help: it
+   * extends the test's overall budget, not the per-assertion timeout.
+   *
+   * A longer window costs nothing when the text does appear, because the
+   * assertion polls and returns immediately; it only changes how long a
+   * genuinely broken render takes to report. `checkError` below already
+   * carries a raised timeout for the same reason.
+   */
   async checkTextInView(text: string) {
-    await expect(this.view).toContainText(text);
+    await expect(this.view).toContainText(text, { timeout: 15_000 });
   }
 
   async checkTextNotInView(text: string) {
@@ -86,7 +112,8 @@ export class EditorPage {
   }
 
   async setEditorMode(mode: 'Code' | 'Config') {
-    await this.page.getByRole('tab').getByText(mode).click();
+    const label = mode === 'Code' ? t('editor.textTab') : t('editor.configTab');
+    await this.page.getByRole('tab').getByText(label).click();
   }
 
   async checkDocURL(url: string | RegExp) {
@@ -103,7 +130,7 @@ export class EditorPage {
   async checkTheme(theme: 'light' | 'dark') {
     await expect(this.page.getByTestId(TID.themeToggleButton)).toHaveAttribute(
       'title',
-      `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`
+      theme === 'light' ? t('toolbar.switchToDark') : t('toolbar.switchToLight')
     );
   }
 

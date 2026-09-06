@@ -1,4 +1,5 @@
 import { C, defaultState } from '$/constants';
+import { t } from '$/i18n';
 import type { State } from '$/types';
 import type { MermaidConfig } from 'mermaid';
 import { MCBaseURL } from './env';
@@ -108,7 +109,7 @@ export const resolveEmbedSettings = (url: URL): ResolvedEmbed => {
   }
 
   if (hashFailed) {
-    return { error: 'Unable to load the diagram from this URL.' };
+    return { error: t('embed.loadError') };
   }
 
   const code = hashCode ?? (baseState?.code || defaultState.code);

@@ -53,6 +53,7 @@
     "dev:test": "pnpm dev",
     "build": "node scripts/copy-legal-files.js && vite build --config vite.embed.config.js && vite build",
     "build:embed": "vite build --config vite.embed.config.js",
+    "build:pages": "node scripts/prepare-pages.js",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

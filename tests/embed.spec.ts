@@ -2,7 +2,7 @@ import { defaultState, TID } from '$/constants';
 import type { State } from '$/types';
 import { serializeState } from '$/util/serde';
 import { expect, test as base, type Page } from '@playwright/test';
-import { test as editorTest } from './test';
+import { t, test as editorTest } from './test';
 
 const embedHash = (state: Partial<State>): string => serializeState({ ...defaultState, ...state });
 
@@ -13,14 +13,18 @@ const failOnDialog = (page: Page): void => {
 };
 
 base.describe('Embed page', () => {
-  base('should render a diagram from the URL hash with footer links', async ({ page }) => {
-    failOnDialog(page);
-    await page.goto(`/embed#${embedHash({ code: 'graph TD\n  A[Hello embed] --> B[World]' })}`);
-    await expect(page.locator('#embed-container svg')).toBeVisible();
-    await expect(page.locator('#embed-view')).toContainText('Hello embed');
-    await expect(page.getByTestId(TID.embedFooter)).toBeVisible();
-    await expect(page.getByTestId(TID.embedEditLink)).toHaveAttribute('href', /\/edit#pako:/);
-  });
+  base(
+    'should render a diagram from the URL hash with footer links',
+    { tag: '@smoke' },
+    async ({ page }) => {
+      failOnDialog(page);
+      await page.goto(`/embed#${embedHash({ code: 'graph TD\n  A[Hello embed] --> B[World]' })}`);
+      await expect(page.locator('#embed-container svg')).toBeVisible();
+      await expect(page.locator('#embed-view')).toContainText('Hello embed');
+      await expect(page.getByTestId(TID.embedFooter)).toBeVisible();
+      await expect(page.getByTestId(TID.embedEditLink)).toHaveAttribute('href', /\/edit#pako:/);
+    }
+  );
 
   base('should hide the toolbar and mode toggle with ?controls=0', async ({ page }) => {
     failOnDialog(page);
@@ -100,13 +104,13 @@ base.describe('Embed page', () => {
 editorTest.describe('Share dialog embed section', () => {
   editorTest('should offer iframe and web component snippets', async ({ editPage, page }) => {
     void editPage;
-    await page.getByRole('button', { name: 'Share' }).click();
+    await page.getByRole('button', { name: t('share.title') }).click();
     const snippet = page.getByTestId(TID.embedSnippet);
     await expect(snippet).toBeVisible();
     await expect(snippet).toHaveValue(/\/embed\?.*#pako:/);
     await expect(snippet).toHaveValue(/<iframe/);
     await expect(snippet).toHaveValue(/sandbox="allow-scripts allow-same-origin/);
-    await page.getByRole('radio', { name: 'Web component' }).click();
+    await page.getByRole('radio', { name: t('share.webComponent') }).click();
     await expect(snippet).toHaveValue(/<mermaid-embed/);
   });
 });

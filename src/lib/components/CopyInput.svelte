@@ -2,11 +2,12 @@
   import CopyButton from '$/components/CopyButton.svelte';
   import { Input } from '$/components/ui/input';
   import type { InputType } from '$/types';
+  import { t } from '$/i18n';
   import { copyToClipboard } from '$/util/util';
 
   let {
     value,
-    label = 'Copy',
+    label = t('actions.copy'),
     type = 'url',
     testID
   }: { value: string; label?: string; type?: InputType; testID?: string } = $props();

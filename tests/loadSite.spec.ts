@@ -1,15 +1,15 @@
 import type { State } from '$/types';
 import assert from 'node:assert';
-import { expect, test } from './test';
+import { expect, t, test } from './test';
 
 test.describe('Site Loads', () => {
-  test('Check Home page load', async ({ editPage }) => {
+  test('Check Home page load', { tag: '@smoke' }, async ({ editPage }) => {
     await editPage.setEditorMode('Config');
     const codeStore = await editPage.page.evaluate(() => localStorage.getItem('codeStore'));
     expect(codeStore).toBeTruthy();
   });
 
-  test('should keep code after reload', async ({ editPage, page }) => {
+  test('should keep code after reload', { tag: '@smoke' }, async ({ editPage, page }) => {
     await editPage.checkInEditor('Car');
     await editPage.checkTextInView('Car');
     await page.reload();
@@ -38,9 +38,9 @@ test.describe('Site Loads', () => {
       await editPage.start(
         `/edit?gist=https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a`
       );
-      await page.getByText('History').click();
+      await page.getByText(t('editor.historyToggle')).click();
       await editPage.checkTextInView('Go shopping!!');
-      await expect(page.getByText('Revisions')).toBeVisible();
+      await expect(page.getByText(t('history.tabRevisions'))).toBeVisible();
       await expect(page.getByText('sidharthv96 v8f8f1e2')).toBeVisible();
       await expect(page.getByText('sidharthv96 v7851e19')).toBeVisible();
       const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
@@ -51,9 +51,9 @@ test.describe('Site Loads', () => {
       await editPage.start(
         '/edit?gist=https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a/ec9b4ab0e41e4ff6287326cd3cb47affd7851e19'
       );
-      await page.getByText('History').click();
+      await page.getByText(t('editor.historyToggle')).click();
       await editPage.checkTextInView('Party');
-      await expect(page.getByText('Revisions')).toBeVisible();
+      await expect(page.getByText(t('history.tabRevisions'))).toBeVisible();
       await expect(page.getByText('sidharthv96 v7851e19')).toBeVisible();
       const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
       expect(codeStore).toBeTruthy();
@@ -110,12 +110,16 @@ test.describe('Site Loads', () => {
   test('should show troubleshooting steps if loading fails', async ({ editPage, page }) => {
     await editPage.start('/#/edit/eyJjb2RlIjoiZ3JhcGggVERcbiAg');
     await page.reload({ waitUntil: 'networkidle' });
-    await editPage.checkTextInView('Please Click here to Raise an issue in github.');
+    // Node A of the troubleshooting diagram, taken from the catalogue so the
+    // assertion follows the translation instead of drifting from it.
+    const heading = /A\[([^\]]+)]/.exec(t('error.urlParseFailedDiagram'))?.[1];
+    assert(heading);
+    await editPage.checkTextInView(heading);
   });
 });
 
 test.describe('Verify types of URLs', () => {
-  test('should load compressed URL', async ({ editPage }) => {
+  test('should load compressed URL', { tag: '@smoke' }, async ({ editPage }) => {
     await editPage.start(
       '/edit#pako:eNpVkM2KwkAQhF-l6dMK5gVyEDRxvYi7sF6WjIcm0zqDzg_jBJEk725Hd2G3Tw31VVFUj23QjCWeEkUD-1p5kFs2O77BN1M6QFEshg1ncMHzfYDV2ybA1YQYrT_NXvhqgqDqtxPGkI315_ElVU__h-cB6mZLMYd4-Kvsb2GAdWM_jcT_V0xicb03RyqPVLSUoJI-OEfHyZHV0rqfDAqzYccKS3k1pbNC5Ufhuqgp81rbHBJKxuXKc6Quh6-7b7HMqeNfqLYkC7gfanwAlW1ZvQ'
     );

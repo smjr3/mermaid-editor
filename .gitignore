@@ -6,6 +6,7 @@
 /build
 /coverage
 /docs
+/public
 /functions
 /node_modules
 /snapshots.js

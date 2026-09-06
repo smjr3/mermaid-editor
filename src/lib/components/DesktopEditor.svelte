@@ -235,20 +235,22 @@
 <div class="relative h-full grow overflow-hidden">
   <div bind:this={divElement} id="editor" class="h-full w-full"></div>
   <div bind:this={aiPromptPopupElement}>
-    <AIPromptPopup
-      show={showPopup}
-      bind:input
-      onHeightChange={(height) => aiPromptManager.updateHeight(height)}
-      onClose={closePopup}
-      onTryFree={() => {
-        logMermaidChartClick('vibeDiagramming');
-        window.open(
-          urls.current.mermaidChart({ medium: 'vibe_diagramming' }).save,
-          '_blank',
-          'noopener'
-        );
-        closePopup();
-      }} />
+    {#if env.isEnabledAiFeatures}
+      <AIPromptPopup
+        show={showPopup}
+        bind:input
+        onHeightChange={(height) => aiPromptManager.updateHeight(height)}
+        onClose={closePopup}
+        onTryFree={() => {
+          logMermaidChartClick('vibeDiagramming');
+          window.open(
+            urls.current.mermaidChart({ medium: 'vibe_diagramming' }).save,
+            '_blank',
+            'noopener'
+          );
+          closePopup();
+        }} />
+    {/if}
   </div>
 </div>
 

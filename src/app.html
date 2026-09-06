@@ -11,7 +11,9 @@
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
     <link rel="apple-touch-icon" href="%sveltekit.assets%/favicon.png" />
     <link rel="mask-icon" href="%sveltekit.assets%/favicon.svg" color="#000000" />
-    <meta name="theme-color" content="#ff3670" />
+    <!-- The app follows the OS colour scheme, so the browser chrome does too. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#096790" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#29cbe0" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.json" />
     %sveltekit.head%
   </head>

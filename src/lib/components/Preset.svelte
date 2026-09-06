@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { TID } from '$/constants';
+  import { t } from '$/i18n';
   import Card from '$/components/Card/Card.svelte';
   import { Button, buttonVariants } from '$/components/ui/button';
   import * as Popover from '$/components/ui/popover';
@@ -69,7 +71,12 @@
   ];
 </script>
 
-<Card title="Sample Diagrams" isOpen isStackable icon={{ component: ShapesIcon }}>
+<Card
+  title={t('preset.title')}
+  testID={TID.sampleDiagramsCard}
+  isOpen
+  isStackable
+  icon={{ component: ShapesIcon }}>
   <div class="flex h-fit max-h-52 flex-wrap gap-2 overflow-y-auto p-2">
     {#each diagramOrder as sample (sample)}
       {@const examples = samples[sample]}

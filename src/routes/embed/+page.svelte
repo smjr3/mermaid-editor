@@ -4,6 +4,7 @@
   import PanZoomToolbar from '$/components/PanZoomToolbar.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
+  import { t } from '$/i18n';
   import {
     buildEditUrl,
     buildSaveUrl,
@@ -52,7 +53,7 @@
 </script>
 
 <svelte:head>
-  <title>Mermaid diagram</title>
+  <title>{t('embed.title')}</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 
@@ -65,8 +66,10 @@
           class="max-w-md rounded-lg border bg-card p-4 text-center text-sm text-card-foreground shadow-sm">
           <p>{resolved.error}</p>
           <p class="mt-2 text-muted-foreground">
-            Check that the link is complete, or
-            <a class="underline" href={resolve('/edit', {})}>create a new diagram</a>.
+            {t('embed.errorHintBefore')}
+            <a class="underline" href={resolve('/edit', {})}>{t('embed.createNew')}</a>{t(
+              'embed.errorHintAfter'
+            )}
           </p>
         </div>
       </div>
@@ -91,7 +94,7 @@
           class="absolute top-2 left-2"
           variant="ghost"
           size="icon"
-          title="Toggle light / dark"
+          title={t('embed.toggleMode')}
           onclick={flipMode}>
           {#if settings.mode === 'dark'}
             <LightModeIcon />
@@ -124,7 +127,7 @@
           target="_blank"
           rel="noreferrer noopener"
           class="text-muted-foreground hover:text-foreground">
-          Edit
+          {t('embed.edit')}
         </a>
         {#if env.isEnabledMermaidChartLinks}
           <a

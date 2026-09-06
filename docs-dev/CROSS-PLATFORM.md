@@ -2,9 +2,15 @@
 
 The production runner may be Windows, so every step the build and deploy path
 takes has to behave identically on both. The rule this repository follows is:
-**anything CI runs is either a package-manager invocation or a Node script.**
-No shell builtins, no Unix-only commands, no shell operators beyond `&&` between
-whole commands.
+**every step CI invokes directly is either a package-manager invocation or a Node
+script** — no shell builtins, no Unix-only commands, no shell operators beyond
+`&&` between whole commands.
+
+One thing sits outside that rule and is called out rather than hidden by it:
+`postinstall`, which `pnpm install` triggers rather than CI invoking it, still uses
+`||` and parenthesised groups. Both are cmd.exe syntax as well as POSIX syntax, so
+the form is believed portable — but **that has not been executed on Windows**, and
+the section below says what would settle it.
 
 ## What CI runs
 
@@ -43,19 +49,61 @@ so it only constrains future checkouts.
 
 ## postinstall
 
-`postinstall` is `node scripts/postinstall.js` rather than a shell chain. It had
-been:
+Upstream's `postinstall`, at `vendorBaseCommit`, was:
 
 ```
-(husky install || true) && svelte-kit sync && (git config … || true)
+husky install && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || true)
 ```
 
-`true` is not a command on Windows. The guards existed precisely for installing
+`true` is not a command on Windows. That one guard existed precisely for installing
 the published tarball, which ships no `.git` — so on Windows the fallback failed
 and took `npm install` down with it, in exactly the case it was written for.
-Node behaves identically on both platforms, so the optionality lives there now:
-`husky install` and `git config` are optional and log a skip, `svelte-kit sync`
-is required and fails the install.
+
+**Two things changed, not one.** The current value is:
+
+```
+(husky install || node -e "process.exit(0)") && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || node -e "process.exit(0)")
+```
+
+1. Upstream's `|| true` became `|| node -e "process.exit(0)"`. Node is already a hard
+   dependency and behaves identically on both platforms, so the guard no longer
+   depends on a Unix builtin. This is the portability half.
+2. **`husky install` gained a guard it never had upstream.** That half is not about
+   Windows at all. `husky` is a devDependency, so it is absent exactly when this
+   package is installed _as a dependency_ — the case publishing to npm creates. With
+   no `husky` on `PATH` the shell exits 127 and upstream's `&&` chain aborts before
+   `svelte-kit sync`, on every platform. Measured, both forms, `husky` removed from
+   `PATH`: upstream's exits 127 and never reaches the next command; this one
+   continues and exits 0.
+
+   The guard is **not** for a missing `.git`, which is the intuitive reading and is
+   wrong: husky 9.1.7 — the version pinned both here and at `vendorBaseCommit` —
+   prints `.git can't be found` and still exits 0. If the pin ever moves to a husky
+   that exits non-zero there, this guard starts covering that case too, but today it
+   does not.
+
+`svelte-kit sync` stays unguarded and fails the install, as it should — it generates
+`.svelte-kit`, which the build and the typecheck both need.
+
+Reconstructing this during an upstream merge as "take their line and replace the
+`|| true`" restores unguarded `husky install` and breaks installs of the published
+package. Take the whole line, and note that a future upstream may add its own guard
+there, in which case only change (1) remains local.
+
+This is the one place the rule at the top of this document is bent. `||` and
+parenthesised groups are valid in cmd.exe as well as in POSIX shells, so the chain
+should work — but "should" is doing real work in that sentence, and unlike the rest
+of this document it is **not backed by an execution**. Running `pnpm install` once
+on the Windows runner settles it; until then treat the postinstall path as the
+weakest Windows claim here.
+
+**`scripts/postinstall.js` is in the tree but nothing invokes it.** An earlier
+version of this work routed `postinstall` through that wrapper, which needed no
+shell operators at all; `eafb559` chose the inline form instead and the file was
+left behind. Until that is resolved it is a decoy: editing it changes nothing. Do
+not debug it expecting `npm install` to run it. Restoring the wrapper is also the
+change that would bring `postinstall` back inside the rule above, if the Windows
+run turns out badly.
 
 ## A trap worth knowing about
 
@@ -67,15 +115,32 @@ every CI run and dirtying the working tree. The config now sets
 `publicDir: false`; the embed bundle is a single library entry with no public
 assets. `public/` is also gitignored.
 
-## Known Unix-only script, deliberately unchanged
+## `dev:force`, and a judgement that was overruled
 
-`dev:force` is `MERMAID_LOCAL=true pnpm dev --force`. Inline environment
-assignment is POSIX-shell syntax and fails on cmd.exe. It is left as upstream
-wrote it because `MERMAID_LOCAL` is read by nothing in this repository
-(`git grep MERMAID_LOCAL` matches only that line), so the script is equivalent
-to `pnpm dev --force` — which is what a Windows developer should run instead. It
-is a developer convenience and never runs on the production runner, so changing
-it would add upstream delta for no behavioural gain.
+`dev:force` was `MERMAID_LOCAL=true pnpm dev --force`. Inline environment
+assignment is POSIX-shell syntax and fails on cmd.exe, so the script was broken on
+Windows like the others — but this document argued for leaving it alone, on the
+grounds that `MERMAID_LOCAL` is read by nothing in the repository, making the
+script equivalent to `pnpm dev --force`, which a Windows developer could run
+instead.
+
+An adversarial review rejected that, and was right to. The premise held — nothing
+reads `MERMAID_LOCAL` even now — but the conclusion did not follow: a developer who
+runs the script the project documents gets a failure, and "there is an equivalent
+command you could have run instead" is no help to someone who did not know that.
+Every entry point a developer or CI runs to build, test or package this project was
+made to work on Windows; leaving one of those broken is a worse outcome than one more
+small local file. (`scripts/update-upstream.sh` is the deliberate exception — it is a
+maintenance script for importing upstream, is Bash-only, and `UPSTREAM.md` sends
+Windows users to WSL for it.)
+
+`dev:force` is now `node scripts/dev-force.js`, which spawns the package manager
+through `process.execPath` and passes `MERMAID_LOCAL` in the child's environment.
+It runs on cmd.exe, PowerShell and sh alike.
+
+The general lesson, since this document exists to record them: "a broken thing has
+a working equivalent" is not a reason to leave it broken. It only relocates the
+cost onto whoever hits it first.
 
 ## Verified
 
@@ -89,9 +154,29 @@ On Linux, Node 24.16.0:
 - `git clean` plus a single build confirms a clean build does not write into
   `static/`; injecting a canary file into `public/` reproduced the old leak and
   confirmed `publicDir: false` stops it.
+- Both `postinstall` chains run with `husky` removed from `PATH` — upstream's exits
+  127 and never reaches `svelte-kit sync`, the local one exits 0 and continues. Also
+  `husky install` outside a git worktree, which exits **0** on the pinned 9.1.7, which
+  is why the section above says the guard is not for the missing-`.git` case.
+- `npm_execpath` read from inside a `pnpm run` script, to confirm it names a `.cjs`
+  entry point rather than a shim.
 
-The Windows half is reasoned from the mechanisms above, not executed — there is
-no Windows host in the development environment. The claims that rest on this are
-narrow: `spawnSync(command, { shell: true })` resolves `node_modules/.bin`
-`.cmd` shims on Windows, and `renameSync`/`rmSync` are platform-neutral. **Run
-the pipeline once on the real runner before relying on it.**
+The Windows half is reasoned from the mechanisms above, not executed — there is no
+Windows host in the development environment. Three mechanisms carry it, one per
+active entry point:
+
+- **`postinstall`** (the inline chain) — `&&`, `||` and parenthesised groups parse in
+  cmd.exe, and the package manager puts `node_modules/.bin` `.cmd` shims on `PATH` so
+  `husky` and `svelte-kit` resolve. The weakest of the three, for the reason the
+  section above gives.
+- **`scripts/dev-force.js`** — `npm_execpath` names the package manager's own JS entry
+  point, so `spawnSync(process.execPath, [that, …])` starts it with no shell and no
+  shim resolution in the path at all. Confirmed here to be
+  `…/corepack/v1/pnpm/10.34.5/bin/pnpm.cjs`, a plain `.cjs` file. The strongest of the
+  three, because it removes the shell rather than relying on it.
+- **`scripts/prepare-pages.js`** — `renameSync` and `rmSync` are platform-neutral.
+
+None of those is the `spawnSync(command, { shell: true })` in `scripts/postinstall.js`.
+Nothing invokes that file, so how it would behave on Windows is not evidence for
+anything this repository actually runs — it was cited here before, and that citation
+was wrong. **Run the pipeline once on the real runner before relying on it.**

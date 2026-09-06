@@ -17,7 +17,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **82**.
+  every locally changed path — currently **84**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -99,10 +99,30 @@ WebKit-only defect reported by a user.
 - **`vendor/upstream` must not be deleted.** It is the base against which upstream updates
   are merged, and `.upstream-version.json` records the commit (`vendorBaseCommit`) the
   inventory is derived from.
-- **Regenerate the inventory last.** `UPSTREAM.md`'s table of locally changed paths is
-  produced by the command that document names. Regenerating it before other edits in the same
-  commit leaves it stale by exactly those edits — that has happened once and was caught in
-  review.
+- **Regenerate the inventory last, and against the merge base you will actually land on.**
+  `UPSTREAM.md`'s table of locally changed paths is produced by the command that document
+  names. Two ways it goes stale, both of which have now happened:
+  - Regenerating it _before_ the other edits in the same commit leaves it short by exactly
+    those edits. Caught in review.
+  - Regenerating it on a branch whose base has since moved leaves it short by whatever landed
+    on `master` meanwhile — `scripts/dev-force.js` was missed this way. Re-check **after**
+    merging, not only before.
+
+  Compare the entries, not the totals: one path added while another is reverted leaves the
+  count unchanged and the table still wrong. Diff the two sets, which is what actually found
+  the missed path:
+
+  Compare the **status letter as well as the path**: an upstream update that starts tracking a
+  file this fork added flips its row from `A` to `M`, which a path-only comparison cannot see.
+
+  ```sh
+  vendor_base=$(node -p "require('./.upstream-version.json').vendorBaseCommit")
+  git diff --name-status "$vendor_base" HEAD | awk '{print $1, $2}' | sort > /tmp/actual
+  grep -oE '^\| (Modified|Added|Deleted) +\| `[^`]+`' docs-dev/UPSTREAM.md \
+    | sed -E 's/^\| (.)[a-z]+ +\| `(.*)`/\1 \2/' | sort > /tmp/table
+  diff /tmp/actual /tmp/table
+  ```
+
 - **Node.js 24.16.0** is required (`engines`, and `.node-version`). pnpm 10.34.5 via
   `corepack enable pnpm`.
 - eslint enforces alphabetically sorted keys on objects with 5+ keys under `src/`, which the

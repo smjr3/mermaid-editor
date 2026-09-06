@@ -43,8 +43,7 @@ so it only constrains future checkouts.
 
 ## postinstall
 
-`postinstall` is `node scripts/postinstall.js` rather than a shell chain. It had
-been:
+Upstream's `postinstall` was:
 
 ```
 (husky install || true) && svelte-kit sync && (git config … || true)
@@ -53,9 +52,17 @@ been:
 `true` is not a command on Windows. The guards existed precisely for installing
 the published tarball, which ships no `.git` — so on Windows the fallback failed
 and took `npm install` down with it, in exactly the case it was written for.
-Node behaves identically on both platforms, so the optionality lives there now:
-`husky install` and `git config` are optional and log a skip, `svelte-kit sync`
-is required and fails the install.
+
+It is now the same chain with each `|| true` replaced by
+`|| node -e "process.exit(0)"`. Node is already a hard dependency and behaves
+identically on both platforms, so the guard no longer depends on a Unix builtin;
+`svelte-kit sync` stays unguarded and fails the install, as it should.
+
+**`scripts/postinstall.js` is in the tree but nothing invokes it.** An earlier
+version of this work routed `postinstall` through that wrapper; `eafb559` chose
+the inline form instead and the file was left behind. Until that is resolved it
+is a decoy: editing it changes nothing. Do not debug it expecting `npm install`
+to run it.
 
 ## A trap worth knowing about
 
@@ -80,8 +87,11 @@ An adversarial review rejected that, and was right to. The premise held — noth
 reads `MERMAID_LOCAL` even now — but the conclusion did not follow: a developer who
 runs the script the project documents gets a failure, and "there is an equivalent
 command you could have run instead" is no help to someone who did not know that.
-Every other entry point in this repository was made to work on Windows; leaving one
-that fails is a worse outcome than one more small local file.
+Every entry point a developer or CI runs to build, test or package this project was
+made to work on Windows; leaving one of those broken is a worse outcome than one more
+small local file. (`scripts/update-upstream.sh` is the deliberate exception — it is a
+maintenance script for importing upstream, is Bash-only, and `UPSTREAM.md` sends
+Windows users to WSL for it.)
 
 `dev:force` is now `node scripts/dev-force.js`, which spawns the package manager
 through `process.execPath` and passes `MERMAID_LOCAL` in the child's environment.

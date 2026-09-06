@@ -107,8 +107,21 @@ WebKit-only defect reported by a user.
   - Regenerating it _before_ the other edits in the same commit leaves it short by exactly
     those edits. Caught in review.
   - Regenerating it on a branch whose base has since moved leaves it short by whatever landed
-    on `master` meanwhile — `scripts/dev-force.js` was missed this way. Re-check the count
-    after merging, not only before.
+    on `master` meanwhile — `scripts/dev-force.js` was missed this way. Re-check **after**
+    merging, not only before.
+
+  Compare the entries, not the totals: one path added while another is reverted leaves the
+  count unchanged and the table still wrong. Diff the two sets, which is what actually found
+  the missed path:
+
+  ```sh
+  vendor_base=$(node -p "require('./.upstream-version.json').vendorBaseCommit")
+  git diff --name-status "$vendor_base" HEAD | awk '{print $2}' | sort > /tmp/actual
+  grep -oE '^\| (Modified|Added|Deleted) +\| `[^`]+`' docs-dev/UPSTREAM.md \
+    | sed 's/.*`\(.*\)`/\1/' | sort > /tmp/table
+  diff /tmp/actual /tmp/table
+  ```
+
 - **Node.js 24.16.0** is required (`engines`, and `.node-version`). pnpm 10.34.5 via
   `corepack enable pnpm`.
 - eslint enforces alphabetically sorted keys on objects with 5+ keys under `src/`, which the

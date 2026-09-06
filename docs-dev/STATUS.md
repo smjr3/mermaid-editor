@@ -64,14 +64,22 @@ navbar, the favicons and `manifest.json`.
 editor unchanged. Sample diagram names stay in English on purpose — they are keys into
 `@mermaid-js/examples`.
 
-**The audit's three findings are closed** (`QUALITY-AUDIT-2026-08-31.md`). Each has a
-follow-up section in that document. Finding 3 added a Firefox project to the e2e suite, which
-in turn exposed a latent CI misconfiguration that only a second browser engine could reveal.
+**The audit's three findings each have a follow-up** (`QUALITY-AUDIT-2026-08-31.md`), but
+"followed up" is not the same as "finished" and the difference matters:
+
+- **Finding 2** (a hoisted test mock) is resolved outright.
+- **Finding 3** (Chromium-only e2e) is resolved as a deliverable — Firefox now runs the
+  `@smoke` journeys, which in turn exposed a latent CI misconfiguration that only a second
+  browser engine could reveal. WebKit is a deliberate exclusion carrying a reopen condition.
+- **Finding 1** (dependency advisories) is **half resolved**. The reachability question it
+  asks is answered for the high-severity advisories and unanswered for the ones that actually
+  ship. See _What is open_.
 
 ## What is open
 
 Two items, both recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue tracker —
-that is where this project tracks findings, and the owner chose to keep it that way.
+that is where this project tracks findings, and the owner chose to keep it that way. The first
+is unfinished work; the second is a standing decision with a condition that reopens it.
 
 **DOMPurify version attribution.** The audit's three _high_ severity advisories are `postcss`
 and `nanoid` reached through `@zenuml/core > tailwindcss`, a build-time CSS toolchain; a search
@@ -121,7 +129,20 @@ Two facts that cost time to rediscover:
 
 ## Known-red check
 
-`Analyze (javascript)` (CodeQL) fails on every pull request and is expected: SARIF upload
-requires code scanning, which is unavailable while the repository is private. It is not a
-code defect. Leave it, or make the repository public — there is no third option short of
-deleting the workflow.
+`Analyze (javascript)` (CodeQL) fails on every pull request: SARIF upload requires code
+scanning, which is unavailable while the repository is private. It is not a code defect.
+
+The owner has chosen to tolerate it, and that is a defensible choice — but it is a choice, and
+it has a cost worth naming: a permanently red check hides a _new_ CodeQL failure, because
+nobody looks at a signal that is always red. The options, so a maintainer is not left thinking
+there are only two:
+
+| Option                                    | Effect                                                                                                                                                                                                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Leave it (current)                        | Every PR shows one red check. Cheapest, and the failure is understood                                                                                                                                                                                    |
+| Make the repository public                | The check starts passing; a product decision, not a CI one                                                                                                                                                                                               |
+| Disable the workflow from the Actions tab | Stops it running without touching the tree or adding upstream delta; re-enable in one click                                                                                                                                                              |
+| Gate the job on repository visibility     | Keeps it in the tree and self-documenting, but edits an upstream file and so adds a path to the local-change inventory. The exact expression needs checking against the events this workflow uses — it triggers on `push`, `pull_request` and `schedule` |
+
+Deleting the workflow is the one option to avoid: it loses the analysis for the day the
+repository does go public.

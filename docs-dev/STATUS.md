@@ -71,22 +71,19 @@ editor unchanged. Sample diagram names stay in English on purpose — they are k
 - **Finding 3** (Chromium-only e2e) is resolved as a deliverable — Firefox now runs the
   `@smoke` journeys, which in turn exposed a latent CI misconfiguration that only a second
   browser engine could reveal. WebKit is a deliberate exclusion carrying a reopen condition.
-- **Finding 1** (dependency advisories) is **half resolved**. The reachability question it
-  asks is answered for the high-severity advisories and unanswered for the ones that actually
-  ship. See _What is open_.
+- **Finding 1** (dependency advisories) is resolved. The final Monaco-specific DOMPurify override
+  was applied only after separate regression testing; the production audit now reports zero
+  advisories.
 
 ## What is open
 
-Two items, both recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue tracker —
-that is where this project tracks findings, and the owner chose to keep it that way. The first
-is unfinished work; the second is a standing decision with a condition that reopens it.
+One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
+tracker — that is where this project tracks findings, and the owner chose to keep it that way.
 
-**Monaco's DOMPurify pin.** The release dependency refresh resolved all three high-severity
-advisories and updated Mermaid's DOMPurify copy from 3.4.8 to 3.4.15. The remaining 14 moderate
-and 4 low advisories all follow `monaco-editor@0.55.1 -> dompurify@3.2.7`. Monaco requires that
-exact version, so the lockfile cannot safely advance it on its own. Do not force an override
-without separate compatibility evidence; update Monaco when it publishes a compatible release,
-or test and document an override first. The audit records the exact before/after result.
+**Monaco's DOMPurify override.** Monaco still pins a vulnerable DOMPurify release, so pnpm now
+applies a dependency-specific override to use the patched `dompurify@3.4.15`. The production audit
+reports zero advisories. Keep the override covered by editor regression tests, and remove it when
+Monaco directly depends on a non-vulnerable DOMPurify release.
 
 **WebKit coverage.** Safari is a documented exclusion, not a silent gap — nothing is known to
 be broken there, it simply is not exercised, so it is not claimed. Reopen if any of these

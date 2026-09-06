@@ -303,3 +303,20 @@ The required-runtime checks passed after the refresh: type checking, linting, al
 and the production build. The Playwright browser download was blocked by a `403 Domain forbidden`
 response from the browser CDN in this environment, so end-to-end execution remains a CI check and
 must not be represented as locally verified for this release.
+
+## Follow-up — resolve the remaining production advisories (2026-09-06)
+
+The remaining advisories were resolved by adding a narrowly scoped pnpm override for only
+`monaco-editor -> dompurify`. It replaces Monaco's pinned `dompurify@3.2.7` with the patched
+`dompurify@3.4.15` already used by the Mermaid dependency paths. Monaco remains at `0.55.1`, so
+this change does not introduce unrelated editor features or a broader Monaco upgrade.
+
+After regenerating the lockfile, only one DOMPurify version is installed. `pnpm audit --prod`
+reports **0 advisories — 0 critical, 0 high, 0 moderate, and 0 low**. The override is intentionally
+kept specific to Monaco so future dependency changes remain visible instead of silently replacing
+every DOMPurify requirement in the graph.
+
+Because an override changes an upstream package's exact dependency, it requires regression checks
+rather than being treated as risk-free. Type checking, linting, unit tests, the production build,
+and available editor-focused browser tests must pass before release; the override should also be
+removed once Monaco directly depends on a non-vulnerable DOMPurify release.

@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-06**, `master` at the merge of PR #25.
+Accurate as of **2026-09-06**, including the release dependency refresh after the merge of PR #25.
 
 ## What this is
 
@@ -17,7 +17,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **83**.
+  every locally changed path — currently **84**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -81,14 +81,12 @@ Two items, both recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the iss
 that is where this project tracks findings, and the owner chose to keep it that way. The first
 is unfinished work; the second is a standing decision with a condition that reopens it.
 
-**DOMPurify version attribution.** The audit's three _high_ severity advisories are `postcss`
-and `nanoid` reached through `@zenuml/core > tailwindcss`, a build-time CSS toolchain; a search
-of the whole 27 MB production build finds zero occurrences, so they are build-machine exposure,
-not editor-user exposure. What _does_ ship is DOMPurify, and two versions are installed — 3.2.7
-via `monaco-editor`, 3.4.8 via `mermaid`. Which installed copy each remaining advisory applies
-to is **not established**: the bundled copies are minified with renamed identifiers, so
-attributing one to a version needs more than a string search. This is the half that decides
-user-facing risk, and it is unfinished.
+**Monaco's DOMPurify pin.** The release dependency refresh resolved all three high-severity
+advisories and updated Mermaid's DOMPurify copy from 3.4.8 to 3.4.15. The remaining 14 moderate
+and 4 low advisories all follow `monaco-editor@0.55.1 -> dompurify@3.2.7`. Monaco requires that
+exact version, so the lockfile cannot safely advance it on its own. Do not force an override
+without separate compatibility evidence; update Monaco when it publishes a compatible release,
+or test and document an override first. The audit records the exact before/after result.
 
 **WebKit coverage.** Safari is a documented exclusion, not a silent gap — nothing is known to
 be broken there, it simply is not exercised, so it is not claimed. Reopen if any of these

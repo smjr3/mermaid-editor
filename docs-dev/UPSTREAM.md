@@ -375,6 +375,7 @@ modifications as if they were local customizations.
 | Deleted  | `netlify.toml`                                         |
 | Modified | `package.json`                                         |
 | Modified | `playwright.config.ts`                                 |
+| Modified | `pnpm-lock.yaml`                                       |
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/postinstall.js`                               |

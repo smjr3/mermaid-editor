@@ -65,3 +65,9 @@ States loaded from URLs pass through `sanitizeConfig` (state.svelte.ts), which d
 
 - ESLint enforces alphabetically sorted object keys in `src/` for objects with 5+ keys (`sort-keys/sort-keys-fix`), plus typescript-eslint strict and unicorn rules.
 - Unit tests are colocated with source (`*.test.ts` in `src/`); vitest runs with jsdom and also supports in-source tests (`import.meta.vitest`). Playwright e2e specs live in `tests/` and use `data-testid` constants from `src/lib/constants.ts` (`TID`).
+
+## Where the project stands
+
+`docs-dev/STATUS.md` is the handover note and the index to the other `docs-dev/` documents:
+what this fork is and the constraints behind it, what has been delivered, what is still open,
+and the conventions that are easy to break by accident. Read it before starting work here.

@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-04**, `master` at the merge of PR #24.
+Accurate as of **2026-09-06**, including the release dependency refresh after the merge of PR #25.
 
 ## What this is
 
@@ -71,24 +71,19 @@ editor unchanged. Sample diagram names stay in English on purpose — they are k
 - **Finding 3** (Chromium-only e2e) is resolved as a deliverable — Firefox now runs the
   `@smoke` journeys, which in turn exposed a latent CI misconfiguration that only a second
   browser engine could reveal. WebKit is a deliberate exclusion carrying a reopen condition.
-- **Finding 1** (dependency advisories) is **half resolved**. The reachability question it
-  asks is answered for the high-severity advisories and unanswered for the ones that actually
-  ship. See _What is open_.
+- **Finding 1** (dependency advisories) is resolved. The final Monaco-specific DOMPurify override
+  was applied only after separate regression testing; the production audit now reports zero
+  advisories.
 
 ## What is open
 
-Two items, both recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue tracker —
-that is where this project tracks findings, and the owner chose to keep it that way. The first
-is unfinished work; the second is a standing decision with a condition that reopens it.
+One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
+tracker — that is where this project tracks findings, and the owner chose to keep it that way.
 
-**DOMPurify version attribution.** The audit's three _high_ severity advisories are `postcss`
-and `nanoid` reached through `@zenuml/core > tailwindcss`, a build-time CSS toolchain; a search
-of the whole 27 MB production build finds zero occurrences, so they are build-machine exposure,
-not editor-user exposure. What _does_ ship is DOMPurify, and two versions are installed — 3.2.7
-via `monaco-editor`, 3.4.8 via `mermaid`. Which installed copy each remaining advisory applies
-to is **not established**: the bundled copies are minified with renamed identifiers, so
-attributing one to a version needs more than a string search. This is the half that decides
-user-facing risk, and it is unfinished.
+**Monaco's DOMPurify override.** Monaco still pins a vulnerable DOMPurify release, so pnpm now
+applies a dependency-specific override to use the patched `dompurify@3.4.15`. The production audit
+reports zero advisories. Keep the override covered by editor regression tests, and remove it when
+Monaco directly depends on a non-vulnerable DOMPurify release.
 
 **WebKit coverage.** Safari is a documented exclusion, not a silent gap — nothing is known to
 be broken there, it simply is not exercised, so it is not claimed. Reopen if any of these

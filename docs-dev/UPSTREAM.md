@@ -305,7 +305,7 @@ conflict by keeping upstream's version.
 
 ## Current local file layer
 
-The following list is accurate as of **2026-09-01**. It is a snapshot, not a
+The following list is accurate as of **2026-09-04**. It is a snapshot, not a
 permanent allowlist.
 
 Re-derive it against the **current vendor base** — the `vendorBaseCommit` recorded in
@@ -338,6 +338,7 @@ modifications as if they were local customizations.
 | Modified | `.gitignore`                                           |
 | Added    | `.gitlab-ci.yml`                                       |
 | Added    | `.upstream-version.json`                               |
+| Modified | `CLAUDE.md`                                            |
 | Deleted  | `CNAME`                                                |
 | Added    | `NOTICE`                                               |
 | Modified | `README.md`                                            |
@@ -349,6 +350,7 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/I18N.md`                                     |
 | Added    | `docs-dev/PACKAGING.md`                                |
 | Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                 |
+| Added    | `docs-dev/STATUS.md`                                   |
 | Added    | `docs-dev/THEME.md`                                    |
 | Added    | `docs-dev/UPSTREAM.md`                                 |
 | Added    | `docs-dev/codex/README.md`                             |

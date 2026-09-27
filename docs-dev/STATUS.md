@@ -3,7 +3,8 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-06**, including the release dependency refresh after the merge of PR #25.
+Accurate as of **2026-09-27**, including the release dependency refresh (PR #27) and the
+Monaco DOMPurify override (PR #28).
 
 ## What this is
 

@@ -341,3 +341,22 @@ regression check targeted the chevrotain paths directly: every one of the 79 sam
 error state in the view and no console error. That includes the chevrotain-parsed types — pie,
 packet, gitGraph, architecture, radar, treemap. The Chromium e2e suite passed as well. Remove the
 override once mermaid's `chevrotain` depends on `lodash-es >=4.18.0`.
+
+## Follow-up — Monaco override removed (2026-09-27)
+
+`monaco-editor` 0.57.0 depends on `dompurify@3.4.15` directly (its changelog: "Updates bundled
+DOMPurify from 3.4.8 to 3.4.15"). That is the removal condition recorded above, so the project
+moved from 0.55.1 to 0.57.0 and deleted the `monaco-editor>dompurify` override. After
+regenerating the lockfile `pnpm audit --prod` still reports **0 advisories**; Monaco resolves
+`dompurify@3.4.15` on its own, and mermaid/ZenUML resolve `3.4.16`.
+
+Monaco 0.56 moved its ESM modules behind a package `exports` map, which broke the build on the old
+`monaco-editor/esm/vs/.../*.worker` import paths; the two worker imports in
+`DesktopEditor.svelte` now use the new entry points. Editor regression checks: type checking,
+the production build (the same worker set is emitted as before), the Chromium e2e suite, and a
+manual check in the editor that the custom `mermaid` language still tokenises and that syntax
+errors still produce error markers. (The registered completion provider intentionally returns no
+suggestions, before and after.)
+
+Because upstream is still on Monaco 0.55.1, `UPSTREAM.md` now records that an upstream merge must
+not take Monaco back below 0.57.0.

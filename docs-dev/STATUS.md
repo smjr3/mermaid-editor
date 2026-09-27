@@ -3,22 +3,23 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-27**, including the release dependency refresh (PR #27) and the
-Monaco DOMPurify override (PR #28).
+Accurate as of **2026-09-27**, including the release dependency refresh (PR #27), the
+Monaco DOMPurify override (PR #28), and the upstream merge that brought mermaid 12.
 
 ## What this is
 
 `@smjr3/mermaid-editor` is a fork of [mermaid-live-editor](https://github.com/mermaid-js/mermaid-live-editor),
-imported at upstream **2.0.67**, customised for internal organisational use.
+imported at upstream **2.0.67** and last merged from upstream commit `e5e2ca4` (2026-09-22), customised for internal organisational use.
 
 The standing constraints, which shape almost every decision recorded here:
 
 - **Swimlane support** is the reason for the fork. It arrived in mermaid 11.16.0; this
-  fork renders with `mermaid ^11.17.2`, so `swimlane-beta` is available.
+  fork renders with `mermaid ^12.0.0`, so `swimlane-beta` is available. mermaid 12 kept the
+  `swimlane-beta` keyword (its detector is unchanged from 11.17.2), so saved diagrams still render.
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **84**.
+  every locally changed path — currently **88**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -86,6 +87,11 @@ applies a dependency-specific override to use the patched `dompurify@3.4.15`. Th
 reports zero advisories. Keep the override covered by editor regression tests, and remove it when
 Monaco directly depends on a non-vulnerable DOMPurify release.
 
+**The `lodash-es` override.** mermaid 12 depends on `chevrotain ~11.1.2`, which (with two of its
+`@chevrotain/*` packages) pins `lodash-es@4.17.23` exactly — vulnerable to a high and a moderate
+advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1`; see
+`QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
+
 **WebKit coverage.** Safari is a documented exclusion, not a silent gap — nothing is known to
 be broken there, it simply is not exercised, so it is not claimed. Reopen if any of these
 becomes true: a request to support Safari, a macOS or iOS user of this deployment, or a
@@ -128,7 +134,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 110 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 141 tests) and `pnpm test:e2e` (Playwright).
 
 The e2e suite runs **Chromium** for everything and **Firefox** for six `@smoke`-tagged
 journeys — load, edit/render, persistence, embed. `README.md` states the supported-browser

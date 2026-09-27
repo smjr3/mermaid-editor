@@ -16,7 +16,7 @@ a static site.
 `@smjr3/mermaid-editor` で配布し、静的サイトとしてデプロイできます。
 
 - 上流: mermaid-js/mermaid-live-editor（MIT ライセンス、Copyright (c) 2020 - 2023 Knut Sveidqvist）
-- 取り込み元コミット: `990dd241f2acf39c10db9da94464cbb833150426`（上流バージョン 2.0.67）
+- 取り込み元コミット: `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc`（上流バージョン 2.0.67、2026-09-27 取り込み）
 - 本プロジェクトは**非公式**の派生版です。Mermaid チームによる承認・関連付けはありません。
   公式インスタンスは <https://mermaid.live> です。
 - ライセンスは MIT。上流の MIT ライセンスを継承します。詳細は `LICENSE` / `NOTICE` /
@@ -34,9 +34,9 @@ distributed under the MIT License.
 - **Upstream repository:** <https://github.com/mermaid-js/mermaid-live-editor>
 - **Upstream copyright:** Copyright (c) 2020 - 2023 Knut Sveidqvist
 - **Upstream license:** MIT
-- **Imported commit:** `990dd241f2acf39c10db9da94464cbb833150426` (branch `master`)
+- **Imported commit:** `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (branch `master`)
 - **Upstream version:** 2.0.67
-- **Snapshot date:** 2026-08-25
+- **Snapshot date:** 2026-09-27 (first imported 2026-08-25 at `990dd241f2acf39c10db9da94464cbb833150426`)
 
 Upstream publishes no git tags, so the import is identified by commit SHA.
 
@@ -71,8 +71,9 @@ Upstream's editor feature set is included as-is at version 2.0.67:
 - Pan/zoom, hand-drawn ("rough") rendering, sample diagrams, and a session diagram history
 - Additional layout and renderer plugins: ELK layout, tidy-tree layout, and ZenUML
 
-Rendering uses `mermaid` `^11.17.2`, so the mermaid 11.17 diagram set is available — including
-swimlane diagrams (`swimlane-beta`), which were added in mermaid 11.16.0.
+Rendering uses `mermaid` `^12.0.0`, so the mermaid 12 diagram set is available — including
+swimlane diagrams (`swimlane-beta`), which were added in mermaid 11.16.0. The keyword is unchanged
+in mermaid 12, so diagrams saved under mermaid 11 keep rendering.
 
 ## Requirements
 
@@ -124,7 +125,8 @@ The repository is layered so that upstream code and local customization stay sep
 1. **The first commit is a byte-exact import** of the upstream tree at
    `990dd241f2acf39c10db9da94464cbb833150426`. No local edits are mixed into it.
 2. **All local changes sit on top of that import** as separate commits, so diffing against the
-   import always shows exactly what this distribution changes.
+   current vendor base (`vendorBaseCommit` in `.upstream-version.json`) shows exactly what this
+   distribution changes.
 3. **Upstream updates are pulled in via a vendor branch rooted at that import commit.** New
    upstream snapshots land on the vendor branch and are merged forward, which keeps the derivative
    layer intact and keeps merge conflicts limited to files this project actually customizes.

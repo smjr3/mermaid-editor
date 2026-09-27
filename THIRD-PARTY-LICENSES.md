@@ -20,13 +20,13 @@ outside the redistributed output.
 
 ## License summary
 
-Production dependency tree at the snapshot described below: **306 packages**.
+Production dependency tree at the snapshot described below: **320 packages**.
 
 | Count | License                                    |
 | ----: | ------------------------------------------ |
-|   234 | MIT                                        |
-|    38 | ISC                                        |
-|    15 | Apache-2.0                                 |
+|   241 | MIT                                        |
+|    40 | ISC                                        |
+|    20 | Apache-2.0                                 |
 |    11 | BSD-3-Clause                               |
 |     1 | OFL-1.1                                    |
 |     1 | (MPL-2.0 OR Apache-2.0)                    |
@@ -45,7 +45,8 @@ tree.** Every license above is permissive, or — in the case of EPL-2.0 and MPL
 
 ### `elkjs` — EPL-2.0 (Eclipse Public License 2.0)
 
-Reaches this project through `@mermaid-js/layout-elk`, which provides the ELK layout engine. Its
+Reaches this project through `mermaid` itself, which bundles the ELK layout engine since mermaid 12
+(it previously came through `@mermaid-js/layout-elk`, no longer a dependency). Its
 code **is bundled into the built JavaScript** of the static site, so it is redistributed with every
 deployment.
 
@@ -105,8 +106,9 @@ redistribution solely from the dependency section in `package.json`.
 
 The counts above are a **point-in-time snapshot**, taken against:
 
-- upstream commit `990dd241f2acf39c10db9da94464cbb833150426` (upstream version 2.0.67)
-- the `pnpm-lock.yaml` committed at that upstream commit
+- upstream commit `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (upstream version 2.0.67), merged
+  on 2026-09-27
+- this repository's `pnpm-lock.yaml` after that merge, including its `pnpm.overrides`
 
 Dependency versions — and therefore this table — will change whenever the lockfile changes.
 **Regenerate this file after any dependency update or upstream merge**, and re-check the

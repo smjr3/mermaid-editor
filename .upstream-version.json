@@ -1,11 +1,11 @@
 {
   "upstreamUrl": "https://github.com/mermaid-js/mermaid-live-editor",
   "trackedBranch": "master",
-  "importedCommit": "990dd241f2acf39c10db9da94464cbb833150426",
-  "importedTree": "5d4bc43bae3d20f02e92bc5ce4dd40c9a68cbf2e",
+  "importedCommit": "e5e2ca41e96c93b30abd4a60c0f2be727019e8bc",
+  "importedTree": "0ef06edd192dfa4bc64265e4227119164bae2e90",
   "upstreamVersion": "2.0.67",
-  "importDate": "2026-08-25",
-  "vendorBaseCommit": "d4f0d4317a8aa225ba1796ce98df9fb0ac8b7fde",
+  "importDate": "2026-09-27",
+  "vendorBaseCommit": "4bd42b27b3e16a54ef8a265245d354e05dc27d91",
   "vendorBranch": "vendor/upstream",
   "upstreamLicense": "MIT"
 }

@@ -48,6 +48,10 @@ Satisfied by upstream 2.0.67, which pins `mermaid ^11.17.2`. Swimlanes arrived i
 mermaid **11.16.0** (verified absent in 11.15.0). Rendering was confirmed end-to-end in
 headless Chromium.
 
+Still satisfied after the 2026-09-27 upstream merge, which moved to `mermaid ^12.0.0`: the
+detector regex below is byte-identical in 12.0.0, and the example was re-rendered in the editor
+(`aria-roledescription="swimlane"`, no console errors).
+
 The keyword is `swimlane-beta`; detection regex is `/^\s*swimlane-beta\b/`. It is
 implemented as the flowchart grammar with `createFlowDiagram({ defaultLayout: "swimlane" })`,
 so **lanes are expressed as subgraphs**. Verified working example:

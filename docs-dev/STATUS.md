@@ -73,19 +73,14 @@ editor unchanged. Sample diagram names stay in English on purpose — they are k
 - **Finding 3** (Chromium-only e2e) is resolved as a deliverable — Firefox now runs the
   `@smoke` journeys, which in turn exposed a latent CI misconfiguration that only a second
   browser engine could reveal. WebKit is a deliberate exclusion carrying a reopen condition.
-- **Finding 1** (dependency advisories) is resolved. The final Monaco-specific DOMPurify override
-  was applied only after separate regression testing; the production audit now reports zero
-  advisories.
+- **Finding 1** (dependency advisories) is resolved. The Monaco-specific DOMPurify override that
+  closed it has since been removed again: Monaco 0.57.0 depends on the patched
+  `dompurify@3.4.15` itself. The production audit reports zero advisories.
 
 ## What is open
 
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
 tracker — that is where this project tracks findings, and the owner chose to keep it that way.
-
-**Monaco's DOMPurify override.** Monaco still pins a vulnerable DOMPurify release, so pnpm now
-applies a dependency-specific override to use the patched `dompurify@3.4.15`. The production audit
-reports zero advisories. Keep the override covered by editor regression tests, and remove it when
-Monaco directly depends on a non-vulnerable DOMPurify release.
 
 **The `lodash-es` override.** mermaid 12 depends on `chevrotain ~11.1.2`, which (with two of its
 `@chevrotain/*` packages) pins `lodash-es@4.17.23` exactly — vulnerable to a high and a moderate

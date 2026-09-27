@@ -153,7 +153,7 @@
     "lodash-es": "^4.18.1",
     "mermaid": "^12.0.0",
     "mode-watcher": "^1.1.0",
-    "monaco-editor": "0.55.1",
+    "monaco-editor": "0.57.0",
     "pako": "2.1.0",
     "plausible-tracker": "^0.3.9",
     "random-word-slugs": "0.1.7",
@@ -173,7 +173,6 @@
   "packageManager": "pnpm@10.34.5+sha512.a4ee05f2f73658255bd6a89859c065a45c28a57daefae2c893a168ee2b73168c37b91e83e57ea67654ad03f03031746430e8bce38e362e042605fb8abc80192e",
   "pnpm": {
     "overrides": {
-      "monaco-editor>dompurify": "3.4.15",
       "lodash-es@<4.18.0": "4.18.1"
     },
     "onlyBuiltDependencies": [

@@ -38,6 +38,15 @@ export const shouldRefreshView = (): boolean => {
   return shouldSync;
 };
 
+/**
+ * The view already shows the latest state, so a render that was deferred will
+ * not happen. Release anyone waiting for it; otherwise `waitForRender` never
+ * settles (PNG export would hang once a render counted as slow).
+ */
+export const markViewCurrent = (): void => {
+  resolveRenderPromise?.();
+};
+
 export const waitForRender = (): Promise<void> => {
   return renderPromise ?? Promise.resolve();
 };

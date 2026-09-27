@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { State, ValidatedState } from '$/types';
-  import { recordRenderTime, shouldRefreshView } from '$/util/autoSync';
+  import { markViewCurrent, recordRenderTime, shouldRefreshView } from '$/util/autoSync';
   import { PanZoomState } from '$/util/panZoom';
   import { renderAndPlaceDiagram } from '$/util/renderView';
   import { updateCodeStore, validatedState } from '$/util/state.svelte';
@@ -58,6 +58,7 @@
           rough === state.rough &&
           panZoom === state.panZoom
         ) {
+          markViewCurrent();
           return;
         }
 

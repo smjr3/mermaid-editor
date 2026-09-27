@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **88**.
+  every locally changed path — currently **89**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -73,24 +73,25 @@ editor unchanged. Sample diagram names stay in English on purpose — they are k
 - **Finding 3** (Chromium-only e2e) is resolved as a deliverable — Firefox now runs the
   `@smoke` journeys, which in turn exposed a latent CI misconfiguration that only a second
   browser engine could reveal. WebKit is a deliberate exclusion carrying a reopen condition.
-- **Finding 1** (dependency advisories) is resolved. The final Monaco-specific DOMPurify override
-  was applied only after separate regression testing; the production audit now reports zero
-  advisories.
+- **Finding 1** (dependency advisories) is resolved. The Monaco-specific DOMPurify override that
+  closed it has since been removed again: Monaco 0.57.0 depends on the patched
+  `dompurify@3.4.15` itself. The production audit reports zero advisories.
 
 ## What is open
 
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
 tracker — that is where this project tracks findings, and the owner chose to keep it that way.
 
-**Monaco's DOMPurify override.** Monaco still pins a vulnerable DOMPurify release, so pnpm now
-applies a dependency-specific override to use the patched `dompurify@3.4.15`. The production audit
-reports zero advisories. Keep the override covered by editor regression tests, and remove it when
-Monaco directly depends on a non-vulnerable DOMPurify release.
-
 **The `lodash-es` override.** mermaid 12 depends on `chevrotain ~11.1.2`, which (with two of its
 `@chevrotain/*` packages) pins `lodash-es@4.17.23` exactly — vulnerable to a high and a moderate
 advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1`; see
 `QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
+
+**`pako` held at 2.1.0.** pako 3 silently ignores `inflate(..., { to: 'string' })` and returns
+bytes, so upgrading as-is breaks every existing shared link; it also changes the deflate bytes,
+so the same diagram gets a new URL. 2.1.0 has no advisory and upstream is still on it, so the
+upgrade is deferred to an upstream merge. `src/lib/util/serde.compat.test.ts` freezes links
+made by 2.1.0 and fails on either change — run it before any pako or js-base64 upgrade.
 
 **Deprecated dependencies, kept on purpose.** `lucide-svelte` (successor `@lucide/svelte`) is
 used only by two vendored shadcn-svelte components (`ui/dialog`, `ui/resizable`); it is left
@@ -140,7 +141,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 141 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 153 tests) and `pnpm test:e2e` (Playwright).
 
 The e2e suite runs **Chromium** for everything and **Firefox** for six `@smoke`-tagged
 journeys — load, edit/render, persistence, embed. `README.md` states the supported-browser

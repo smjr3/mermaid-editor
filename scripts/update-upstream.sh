@@ -116,7 +116,10 @@ git add -A
 # Upstream tracks .npmrc even though upstream's own .gitignore lists it. A plain
 # `git add -A` therefore silently drops it and the tree diverges from upstream by
 # exactly one file. Force-add it when upstream actually ships it.
-if git ls-tree -r --name-only "$up_commit" | grep -qxF '.npmrc'; then
+# Ask git for the one path rather than piping a listing into `grep -q`: grep
+# exits on the first match, and under `pipefail` the writer's SIGPIPE (141)
+# makes the condition false, so the force-add was silently skipped.
+if [ -n "$(git ls-tree --name-only "$up_commit" -- .npmrc)" ]; then
   git add -f -- .npmrc
 fi
 

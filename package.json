@@ -79,7 +79,7 @@
     "@iconify-json/logos": "^1.2.14",
     "@iconify-json/material-symbols": "^1.2.93",
     "@iconify-json/mdi": "^1.2.3",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "1.63.0",
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.3",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",

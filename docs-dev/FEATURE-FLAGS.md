@@ -20,6 +20,11 @@ variables in GitLab) — see `docs-dev/GITLAB-PAGES.md` for the deployment side.
 | `MERMAID_KROKI_RENDERER_URL`             | empty        | `https://kroki.io`    | The Kroki export button                                                                                                                                                                             |
 | `MERMAID_ANALYTICS_URL`                  | empty        | empty                 | Usage analytics. Already empty upstream, so nothing is sent either way                                                                                                                              |
 
+`plausible-tracker` (the analytics client behind `MERMAID_ANALYTICS_URL`) is deprecated on
+npm. It is kept deliberately: `src/lib/util/stats.ts` imports it only when the variable is
+set, so with the empty default it is never loaded and nothing is sent. Removing it would edit
+upstream code for no behavioural gain; follow upstream if it migrates to a successor.
+
 The two `MERMAID_IS_ENABLED_*` flags added here follow upstream's own convention
 (`isEnabledMermaidChartLinks`), read in `src/lib/util/env.ts`. Each reads
 `=== 'true'`, so an **unset variable means off** — a forgotten CI variable fails

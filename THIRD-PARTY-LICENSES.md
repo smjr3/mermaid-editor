@@ -20,16 +20,16 @@ outside the redistributed output.
 
 ## License summary
 
-Production dependency tree at the snapshot described below: **320 packages**.
+Production dependency tree at the snapshot described below: **227 packages**.
 
 | Count | License                                    |
 | ----: | ------------------------------------------ |
-|   241 | MIT                                        |
-|    40 | ISC                                        |
-|    20 | Apache-2.0                                 |
-|    11 | BSD-3-Clause                               |
+|   158 | MIT                                        |
+|    33 | ISC                                        |
+|    18 | Apache-2.0                                 |
+|     9 | BSD-3-Clause                               |
+|     2 | (MPL-2.0 OR Apache-2.0)                    |
 |     1 | OFL-1.1                                    |
-|     1 | (MPL-2.0 OR Apache-2.0)                    |
 |     1 | EPL-2.0                                    |
 |     1 | (MIT AND Zlib)                             |
 |     1 | Unlicense                                  |
@@ -108,7 +108,11 @@ The counts above are a **point-in-time snapshot**, taken against:
 
 - upstream commit `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (upstream version 2.0.67), merged
   on 2026-09-27
-- this repository's `pnpm-lock.yaml` after that merge, including its `pnpm.overrides`
+- this repository's `pnpm-lock.yaml` after that merge and the patch/minor dependency refresh
+  that followed it (2026-09-27), including its `pnpm.overrides`. That refresh took
+  `@zenuml/core` to 3.50.1, which no longer pulls Tailwind 3 tooling into the production tree —
+  hence the drop from 320 packages. `dompurify` appears twice (3.4.15 under the Monaco override,
+  3.4.16 under mermaid and ZenUML); the Apache-2.0 election applies to both.
 
 Dependency versions — and therefore this table — will change whenever the lockfile changes.
 **Regenerate this file after any dependency update or upstream merge**, and re-check the

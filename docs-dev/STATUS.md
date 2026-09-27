@@ -92,6 +92,12 @@ Monaco directly depends on a non-vulnerable DOMPurify release.
 advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1`; see
 `QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
 
+**Deprecated dependencies, kept on purpose.** `lucide-svelte` (successor `@lucide/svelte`) is
+used only by two vendored shadcn-svelte components (`ui/dialog`, `ui/resizable`); it is left
+for upstream to migrate so this fork adds no delta. `plausible-tracker` is never loaded while
+`MERMAID_ANALYTICS_URL` is empty — see `FEATURE-FLAGS.md`. Revisit either if it stops
+installing or picks up an advisory.
+
 **WebKit coverage.** Safari is a documented exclusion, not a silent gap — nothing is known to
 be broken there, it simply is not exercised, so it is not claimed. Reopen if any of these
 becomes true: a request to support Safari, a macOS or iOS user of this deployment, or a

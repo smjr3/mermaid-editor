@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **88**.
+  every locally changed path — currently **89**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -92,6 +92,12 @@ Monaco directly depends on a non-vulnerable DOMPurify release.
 advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1`; see
 `QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
 
+**`pako` held at 2.1.0.** pako 3 silently ignores `inflate(..., { to: 'string' })` and returns
+bytes, so upgrading as-is breaks every existing shared link; it also changes the deflate bytes,
+so the same diagram gets a new URL. 2.1.0 has no advisory and upstream is still on it, so the
+upgrade is deferred to an upstream merge. `src/lib/util/serde.compat.test.ts` freezes links
+made by 2.1.0 and fails on either change — run it before any pako or js-base64 upgrade.
+
 **Deprecated dependencies, kept on purpose.** `lucide-svelte` (successor `@lucide/svelte`) is
 used only by two vendored shadcn-svelte components (`ui/dialog`, `ui/resizable`); it is left
 for upstream to migrate so this fork adds no delta. `plausible-tracker` is never loaded while
@@ -140,7 +146,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 141 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 153 tests) and `pnpm test:e2e` (Playwright).
 
 The e2e suite runs **Chromium** for everything and **Firefox** for six `@smoke`-tagged
 journeys — load, edit/render, persistence, embed. `README.md` states the supported-browser

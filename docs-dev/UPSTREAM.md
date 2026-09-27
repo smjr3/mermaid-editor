@@ -465,6 +465,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
+| Added    | `src/lib/util/serde.compat.test.ts`                    |
 | Modified | `src/lib/util/autoSync.ts`                             |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |

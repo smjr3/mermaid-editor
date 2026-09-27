@@ -87,6 +87,12 @@ tracker — that is where this project tracks findings, and the owner chose to k
 advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1`; see
 `QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
 
+**TypeScript held at 6.x.** TypeScript 7 is the native (Go) compiler: its `typescript` package no
+longer exposes the compiler API (only a version export and `unstable/*` entry points), and
+`svelte-check`, `svelte2tsx` and `typescript-eslint` all declare support up to TypeScript 6
+(`<6.1.0` for typescript-eslint). Upgrading would break `pnpm check` and `pnpm lint`. Revisit
+when those three support 7. `@types/node` likewise stays on 24.x to match the Node 24 runtime.
+
 **`pako` held at 2.1.0.** pako 3 silently ignores `inflate(..., { to: 'string' })` and returns
 bytes, so upgrading as-is breaks every existing shared link; it also changes the deflate bytes,
 so the same diagram gets a new URL. 2.1.0 has no advisory and upstream is still on it, so the

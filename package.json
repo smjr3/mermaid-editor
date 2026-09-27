@@ -89,14 +89,14 @@
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^24.19.0",
     "@types/pako": "2.0.4",
-    "@vitest/coverage-v8": "^4.1.11",
-    "@vitest/ui": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.2",
+    "@vitest/ui": "^5.0.2",
     "autoprefixer": "^10.6.1",
     "bits-ui": "^2.19.3",
-    "c8": "11.0.0",
+    "c8": "12.0.0",
     "chai": "^6.2.2",
     "clsx": "^2.1.1",
-    "cssnano": "^8.0.10",
+    "cssnano": "^9.0.5",
     "dotenv": "^17.4.2",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
@@ -104,7 +104,7 @@
     "eslint-plugin-no-only-tests": "^3.4.0",
     "eslint-plugin-sort-keys": "^2.3.5",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-plugin-tailwindcss": "^3.18.3",
+    "eslint-plugin-tailwindcss": "^4.4.0",
     "eslint-plugin-unicorn": "^65.0.1",
     "globals": "^17.12.0",
     "husky": "^9.1.7",
@@ -130,7 +130,7 @@
     "unplugin-icons": "^23.0.1",
     "vite": "^8.3.1",
     "vite-plugin-devtools-json": "^1.1.0",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.2",
     "vitest-dom": "^0.1.1"
   },
   "dependencies": {
@@ -153,7 +153,7 @@
     "lodash-es": "^4.18.1",
     "mermaid": "^12.0.0",
     "mode-watcher": "^1.1.0",
-    "monaco-editor": "0.55.1",
+    "monaco-editor": "0.57.0",
     "pako": "2.1.0",
     "plausible-tracker": "^0.3.9",
     "random-word-slugs": "0.1.7",
@@ -173,7 +173,6 @@
   "packageManager": "pnpm@10.34.5+sha512.a4ee05f2f73658255bd6a89859c065a45c28a57daefae2c893a168ee2b73168c37b91e83e57ea67654ad03f03031746430e8bce38e362e042605fb8abc80192e",
   "pnpm": {
     "overrides": {
-      "monaco-editor>dompurify": "3.4.15",
       "lodash-es@<4.18.0": "4.18.1"
     },
     "onlyBuiltDependencies": [

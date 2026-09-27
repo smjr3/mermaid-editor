@@ -111,7 +111,7 @@ The counts above are a **point-in-time snapshot**, taken against:
 - this repository's `pnpm-lock.yaml` after that merge and the patch/minor dependency refresh
   that followed it (2026-09-27), including its `pnpm.overrides`. That refresh took
   `@zenuml/core` to 3.50.1, which no longer pulls Tailwind 3 tooling into the production tree —
-  hence the drop from 320 packages. `dompurify` appears twice (3.4.15 under the Monaco override,
+  hence the drop from 320 packages. `dompurify` appears twice (3.4.15 under Monaco,
   3.4.16 under mermaid and ZenUML); the Apache-2.0 election applies to both.
 
 Dependency versions — and therefore this table — will change whenever the lockfile changes.

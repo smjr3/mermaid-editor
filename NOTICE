@@ -15,7 +15,7 @@ This product includes software developed by the Mermaid Live Editor project.
     Copyright (c) 2020 - 2023 Knut Sveidqvist
     Licensed under the MIT License
     https://github.com/mermaid-js/mermaid-live-editor
-    Imported upstream commit: 990dd241f2acf39c10db9da94464cbb833150426
+    Imported upstream commit: e5e2ca41e96c93b30abd4a60c0f2be727019e8bc
     Upstream version: 2.0.67
 
 The full text of the upstream MIT License is reproduced, unmodified, in the
@@ -55,8 +55,9 @@ and their code is included in the built static site.
   elkjs
       License: EPL-2.0 (Eclipse Public License 2.0)
       Called out because EPL-2.0 is a file-level (weak) copyleft license. It
-      reaches this product through @mermaid-js/layout-elk and its code ends up
-      inside the built JavaScript of the static site. It is used unmodified,
+      reaches this product through mermaid, which bundles the ELK layout
+      engine since mermaid 12, and its code ends up inside the built
+      JavaScript of the static site. It is used unmodified,
       so redistribution is permitted, but the license and the availability of
       its source must be noted: the unmodified source is published on the npm
       registry as the "elkjs" package and at https://github.com/kieler/elkjs.

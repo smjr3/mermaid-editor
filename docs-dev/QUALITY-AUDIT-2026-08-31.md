@@ -320,3 +320,24 @@ Because an override changes an upstream package's exact dependency, it requires 
 rather than being treated as risk-free. Type checking, linting, unit tests, the production build,
 and available editor-focused browser tests must pass before release; the override should also be
 removed once Monaco directly depends on a non-vulnerable DOMPurify release.
+
+## Follow-up — mermaid 12 reintroduces a `lodash-es` advisory (2026-09-27)
+
+The upstream merge that moved to `mermaid ^12.0.0` brought `chevrotain@11.1.2` (mermaid pins
+`~11.1.2`). `chevrotain`, `@chevrotain/gast` and `@chevrotain/cst-dts-gen` each depend on
+`lodash-es@4.17.23` exactly, and `pnpm audit --prod` reported **2 advisories — 1 high
+(code injection via `_.template`) and 1 moderate (prototype pollution)**, both patched in
+`lodash-es >=4.18.0`. The project's own direct dependency was already on `4.18.1`.
+
+Three parents pin the same version, so a parent-scoped override in the style of
+`monaco-editor>dompurify` would need three entries and miss any fourth. The override is scoped by
+version instead: `lodash-es@<4.18.0` → `4.18.1`. It touches only copies inside the vulnerable
+range, so a future `lodash-es` that is already patched is left alone. After regenerating the
+lockfile only `lodash-es@4.18.1` is installed and `pnpm audit --prod` reports **0 advisories**.
+
+`4.18.x` is a minor release of the same API. The unit suite does not parse diagrams, so the
+regression check targeted the chevrotain paths directly: every one of the 79 sample diagrams in
+`@mermaid-js/examples` was rendered in the editor (headless Chromium) with no parse error, no
+error state in the view and no console error. That includes the chevrotain-parsed types — pie,
+packet, gitGraph, architecture, radar, treemap. The Chromium e2e suite passed as well. Remove the
+override once mermaid's `chevrotain` depends on `lodash-es >=4.18.0`.

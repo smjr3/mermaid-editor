@@ -59,12 +59,12 @@ with internal endpoints.
 
 Review these CI variables before deployment:
 
-| Variable                                 | Recommended internal value                   | Effect                                                                  |
-| ---------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
-| `MERMAID_ANALYTICS_URL`                  | Empty                                        | Prevents analytics requests.                                            |
-| `MERMAID_RENDERER_URL`                   | Empty, or an approved internal renderer      | Disables or redirects the Mermaid image renderer integration.           |
-| `MERMAID_KROKI_RENDERER_URL`             | Empty, or an approved internal Kroki service | Disables or redirects Kroki rendering.                                  |
-| `MERMAID_IS_ENABLED_MERMAID_CHART_LINKS` | Empty                                        | Removes the Mermaid Chart promotion banner and **Save diagram** button. |
+| Variable                                 | Recommended internal value                   | Effect                                                                                           |
+| ---------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `MERMAID_ANALYTICS_URL`                  | Empty                                        | Prevents analytics requests.                                                                     |
+| `MERMAID_RENDERER_URL`                   | Empty, or an approved internal renderer      | Disables or redirects the Mermaid image renderer integration.                                    |
+| `MERMAID_KROKI_RENDERER_URL`             | Empty, or an approved internal Kroki service | Disables or redirects Kroki rendering.                                                           |
+| `MERMAID_IS_ENABLED_MERMAID_CHART_LINKS` | Empty                                        | Removes the Mermaid Chart promotion banner and the **Contact sales** / **Save diagram** buttons. |
 
 Values are included at build time. After changing one, run a new Pages pipeline. Do not place
 tokens, passwords, personal data, or private hostnames in these values unless the application

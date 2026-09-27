@@ -111,7 +111,7 @@
     "jsdom": "^29.1.1",
     "lint-staged": "^17.6.0",
     "lucide-svelte": "^1.0.1",
-    "node-html-parser": "^7.1.0",
+    "node-html-parser": "^9.0.4",
     "paneforge": "1.0.2",
     "prettier": "^3.9.9",
     "prettier-plugin-svelte": "^4.1.1",

@@ -60,7 +60,7 @@ States loaded from URLs pass through `sanitizeConfig` (state.svelte.ts), which d
 
 - Env vars use the `MERMAID_` prefix (`import.meta.env`), read in `src/lib/util/env.ts`. Defaults in `.env`; copy to `.env.local` for local overrides. These control renderer URL (mermaid.ink), Kroki, analytics, and Mermaid Chart integration.
 - HMR is deliberately disabled — every change triggers a full page reload (see `alwaysFullReload` in `vite.config.js`) because HMR corrupts app state.
-- `vite.config.js` pins monaco/mermaid/codemirror into named vendor chunks for long-term caching — keep that intact when touching build config.
+- `vite.config.js` does not configure manual chunks; Rollup's default splitting decides the vendor chunks. (Upstream's CLAUDE.md claims named vendor chunks are pinned there — neither upstream nor this fork has such a setting.)
 
 ## Conventions
 

@@ -70,9 +70,12 @@ start_branch="$(git rev-parse --abbrev-ref HEAD)"
 [ "$start_branch" != 'HEAD' ] || die "detached HEAD; check out a branch first."
 
 git show-ref --verify --quiet "refs/heads/$VENDOR_BRANCH" \
-  || die "branch '$VENDOR_BRANCH' not found. It must point at a pristine upstream
-       snapshot - in a fresh clone of this repo, that is the very first commit:
-         git branch $VENDOR_BRANCH \$(git rev-list --max-parents=0 HEAD)"
+  || die "branch '$VENDOR_BRANCH' not found. Create it from the remote branch, which
+       holds the latest pristine snapshot:
+         git fetch origin $VENDOR_BRANCH:$VENDOR_BRANCH
+       Do not recreate it from the first commit: once an update has been imported,
+       that commit is an older snapshot, and importing on top of it would redo
+       the merges already made."
 
 if git remote get-url upstream >/dev/null 2>&1; then
   have="$(git remote get-url upstream)"
@@ -150,8 +153,12 @@ Done. Next steps:
 
   1. git merge $VENDOR_BRANCH
   2. resolve conflicts (pnpm-lock.yaml: regenerate with 'pnpm install', never hand-merge)
-  3. update .upstream-version.json to record commit $up_commit
-  4. re-verify:  pnpm install && pnpm build
+  3. update .upstream-version.json: importedCommit $up_commit,
+     importedTree $up_tree, upstreamVersion ${up_version:-unknown},
+     importDate, and vendorBaseCommit $(git rev-parse "$VENDOR_BRANCH")
+  4. re-verify:  pnpm install && pnpm build && pnpm audit --prod
                  npm pack  ->  unpack  ->  npm install && npm run build
+                                        && npm audit --omit=dev
                  pnpm licenses list --prod   (refresh THIRD-PARTY-LICENSES.md)
+  5. follow the full checklist in docs-dev/UPSTREAM.md
 EOF

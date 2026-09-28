@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **101**.
+  every locally changed path — currently **99**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -34,7 +34,6 @@ The standing constraints, which shape almost every decision recorded here:
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | The GitLab Pages deployment path                                                                                                         |
 | `QUALITY-AUDIT-2026-08-31.md` | An external portability audit, its three findings, and a follow-up for each recording how it was resolved                                |
-| `codex/`                      | Task notes from the earlier build-out                                                                                                    |
 
 ## What is delivered
 
@@ -139,16 +138,26 @@ WebKit-only defect reported by a user.
   `node scripts/check-local-delta.js` does exactly that — the table against
   `git diff --name-status vendorBaseCommit` as a set of status-and-path pairs, the count
   above against the table, and every changed `package.json` key against `UPSTREAM.md`'s
-  lists — and exits 1 on any mismatch. Run it as the last step of any change.
+  lists — and exits 1 on any mismatch. Run it as the last step of any change; CI also runs it
+  on every pull request (`.github/workflows/fork-checks.yml`).
 
 - **Node.js 24.16.0** is required (`engines`, and `.node-version`). pnpm 10.34.5 via
-  `corepack enable pnpm`.
+  `corepack enable pnpm`. The husky pre-commit hook runs lint-staged under pnpm, so
+  committing with an older Node is rejected with `ERR_PNPM_UNSUPPORTED_ENGINE`.
 - eslint enforces alphabetically sorted keys on objects with 5+ keys under `src/`, which the
   message catalogue is subject to.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 154 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 157 tests) and `pnpm test:e2e` (Playwright).
+
+`.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
+upstream's workflows so those keep merging cleanly: the local-delta check on every pull
+request, and a dependency audit of **both** install paths — `pnpm audit --prod`, and
+`npm audit --omit=dev` against the packed tarball, since npm ignores `pnpm.overrides` —
+on pull requests, weekly (so a new advisory against an unchanged lockfile still surfaces)
+and on demand. With no dependency bot installed, that weekly run is what notices new
+advisories.
 
 The e2e suite runs **Chromium** for everything and **Firefox** for six `@smoke`-tagged
 journeys — load, edit/render, persistence, embed. `README.md` states the supported-browser

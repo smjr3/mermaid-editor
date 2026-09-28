@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **89**.
+  every locally changed path — currently **99**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -55,6 +55,10 @@ merely untested: `mv docs public` in CI, a `postinstall` chain that used `true` 
 and the absence of `.gitattributes`. The Windows half is reasoned from mechanism — there is
 no Windows host in the development environment — and that document says so and asks for one
 real run on the runner.
+
+**Unused files removed.** Upstream's release and hosting helpers, container files, dependency-bot
+configs, `SECURITY.md` (which pointed reporters at mermaid.live) and 13 dev dependencies that
+nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge from restoring them.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

@@ -214,14 +214,13 @@ The production runner may be Windows, so the build and deploy path uses only
 package-manager invocations and Node scripts — never a shell builtin or a
 Unix-only command. Details in `docs-dev/CROSS-PLATFORM.md`; at merge time:
 
-| Path                       | Local change                                                                                               |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `.gitattributes`           | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF        |
-| `scripts/postinstall.js`   | Added, and currently **unreferenced** — `eafb559` moved `postinstall` back inline. See `CROSS-PLATFORM.md` |
-| `scripts/prepare-pages.js` | Added. Replaces `mv docs public` in CI                                                                     |
-| `vite.embed.config.js`     | Adds `publicDir: false`                                                                                    |
-| `package.json`             | `build:pages` and `dev:force` point at local scripts; `postinstall` guards with `node -e` inline           |
-| `.gitignore`               | Ignores `/public`                                                                                          |
+| Path                       | Local change                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `.gitattributes`           | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF |
+| `scripts/prepare-pages.js` | Added. Replaces `mv docs public` in CI                                                              |
+| `vite.embed.config.js`     | Adds `publicDir: false`                                                                             |
+| `package.json`             | `build:pages` and `dev:force` point at local scripts; `postinstall` guards with `node -e` inline    |
+| `.gitignore`               | Ignores `/public`                                                                                   |
 
 `publicDir: false` is load-bearing, not tidying. That config has no SvelteKit
 plugin, so Vite defaults `publicDir` to `public` while its `outDir` is `static`.
@@ -295,56 +294,41 @@ link.
 
 ### Deleted upstream files
 
-Eight upstream files are deleted in this fork because they serve mermaid.live's own
-release, hosting and funding, and they misfire when they run under
-`smjr3/mermaid-editor`:
+These upstream files are deleted in this fork. Two reasons cover all of them: they serve
+mermaid.live's own release, hosting and funding and misfire when they run under
+`smjr3/mermaid-editor`, or nothing in this fork uses them and nothing is planned to.
 
-| Path                                             | Why it is gone                                                                                                                                                                                                                        |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/deploy.yml`                   | Publishes to GitHub Pages; this fork deploys through GitLab Pages (`.gitlab-ci.yml`).                                                                                                                                                 |
-| `.github/workflows/docker-publish.yml`           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it publishes for real rather than failing on upstream's. See the note below on what its pull-request path also did. |
-| `.github/workflows/close-broken-link-issues.yml` | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                     |
-| `.github/workflows/update-browserlist.yml`       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                |
-| `.github/workflows/release-pr.yml`               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                           |
-| `netlify.toml`                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                        |
-| `CNAME`                                          | GitHub Pages custom domain `mermaid.live`.                                                                                                                                                                                            |
-| `.github/FUNDING.yml`                            | `github: [sidharthv96, knsv]` — renders a "Sponsor this project" button on this repository that pays the upstream maintainers.                                                                                                        |
+| Path                                                              | Why it is gone                                                                                                                                                                                            |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/deploy.yml`                                    | Publishes to GitHub Pages; this fork deploys through GitLab Pages (`.gitlab-ci.yml`).                                                                                                                     |
+| `.github/workflows/docker-publish.yml`                            | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it would publish for real rather than failing on upstream's.                            |
+| `.github/workflows/close-broken-link-issues.yml`                  | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                         |
+| `.github/workflows/update-browserlist.yml`                        | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                    |
+| `.github/workflows/release-pr.yml`                                | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                               |
+| `netlify.toml`                                                    | Netlify build config carrying mermaid.live environment values.                                                                                                                                            |
+| `CNAME`, `.nojekyll`                                              | GitHub Pages settings (the `mermaid.live` custom domain, Jekyll opt-out); this fork is served by GitLab Pages.                                                                                            |
+| `.github/FUNDING.yml`                                             | `github: [sidharthv96, knsv]` — renders a "Sponsor this project" button on this repository that pays the upstream maintainers.                                                                            |
+| `SECURITY.md`                                                     | Tells reporters to e-mail `security@mermaid.live`, which would send vulnerability reports about this deployment to upstream.                                                                              |
+| `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore` | This fork ships an npm package built into a static site for GitLab Pages and never builds or publishes a container. With `docker-publish.yml` gone nothing validated them either, so they could only rot. |
+| `bin/beta-release`, `bin/fix-path`, `bin/update-monaco.js`        | mermaid.live release helpers (publish into `mermaid-js/docs`, rewrite its paths, refresh Monaco CDN tags `src/app.html` no longer has). No script calls them.                                             |
+| `renovate.json`, `.github/dependabot.disabled.yml`                | Upstream's dependency bots, targeting `develop`. No bot is installed here; dependency updates are done by hand as recorded in `STATUS.md`.                                                                |
 
-`.github/workflows/tests.yml`, `unit-tests.yml`, and `codeql-analysis.yml` are kept —
-they run CI, not releases — as are `Dockerfile`, `docker-compose.yml`, and
-`nginx.conf`, which are useful for local container runs and publish nothing.
+`.github/workflows/tests.yml`, `unit-tests.yml` and `codeql-analysis.yml` are kept —
+they run CI, not releases. (`codeql-analysis.yml` is the known-red check in `STATUS.md`,
+kept on purpose.)
 
-#### Accepted consequence: nothing builds the container any more
-
-`docker-publish.yml` was not only a publisher. It also triggered on
-`pull_request` against `master` and `develop`, and on that path it published
-nothing: its login, push and attestation steps were each gated on
-`github.event_name == 'push'` (`push: ${{ github.event_name == 'push' }}` on
-`docker/build-push-action`). So on pull requests it was a build-only check of the
-`mermaid` target, across `linux/amd64` and `linux/arm64`.
-
-Deleting it removed that check, and nothing replaced it: `.gitlab-ci.yml` builds no
-container, and the only `container:` key left in `.github/workflows/` is in
-`tests.yml`, which _runs_ jobs inside a prebuilt image rather than building this
-repository's `Dockerfile`. The retained `Dockerfile` is therefore unvalidated by CI,
-and a change that breaks it can merge unnoticed.
-
-This is a deliberate trade, not an oversight. This fork ships an npm package that an
-internal GitLab CI builds into a static site for GitLab Pages; it never publishes a
-container, so the image is a local-development convenience. Restoring a trimmed
-pull-request-only build would mean carrying a _modified_ upstream workflow — a
-permanent conflict surface on every upstream merge — and paying for the slowest job
-in the repository (a two-platform QEMU build) on every pull request, to validate an
-artifact nothing consumes.
-
-If the `Dockerfile` does break, the options are to fix it, to restore a
-pull-request-only build, or to drop `Dockerfile`, `docker-compose.yml` and
-`nginx.conf` along with it. Nothing in this repository depends on the image.
+Unused upstream dev dependencies were removed from `package.json` for the same reason:
+`@eslint/eslintrc`, `@iconify-json/hugeicons`, `@tailwindcss/typography`, `autoprefixer`,
+`c8`, `chai`, `cssnano`, `eslint-plugin-es`, `eslint-plugin-no-only-tests`,
+`eslint-plugin-tailwindcss`, `node-html-parser` (only `bin/update-monaco.js` used it),
+`tslib` and `vitest-dom`. None was loaded by any config, script or source file. If an
+upstream merge brings one back, check whether upstream started using it before deleting
+it again.
 
 **A merge will bring deleted files back whenever upstream touches them.** Git treats
 "deleted here, modified there" as a conflict and, if upstream only adds files, it
-restores them with no conflict at all. After every merge, re-check that none of the
-eight have reappeared:
+restores them with no conflict at all. After every merge, re-check that none of them
+have reappeared:
 
 ```sh
 git ls-files -- \
@@ -353,7 +337,10 @@ git ls-files -- \
   .github/workflows/close-broken-link-issues.yml \
   .github/workflows/update-browserlist.yml \
   .github/workflows/release-pr.yml \
-  netlify.toml CNAME .github/FUNDING.yml
+  netlify.toml CNAME .nojekyll .github/FUNDING.yml SECURITY.md \
+  Dockerfile docker-compose.yml nginx.conf .dockerignore \
+  bin/beta-release bin/fix-path bin/update-monaco.js \
+  renovate.json .github/dependabot.disabled.yml
 ```
 
 It prints one line per file that is tracked again. Silence means the deletions
@@ -373,7 +360,7 @@ conflict by keeping upstream's version.
    current production dependency licenses.
 4. Update and JSON-parse `.upstream-version.json`; verify that its imported tree is
    the pristine vendor commit's tree.
-5. Confirm none of the eight deleted upstream files reappeared (see
+5. Confirm none of the deleted upstream files reappeared (see
    [Deleted upstream files](#deleted-upstream-files)).
 6. Confirm the feature-flag guards survived and no new promotional, AI or outbound-link
    surface appeared (see [Feature-flag guards](#feature-flag-guards-in-src-and-tests)).
@@ -384,7 +371,7 @@ conflict by keeping upstream's version.
 
 ## Current local file layer
 
-The following list is accurate as of **2026-09-27**. It is a snapshot, not a
+The following list is accurate as of **2026-09-28**. It is a snapshot, not a
 permanent allowlist.
 
 Re-derive it against the **current vendor base** — the `vendorBaseCommit` recorded in
@@ -404,9 +391,11 @@ modifications as if they were local customizations.
 
 | Status   | Path                                                   |
 | -------- | ------------------------------------------------------ |
+| Deleted  | `.dockerignore`                                        |
 | Modified | `.env`                                                 |
 | Added    | `.gitattributes`                                       |
 | Deleted  | `.github/FUNDING.yml`                                  |
+| Deleted  | `.github/dependabot.disabled.yml`                      |
 | Modified | `.github/pull_request_template.md`                     |
 | Deleted  | `.github/workflows/close-broken-link-issues.yml`       |
 | Deleted  | `.github/workflows/deploy.yml`                         |
@@ -416,13 +405,20 @@ modifications as if they were local customizations.
 | Deleted  | `.github/workflows/update-browserlist.yml`             |
 | Modified | `.gitignore`                                           |
 | Added    | `.gitlab-ci.yml`                                       |
+| Deleted  | `.nojekyll`                                            |
 | Added    | `.upstream-version.json`                               |
 | Modified | `CLAUDE.md`                                            |
 | Deleted  | `CNAME`                                                |
+| Deleted  | `Dockerfile`                                           |
 | Added    | `NOTICE`                                               |
 | Modified | `README.md`                                            |
 | Added    | `README.upstream.md`                                   |
+| Deleted  | `SECURITY.md`                                          |
 | Added    | `THIRD-PARTY-LICENSES.md`                              |
+| Deleted  | `bin/beta-release`                                     |
+| Deleted  | `bin/fix-path`                                         |
+| Deleted  | `bin/update-monaco.js`                                 |
+| Deleted  | `docker-compose.yml`                                   |
 | Added    | `docs-dev/CROSS-PLATFORM.md`                           |
 | Added    | `docs-dev/FEATURE-FLAGS.md`                            |
 | Added    | `docs-dev/GITLAB-PAGES.md`                             |
@@ -437,12 +433,13 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/codex/task-05-gitlab-pages.md`               |
 | Added    | `docs-dev/codex/task-06-upstream-docs.md`              |
 | Deleted  | `netlify.toml`                                         |
+| Deleted  | `nginx.conf`                                           |
 | Modified | `package.json`                                         |
 | Modified | `playwright.config.ts`                                 |
 | Modified | `pnpm-lock.yaml`                                       |
+| Deleted  | `renovate.json`                                        |
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/dev-force.js`                                 |
-| Added    | `scripts/postinstall.js`                               |
 | Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/update-upstream.sh`                           |
 | Modified | `src/app.css`                                          |
@@ -470,10 +467,10 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
-| Added    | `src/lib/util/serde.compat.test.ts`                    |
 | Modified | `src/lib/util/autoSync.ts`                             |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
+| Added    | `src/lib/util/serde.compat.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
 | Modified | `src/routes/(app)/edit/+page.svelte`                   |
 | Modified | `src/routes/+error.svelte`                             |

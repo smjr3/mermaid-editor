@@ -97,13 +97,11 @@ of this document it is **not backed by an execution**. Running `pnpm install` on
 on the Windows runner settles it; until then treat the postinstall path as the
 weakest Windows claim here.
 
-**`scripts/postinstall.js` is in the tree but nothing invokes it.** An earlier
-version of this work routed `postinstall` through that wrapper, which needed no
-shell operators at all; `eafb559` chose the inline form instead and the file was
-left behind. Until that is resolved it is a decoy: editing it changes nothing. Do
-not debug it expecting `npm install` to run it. Restoring the wrapper is also the
-change that would bring `postinstall` back inside the rule above, if the Windows
-run turns out badly.
+`scripts/postinstall.js`, a Node wrapper an earlier version of this work routed
+`postinstall` through, was deleted once `eafb559` settled on the inline form and nothing
+invoked it any more. If the Windows run turns out badly, restoring such a wrapper — one
+that needs no shell operators at all — is the change that would bring `postinstall`
+inside the rule above; recover it from git history rather than rewriting it.
 
 ## A trap worth knowing about
 
@@ -176,7 +174,4 @@ active entry point:
   three, because it removes the shell rather than relying on it.
 - **`scripts/prepare-pages.js`** — `renameSync` and `rmSync` are platform-neutral.
 
-None of those is the `spawnSync(command, { shell: true })` in `scripts/postinstall.js`.
-Nothing invokes that file, so how it would behave on Windows is not evidence for
-anything this repository actually runs — it was cited here before, and that citation
-was wrong. **Run the pipeline once on the real runner before relying on it.**
+**Run the pipeline once on the real runner before relying on it.**

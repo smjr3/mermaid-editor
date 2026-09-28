@@ -391,11 +391,13 @@ modifications as if they were local customizations.
 | Deleted  | `.github/workflows/close-broken-link-issues.yml`       |
 | Deleted  | `.github/workflows/deploy.yml`                         |
 | Deleted  | `.github/workflows/docker-publish.yml`                 |
+| Added    | `.github/workflows/fork-checks.yml`                    |
 | Deleted  | `.github/workflows/release-pr.yml`                     |
 | Modified | `.github/workflows/tests.yml`                          |
 | Deleted  | `.github/workflows/update-browserlist.yml`             |
 | Modified | `.gitignore`                                           |
 | Added    | `.gitlab-ci.yml`                                       |
+| Modified | `.husky/pre-commit`                                    |
 | Deleted  | `.nojekyll`                                            |
 | Added    | `.upstream-version.json`                               |
 | Modified | `CLAUDE.md`                                            |
@@ -419,10 +421,6 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/STATUS.md`                                   |
 | Added    | `docs-dev/THEME.md`                                    |
 | Added    | `docs-dev/UPSTREAM.md`                                 |
-| Added    | `docs-dev/codex/README.md`                             |
-| Added    | `docs-dev/codex/task-04-npm-roundtrip.md`              |
-| Added    | `docs-dev/codex/task-05-gitlab-pages.md`               |
-| Added    | `docs-dev/codex/task-06-upstream-docs.md`              |
 | Deleted  | `netlify.toml`                                         |
 | Deleted  | `nginx.conf`                                           |
 | Modified | `package.json`                                         |

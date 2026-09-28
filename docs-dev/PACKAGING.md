@@ -11,6 +11,10 @@ builds the static site into `docs/`.
 - network access to that registry and to every registry used for dependencies
 
 The package does not contain `.npmrc`, authentication details, or a dependency lockfile.
+npm strips `.npmrc` from every tarball, so upstream's `engine-strict=true` never reaches a
+consumer: a Node version mismatch there is a warning, not an error. The build also needs
+`.svelte-kit/tsconfig.json`, which `postinstall` generates with `svelte-kit sync`; deleting
+`.svelte-kit` and building without reinstalling fails with `Tsconfig not found`.
 Keep registry URLs and tokens in the consumer's npm configuration or CI variables, never in
 the package.
 

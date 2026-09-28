@@ -5,7 +5,8 @@ const fallbackLocale: Locale = 'en';
 
 function resolveLocale(): Locale {
   const configured = env.locale;
-  return configured in messages ? (configured as Locale) : fallbackLocale;
+  // Object.hasOwn, not `in`: `in` also matches inherited keys such as "toString".
+  return Object.hasOwn(messages, configured) ? (configured as Locale) : fallbackLocale;
 }
 
 /** The locale this build ships. Fixed at build time via MERMAID_LOCALE. */

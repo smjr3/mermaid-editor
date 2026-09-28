@@ -232,7 +232,7 @@ ${svgString}`);
 
   const loadGist = () => {
     if (!gistURL) {
-      return alert('Please enter a Gist URL first');
+      return alert(t('actions.gistRequired'));
     }
     window.location.href = `${window.location.pathname}?gist=${gistURL}`;
     logEvent('loadGist');

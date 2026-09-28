@@ -3,7 +3,11 @@ import { messages } from '$/i18n/messages';
 
 // The app resolves its locale from import.meta.env, which does not exist in
 // Playwright's Node process, so read the same build-time variable directly.
-const testLocale = (process.env.MERMAID_LOCALE ?? 'ja') as keyof typeof messages;
+// Same resolution as src/lib/i18n: the .env default, and English for an unknown value.
+const configuredLocale = process.env.MERMAID_LOCALE ?? 'ja';
+const testLocale = (
+  Object.hasOwn(messages, configuredLocale) ? configuredLocale : 'en'
+) as keyof typeof messages;
 
 /** Look up the UI string the build under test actually renders. */
 export const t = (key: keyof (typeof messages)['en'], params?: Record<string, string>): string => {

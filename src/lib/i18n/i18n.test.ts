@@ -42,6 +42,13 @@ describe('t', () => {
     expect(t('external.unsupported', { domain: 'kroki.io' })).not.toContain('{domain}');
   });
 
+  it('does not expand placeholders or replacement patterns inside a value', () => {
+    // Values can carry untrusted text (the unsafe-config prompt quotes config
+    // loaded from a URL), so they must be inserted verbatim.
+    const value = '{paths} $& $1';
+    expect(t('security.unsafeConfigConfirm', { paths: value })).toContain(value);
+  });
+
   it('leaves placeholders it was given no value for', () => {
     expect(t('external.unsupported', { other: 'x' })).toContain('{domain}');
   });

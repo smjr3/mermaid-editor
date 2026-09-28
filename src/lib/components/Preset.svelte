@@ -90,7 +90,7 @@
         {#if examples.length > 1}
           <Popover.Root>
             <Popover.Trigger
-              aria-label="Choose a {sample} example"
+              aria-label={t('preset.chooseExample', { sample })}
               class={cn(
                 buttonVariants({ size: 'sm' }),
                 'rounded-l-none border-l border-primary-foreground/30 px-0.5 [&_svg]:size-5'

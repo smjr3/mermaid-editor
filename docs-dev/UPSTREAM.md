@@ -86,7 +86,7 @@ both must survive the merge:
 
 - **Replaced** (7): `name`, `version`, `dev`, `build`, `dev:force`, `postinstall`, `pnpm`
 - **Added** (local, absent upstream): `build:pages`, `description`, `keywords`,
-  `homepage`, `repository`, `bugs`, `author`, `publishConfig`, `files`
+  `homepage`, `repository`, `bugs`, `author`, `publishConfig`, `files`, `overrides`
 
 Two of those carry a Windows fix and are the ones a careless resolution silently
 undoes. `dev:force` is `node scripts/dev-force.js`; upstream's value is
@@ -106,6 +106,10 @@ rather than an addition, but the local value adds `overrides` with `lodash-es@<4
 (the vulnerable `lodash-es` that mermaid 12's `chevrotain` pins; see
 `QUALITY-AUDIT-2026-08-31.md`). Taking upstream's `pnpm` block silently removes the
 override and brings the production audit advisories back.
+
+The top-level `overrides` (added) is the same fix for npm, which ignores `pnpm.overrides`.
+It is what protects the published tarball, built with `npm install` in the internal
+pipeline. Keep the two in step: an override added to one belongs in the other.
 
 `monaco-editor` must not go below **0.57.0**. It is pinned exactly, and 0.57.0 is the
 first release that depends on a patched DOMPurify, which is why the former
@@ -363,7 +367,8 @@ conflict by keeping upstream's version.
 1. Install dependencies and run `pnpm build`.
 2. Exercise the npm pack round-trip: create the tarball with `npm pack`, unpack it in
    a clean temporary directory, run `npm install`, and then run `npm run build` from
-   the unpacked package.
+   the unpacked package. Run `npm audit --omit=dev` there as well: npm ignores
+   `pnpm.overrides`, so a clean `pnpm audit --prod` does not cover this install path.
 3. Run `pnpm licenses list --prod` and regenerate `THIRD-PARTY-LICENSES.md` from the
    current production dependency licenses.
 4. Update and JSON-parse `.upstream-version.json`; verify that its imported tree is

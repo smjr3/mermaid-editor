@@ -1,0 +1,61 @@
+# Checks that exist only in this fork. Kept in their own workflow so upstream's
+# tests.yml / unit-tests.yml stay untouched and keep merging cleanly.
+name: Fork Checks
+
+on:
+  pull_request:
+    branches:
+      - master
+  schedule:
+    # Weekly, so a new advisory against an unchanged lockfile is still noticed.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  local-delta:
+    # docs-dev/UPSTREAM.md's inventory and package.json lists vs the repository.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The check diffs against vendorBaseCommit, which a shallow clone lacks.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+
+      - name: Check the documented local delta
+        run: node scripts/check-local-delta.js
+
+  audit:
+    # Both install paths: pnpm here, and npm as the published tarball is
+    # installed internally. npm ignores pnpm.overrides, so one clean audit does
+    # not imply the other (docs-dev/QUALITY-AUDIT-2026-08-31.md).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Audit production dependencies (pnpm)
+        run: pnpm audit --prod
+
+      - name: Audit the published tarball as npm installs it
+        run: |
+          work="$(mktemp -d)"
+          npm pack --pack-destination "$work"
+          tar -xzf "$work"/*.tgz -C "$work"
+          cd "$work/package"
+          # Resolve without installing: the lockfile is all npm audit needs.
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm audit --omit=dev

@@ -1,16 +1,9 @@
 import { env } from '$/util/env';
-import { messages, type Locale, type MessageKey } from './messages';
-
-const fallbackLocale: Locale = 'en';
-
-function resolveLocale(): Locale {
-  const configured = env.locale;
-  // Object.hasOwn, not `in`: `in` also matches inherited keys such as "toString".
-  return Object.hasOwn(messages, configured) ? (configured as Locale) : fallbackLocale;
-}
+import type { Locale, MessageKey } from './messages';
+import { createTranslator, resolveLocale } from './translate';
 
 /** The locale this build ships. Fixed at build time via MERMAID_LOCALE. */
-export const locale: Locale = resolveLocale();
+export const locale: Locale = resolveLocale(env.locale);
 
 /**
  * Look up a UI string.
@@ -25,12 +18,6 @@ export const locale: Locale = resolveLocale();
  * where its own grammar wants it: "not supported in {domain}" becomes
  * 「この図の種類は {domain} ではサポートされていません」.
  */
-export function t(key: MessageKey, params?: Record<string, string>): string {
-  const template: string = messages[locale][key] ?? messages[fallbackLocale][key];
-  if (!params) {
-    return template;
-  }
-  return template.replaceAll(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match);
-}
+export const t = createTranslator(locale);
 
 export type { Locale, MessageKey };

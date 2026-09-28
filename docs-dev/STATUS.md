@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **99**.
+  every locally changed path — currently **101**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -132,19 +132,14 @@ WebKit-only defect reported by a user.
     merging, not only before.
 
   Compare the entries, not the totals: one path added while another is reverted leaves the
-  count unchanged and the table still wrong. Diff the two sets, which is what actually found
-  the missed path:
+  count unchanged and the table still wrong. Compare the **status letter as well as the
+  path**: an upstream update that starts tracking a file this fork added flips its row from
+  `A` to `M`, which a path-only comparison cannot see.
 
-  Compare the **status letter as well as the path**: an upstream update that starts tracking a
-  file this fork added flips its row from `A` to `M`, which a path-only comparison cannot see.
-
-  ```sh
-  vendor_base=$(node -p "require('./.upstream-version.json').vendorBaseCommit")
-  git diff --name-status "$vendor_base" HEAD | awk '{print $1, $2}' | sort > /tmp/actual
-  grep -oE '^\| (Modified|Added|Deleted) +\| `[^`]+`' docs-dev/UPSTREAM.md \
-    | sed -E 's/^\| (.)[a-z]+ +\| `(.*)`/\1 \2/' | sort > /tmp/table
-  diff /tmp/actual /tmp/table
-  ```
+  `node scripts/check-local-delta.js` does exactly that — the table against
+  `git diff --name-status vendorBaseCommit` as a set of status-and-path pairs, the count
+  above against the table, and every changed `package.json` key against `UPSTREAM.md`'s
+  lists — and exits 1 on any mismatch. Run it as the last step of any change.
 
 - **Node.js 24.16.0** is required (`engines`, and `.node-version`). pnpm 10.34.5 via
   `corepack enable pnpm`.

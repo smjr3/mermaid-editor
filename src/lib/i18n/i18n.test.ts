@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { locale, t } from './index';
+import { defaultLocale, fallbackLocale, resolveLocale } from './translate';
 import { messages, type MessageKey } from './messages';
 
 const placeholders = (value: string): string[] =>
@@ -51,5 +52,21 @@ describe('t', () => {
 
   it('leaves placeholders it was given no value for', () => {
     expect(t('external.unsupported', { other: 'x' })).toContain('{domain}');
+  });
+});
+
+describe('resolveLocale', () => {
+  it('uses the organisational default when MERMAID_LOCALE is unset', () => {
+    expect(resolveLocale(undefined)).toBe(defaultLocale);
+  });
+
+  it('accepts a locale that has a catalogue', () => {
+    expect(resolveLocale('en')).toBe('en');
+    expect(resolveLocale('ja')).toBe('ja');
+  });
+
+  it('falls back for unknown values, including inherited property names', () => {
+    expect(resolveLocale('fr')).toBe(fallbackLocale);
+    expect(resolveLocale('toString')).toBe(fallbackLocale);
   });
 });

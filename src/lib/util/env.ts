@@ -7,7 +7,7 @@ export const env = {
   isEnabledCommunityLinks: import.meta.env.MERMAID_IS_ENABLED_COMMUNITY_LINKS === 'true',
   isEnabledMermaidChartLinks: import.meta.env.MERMAID_IS_ENABLED_MERMAID_CHART_LINKS === 'true',
   krokiRendererUrl: import.meta.env.MERMAID_KROKI_RENDERER_URL ?? '',
-  locale: import.meta.env.MERMAID_LOCALE ?? 'ja',
+  locale: import.meta.env.MERMAID_LOCALE,
   privacyPolicyUrl: import.meta.env.MERMAID_PRIVACY_POLICY_URL ?? '',
   rendererUrl: import.meta.env.MERMAID_RENDERER_URL ?? ''
 } as const;

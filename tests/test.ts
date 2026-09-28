@@ -1,23 +1,13 @@
 import { C, TID } from '$/constants';
-import { messages } from '$/i18n/messages';
-
-// The app resolves its locale from import.meta.env, which does not exist in
-// Playwright's Node process, so read the same build-time variable directly.
-// Same resolution as src/lib/i18n: the .env default, and English for an unknown value.
-const configuredLocale = process.env.MERMAID_LOCALE ?? 'ja';
-const testLocale = (
-  Object.hasOwn(messages, configuredLocale) ? configuredLocale : 'en'
-) as keyof typeof messages;
-
-/** Look up the UI string the build under test actually renders. */
-export const t = (key: keyof (typeof messages)['en'], params?: Record<string, string>): string => {
-  const template: string = messages[testLocale][key] ?? messages.en[key];
-  return params
-    ? template.replaceAll(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match)
-    : template;
-};
+import { createTranslator, resolveLocale } from '$/i18n/translate';
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
+
+// The app resolves its locale from import.meta.env, which does not exist in
+// Playwright's Node process, so read the same build-time variable directly and
+// resolve it with the app's own function.
+/** Look up the UI string the build under test actually renders. */
+export const t = createTranslator(resolveLocale(process.env.MERMAID_LOCALE));
 
 export class EditorPage {
   readonly editor: Locator;

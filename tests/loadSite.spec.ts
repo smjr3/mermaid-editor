@@ -73,7 +73,9 @@ test.describe('Site Loads', () => {
     let dialogAccepted = false;
     page.on('dialog', async (dialog) => {
       expect(dialog.type()).toBe('confirm');
-      expect(dialog.message()).toContain('from the config for safety');
+      // The catalogue text after the {paths} placeholder, up to the line break.
+      const [, afterPaths] = t('security.unsafeConfigConfirm').split('{paths}');
+      expect(dialog.message()).toContain(afterPaths.split('\n')[0]);
       await dialog.accept();
       dialogAccepted = true;
     });

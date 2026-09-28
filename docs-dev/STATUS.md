@@ -61,7 +61,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI** (`I18N.md`). A dependency-free catalogue, **105 keys**, read through a typed
+**Japanese UI** (`I18N.md`). A dependency-free catalogue, **109 keys**, read through a typed
 `t(key, params)`. `en` holds upstream's original wording, so `MERMAID_LOCALE=en` builds the
 editor unchanged. Sample diagram names stay in English on purpose — they are keys into
 `@mermaid-js/examples`.
@@ -84,7 +84,9 @@ tracker — that is where this project tracks findings, and the owner chose to k
 
 **The `lodash-es` override.** mermaid 12 depends on `chevrotain ~11.1.2`, which (with two of its
 `@chevrotain/*` packages) pins `lodash-es@4.17.23` exactly — vulnerable to a high and a moderate
-advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1`; see
+advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1` — twice, because the package is
+built with both package managers: `pnpm.overrides` for this repository and a top-level npm
+`overrides` for the published tarball, which consumers install with `npm install`; see
 `QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
 
 **TypeScript held at 6.x.** TypeScript 7 is the native (Go) compiler: its `typescript` package no
@@ -147,7 +149,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 153 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 154 tests) and `pnpm test:e2e` (Playwright).
 
 The e2e suite runs **Chromium** for everything and **Firefox** for six `@smoke`-tagged
 journeys — load, edit/render, persistence, embed. `README.md` states the supported-browser

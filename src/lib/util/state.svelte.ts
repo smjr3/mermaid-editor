@@ -208,13 +208,13 @@ export const sanitizeConfig = (config: string | MermaidConfig) => {
   if (
     unsafePaths.length > 0 &&
     confirm(
-      `Removing ${unsafePaths
-        .map((unsafePath) => {
-          return `${JSON.stringify(unsafePath.join('.'))}: ${JSON.stringify(lodashGet(mermaidConfig, unsafePath))}`;
-        })
-        .join(
-          ',\n'
-        )} from the config for safety.\nClick Cancel if you trust the source of this Diagram.`
+      t('security.unsafeConfigConfirm', {
+        paths: unsafePaths
+          .map((unsafePath) => {
+            return `${JSON.stringify(unsafePath.join('.'))}: ${JSON.stringify(lodashGet(mermaidConfig, unsafePath))}`;
+          })
+          .join(',\n')
+      })
     )
   ) {
     stripConfigPaths(mermaidConfig, unsafePaths);

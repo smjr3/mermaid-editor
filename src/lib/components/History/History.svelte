@@ -111,7 +111,7 @@
   };
 
   const clearAll = () => {
-    if (prompt('Clear all saved items?')) {
+    if (prompt(t('history.clearAllConfirm'))) {
       clearActive();
     }
   };

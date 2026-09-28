@@ -60,7 +60,7 @@
     "lint:fix": "prettier --write --cache . && eslint --fix .",
     "format": "prettier --write --cache .",
     "pre-commit": "lint-staged",
-    "postinstall": "(husky install || node -e \"process.exit(0)\") && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || node -e \"process.exit(0)\")",
+    "postinstall": "(husky || node -e \"process.exit(0)\") && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || node -e \"process.exit(0)\")",
     "test:unit": "vitest",
     "test:unit:ui": "vitest --ui",
     "test:unit:coverage": "vitest run --coverage",

@@ -59,16 +59,16 @@ husky install && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-
 the published tarball, which ships no `.git` — so on Windows the fallback failed
 and took `npm install` down with it, in exactly the case it was written for.
 
-**Two things changed, not one.** The current value is:
+**Three things changed, not one.** The current value is:
 
 ```
-(husky install || node -e "process.exit(0)") && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || node -e "process.exit(0)")
+(husky || node -e "process.exit(0)") && svelte-kit sync && (git config blame.ignoreRevsFile .git-blame-ignore-revs || node -e "process.exit(0)")
 ```
 
 1. Upstream's `|| true` became `|| node -e "process.exit(0)"`. Node is already a hard
    dependency and behaves identically on both platforms, so the guard no longer
    depends on a Unix builtin. This is the portability half.
-2. **`husky install` gained a guard it never had upstream.** That half is not about
+2. **The husky step gained a guard it never had upstream.** That half is not about
    Windows at all. `husky` is a devDependency, so it is absent exactly when this
    package is installed _as a dependency_ — the case publishing to npm creates. With
    no `husky` on `PATH` the shell exits 127 and upstream's `&&` chain aborts before
@@ -82,11 +82,19 @@ and took `npm install` down with it, in exactly the case it was written for.
    that exits non-zero there, this guard starts covering that case too, but today it
    does not.
 
+3. **`husky install` became `husky`.** husky 9 deprecated the `install` subcommand and
+   prints a warning on every install; husky 10 removes it. Measured on 9.1.7, bare
+   `husky` sets `core.hooksPath` to `.husky/_` exactly as `husky install` did, and
+   outside a git worktree it likewise prints `.git can't be found` and exits 0. The same
+   move dropped the two lines husky 9 flags as failing in v10 from `.husky/pre-commit`
+   (the `#!/usr/bin/env sh` shebang and the sourcing of `_/husky.sh`); the hook is now
+   just `pnpm pre-commit`.
+
 `svelte-kit sync` stays unguarded and fails the install, as it should — it generates
 `.svelte-kit`, which the build and the typecheck both need.
 
 Reconstructing this during an upstream merge as "take their line and replace the
-`|| true`" restores unguarded `husky install` and breaks installs of the published
+`|| true`" restores an unguarded husky step and breaks installs of the published
 package. Take the whole line, and note that a future upstream may add its own guard
 there, in which case only change (1) remains local.
 
@@ -154,7 +162,7 @@ On Linux, Node 24.16.0:
   confirmed `publicDir: false` stops it.
 - Both `postinstall` chains run with `husky` removed from `PATH` — upstream's exits
   127 and never reaches `svelte-kit sync`, the local one exits 0 and continues. Also
-  `husky install` outside a git worktree, which exits **0** on the pinned 9.1.7, which
+  `husky` / `husky install` outside a git worktree, which exits **0** on the pinned 9.1.7, which
   is why the section above says the guard is not for the missing-`.git` case.
 - `npm_execpath` read from inside a `pnpm run` script, to confirm it names a `.cjs`
   entry point rather than a shim.

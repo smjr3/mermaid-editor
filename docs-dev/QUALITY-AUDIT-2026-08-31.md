@@ -360,3 +360,20 @@ suggestions, before and after.)
 
 Because upstream is still on Monaco 0.55.1, `UPSTREAM.md` now records that an upstream merge must
 not take Monaco back below 0.57.0.
+
+## Follow-up — the npm install path bypassed the overrides (2026-09-28)
+
+The overrides above were written as `pnpm.overrides`, which npm ignores. The published package
+is installed with `npm install` (`PACKAGING.md`, the npm-based job in `.gitlab-ci.yml`), so that
+path still resolved `chevrotain`'s `lodash-es@4.17.23`: an `npm install` of the packed tarball
+followed by `npm audit --omit=dev` reported **5 high** advisories, while `pnpm audit --prod` in
+this repository reported none. (The removed Monaco override had the same gap while it existed.)
+
+`package.json` now also carries a top-level npm `overrides` entry, `"lodash-es": "$lodash-es"`,
+which pins every `lodash-es` in the tree to the direct dependency's range (`^4.18.1`). Verified by
+packing the tarball, running `npm install` in a clean directory (every `lodash-es` resolves to
+4.18.1, `npm audit --omit=dev` reports 0) and `npm run build`. pnpm ignores the npm field:
+`pnpm install --frozen-lockfile` passes with the lockfile unchanged.
+
+Audit both install paths from now on: `pnpm audit --prod` here, and `npm audit --omit=dev` after
+the tarball round trip in `UPSTREAM.md`'s verification list.

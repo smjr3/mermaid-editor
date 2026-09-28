@@ -59,6 +59,11 @@ npm run build
 The completed site is in `docs/`. It must contain at least `index.html`, `edit.html`,
 `view.html`, and the `_app/` directory.
 
+`package.json` carries its dependency overrides twice: `pnpm.overrides` for this repository
+and a top-level `overrides` that npm applies when the tarball is installed. Without the npm
+entry, `npm install` of the tarball resolves mermaid 12's vulnerable `lodash-es@4.17.23`
+(`npm audit --omit=dev`: 5 high) even though this repository's pnpm audit is clean.
+
 When downloading through JFrog or another internal registry, that registry must proxy or
 contain all transitive dependencies as well as this package. The first install can otherwise
 fail even when `@smjr3/mermaid-editor` itself is available.

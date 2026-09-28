@@ -42,10 +42,11 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
+      # No cache: 'pnpm' — nothing here runs pnpm install, so there is no store
+      # to save and the post-job cache step fails the job.
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.node-version'
-          cache: 'pnpm'
 
       - name: Audit production dependencies (pnpm)
         run: pnpm audit --prod

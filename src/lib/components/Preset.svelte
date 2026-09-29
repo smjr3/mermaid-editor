@@ -4,6 +4,7 @@
   import Card from '$/components/Card/Card.svelte';
   import { Button, buttonVariants } from '$/components/ui/button';
   import * as Popover from '$/components/ui/popover';
+  import { localSamples } from '$/util/localSamples';
   import { getSampleDiagrams, type SampleExample } from '$/util/mermaid';
   import { updateCode } from '$lib/util/state.svelte';
   import { logEvent } from '$lib/util/stats';
@@ -44,7 +45,7 @@
     ]
   };
 
-  const samples = { ...getSampleDiagrams(), ...extras };
+  const samples = { ...getSampleDiagrams(), ...extras, ...localSamples };
 
   const loadSampleDiagram = (diagramType: string, example: SampleExample): void => {
     updateCode(example.code, {

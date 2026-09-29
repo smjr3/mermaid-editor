@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **99**.
+  every locally changed path — currently **102**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -58,6 +58,10 @@ real run on the runner.
 **Unused files removed.** Upstream's release and hosting helpers, container files, dependency-bot
 configs, `SECURITY.md` (which pointed reporters at mermaid.live) and 13 dev dependencies that
 nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge from restoring them.
+
+**Swimlane samples.** `@mermaid-js/examples` ships none, so the "Sample Diagrams" card
+gains a local `Swimlane` entry (`src/lib/util/localSamples.ts`) with two examples; a `@smoke`
+e2e test renders it in Chromium and Firefox. See `UPSTREAM.md`.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating
@@ -149,7 +153,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 157 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 161 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull
@@ -159,9 +163,9 @@ on pull requests, weekly (so a new advisory against an unchanged lockfile still 
 and on demand. With no dependency bot installed, that weekly run is what notices new
 advisories.
 
-The e2e suite runs **Chromium** for everything and **Firefox** for six `@smoke`-tagged
-journeys — load, edit/render, persistence, embed. `README.md` states the supported-browser
-policy.
+The e2e suite runs **Chromium** for everything and **Firefox** for seven `@smoke`-tagged
+journeys — load, edit/render, persistence, embed, and the swimlane sample. `README.md` states
+the supported-browser policy.
 
 Two facts that cost time to rediscover:
 

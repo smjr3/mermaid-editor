@@ -73,7 +73,8 @@ Upstream's editor feature set is included as-is at version 2.0.67:
 
 Rendering uses `mermaid` `^12.0.0`, so the mermaid 12 diagram set is available — including
 swimlane diagrams (`swimlane-beta`), which were added in mermaid 11.16.0. The keyword is unchanged
-in mermaid 12, so diagrams saved under mermaid 11 keep rendering.
+in mermaid 12, so diagrams saved under mermaid 11 keep rendering. The "Sample Diagrams" panel includes swimlane
+examples, which the upstream sample set does not.
 
 ## Requirements
 

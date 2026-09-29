@@ -149,6 +149,18 @@ resolved it, so PNG export hung without downloading. mermaid 12 renders the ER s
 in about 150 ms, which made `actions.spec.ts` "should download png and svg" fail about
 half the time. If upstream fixes this themselves, take their version and drop ours.
 
+### Swimlane samples
+
+| Path                                | Local change                                                             |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship      |
+| `src/lib/components/Preset.svelte`  | Spreads `localSamples` into the sample list after upstream's own         |
+| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as `swimlane`; none shadows an upstream sample |
+| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines   |
+
+If `@mermaid-js/examples` starts shipping a `Swimlane` entry, `localSamples.test.ts`
+fails on purpose: drop the local entry and take upstream's.
+
 ### `pnpm-lock.yaml`
 
 Never hand-merge the lockfile. Resolve `package.json` first, remove the conflicted
@@ -355,7 +367,9 @@ conflict by keeping upstream's version.
    `vite.embed.config.js` (see [Cross-platform guards](#cross-platform-guards)).
 8. Confirm the dark `--accent-foreground` survived as a near-black value (see
    [Theme changes](#theme-changes)).
-9. Run `node scripts/check-local-delta.js` last, after every other edit.
+9. Confirm the swimlane samples still load and render (`tests/swimlane.spec.ts`; see
+   [Swimlane samples](#swimlane-samples)).
+10. Run `node scripts/check-local-delta.js` last, after every other edit.
 
 ## Current local file layer
 
@@ -461,6 +475,8 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/autoSync.ts`                             |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
+| Added    | `src/lib/util/localSamples.test.ts`                    |
+| Added    | `src/lib/util/localSamples.ts`                         |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
 | Modified | `src/routes/(app)/edit/+page.svelte`                   |
@@ -479,6 +495,7 @@ modifications as if they were local customizations.
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Modified | `tests/history.spec.ts`                                |
 | Modified | `tests/loadSite.spec.ts`                               |
+| Added    | `tests/swimlane.spec.ts`                               |
 | Modified | `tests/test.ts`                                        |
 | Modified | `vite.embed.config.js`                                 |
 

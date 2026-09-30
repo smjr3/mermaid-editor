@@ -1,0 +1,86 @@
+# Publishes @smjr3/mermaid-editor to npmjs.org, with provenance. Fork-only, like
+# fork-checks.yml; see docs-dev/PACKAGING.md.
+#
+# Two ways to run it:
+# - Publish a GitHub release whose tag is v<package.json version> (e.g. v0.1.0).
+# - Run it by hand from the Actions tab. That defaults to a dry run, which
+#   packs and checks everything but uploads nothing; untick it to publish.
+#
+# Authentication: npm trusted publishing (OIDC) once it is configured for this
+# package on npmjs.com, otherwise the NPM_TOKEN repository secret. The very first
+# publish needs the token, because trusted publishing is configured on a package
+# that already exists.
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Pack and check only; do not upload
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  # Provenance and trusted publishing both authenticate with the job's OIDC token.
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check the release tag matches package.json
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node -e '
+            const version = JSON.parse(require("fs").readFileSync("package.json", "utf8")).version;
+            if (process.env.TAG !== `v${version}`) {
+              console.error(`Release tag ${process.env.TAG} does not match package.json version v${version}`);
+              process.exit(1);
+            }'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Unit tests
+        run: pnpm vitest run --dir src
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish --provenance --access public --dry-run
+          else
+            npm publish --provenance --access public
+          fi

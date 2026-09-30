@@ -36,15 +36,32 @@ tar -tzf smjr3-mermaid-editor-<version>.tgz
 
 ## Publish the package
 
-After authenticating npm against the target registry, run:
+Releases to npmjs.org go through `.github/workflows/publish.yml`, which runs lint, the type
+check, the unit tests and a build, then `npm publish --provenance`. Provenance links the
+package page on npmjs.com to the commit and workflow run that built it; it requires the
+repository to be public, which it is.
 
-```sh
-npm publish
-```
+- **Release:** bump `version` in `package.json` on `master`, then publish a GitHub release
+  tagged `v<version>` (for example `v0.1.0`). The job fails if the tag and the version differ.
+- **By hand:** run the workflow from the Actions tab. It defaults to a dry run, which prints
+  the tarball contents and uploads nothing; untick "dry run" to publish.
 
-`package.json` already sets `publishConfig.access` to `public`, which is required for a
-public scoped package. For a private internal registry, confirm its scoped-package and
-access-policy settings before publishing. Do not publish as part of a test.
+Authentication, in order of preference:
+
+1. **Trusted publishing** (no stored secret). On npmjs.com, open the package's settings and
+   add a trusted publisher: GitHub Actions, repository `smjr3/mermaid-editor`, workflow
+   `publish.yml`. npm only offers this for a package that already exists, so it cannot be
+   used for the first release.
+2. **`NPM_TOKEN`**, a repository secret holding a granular npm access token with
+   read-and-write permission on the `@smjr3` scope. Needed for the first release; delete
+   the secret once trusted publishing is configured.
+
+A version can be published only once; npm rejects a second publish of the same version.
+
+To publish from a workstation instead, authenticate with `npm login` and run
+`npm publish --access public`. `package.json` already sets `publishConfig.access` to
+`public`, which a public scoped package requires. For a private internal registry, confirm
+its scoped-package and access-policy settings first. Do not publish as part of a test.
 
 ## Rebuild the static site from the package
 

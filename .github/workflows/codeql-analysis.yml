@@ -24,6 +24,12 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    # Local: push and schedule runs need to upload results to code scanning,
+    # which the default read-only GITHUB_TOKEN cannot (docs-dev/UPSTREAM.md).
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
     strategy:
       fail-fast: false

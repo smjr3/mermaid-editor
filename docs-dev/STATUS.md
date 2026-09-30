@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **105**.
+  every locally changed path — currently **106**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -178,22 +178,15 @@ Two facts that cost time to rediscover:
   carries a raised timeout for that reason; `checkTextNotInView` deliberately does not,
   because it asserts absence and returns as soon as the text is gone.
 
-## Known-red check
+## CodeQL
 
-`Analyze (javascript)` (CodeQL) fails on every pull request: SARIF upload requires code
-scanning, which is unavailable while the repository is private. It is not a code defect.
+`Analyze (javascript)` (CodeQL) passes again. It failed on every run while the repository
+was private, because uploading results needs code scanning, which private repositories here
+do not have. Making the repository public (2026-09-30) fixed pull requests but not `push`
+and `schedule` runs on `master`: those upload with the default read-only `GITHUB_TOKEN` and
+were refused. `codeql-analysis.yml` now grants its job `security-events: write` (plus
+`actions: read` and `contents: read`, as GitHub's own template does), scoped to that one
+job rather than widening the repository-wide token setting.
 
-The owner has chosen to tolerate it, and that is a defensible choice — but it is a choice, and
-it has a cost worth naming: a permanently red check hides a _new_ CodeQL failure, because
-nobody looks at a signal that is always red. The options, so a maintainer is not left thinking
-there are only two:
-
-| Option                                    | Effect                                                                                                                                                                                                                                                   |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Leave it (current)                        | Every PR shows one red check. Cheapest, and the failure is understood                                                                                                                                                                                    |
-| Make the repository public                | The check starts passing; a product decision, not a CI one                                                                                                                                                                                               |
-| Disable the workflow from the Actions tab | Stops it running without touching the tree or adding upstream delta; re-enable in one click                                                                                                                                                              |
-| Gate the job on repository visibility     | Keeps it in the tree and self-documenting, but edits an upstream file and so adds a path to the local-change inventory. The exact expression needs checking against the events this workflow uses — it triggers on `push`, `pull_request` and `schedule` |
-
-Deleting the workflow is the one option to avoid: it loses the analysis for the day the
-repository does go public.
+That is the one local change to the workflow; `UPSTREAM.md` covers it for merges. Do not
+delete the workflow: it is the code scanning this repository has.

@@ -315,8 +315,10 @@ mermaid.live's own release, hosting and funding and misfire when they run under
 | `renovate.json`, `.github/dependabot.disabled.yml`                | Upstream's dependency bots, targeting `develop`. No bot is installed here; dependency updates are done by hand as recorded in `STATUS.md`.                                                                |
 
 `.github/workflows/tests.yml`, `unit-tests.yml` and `codeql-analysis.yml` are kept —
-they run CI, not releases. (`codeql-analysis.yml` is the known-red check in `STATUS.md`,
-kept on purpose.)
+they run CI, not releases. `codeql-analysis.yml` carries one local change: a job-level
+`permissions` block granting `security-events: write`, without which `push` and `schedule`
+runs cannot upload results. Keep it if upstream rewrites the file, unless upstream adds its
+own (`STATUS.md`, CodeQL).
 
 Unused upstream dev dependencies were removed from `package.json` for the same reason:
 `@eslint/eslintrc`, `@iconify-json/hugeicons`, `@tailwindcss/typography`, `autoprefixer`,
@@ -405,6 +407,7 @@ modifications as if they were local customizations.
 | Deleted  | `.github/dependabot.disabled.yml`                      |
 | Modified | `.github/pull_request_template.md`                     |
 | Deleted  | `.github/workflows/close-broken-link-issues.yml`       |
+| Modified | `.github/workflows/codeql-analysis.yml`                |
 | Deleted  | `.github/workflows/deploy.yml`                         |
 | Deleted  | `.github/workflows/docker-publish.yml`                 |
 | Added    | `.github/workflows/fork-checks.yml`                    |

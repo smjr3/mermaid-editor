@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **102**.
+  every locally changed path — currently **104**.
 - Published to npm, delivered internally through JFrog → internal GitLab → GitLab Pages.
 
 ## The documents
@@ -68,10 +68,11 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI** (`I18N.md`). A dependency-free catalogue, **109 keys**, read through a typed
-`t(key, params)`. `en` holds upstream's original wording, so `MERMAID_LOCALE=en` builds the
-editor unchanged. Sample diagram names stay in English on purpose — they are keys into
-`@mermaid-js/examples`.
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **111 keys**,
+read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
+toggle switches to English and the choice is remembered per browser. `en` holds upstream's
+original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
+in English on purpose — they are keys into `@mermaid-js/examples`.
 
 **The audit's three findings each have a follow-up** (`QUALITY-AUDIT-2026-08-31.md`), but
 "followed up" is not the same as "finished" and the difference matters:
@@ -153,7 +154,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 161 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 165 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

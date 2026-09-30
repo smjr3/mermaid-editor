@@ -20,6 +20,7 @@ export const TID = {
   errorContainer: 'error-container',
   historyCard: 'history-card',
   historyRevisionsTab: 'history-revisions-tab',
+  localeToggleButton: 'locale-toggle-button',
   sampleDiagramsCard: 'sample-diagrams-card',
   themeToggleButton: 'theme-toggle-button'
 } as const;

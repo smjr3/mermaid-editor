@@ -271,13 +271,15 @@ keep that honest:
   carry the same keys and the same `{placeholders}`. Adding a key to one locale
   only fails `pnpm check` or the unit suite, not review.
 
-| Path                                  | Local change                                                                                             |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/lib/i18n/`                       | Added: the catalogue, `t()`, and their test                                                              |
-| `src/lib/util/env.ts`                 | Added `locale`, read from `MERMAID_LOCALE`                                                               |
-| `src/lib/util/state.svelte.ts`        | The broken-URL diagram comes from the catalogue, and no longer links to upstream's issue tracker (below) |
-| `src/lib/components/Card/Card.svelte` | Added a `testID` prop so tests can target panels without depending on a translated title                 |
-| `tests/test.ts`                       | Exports a test-side `t()`; the specs select by catalogue key rather than by English text                 |
+| Path                                     | Local change                                                                                             |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/lib/i18n/`                          | Added: the catalogue, `t()`, and their test                                                              |
+| `src/lib/util/env.ts`                    | Added `locale`, read from `MERMAID_LOCALE`                                                               |
+| `src/lib/util/state.svelte.ts`           | The broken-URL diagram comes from the catalogue, and no longer links to upstream's issue tracker (below) |
+| `src/lib/components/Card/Card.svelte`    | Added a `testID` prop so tests can target panels without depending on a translated title                 |
+| `tests/test.ts`                          | Exports a test-side `t()`; the specs select by catalogue key rather than by English text                 |
+| `src/lib/components/LocaleToggle.svelte` | Added: the language button; `VersionSecurityToolbar.svelte` renders it beside the theme toggle           |
+| `tests/locale.spec.ts`                   | Added: switching language keeps the diagram and survives a reload                                        |
 
 Upstream's new specs arrive selecting by English text and fail against the Japanese UI —
 `tests/configMigration.spec.ts` (waits for "Sample Diagrams") did exactly that in the
@@ -457,6 +459,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/Editor.svelte`                     |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
 | Modified | `src/lib/components/History/History.svelte`            |
+| Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
 | Modified | `src/lib/components/Navbar.svelte`                     |
 | Modified | `src/lib/components/PanZoomToolbar.svelte`             |
@@ -495,6 +498,7 @@ modifications as if they were local customizations.
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Modified | `tests/history.spec.ts`                                |
 | Modified | `tests/loadSite.spec.ts`                               |
+| Added    | `tests/locale.spec.ts`                                 |
 | Added    | `tests/swimlane.spec.ts`                               |
 | Modified | `tests/test.ts`                                        |
 | Modified | `vite.embed.config.js`                                 |

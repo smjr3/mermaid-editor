@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '$/i18n';
   import FloatingToolbar from '$/components/FloatingToolbar.svelte';
+  import LocaleToggle from '$/components/LocaleToggle.svelte';
   import Privacy from '$/components/Privacy.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -29,4 +30,5 @@
     onclick={() => setMode(mode.current === 'dark' ? 'light' : 'dark')}>
     <ThemeIcon />
   </Button>
+  <LocaleToggle />
 </FloatingToolbar>

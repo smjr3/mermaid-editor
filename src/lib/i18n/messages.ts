@@ -3,8 +3,9 @@
  *
  * Deliberately a plain object rather than an i18n framework. Paraglide and the
  * like want a build plugin and, in their SvelteKit form, ownership of locale
- * routing — machinery this fork has no use for, since it ships one locale and
- * builds a static site served from a fixed subpath. What the framework would buy
+ * routing — machinery this fork has no use for: it ships two locales, switched
+ * per browser by a toggle (see ./index.ts), and builds a static site served from
+ * a fixed subpath. What the framework would buy
  * us is that UI strings live in one place, and that is what this file is.
  *
  * `en` holds upstream's original wording, so nothing is lost and the editor can
@@ -77,6 +78,7 @@ export const messages = {
     'history.tabSaved': 'Saved',
     'history.tabTimeline': 'Timeline',
     'history.upload': 'Upload history',
+    'locale.name': 'English',
     'menu.community': 'Community',
     'menu.darkMode': 'Dark Mode',
     'menu.documentation': 'Documentation',
@@ -134,6 +136,7 @@ export const messages = {
     'toolbar.backgroundGrid': 'Background Grid',
     'toolbar.handDrawn': 'Hand-Drawn',
     'toolbar.privacySecurity': 'Privacy & Security',
+    'toolbar.switchLocale': 'Switch to English',
     'toolbar.switchToDark': 'Switch to dark theme',
     'toolbar.switchToLight': 'Switch to light theme'
   },
@@ -202,6 +205,7 @@ export const messages = {
     'history.tabSaved': '保存済み',
     'history.tabTimeline': 'タイムライン',
     'history.upload': '履歴をアップロード',
+    'locale.name': '日本語',
     'menu.community': 'コミュニティ',
     'menu.darkMode': 'ダークモード',
     'menu.documentation': 'ドキュメント',
@@ -258,6 +262,7 @@ export const messages = {
     'toolbar.backgroundGrid': '背景グリッド',
     'toolbar.handDrawn': '手描き風',
     'toolbar.privacySecurity': 'プライバシーとセキュリティ',
+    'toolbar.switchLocale': '日本語に切り替え',
     'toolbar.switchToDark': 'ダークテーマに切り替え',
     'toolbar.switchToLight': 'ライトテーマに切り替え'
   }

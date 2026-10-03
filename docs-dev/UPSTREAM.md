@@ -213,20 +213,24 @@ Fork features that touch upstream files. Each upstream file gains a few lines th
 into a fork-local file; the logic lives in the fork-local file, so a conflict is resolved by
 taking upstream's version and re-adding those lines.
 
-| Path                                          | Local change                                                                                                                                                                                     |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/lib/components/DesktopEditor.svelte`     | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language                                                                                          |
-| `src/lib/util/mermaidRename.ts`               | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider                                                                                            |
-| `src/lib/util/state.svelte.ts`                | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                     |
-| `src/lib/components/ResetConfigButton.svelte` | Added. The "Reset config" button on the config tab                                                                                                                                               |
-| `src/lib/util/mermaid.ts`                     | Calls `mermaid.registerIconPacks(iconPacks)` at module load                                                                                                                                      |
-| `src/lib/util/iconPacks.ts`                   | Added. `logos`, `simple-icons` and `mdi`, loaded lazily from the bundle — never from a CDN                                                                                                       |
-| `src/routes/(app)/edit/+page.svelte`          | Renders `<ResetConfigButton>` in the editor card, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
-| `package.json`                                | `@iconify-json/logos` and `@iconify-json/mdi` move from `devDependencies` to `dependencies` (they ship in the site); `@iconify-json/simple-icons` is added                                       |
+| Path                                                | Local change                                                                                                                                                                                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/DesktopEditor.svelte`           | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language                                                                                                                               |
+| `src/lib/util/mermaidRename.ts`                     | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider                                                                                                                                 |
+| `src/lib/util/state.svelte.ts`                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                          |
+| `src/lib/components/ResetConfigButton.svelte`       | Added. The "Reset config" button on the config tab                                                                                                                                                                                    |
+| `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, and waits for the stored ones before rendering                                                                                                                                 |
+| `src/lib/util/iconPacks.ts`                         | Added. The seven bundled Iconify packs, loaded lazily from the bundle — never from a CDN                                                                                                                                              |
+| `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                           |
+| `src/lib/components/IconPacks.svelte`               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                          |
+| `src/lib/util/env.ts`, `.env`                       | Add `iconPacks` / `MERMAID_ICON_PACKS`                                                                                                                                                                                                |
+| `scripts/svg-to-iconify.js`                         | Added. Converts an SVG folder into a pack a deployment can host; see `docs-dev/ICONS.md`                                                                                                                                              |
+| `src/routes/(app)/edit/+page.svelte`                | Renders `<ResetConfigButton>` in the editor card and `<IconPacks>` beside the samples, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
+| `package.json`                                      | `@iconify-json/logos` and `@iconify-json/mdi` move from `devDependencies` to `dependencies` (they ship in the site); the other five packs and `dompurify` are added                                                                   |
 
 The layout change is classes only. On a conflict in the pane markup, take upstream's
 structure and re-apply the `sm:` classes and `withHandle`; `tests/fixedLayout.spec.ts`
-fails if they are lost. If upstream bumps either icon pack in `devDependencies`, keep the
+fails if they are lost. If upstream bumps an icon pack in `devDependencies`, keep the
 higher version and keep it under `dependencies`.
 
 ### Cross-platform guards
@@ -458,6 +462,7 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/FEATURE-FLAGS.md`                            |
 | Added    | `docs-dev/GITLAB-PAGES.md`                             |
 | Added    | `docs-dev/I18N.md`                                     |
+| Added    | `docs-dev/ICONS.md`                                    |
 | Added    | `docs-dev/PACKAGING.md`                                |
 | Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                 |
 | Added    | `docs-dev/STATUS.md`                                   |
@@ -473,6 +478,8 @@ modifications as if they were local customizations.
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/prepare-pages.js`                             |
+| Added    | `scripts/svg-to-iconify.d.ts`                          |
+| Added    | `scripts/svg-to-iconify.js`                            |
 | Added    | `scripts/update-upstream.sh`                           |
 | Modified | `src/app.css`                                          |
 | Modified | `src/app.html`                                         |
@@ -485,6 +492,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/Editor.svelte`                     |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
 | Modified | `src/lib/components/History/History.svelte`            |
+| Added    | `src/lib/components/IconPacks.svelte`                  |
 | Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
 | Modified | `src/lib/components/Navbar.svelte`                     |
@@ -503,6 +511,9 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/translate.ts`                            |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
 | Modified | `src/lib/util/autoSync.ts`                             |
+| Added    | `src/lib/util/customIconStore.ts`                      |
+| Added    | `src/lib/util/customIcons.test.ts`                     |
+| Added    | `src/lib/util/customIcons.ts`                          |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
@@ -515,6 +526,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
+| Added    | `src/lib/util/svgToIconify.test.ts`                    |
 | Modified | `src/routes/(app)/edit/+page.svelte`                   |
 | Modified | `src/routes/+error.svelte`                             |
 | Modified | `src/routes/embed/+page.svelte`                        |
@@ -533,6 +545,7 @@ modifications as if they were local customizations.
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Added    | `tests/fixedLayout.spec.ts`                            |
 | Modified | `tests/history.spec.ts`                                |
+| Added    | `tests/iconImport.spec.ts`                             |
 | Added    | `tests/iconPacks.spec.ts`                              |
 | Modified | `tests/loadSite.spec.ts`                               |
 | Added    | `tests/locale.spec.ts`                                 |

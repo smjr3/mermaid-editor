@@ -87,11 +87,25 @@ and their code is included in the built static site.
   Material Design Icons (@iconify-json/mdi)
       Copyright Pictogrammers
       License: Apache License 2.0
-      Bundled as a lazily loaded icon pack for diagrams (mdi:...). Used
-      unmodified; the Apache-2.0 license travels with the built site through
-      this notice and THIRD-PARTY-LICENSES.md. The other bundled icon packs,
-      @iconify-json/logos and @iconify-json/simple-icons, are CC0-1.0. Their
-      icons depict third-party trademarks, which remain their owners'.
+
+  IBM Carbon icons (@iconify-json/carbon)
+      Copyright IBM Corp.
+      License: Apache License 2.0
+
+  Fluent UI System Icons (@iconify-json/fluent)
+      Copyright Microsoft Corporation
+      License: MIT
+
+  Devicon (@iconify-json/devicon), Flat Color Icons
+  (@iconify-json/flat-color-icons)
+      License: MIT
+
+      These are bundled as lazily loaded icon packs for diagrams
+      (prefix:name). They are used unmodified; their licenses travel with the
+      built site through this notice and THIRD-PARTY-LICENSES.md. The other
+      bundled icon packs, @iconify-json/logos and @iconify-json/simple-icons,
+      are CC0-1.0. The icons depict third-party trademarks, which remain their
+      owners'.
 
 
 ------------------------------------------------------------------------------

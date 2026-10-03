@@ -26,6 +26,20 @@ pages:
   pages: true
 
 # ---------------------------------------------------------------------------
+# Icon packs the deployment hosts (docs-dev/ICONS.md)
+#
+# Official vendor icon sets cannot ship in the repository. To offer one on this
+# site, add these to the `pages` job: download and unpack the vendor's SVG
+# archive (accepting its terms) into azure-icons/ in an earlier step, then
+#
+#   variables:
+#     MERMAID_ICON_PACKS: 'azure=./icon-packs/azure.json'
+#   script:
+#     - pnpm build
+#     - pnpm build:pages
+#     - node scripts/svg-to-iconify.js azure-icons azure public/icon-packs/azure.json
+#
+# ---------------------------------------------------------------------------
 # Windows runner
 #
 # `image:` applies only to Docker executors and names a Linux image, so a

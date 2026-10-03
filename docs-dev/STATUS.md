@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **118**.
+  every locally changed path — currently **127**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -31,6 +31,7 @@ The standing constraints, which shape almost every decision recorded here:
 | `FEATURE-FLAGS.md`            | Which surfaces are switched off for organisational use and by which variable                                                             |
 | `CROSS-PLATFORM.md`           | Why the build runs on Windows as well as Linux, and what is reasoned rather than executed                                                |
 | `THEME.md`                    | The accent palette per mode with measured contrast, and why the dark `--accent-foreground` must not be reverted                          |
+| `ICONS.md`                    | The bundled icon packs, packs a deployment hosts (`MERMAID_ICON_PACKS`), user-imported packs, and how their markup is sanitised          |
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | The GitLab Pages deployment path                                                                                                         |
@@ -71,20 +72,23 @@ editor no longer shows the AI gutter button, which used to open an empty zone th
 closed. On desktop the editor column and the view are fixed panes with a visible divider instead
 of floating cards. Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
 
-**Cloud icons (0.2.0).** Diagrams can name icons as `prefix:name` from three bundled,
-permissively licensed Iconify packs — `logos` (AWS services, the Azure and Google Cloud marks),
-`simple-icons` (Azure and Google Cloud products) and `mdi` (generic shapes) — loaded lazily
-from the site, never a CDN (`iconPacks.ts`). A "Cloud Architecture" sample entry shows AWS,
-Azure and Google Cloud examples. The vendors' own architecture icon sets are not bundled: their
-terms restrict redistribution (`THIRD-PARTY-LICENSES.md`). The packs add about 12 MB of lazily
-loaded chunks to the built site.
+**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from seven bundled,
+permissively licensed Iconify packs — cloud and product logos (`logos`, `simple-icons`,
+`devicon`), infrastructure pictograms (`carbon`), Microsoft's Fluent icons (`fluent`), business
+icons (`flat-color-icons`) and generic shapes (`mdi`) — loaded lazily from the site, never a CDN.
+The vendors' own architecture icon sets cannot be bundled (their terms restrict redistribution),
+so a deployment can host such packs itself (`MERMAID_ICON_PACKS`, with `scripts/svg-to-iconify.js`
+to convert an SVG folder) and a user can import SVG files or an Iconify JSON file from the
+"Icons" card (kept in IndexedDB). Hosted and imported icons are sanitised with DOMPurify before
+mermaid inserts them. A "Cloud Architecture" sample entry shows AWS, Azure and Google Cloud. The
+packs add about 30 MB of lazily loaded chunks to the built site.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **113 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **129 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -172,7 +176,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 216 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 232 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

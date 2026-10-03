@@ -20,13 +20,13 @@ outside the redistributed output.
 
 ## License summary
 
-Production dependency tree at the snapshot described below: **229 packages**.
+Production dependency tree at the snapshot described below: **233 packages**.
 
 | Count | License                                    |
 | ----: | ------------------------------------------ |
-|   158 | MIT                                        |
+|   161 | MIT                                        |
 |    33 | ISC                                        |
-|    19 | Apache-2.0                                 |
+|    20 | Apache-2.0                                 |
 |     9 | BSD-3-Clause                               |
 |     2 | CC0-1.0                                    |
 |     1 | (MPL-2.0 OR Apache-2.0)                    |
@@ -80,13 +80,15 @@ emitted into the built static site. Its fonts are licensed under OFL-1.1, its co
 its icons under CC BY 4.0. The icons' CC BY 4.0 terms require attribution. Font Awesome Free is
 Copyright Fonticons, Inc.; see <https://fontawesome.com/license/free>.
 
-### Iconify icon packs — CC0-1.0 and Apache-2.0
+### Iconify icon packs — CC0-1.0, MIT and Apache-2.0
 
-`@iconify-json/logos` and `@iconify-json/simple-icons` (CC0-1.0) and `@iconify-json/mdi`
-(Apache-2.0) are bundled as lazily loaded chunks so diagrams can name icons such as
-`logos:aws-lambda` (`src/lib/util/iconPacks.ts`). CC0 carries no conditions. Apache-2.0 requires
-its license and notices to travel with the redistributed icons; `@iconify-json/mdi` (Material
-Design Icons, Copyright Pictogrammers) is used unmodified. The icons depict third-party trademarks
+Seven Iconify packs are bundled as lazily loaded chunks so diagrams can name icons such as
+`logos:aws-lambda` (`src/lib/util/iconPacks.ts`, `docs-dev/ICONS.md`): `@iconify-json/logos` and
+`@iconify-json/simple-icons` (CC0-1.0), `@iconify-json/devicon`, `@iconify-json/fluent` (Microsoft
+Fluent UI System Icons) and `@iconify-json/flat-color-icons` (MIT), and `@iconify-json/carbon`
+(IBM Carbon) and `@iconify-json/mdi` (Material Design Icons, Pictogrammers) (Apache-2.0). CC0
+carries no conditions; MIT and Apache-2.0 require their license and notices to travel with the
+redistributed icons, which `NOTICE` and this file do. All are used unmodified. The icons depict third-party trademarks
 (AWS, Microsoft Azure, Google Cloud and others); the trademarks remain their owners' and are shown
 only to identify the services in a diagram. The vendors' own architecture icon sets are **not**
 bundled, because their terms restrict redistribution.
@@ -120,8 +122,8 @@ The counts above are a **point-in-time snapshot**, taken against:
 
 - upstream commit `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (upstream version 2.0.67), merged
   on 2026-10-03
-- this repository's `pnpm-lock.yaml` after that merge, the move to mermaid 12.1.0 and the
-  bundled icon packs (2026-10-03), including its `pnpm.overrides`. mermaid 12.1.0's chevrotain 13
+- this repository's `pnpm-lock.yaml` after that merge, the move to mermaid 12.1.0, the
+  bundled icon packs and the direct `dompurify` dependency (2026-10-03), including its `pnpm.overrides`. mermaid 12.1.0's chevrotain 13
   no longer pulls in `lodash-es@4.17.23`, and Monaco's `dompurify` is overridden to 3.4.16, so a
   single `dompurify` (3.4.16) is installed; the Apache-2.0 election applies to it.
 

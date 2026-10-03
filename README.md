@@ -118,9 +118,9 @@ MIT ライセンスです。上流の MIT ライセンスを継承していま�
 - **リポジトリ:** <https://github.com/mermaid-js/mermaid-live-editor>
 - **著作権:** Copyright (c) 2020 - 2023 Knut Sveidqvist
 - **ライセンス:** MIT
-- **取り込み元コミット:** `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc`（ブランチ `master`）
+- **取り込み元コミット:** `a70ed761a7d040a38f71bf13d999e387f4bf68ca`（ブランチ `master`）
 - **上流バージョン:** 2.0.67
-- **取り込み日:** 2026-09-27（初回取り込みは 2026-08-25、`990dd241f2acf39c10db9da94464cbb833150426`）
+- **取り込み日:** 2026-10-03（初回取り込みは 2026-08-25、`990dd241f2acf39c10db9da94464cbb833150426`）
 
 上流は git タグを付けていないため、取り込み元はコミット SHA で識別しています。
 
@@ -160,6 +160,6 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   `pnpm build` → `docs/`). See `docs-dev/PACKAGING.md` to build from the npm package.
 - MIT licensed, inheriting upstream's MIT license (Copyright (c) 2020 - 2023 Knut Sveidqvist);
   see `LICENSE`, `NOTICE` and `THIRD-PARTY-LICENSES.md`. Imported from upstream commit
-  `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (version 2.0.67); the procedure for following
+  `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (version 2.0.67); the procedure for following
   upstream is in `docs-dev/UPSTREAM.md`, and upstream's own README is kept in
   [`README.upstream.md`](README.upstream.md).

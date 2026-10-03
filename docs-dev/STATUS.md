@@ -9,7 +9,7 @@ Monaco DOMPurify override (PR #28), and the upstream merge that brought mermaid 
 ## What this is
 
 `@smjr3/mermaid-editor` is a fork of [mermaid-live-editor](https://github.com/mermaid-js/mermaid-live-editor),
-imported at upstream **2.0.67** and last merged from upstream commit `e5e2ca4` (2026-09-22), customised for internal organisational use.
+imported at upstream **2.0.67** and last merged from upstream commit `a70ed76` (2026-09-30), customised for internal organisational use.
 
 The standing constraints, which shape almost every decision recorded here:
 

@@ -106,7 +106,7 @@ redistribution solely from the dependency section in `package.json`.
 
 The counts above are a **point-in-time snapshot**, taken against:
 
-- upstream commit `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (upstream version 2.0.67), merged
+- upstream commit `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (upstream version 2.0.67), merged
   on 2026-09-27
 - this repository's `pnpm-lock.yaml` after that merge and the patch/minor dependency refresh
   that followed it (2026-09-27), including its `pnpm.overrides`. That refresh took

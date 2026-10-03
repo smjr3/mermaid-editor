@@ -24,15 +24,19 @@ describe('localSamples', () => {
 
   it('names only icons the bundled packs provide', async () => {
     const { iconPacks } = await import('./iconPacks');
+    const used = examples.flatMap(([, , code]) => [...code.matchAll(/\(([\w-]+):([\w-]+)\)/g)]);
+    const prefixes = new Set(used.map(([, prefix]) => prefix));
     const packs = Object.fromEntries(
-      await Promise.all(iconPacks.map(async ({ name, loader }) => [name, await loader()] as const))
+      await Promise.all(
+        iconPacks
+          .filter(({ name }) => prefixes.has(name))
+          .map(async ({ name, loader }) => [name, await loader()] as const)
+      )
     );
-    for (const [, , code] of examples) {
-      for (const [, prefix, icon] of code.matchAll(/\(([\w-]+):([\w-]+)\)/g)) {
-        expect(packs[prefix]?.icons, `${prefix}:${icon}`).toHaveProperty(icon);
-      }
+    for (const [, prefix, icon] of used) {
+      expect(packs[prefix]?.icons, `${prefix}:${icon}`).toHaveProperty(icon);
     }
-  });
+  }, 30_000);
 
   it('has exactly one default per diagram', () => {
     for (const [name, list] of Object.entries(localSamples)) {

@@ -84,6 +84,15 @@ and their code is included in the built static site.
       The icons require attribution under CC BY 4.0. License information is
       available at https://fontawesome.com/license/free.
 
+  Material Design Icons (@iconify-json/mdi)
+      Copyright Pictogrammers
+      License: Apache License 2.0
+      Bundled as a lazily loaded icon pack for diagrams (mdi:...). Used
+      unmodified; the Apache-2.0 license travels with the built site through
+      this notice and THIRD-PARTY-LICENSES.md. The other bundled icon packs,
+      @iconify-json/logos and @iconify-json/simple-icons, are CC0-1.0. Their
+      icons depict third-party trademarks, which remain their owners'.
+
 
 ------------------------------------------------------------------------------
 4. FULL DEPENDENCY LICENSE PICTURE

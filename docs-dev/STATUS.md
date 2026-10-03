@@ -3,8 +3,8 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-27**, including the release dependency refresh (PR #27), the
-Monaco DOMPurify override (PR #28), and the upstream merge that brought mermaid 12.
+Accurate as of **2026-10-03**, including the 0.2.0 work: the upstream merge of `a70ed76`,
+mermaid 12.1.0, and the editor, layout and icon features below.
 
 ## What this is
 
@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **106**.
+  every locally changed path — currently **118**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -64,12 +64,27 @@ nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge fro
 gains a local `Swimlane` entry (`src/lib/util/localSamples.ts`) with two examples; a `@smoke`
 e2e test renders it in Chromium and Firefox. See `UPSTREAM.md`.
 
+**Editor and layout (0.2.0).** F2 renames a node, participant or service id everywhere it is
+used, leaving labels and messages alone (`mermaidRename.ts`). The config tab has a "Reset
+config" button for a config that leaves every render failing. With AI features off, the
+editor no longer shows the AI gutter button, which used to open an empty zone that could not be
+closed. On desktop the editor column and the view are fixed panes with a visible divider instead
+of floating cards. Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
+
+**Cloud icons (0.2.0).** Diagrams can name icons as `prefix:name` from three bundled,
+permissively licensed Iconify packs — `logos` (AWS services, the Azure and Google Cloud marks),
+`simple-icons` (Azure and Google Cloud products) and `mdi` (generic shapes) — loaded lazily
+from the site, never a CDN (`iconPacks.ts`). A "Cloud Architecture" sample entry shows AWS,
+Azure and Google Cloud examples. The vendors' own architecture icon sets are not bundled: their
+terms restrict redistribution (`THIRD-PARTY-LICENSES.md`). The packs add about 12 MB of lazily
+loaded chunks to the built site.
+
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **111 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **113 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -157,7 +172,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 165 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 216 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

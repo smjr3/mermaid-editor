@@ -26,12 +26,23 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 この派生版で加えたもの:
 
 - **日本語 UI**（標準）と、画面上で切り替えられる英語 UI。選んだ言語はブラウザに保存されます
-- **スイムレーン図**（`swimlane-beta`）。描画には `mermaid` `^12.0.0` を使っています。スイムレーン図は
+- **スイムレーン図**（`swimlane-beta`）。描画には `mermaid` `^12.1.0` を使っています。スイムレーン図は
   mermaid 11.16.0 で追加され、mermaid 12 でもキーワードは変わらないため、mermaid 11 で保存した図も
   そのまま描画できます。上流のサンプル集にはないスイムレーンの例を「サンプル図」に加えています
 - **外部サービスへの送信を既定で無効化**。Mermaid Chart へのリンク、AI 機能、コミュニティリンク、
   図のソースを第三者の URL に載せるレンダラー連携を、環境変数でオフにしています
   （`docs-dev/FEATURE-FLAGS.md`）。PNG / SVG の書き出しはブラウザ内で描画するので使えます
+- **クラウドのアイコン**。AWS・Azure・Google Cloud などのアイコンを `prefix:name` の形で図に使えます
+  （例: `service fn(logos:aws-lambda)[Lambda]`）。アイコンはサイトに同梱していて、外部から取得しません。
+  使えるのは [logos](https://icon-sets.iconify.design/logos/)（AWS の各サービスなど）、
+  [simple-icons](https://icon-sets.iconify.design/simple-icons/)（Azure・Google Cloud の各製品など）、
+  [mdi](https://icon-sets.iconify.design/mdi/)（サーバー・データベースなどの汎用図形）です。
+  「サンプル図」の「Cloud Architecture」に例があります
+- **名前の一括変更**。エディタでノード名などにカーソルを置いて F2 を押すと、使われている箇所をまとめて
+  書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
+  Ctrl+Shift+L、Alt+クリックでの複数カーソルも使えます
+- **設定のリセット**。「設定」タブの「設定をリセット」で、壊れた設定を初期状態に戻せます（図のコードは残ります）
+- デスクトップでは、エディタと図の表示を固定の 2 画面に分け、境目をドラッグして幅を変えられます
 - ライト / ダークそれぞれで WCAG AA を満たすアクセントカラー（`docs-dev/THEME.md`）
 - Windows でもビルドできるスクリプト構成（`docs-dev/CROSS-PLATFORM.md`）
 
@@ -152,8 +163,12 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 > <https://mermaid.live>. Report problems with this distribution in this repository's issue
 > tracker, not upstream's.
 
-- Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.0.0` —
+- Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.1.0` —
   including swimlane diagrams (`swimlane-beta`), with swimlane examples in the sample panel.
+- Bundled icon packs for AWS, Azure, Google Cloud and other products (`logos`, `simple-icons`,
+  `mdi`; e.g. `service fn(logos:aws-lambda)[Lambda]`), loaded from the site, never a CDN.
+- F2 renames a node id everywhere it is used; the config tab can reset a broken config; on
+  desktop the editor and the view are fixed panes split by a draggable divider.
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are
   switched off by default (`docs-dev/FEATURE-FLAGS.md`); local PNG/SVG export still works.
 - Requires Node.js >= 24.16.0; use pnpm for development (`pnpm install`, `pnpm dev`,

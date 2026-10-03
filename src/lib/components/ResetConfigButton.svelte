@@ -16,10 +16,13 @@
 {#if validatedState.current.editorMode === 'config'}
   <Button
     variant="ghost"
+    class="gap-1 px-2"
     data-testid={TID.resetConfigButton}
     title={t('editor.resetConfig')}
+    aria-label={t('editor.resetConfig')}
     {onclick}>
     <ResetIcon />
-    {t('editor.resetConfig')}
+    <!-- Short label: the editor card header also holds the tabs and the Docs button. -->
+    {t('editor.resetConfigShort')}
   </Button>
 {/if}

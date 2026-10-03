@@ -339,6 +339,13 @@ export const clearDefaultThemeConfig = (): void => {
   }
 };
 
+// Local: the "reset config" button. Returns the config to the default (`{}`;
+// the managed theme is filled back in by the next validation), leaving the
+// diagram alone — a broken config otherwise keeps every render failing.
+export const resetConfig = (): void => {
+  updateConfig(formatJSON({}));
+};
+
 // Replaces the whole input state (e.g. when restoring a history entry),
 // dropping keys the next state does not define.
 export const replaceInputState = (next: State): void => {

@@ -21,6 +21,7 @@ export const TID = {
   historyCard: 'history-card',
   historyRevisionsTab: 'history-revisions-tab',
   localeToggleButton: 'locale-toggle-button',
+  resetConfigButton: 'reset-config-button',
   sampleDiagramsCard: 'sample-diagrams-card',
   themeToggleButton: 'theme-toggle-button'
 } as const;

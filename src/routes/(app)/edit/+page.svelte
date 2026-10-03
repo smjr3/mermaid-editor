@@ -13,6 +13,7 @@
   import Navbar from '$/components/Navbar.svelte';
   import PanZoomToolbar from '$/components/PanZoomToolbar.svelte';
   import Preset from '$/components/Preset.svelte';
+  import ResetConfigButton from '$/components/ResetConfigButton.svelte';
   import Share from '$/components/Share.svelte';
   import SyncRoughToolbar from '$/components/SyncRoughToolbar.svelte';
   import { Button } from '$/components/ui/button';
@@ -149,6 +150,7 @@
               activeTabID={validatedState.current.editorMode}
               isClosable={false}>
               {#snippet actions()}
+                <ResetConfigButton />
                 <DiagramDocButton />
               {/snippet}
               <Editor {isMobile} />

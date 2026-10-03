@@ -72,16 +72,16 @@ editor no longer shows the AI gutter button, which used to open an empty zone th
 closed. On desktop the editor column and the view are fixed panes with a visible divider instead
 of floating cards. Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
 
-**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from seven bundled,
-permissively licensed Iconify packs — cloud and product logos (`logos`, `simple-icons`,
-`devicon`), infrastructure pictograms (`carbon`), Microsoft's Fluent icons (`fluent`), business
-icons (`flat-color-icons`) and generic shapes (`mdi`) — loaded lazily from the site, never a CDN.
-The vendors' own architecture icon sets cannot be bundled (their terms restrict redistribution),
-so a deployment can host such packs itself (`MERMAID_ICON_PACKS`, with `scripts/svg-to-iconify.js`
-to convert an SVG folder) and a user can import SVG files or an Iconify JSON file from the
-"Icons" card (kept in IndexedDB). Hosted and imported icons are sanitised with DOMPurify before
-mermaid inserts them. A "Cloud Architecture" sample entry shows AWS, Azure and Google Cloud. The
-packs add about 30 MB of lazily loaded chunks to the built site.
+**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from two bundled,
+generic OSS Iconify sets — `tabler` (MIT) and `lucide` (ISC): servers, databases, routers,
+switches, firewalls, load balancers, devices — loaded lazily from the site, never a CDN. No logos
+or trademarks are bundled: the brand icons both sets mix in are dropped on load, so nothing that
+could need clearance on an internal site ships. Vendor icon sets (AWS, Azure, Google Cloud) and
+logos can still be used once cleared: a deployment can host them (`MERMAID_ICON_PACKS`, with
+`scripts/svg-to-iconify.js` to convert an SVG folder) and a user can import SVG files or an
+Iconify JSON file from the "Icons" card (kept in IndexedDB). Hosted and imported icons are
+sanitised with DOMPurify before mermaid inserts them. A "System Architecture" sample entry shows
+a web system, an office network and a generic cloud. The packs add about 3 MB to the built site.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating
@@ -176,7 +176,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 232 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 230 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

@@ -4,9 +4,10 @@
 
 ```
 architecture-beta
-  group aws(logos:aws)[AWS]
-  service fn(logos:aws-lambda)[Lambda] in aws
-  service fw(carbon:firewall)[Firewall]
+  group app(tabler:server-2)[Application]
+  service fw(tabler:firewall-check)[Firewall]
+  service lb(tabler:load-balancer)[Load balancer] in app
+  service db(lucide:database)[Database] in app
 ```
 
 Icons come from three places. All three end up registered with mermaid
@@ -14,28 +15,29 @@ Icons come from three places. All three end up registered with mermaid
 
 ## 1. Bundled packs
 
-Permissively licensed [Iconify](https://icon-sets.iconify.design/) sets, shipped in the build as
+Two generic, OSS [Iconify](https://icon-sets.iconify.design/) sets, shipped in the build as
 lazily loaded chunks — fetched from this site the first time a diagram uses the prefix, never
 from a CDN (`src/lib/util/iconPacks.ts`):
 
-| Prefix             | License    | Good for                                                                |
-| ------------------ | ---------- | ----------------------------------------------------------------------- |
-| `logos`            | CC0-1.0    | Colour logos: ~80 AWS services, the Azure and Google Cloud marks, SaaS  |
-| `simple-icons`     | CC0-1.0    | Monochrome brand icons: Microsoft 365, Azure and Google Cloud products  |
-| `devicon`          | MIT        | Development and platform logos: Azure, SQL Server, Windows, Oracle      |
-| `carbon`           | Apache-2.0 | IBM Carbon infrastructure pictograms: firewall, router, switch, LB, VPN |
-| `fluent`           | MIT        | Microsoft's Fluent UI System Icons: server, database, laptop, shield    |
-| `flat-color-icons` | MIT        | Colour business icons: devices, people, documents                       |
-| `mdi`              | Apache-2.0 | Generic shapes: server, database, cloud, account                        |
+| Prefix   | License | Good for                                                                                              |
+| -------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `tabler` | MIT     | Infrastructure and IT: server, database, router, switch, firewall, load balancer, topologies, devices |
+| `lucide` | ISC     | General and IT: server, network, shield, brick-wall-fire, hard drive, container                       |
+
+**No logos or trademarks are bundled.** The site is meant to be hosted internally, and shipping
+third-party marks — cloud vendors', software vendors', anyone's — could need clearance there.
+Both sets mix a few brand icons in with the generic ones (`tabler:brand-*`, `lucide:github`, …);
+`isBrandIcon` drops them when the pack loads, and `iconPacks.test.ts` fails if one slips through.
+For the same reason the packs considered earlier — `logos`, `simple-icons`, `devicon` (logo
+sets) and `mdi`, `carbon`, `fluent`, `flat-color-icons` (generic sets with brand icons mixed in
+that cannot be separated reliably) — are not bundled.
 
 Names are the Iconify names; the "Icons" card in the editor links to the Iconify browser to look
-them up. Together the packs add about 30 MB of chunks to the built site, none of which loads
-until a diagram names that prefix.
+them up. The two packs add about 3 MB of chunks to the built site.
 
-**Not bundled:** the vendors' own architecture icon sets (AWS Architecture Icons, Azure
-Architecture Icons, Google Cloud icons). Their terms allow using the icons in diagrams but restrict
-redistributing them as a set, which a public npm package and repository would do. Use one of the
-next two routes for those.
+**Logos and vendor icon sets** (AWS, Azure, Google Cloud architecture icons, product logos) are
+not OSS: they come with their owners' terms, which generally allow use in diagrams but not
+redistribution as a set. Where the organisation has cleared them, use one of the next two routes.
 
 ## 2. Packs the deployment hosts (`MERMAID_ICON_PACKS`)
 

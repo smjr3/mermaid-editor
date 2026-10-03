@@ -82,8 +82,7 @@ export const messages = {
     'history.tabTimeline': 'Timeline',
     'history.upload': 'Upload history',
     'icons.browse': 'Browse icons',
-    'icons.bundled':
-      'Bundled packs: {packs}. In a diagram, write prefix:name, e.g. logos:aws-lambda.',
+    'icons.bundled': 'Bundled packs: {packs}. In a diagram, write prefix:name, e.g. tabler:server.',
     'icons.count': '{count} icons',
     'icons.delete': 'Delete {prefix}',
     'icons.deleteConfirm': 'Delete the icon pack "{prefix}"?',
@@ -231,7 +230,7 @@ export const messages = {
     'history.upload': '履歴をアップロード',
     'icons.browse': 'アイコンを探す',
     'icons.bundled':
-      '同梱のアイコン集: {packs}。図では prefix:name の形で書きます（例: logos:aws-lambda）。',
+      '同梱のアイコン集: {packs}。図では prefix:name の形で書きます（例: tabler:server）。',
     'icons.count': '{count} 個',
     'icons.delete': '{prefix} を削除',
     'icons.deleteConfirm': 'アイコン集「{prefix}」を削除しますか？',

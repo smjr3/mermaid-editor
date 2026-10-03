@@ -5,7 +5,7 @@ import { getSampleDiagrams } from './mermaid';
 
 describe('localSamples', () => {
   const expectedType: Record<string, string> = {
-    'Cloud Architecture': 'architecture',
+    'System Architecture': 'architecture',
     Swimlane: 'swimlane'
   };
   const examples = Object.entries(localSamples).flatMap(([name, list]) =>

@@ -220,18 +220,17 @@ taking upstream's version and re-adding those lines.
 | `src/lib/util/state.svelte.ts`                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                          |
 | `src/lib/components/ResetConfigButton.svelte`       | Added. The "Reset config" button on the config tab                                                                                                                                                                                    |
 | `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, and waits for the stored ones before rendering                                                                                                                                 |
-| `src/lib/util/iconPacks.ts`                         | Added. The seven bundled Iconify packs, loaded lazily from the bundle — never from a CDN                                                                                                                                              |
+| `src/lib/util/iconPacks.ts`                         | Added. The two bundled generic packs (`tabler`, `lucide`) without their brand icons, loaded lazily — never from a CDN                                                                                                                 |
 | `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                           |
 | `src/lib/components/IconPacks.svelte`               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                          |
 | `src/lib/util/env.ts`, `.env`                       | Add `iconPacks` / `MERMAID_ICON_PACKS`                                                                                                                                                                                                |
 | `scripts/svg-to-iconify.js`                         | Added. Converts an SVG folder into a pack a deployment can host; see `docs-dev/ICONS.md`                                                                                                                                              |
 | `src/routes/(app)/edit/+page.svelte`                | Renders `<ResetConfigButton>` in the editor card and `<IconPacks>` beside the samples, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
-| `package.json`                                      | `@iconify-json/logos` and `@iconify-json/mdi` move from `devDependencies` to `dependencies` (they ship in the site); the other five packs and `dompurify` are added                                                                   |
+| `package.json`                                      | Adds `@iconify-json/tabler`, `@iconify-json/lucide` and `dompurify` to `dependencies`                                                                                                                                                 |
 
 The layout change is classes only. On a conflict in the pane markup, take upstream's
 structure and re-apply the `sm:` classes and `withHandle`; `tests/fixedLayout.spec.ts`
-fails if they are lost. If upstream bumps an icon pack in `devDependencies`, keep the
-higher version and keep it under `dependencies`.
+fails if they are lost.
 
 ### Cross-platform guards
 

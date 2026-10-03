@@ -32,14 +32,12 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 - **外部サービスへの送信を既定で無効化**。Mermaid Chart へのリンク、AI 機能、コミュニティリンク、
   図のソースを第三者の URL に載せるレンダラー連携を、環境変数でオフにしています
   （`docs-dev/FEATURE-FLAGS.md`）。PNG / SVG の書き出しはブラウザ内で描画するので使えます
-- **クラウド・IT 製品のアイコン**。AWS・Azure・Google Cloud・Microsoft 製品・ネットワーク機器などのアイコンを
-  `prefix:name` の形で図に使えます（例: `service fn(logos:aws-lambda)[Lambda]`、`service fw(carbon:firewall)[FW]`）。
-  同梱のアイコン集は logos（AWS の各サービスなど）、simple-icons（Microsoft 365・Azure・Google Cloud の製品など）、
-  devicon（SQL Server・Windows・Oracle など）、carbon（ファイアウォール・ルーター・スイッチ・ロードバランサーなど）、
-  fluent（Microsoft の Fluent アイコン）、flat-color-icons（端末・人物・書類など）、mdi（汎用図形）です。
-  サイトに同梱していて、外部から取得しません。各社公式のアーキテクチャアイコンは配布条件のため同梱できませんが、
+- **システム構成図のアイコン**。サーバー・データベース・ルーター・スイッチ・ファイアウォール・
+  ロードバランサー・端末などのアイコンを `prefix:name` の形で図に使えます（例: `service fw(tabler:firewall-check)[FW]`）。
+  同梱しているのは OSS の汎用アイコン集 tabler（MIT）と lucide（ISC）だけで、企業ロゴや商標は含めていません。
+  サイトに同梱していて、外部から取得しません。AWS・Azure などの各社アイコンを使いたい場合は、社内で利用を確認したうえで、
   画面左の「アイコン」から SVG ファイルを取り込むか、GitLab Pages に置いて `MERMAID_ICON_PACKS` で読み込めます
-  （`docs-dev/ICONS.md`）。「サンプル図」の「Cloud Architecture」に例があります
+  （`docs-dev/ICONS.md`）。「サンプル図」の「System Architecture」に例があります
 - **名前の一括変更**。エディタでノード名などにカーソルを置いて F2 を押すと、使われている箇所をまとめて
   書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
   Ctrl+Shift+L、Alt+クリックでの複数カーソルも使えます
@@ -167,10 +165,10 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 
 - Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.1.0` —
   including swimlane diagrams (`swimlane-beta`), with swimlane examples in the sample panel.
-- Bundled icon packs for AWS, Azure, Google Cloud, Microsoft products and network gear (`logos`,
-  `simple-icons`, `devicon`, `carbon`, `fluent`, `flat-color-icons`, `mdi`; e.g.
-  `service fn(logos:aws-lambda)[Lambda]`), loaded from the site, never a CDN. Official vendor
-  icon sets can be imported in the browser or hosted by the deployment (`docs-dev/ICONS.md`).
+- Bundled generic OSS icon packs for system diagrams (`tabler`, `lucide`; e.g.
+  `service fw(tabler:firewall-check)[FW]`), loaded from the site, never a CDN. No logos or
+  trademarks are bundled; vendor icon sets can be imported in the browser or hosted by the
+  deployment (`docs-dev/ICONS.md`).
 - F2 renames a node id everywhere it is used; the config tab can reset a broken config; on
   desktop the editor and the view are fixed panes split by a draggable divider.
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are

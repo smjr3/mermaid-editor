@@ -20,15 +20,14 @@ outside the redistributed output.
 
 ## License summary
 
-Production dependency tree at the snapshot described below: **233 packages**.
+Production dependency tree at the snapshot described below: **228 packages**.
 
 | Count | License                                    |
 | ----: | ------------------------------------------ |
-|   161 | MIT                                        |
-|    33 | ISC                                        |
-|    20 | Apache-2.0                                 |
+|   159 | MIT                                        |
+|    34 | ISC                                        |
+|    18 | Apache-2.0                                 |
 |     9 | BSD-3-Clause                               |
-|     2 | CC0-1.0                                    |
 |     1 | (MPL-2.0 OR Apache-2.0)                    |
 |     1 | OFL-1.1                                    |
 |     1 | EPL-2.0                                    |
@@ -80,18 +79,14 @@ emitted into the built static site. Its fonts are licensed under OFL-1.1, its co
 its icons under CC BY 4.0. The icons' CC BY 4.0 terms require attribution. Font Awesome Free is
 Copyright Fonticons, Inc.; see <https://fontawesome.com/license/free>.
 
-### Iconify icon packs — CC0-1.0, MIT and Apache-2.0
+### Iconify icon packs — MIT and ISC
 
-Seven Iconify packs are bundled as lazily loaded chunks so diagrams can name icons such as
-`logos:aws-lambda` (`src/lib/util/iconPacks.ts`, `docs-dev/ICONS.md`): `@iconify-json/logos` and
-`@iconify-json/simple-icons` (CC0-1.0), `@iconify-json/devicon`, `@iconify-json/fluent` (Microsoft
-Fluent UI System Icons) and `@iconify-json/flat-color-icons` (MIT), and `@iconify-json/carbon`
-(IBM Carbon) and `@iconify-json/mdi` (Material Design Icons, Pictogrammers) (Apache-2.0). CC0
-carries no conditions; MIT and Apache-2.0 require their license and notices to travel with the
-redistributed icons, which `NOTICE` and this file do. All are used unmodified. The icons depict third-party trademarks
-(AWS, Microsoft Azure, Google Cloud and others); the trademarks remain their owners' and are shown
-only to identify the services in a diagram. The vendors' own architecture icon sets are **not**
-bundled, because their terms restrict redistribution.
+Two generic icon sets are bundled as lazily loaded chunks so diagrams can name icons such as
+`tabler:server` (`src/lib/util/iconPacks.ts`, `docs-dev/ICONS.md`): `@iconify-json/tabler`
+(Tabler Icons, MIT) and `@iconify-json/lucide` (Lucide, ISC). Both licenses require their notice
+to travel with the redistributed icons, which `NOTICE` and this file do. Their few brand and
+logo icons are removed when the pack loads, so **no third-party trademark is bundled**; logos
+and vendor icon sets reach a diagram only through a pack the deployment hosts or a user imports.
 
 ### `khroma` — MIT (reported as "Unknown")
 

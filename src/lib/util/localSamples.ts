@@ -4,61 +4,66 @@ import type { SampleExample } from './mermaid';
  * Sample diagrams this fork adds to the "Sample Diagrams" card.
  *
  * `@mermaid-js/examples` has no swimlane entry, yet swimlane support is the
- * reason this fork exists. "Cloud Architecture" shows the bundled icon packs
+ * reason this fork exists. "System Architecture" shows the bundled icon packs
  * (iconPacks.ts), which upstream's architecture samples do not use. Kept in its own file so `Preset.svelte` gains one
  * spread rather than a block of code, and an upstream merge touches neither.
  * Drop an entry once `@mermaid-js/examples` ships one under the same name.
  */
 export const localSamples: Record<string, SampleExample[]> = {
-  'Cloud Architecture': [
+  'System Architecture': [
     {
       code: `architecture-beta
-  group aws(logos:aws)[AWS]
+  group dmz(tabler:shield)[DMZ]
+  group app(tabler:server-2)[Application]
 
-  service user(mdi:account)[User]
-  service cdn(logos:aws-cloudfront)[CloudFront] in aws
-  service api(logos:aws-api-gateway)[API Gateway] in aws
-  service fn(logos:aws-lambda)[Lambda] in aws
-  service db(logos:aws-dynamodb)[DynamoDB] in aws
-  service files(logos:aws-s3)[S3] in aws
+  service users(tabler:users)[Users]
+  service fw(tabler:firewall-check)[Firewall]
+  service lb(tabler:load-balancer)[Load balancer] in dmz
+  service web(tabler:server)[Web servers] in app
+  service db(tabler:database)[Database] in app
 
-  user:R --> L:cdn
-  cdn:R --> L:api
-  api:R --> L:fn
-  fn:B --> T:db
-  fn:R --> L:files`,
+  users:R --> L:fw
+  fw:R --> L:lb
+  lb:R --> L:web
+  web:B --> T:db`,
       isDefault: true,
-      title: 'AWS'
+      title: 'Web System'
     },
     {
       code: `architecture-beta
-  group azure(logos:microsoft-azure)[Azure]
+  group office(tabler:building)[Office]
 
-  service user(mdi:account)[User]
-  service web(mdi:web)[App Service] in azure
-  service fn(simple-icons:azurefunctions)[Functions] in azure
-  service sql(simple-icons:microsoftsqlserver)[SQL Database] in azure
+  service internet(tabler:world)[Internet]
+  service router(tabler:router)[Router] in office
+  service switch(tabler:switch)[Switch] in office
+  service ap(tabler:wifi)[Wi-Fi] in office
+  service pc(tabler:device-desktop)[PCs] in office
+  service printer(tabler:printer)[Printer] in office
+  service laptop(tabler:device-laptop)[Laptops] in office
 
-  user:R --> L:web
-  web:R --> L:fn
-  fn:B --> T:sql`,
-      title: 'Azure'
+  internet:R --> L:router
+  router:R --> L:switch
+  switch:R --> L:pc
+  switch:B --> T:printer
+  switch:T --> B:ap
+  ap:R --> L:laptop`,
+      title: 'Office Network'
     },
     {
       code: `architecture-beta
-  group gcp(logos:google-cloud)[Google Cloud]
+  group cloud(lucide:cloud)[Cloud]
 
-  service user(mdi:account)[User]
-  service run(logos:google-cloud-run)[Cloud Run] in gcp
-  service queue(simple-icons:googlepubsub)[Pub/Sub] in gcp
-  service fn(logos:google-cloud-functions)[Cloud Functions] in gcp
-  service bq(simple-icons:googlebigquery)[BigQuery] in gcp
+  service user(tabler:user)[User]
+  service gw(lucide:shield)[API gateway] in cloud
+  service app(lucide:container)[Containers] in cloud
+  service db(lucide:database)[Database] in cloud
+  service files(lucide:hard-drive)[Storage] in cloud
 
-  user:R --> L:run
-  run:R --> L:queue
-  queue:R --> L:fn
-  fn:B --> T:bq`,
-      title: 'Google Cloud'
+  user:R --> L:gw
+  gw:R --> L:app
+  app:B --> T:db
+  app:R --> L:files`,
+      title: 'Cloud (generic)'
     }
   ],
   Swimlane: [

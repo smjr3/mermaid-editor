@@ -3,9 +3,18 @@ import tidyTreeLayouts from '@mermaid-js/layout-tidy-tree';
 import zenuml from '@mermaid-js/mermaid-zenuml';
 import type { MermaidConfig, RenderResult } from 'mermaid';
 import mermaid from 'mermaid';
+import { addLabelHalo } from './architectureLabels';
+import { remoteIconPacks } from './customIcons';
+import { registerStoredIconPacks } from './customIconStore';
+import { env } from './env';
+import { iconPacks } from './iconPacks';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
+// Local: bundled icon packs (AWS, Azure, Google Cloud, …), the ones this deployment hosts,
+// and the ones the user imported; see iconPacks.ts and customIcons.ts.
+mermaid.registerIconPacks([...iconPacks, ...remoteIconPacks(env.iconPacks)]);
+const storedIconPacks = registerStoredIconPacks();
 const init = mermaid.registerExternalDiagrams([zenuml]);
 
 export const render = async (
@@ -14,10 +23,17 @@ export const render = async (
   id: string
 ): Promise<RenderResult> => {
   await init;
+  await storedIconPacks;
 
   // Should be able to call this multiple times without any issues.
   mermaid.initialize(config);
-  return await mermaid.render(id, code);
+  const result = await mermaid.render(id, code);
+  // Local: keep architecture edges from running through service labels (architectureLabels.ts).
+  const background = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
+  return {
+    ...result,
+    svg: addLabelHalo(result.svg, id, typeof background === 'string' ? background : '')
+  };
 };
 
 export const parse = async (code: string) => {
@@ -86,24 +102,6 @@ for (const theme of [
 /** Whether the editor may replace this theme (a missing theme counts as managed). */
 export const isManagedTheme = (theme: unknown): boolean =>
   theme === undefined || (typeof theme === 'string' && managedThemes.has(theme));
-
-export const standardizeDiagramType = (diagramType: string) => {
-  switch (diagramType) {
-    case 'class':
-    case 'classDiagram': {
-      return 'classDiagram';
-    }
-    case 'graph':
-    case 'flowchart':
-    case 'flowchart-elk':
-    case 'flowchart-v2': {
-      return 'flowchart';
-    }
-    default: {
-      return diagramType;
-    }
-  }
-};
 
 type DiagramDefinition = (typeof diagramData)[number];
 

@@ -102,18 +102,18 @@ wholesale, which silently downgrades whatever this fork already moved forward.
 `.github/workflows/tests.yml`.
 
 `pnpm` is the third one to watch. The key exists upstream too, so it is a replacement
-rather than an addition, but the local value adds `overrides` with `lodash-es@<4.18.0`
-(the vulnerable `lodash-es` that mermaid 12's `chevrotain` pins; see
+rather than an addition, but the local value adds `overrides` with `monaco-editor>dompurify`
+(Monaco 0.57.0 pins a `dompurify` with a low advisory; see
 `QUALITY-AUDIT-2026-08-31.md`). Taking upstream's `pnpm` block silently removes the
-override and brings the production audit advisories back.
+override and brings the production audit advisory back.
 
 The top-level `overrides` (added) is the same fix for npm, which ignores `pnpm.overrides`.
 It is what protects the published tarball, built with `npm install` in the internal
 pipeline. Keep the two in step: an override added to one belongs in the other.
 
-`monaco-editor` must not go below **0.57.0**. It is pinned exactly, and 0.57.0 is the
-first release that depends on a patched DOMPurify, which is why the former
-`monaco-editor>dompurify` override could be removed. Upstream is still on 0.55.1, so
+`monaco-editor` must not go below **0.57.0**. It is pinned exactly; 0.57.0 was the
+first release that depended on a DOMPurify patched for the advisories known at the time
+(a later low advisory is what the current `monaco-editor>dompurify` override covers). Upstream is still on 0.55.1, so
 taking its side of that line reintroduces the vulnerable `dompurify@3.2.7` with no
 override left to catch it. 0.56 also moved the worker entry points behind an `exports`
 map, so `src/lib/components/DesktopEditor.svelte` imports
@@ -190,7 +190,7 @@ and the variables are in `docs-dev/FEATURE-FLAGS.md`; what matters at merge time
 | Path                                                  | Local change                                                                                                |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `src/lib/util/env.ts`                                 | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks` |
-| `src/lib/components/DesktopEditor.svelte`             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`                                                  |
+| `src/lib/components/DesktopEditor.svelte`             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`; also gates its gutter button and glyph margin   |
 | `src/routes/(app)/edit/+page.svelte`                  | Wraps `<EnhancedEditsButton>` in the same guard                                                             |
 | `src/lib/components/Navbar.svelte`                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                          |
 | `src/lib/components/MainMenu.svelte`                  | Spreads the Discord "Community" entry in conditionally                                                      |
@@ -206,6 +206,34 @@ If upstream introduces a new promotional, AI or outbound-link surface, it arrive
 unguarded and will not be caught by a merge conflict. After each merge, re-check the
 running app for new external links; `docs-dev/FEATURE-FLAGS.md` lists the ones known
 to remain.
+
+### Editor, layout and icon additions (0.2.0)
+
+Fork features that touch upstream files. Each upstream file gains a few lines that call
+into a fork-local file; the logic lives in the fork-local file, so a conflict is resolved by
+taking upstream's version and re-adding those lines.
+
+| Path                                                | Local change                                                                                                                                                                                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/DesktopEditor.svelte`           | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language                                                                                                                               |
+| `src/lib/util/mermaidRename.ts`                     | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider                                                                                                                                 |
+| `src/lib/util/state.svelte.ts`                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                          |
+| `src/lib/components/ResetConfigButton.svelte`       | Added. The "Reset config" button on the config tab                                                                                                                                                                                    |
+| `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`                                                                                          |
+| `src/lib/util/architectureLabels.ts`                | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                          |
+| `src/lib/util/iconPacks.ts`                         | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                               |
+| `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                        |
+| `src/lib/components/IconPacks.svelte`               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                          |
+| `src/lib/util/env.ts`, `.env`                       | Add `iconPacks` / `MERMAID_ICON_PACKS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                  |
+| `scripts/svg-to-iconify.js`                         | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                        |
+| `scripts/fetch-icon-packs.js`                       | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                            |
+| `.gitignore`                                        | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                       |
+| `src/routes/(app)/edit/+page.svelte`                | Renders `<ResetConfigButton>` in the editor card and `<IconPacks>` beside the samples, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
+| `package.json`                                      | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, simple-icons, devicon) and `dompurify` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`               |
+
+The layout change is classes only. On a conflict in the pane markup, take upstream's
+structure and re-apply the `sm:` classes and `withHandle`; `tests/fixedLayout.spec.ts`
+fails if they are lost.
 
 ### Cross-platform guards
 
@@ -436,6 +464,7 @@ modifications as if they were local customizations.
 | Added    | `docs-dev/FEATURE-FLAGS.md`                            |
 | Added    | `docs-dev/GITLAB-PAGES.md`                             |
 | Added    | `docs-dev/I18N.md`                                     |
+| Added    | `docs-dev/ICONS.md`                                    |
 | Added    | `docs-dev/PACKAGING.md`                                |
 | Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                 |
 | Added    | `docs-dev/STATUS.md`                                   |
@@ -451,6 +480,10 @@ modifications as if they were local customizations.
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/prepare-pages.js`                             |
+| Added    | `scripts/fetch-icon-packs.d.ts`                        |
+| Added    | `scripts/fetch-icon-packs.js`                          |
+| Added    | `scripts/svg-to-iconify.d.ts`                          |
+| Added    | `scripts/svg-to-iconify.js`                            |
 | Added    | `scripts/update-upstream.sh`                           |
 | Modified | `src/app.css`                                          |
 | Modified | `src/app.html`                                         |
@@ -463,12 +496,14 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/Editor.svelte`                     |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
 | Modified | `src/lib/components/History/History.svelte`            |
+| Added    | `src/lib/components/IconPacks.svelte`                  |
 | Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
 | Modified | `src/lib/components/Navbar.svelte`                     |
 | Modified | `src/lib/components/PanZoomToolbar.svelte`             |
 | Modified | `src/lib/components/Preset.svelte`                     |
 | Modified | `src/lib/components/Privacy.svelte`                    |
+| Added    | `src/lib/components/ResetConfigButton.svelte`          |
 | Modified | `src/lib/components/Share.svelte`                      |
 | Modified | `src/lib/components/SyncRoughToolbar.svelte`           |
 | Modified | `src/lib/components/VersionSecurityToolbar.svelte`     |
@@ -478,14 +513,27 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
+| Added    | `src/lib/util/architectureLabels.test.ts`              |
+| Added    | `src/lib/util/architectureLabels.ts`                   |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
 | Modified | `src/lib/util/autoSync.ts`                             |
+| Added    | `src/lib/util/customIconStore.ts`                      |
+| Added    | `src/lib/util/customIcons.test.ts`                     |
+| Added    | `src/lib/util/customIcons.ts`                          |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
+| Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
+| Added    | `src/lib/util/iconPacks.test.ts`                       |
+| Added    | `src/lib/util/iconPacks.ts`                            |
 | Added    | `src/lib/util/localSamples.test.ts`                    |
 | Added    | `src/lib/util/localSamples.ts`                         |
+| Modified | `src/lib/util/mermaid.ts`                              |
+| Added    | `src/lib/util/mermaidRename.test.ts`                   |
+| Added    | `src/lib/util/mermaidRename.ts`                        |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
+| Modified | `src/lib/util/state.svelte.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
+| Added    | `src/lib/util/svgToIconify.test.ts`                    |
 | Modified | `src/routes/(app)/edit/+page.svelte`                   |
 | Modified | `src/routes/+error.svelte`                             |
 | Modified | `src/routes/embed/+page.svelte`                        |
@@ -497,12 +545,18 @@ modifications as if they were local customizations.
 | Modified | `static/manifest.json`                                 |
 | Modified | `tests/actions.spec.ts`                                |
 | Modified | `tests/configMigration.spec.ts`                        |
+| Added    | `tests/configReset.spec.ts`                            |
 | Modified | `tests/diagramUpdate.spec.ts`                          |
+| Added    | `tests/editorAiGlyph.spec.ts`                          |
 | Modified | `tests/embed.spec.ts`                                  |
 | Modified | `tests/errorDisplay.spec.ts`                           |
+| Added    | `tests/fixedLayout.spec.ts`                            |
 | Modified | `tests/history.spec.ts`                                |
+| Added    | `tests/iconImport.spec.ts`                             |
+| Added    | `tests/iconPacks.spec.ts`                              |
 | Modified | `tests/loadSite.spec.ts`                               |
 | Added    | `tests/locale.spec.ts`                                 |
+| Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/swimlane.spec.ts`                               |
 | Modified | `tests/test.ts`                                        |
 | Modified | `vite.embed.config.js`                                 |

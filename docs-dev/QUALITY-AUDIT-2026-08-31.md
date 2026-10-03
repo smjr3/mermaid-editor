@@ -377,3 +377,19 @@ packing the tarball, running `npm install` in a clean directory (every `lodash-e
 
 Audit both install paths from now on: `pnpm audit --prod` here, and `npm audit --omit=dev` after
 the tarball round trip in `UPSTREAM.md`'s verification list.
+
+## Follow-up — mermaid 12.1.0, and a new Monaco DOMPurify advisory (2026-10-03)
+
+mermaid 12.1.0 upgrades its parser to langium 4.4 / chevrotain 13 "so bundles no longer include
+`lodash-es@4.17.23`" (its changelog). That is the removal condition above, so the project moved to
+mermaid 12.1.0 and deleted both `lodash-es` overrides; the only `lodash-es` left is the direct
+dependency's `4.18.1`.
+
+At the same time a new low advisory, GHSA-p98j-92pf-mc4p, covers `dompurify >=3.4.13 <=3.4.15`,
+and `monaco-editor` 0.57.0 — still the latest release — pins `3.4.15` exactly. It is overridden
+to the patched `3.4.16`, scoped to Monaco's copy: `pnpm.overrides` gets
+`"monaco-editor>dompurify": "3.4.16"` and the npm `overrides` gets the nested
+`"monaco-editor": { "dompurify": "3.4.16" }`. Both install paths verified: `pnpm audit --prod`
+reports no vulnerabilities, and `npm audit --omit=dev` after an `npm install --package-lock-only`
+of the packed tarball reports 0 (every `dompurify` resolves to 3.4.16). Remove both entries once a
+Monaco release depends on `dompurify >=3.4.16`.

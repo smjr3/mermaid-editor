@@ -4,6 +4,7 @@
   import { urls, validatedState } from '$/util/state.svelte';
   import { logMermaidChartClick } from '$/util/stats';
   import { AIPromptViewZoneManager } from '$lib/util/AIPromptViewZoneManager';
+  import { registerMermaidRename } from '$lib/util/mermaidRename';
   import { initEditor } from '$lib/util/monacoExtra';
   import { errorDebug } from '$lib/util/util';
   import { mode } from 'mode-watcher';
@@ -23,7 +24,8 @@
       enabled: false
     },
     overviewRulerLanes: 0,
-    glyphMargin: true,
+    // Local: the margin only hosts the AI prompt button.
+    glyphMargin: env.isEnabledAiFeatures,
     lineNumbersMinChars: 4
   } satisfies monaco.editor.IStandaloneEditorConstructionOptions;
   let currentText = '';
@@ -58,7 +60,9 @@
 
   const renderAIPromptGutterGlyphIcon = () => {
     decorationsCollection?.clear();
-    if (!editor || showPopup) {
+    // Local: with AI features off the popup is never rendered, so the button
+    // would open an empty view zone that nothing can close.
+    if (!editor || showPopup || !env.isEnabledAiFeatures) {
       return;
     }
     const model = editor.getModel();
@@ -86,7 +90,7 @@
   };
 
   const toggleAIPopup = (lineNumber: number) => {
-    if (!divElement || !aiPromptPopupElement) return;
+    if (!divElement || !aiPromptPopupElement || !env.isEnabledAiFeatures) return;
     popupPosition = {
       top: 0,
       lineNumber
@@ -127,6 +131,7 @@
     });
 
     initEditor(monaco);
+    registerMermaidRename(monaco);
     errorDebug();
     editor = monaco.editor.create(divElement, editorOptions);
     aiPromptManager.setEditor(editor);

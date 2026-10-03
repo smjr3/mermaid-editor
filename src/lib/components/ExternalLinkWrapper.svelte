@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { describeDiagram } from '$/util/diagramTypes';
   import { t } from '$/i18n';
   import { validatedState } from '$/util/state.svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
@@ -26,7 +27,8 @@
   } = $props();
 
   let shouldDisableComponent = $derived(
-    shouldCheckDiagramType && validatedState.current.diagramType === 'zenuml'
+    shouldCheckDiagramType &&
+      describeDiagram(validatedState.current.diagramType)?.externalServices === false
   );
 </script>
 

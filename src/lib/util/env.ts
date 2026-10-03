@@ -3,6 +3,8 @@ export const env = {
   docsUrl: import.meta.env.MERMAID_DOCS_URL ?? 'https://mermaid.js.org',
   domain: import.meta.env.MERMAID_DOMAIN ?? '',
   hidePrivacyPolicy: import.meta.env.MERMAID_HIDE_PRIVACY_POLICY === 'true',
+  // Local: extra icon packs this deployment hosts, as `prefix=url,…` (customIcons.ts).
+  iconPacks: import.meta.env.MERMAID_ICON_PACKS ?? '',
   isEnabledAiFeatures: import.meta.env.MERMAID_IS_ENABLED_AI_FEATURES === 'true',
   isEnabledCommunityLinks: import.meta.env.MERMAID_IS_ENABLED_COMMUNITY_LINKS === 'true',
   isEnabledMermaidChartLinks: import.meta.env.MERMAID_IS_ENABLED_MERMAID_CHART_LINKS === 'true',

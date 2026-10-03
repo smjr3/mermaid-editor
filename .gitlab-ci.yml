@@ -26,6 +26,20 @@ pages:
   pages: true
 
 # ---------------------------------------------------------------------------
+# Vendor icon sets imported at build time (docs-dev/ICONS.md)
+#
+# Official AWS / Azure / Google Cloud icon sets cannot ship in the repository.
+# `pnpm build` downloads the archives this variable names (prefix=zip URL) and
+# bundles them, so set it in Settings > CI/CD > Variables or here. The AWS and
+# Azure URLs change with each release; copy the current link from the vendor's
+# download page.
+#
+#   variables:
+#     MERMAID_FETCH_ICON_PACKS: 'gcp=https://cloud.google.com/static/icons/files/google-cloud-icons.zip,aws=https://d1.awsstatic.com/…/Asset-Package_….zip'
+#
+# A site that may not host third-party logos also sets MERMAID_BUNDLE_LOGOS: 'false'.
+#
+# ---------------------------------------------------------------------------
 # Windows runner
 #
 # `image:` applies only to Docker executors and names a Linux image, so a

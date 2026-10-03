@@ -20,7 +20,13 @@ export const TID = {
   errorContainer: 'error-container',
   historyCard: 'history-card',
   historyRevisionsTab: 'history-revisions-tab',
+  iconPackFiles: 'icon-pack-files',
+  iconPackImport: 'icon-pack-import',
+  iconPackList: 'icon-pack-list',
+  iconPackPrefix: 'icon-pack-prefix',
+  iconPacksCard: 'icon-packs-card',
   localeToggleButton: 'locale-toggle-button',
+  resetConfigButton: 'reset-config-button',
   sampleDiagramsCard: 'sample-diagrams-card',
   themeToggleButton: 'theme-toggle-button'
 } as const;

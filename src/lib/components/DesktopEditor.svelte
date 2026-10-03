@@ -4,6 +4,7 @@
   import { urls, validatedState } from '$/util/state.svelte';
   import { logMermaidChartClick } from '$/util/stats';
   import { AIPromptViewZoneManager } from '$lib/util/AIPromptViewZoneManager';
+  import { registerMermaidRename } from '$lib/util/mermaidRename';
   import { initEditor } from '$lib/util/monacoExtra';
   import { errorDebug } from '$lib/util/util';
   import { mode } from 'mode-watcher';
@@ -130,6 +131,7 @@
     });
 
     initEditor(monaco);
+    registerMermaidRename(monaco);
     errorDebug();
     editor = monaco.editor.create(divElement, editorOptions);
     aiPromptManager.setEditor(editor);

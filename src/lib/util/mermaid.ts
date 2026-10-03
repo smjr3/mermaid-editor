@@ -3,12 +3,17 @@ import tidyTreeLayouts from '@mermaid-js/layout-tidy-tree';
 import zenuml from '@mermaid-js/mermaid-zenuml';
 import type { MermaidConfig, RenderResult } from 'mermaid';
 import mermaid from 'mermaid';
+import { remoteIconPacks } from './customIcons';
+import { registerStoredIconPacks } from './customIconStore';
+import { env } from './env';
 import { iconPacks } from './iconPacks';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
-// Local: bundled icon packs (AWS, Azure, Google Cloud, …); see iconPacks.ts.
-mermaid.registerIconPacks(iconPacks);
+// Local: bundled icon packs (AWS, Azure, Google Cloud, …), the ones this deployment hosts,
+// and the ones the user imported; see iconPacks.ts and customIcons.ts.
+mermaid.registerIconPacks([...iconPacks, ...remoteIconPacks(env.iconPacks)]);
+const storedIconPacks = registerStoredIconPacks();
 const init = mermaid.registerExternalDiagrams([zenuml]);
 
 export const render = async (
@@ -17,6 +22,7 @@ export const render = async (
   id: string
 ): Promise<RenderResult> => {
   await init;
+  await storedIconPacks;
 
   // Should be able to call this multiple times without any issues.
   mermaid.initialize(config);

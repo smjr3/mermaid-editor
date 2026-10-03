@@ -16,12 +16,21 @@ test.describe('Icon packs', () => {
     await expect(editPage.view.locator('text', { hasText: /^\?$/ })).toHaveCount(0);
   });
 
-  test('does not offer logos, which are not bundled', async ({ editPage }) => {
-    const withLogo = `architecture-beta\n  service gh(tabler:brand-github)[GitHub]`;
+  test('renders logos, which are bundled by default', async ({ editPage }) => {
+    const withLogo = `architecture-beta\n  service gh(logos:github-icon)[GitHub]\n  service lambda(logos:aws-lambda)[Lambda]`;
     await editPage.start(
       `/edit#base64:${Buffer.from(JSON.stringify({ code: withLogo, mermaid: '{}' })).toString('base64')}`
     );
-    await editPage.checkTextInView('GitHub');
+    await editPage.checkTextInView('Lambda');
+    await expect(editPage.view.locator('text', { hasText: /^\?$/ })).toHaveCount(0);
+  });
+
+  test('shows the placeholder for an unknown icon', async ({ editPage }) => {
+    const unknown = `architecture-beta\n  service x(tabler:no-such-icon)[Unknown]`;
+    await editPage.start(
+      `/edit#base64:${Buffer.from(JSON.stringify({ code: unknown, mermaid: '{}' })).toString('base64')}`
+    );
+    await editPage.checkTextInView('Unknown');
     await expect(editPage.view.locator('text', { hasText: /^\?$/ }).first()).toBeAttached();
   });
 });

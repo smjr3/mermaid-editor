@@ -140,3 +140,23 @@ export const remoteIconPacks = (value: string | undefined): AsyncIconLoader[] =>
     },
     name
   }));
+
+/**
+ * Loaders for the vendor packs scripts/fetch-icon-packs.js put in the build
+ * (`import.meta.glob` of src/lib/vendor-icons/), named after their files.
+ * Sanitised like any other pack; a name that clashes with a bundled pack is skipped.
+ */
+export const vendorIconPacks = (
+  modules: Record<string, () => Promise<unknown>>,
+  reserved: string[]
+): AsyncIconLoader[] =>
+  Object.entries(modules)
+    .map(([path, load]) => ({
+      load,
+      name: toPrefix(path.replace(/^.*\//, '').replace(/\.json$/, ''))
+    }))
+    .filter(({ name }) => name !== undefined && !reserved.includes(name))
+    .map(({ load, name = '' }) => ({
+      loader: async () => sanitizeIconSet(((await load()) as { default: unknown }).default, name),
+      name
+    }));

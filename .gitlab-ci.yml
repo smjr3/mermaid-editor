@@ -26,18 +26,18 @@ pages:
   pages: true
 
 # ---------------------------------------------------------------------------
-# Icon packs the deployment hosts (docs-dev/ICONS.md)
+# Vendor icon sets imported at build time (docs-dev/ICONS.md)
 #
-# Official vendor icon sets cannot ship in the repository. To offer one on this
-# site, add these to the `pages` job: download and unpack the vendor's SVG
-# archive (accepting its terms) into azure-icons/ in an earlier step, then
+# Official AWS / Azure / Google Cloud icon sets cannot ship in the repository.
+# `pnpm build` downloads the archives this variable names (prefix=zip URL) and
+# bundles them, so set it in Settings > CI/CD > Variables or here. The AWS and
+# Azure URLs change with each release; copy the current link from the vendor's
+# download page.
 #
 #   variables:
-#     MERMAID_ICON_PACKS: 'azure=./icon-packs/azure.json'
-#   script:
-#     - pnpm build
-#     - pnpm build:pages
-#     - node scripts/svg-to-iconify.js azure-icons azure public/icon-packs/azure.json
+#     MERMAID_FETCH_ICON_PACKS: 'gcp=https://cloud.google.com/static/icons/files/google-cloud-icons.zip,aws=https://d1.awsstatic.com/…/Asset-Package_….zip'
+#
+# A site that may not host third-party logos also sets MERMAID_BUNDLE_LOGOS: 'false'.
 #
 # ---------------------------------------------------------------------------
 # Windows runner

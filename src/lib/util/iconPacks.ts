@@ -1,25 +1,31 @@
 import type { AsyncIconLoader } from 'mermaid';
+import { vendorIconPacks } from './customIcons';
 
 type IconifyJSON = Awaited<ReturnType<AsyncIconLoader['loader']>>;
 
 /**
  * Icon packs for `architecture-beta` services and flowchart `@{ icon: … }`
- * nodes, written as `prefix:name` (`tabler:server`).
+ * nodes, written as `prefix:name` (`tabler:server`, `logos:aws-lambda`). Each
+ * pack loads on first use from this site, never from a CDN.
  *
- * Only generic, OSS icon sets are bundled, and no logos: this site is meant to
- * be hosted internally, where shipping third-party trademarks (cloud vendors',
- * software vendors', anyone's) could need clearance. Both sets mix a few brand
- * icons in with the generic ones, so those are removed on load (isBrandIcon).
- * Each pack loads on first use from this site, never from a CDN.
+ * Generic sets (always bundled):
+ * - `tabler` (MIT), `lucide` (ISC): servers, network gear, firewalls, devices.
+ * - `carbon` (Apache-2.0, IBM): network and cloud infrastructure.
+ * - `fluent` (MIT, Microsoft), `flat-color-icons` (MIT), `mdi` (Apache-2.0).
  *
- * - `tabler` (MIT, Tabler Icons): infrastructure and IT — server, database,
- *   router, switch, firewall, load balancer, network topologies, devices.
- * - `lucide` (ISC, Lucide): general UI and IT — server, network, shield,
- *   brick-wall-fire, hard drive, container.
+ * Logo sets (bundled unless MERMAID_BUNDLE_LOGOS=false):
+ * - `logos`, `simple-icons` (CC0): cloud services, products, vendors.
+ * - `devicon` (MIT): languages, databases, middleware, cloud.
  *
- * Logos and vendor icon sets (AWS, Azure, Google Cloud, …) are not bundled. A
- * deployment that has cleared them can host them (MERMAID_ICON_PACKS) and a user
- * can import them; see customIcons.ts and docs-dev/ICONS.md.
+ * The packs are npm dependencies, so the repository and the npm package carry
+ * none of their data; a build pulls them from npm. The licences above cover the
+ * artwork, not the trademarks it shows. A deployment that may not host marks
+ * builds with MERMAID_BUNDLE_LOGOS=false: the logo sets drop out and the brand
+ * icons mixed into the generic sets are removed on load (isBrandIcon).
+ *
+ * Vendor architecture icon sets (AWS, Azure, Google Cloud) are not OSS; they are
+ * fetched at build time (scripts/fetch-icon-packs.js), hosted by the deployment
+ * or imported by a user. See customIcons.ts and docs-dev/ICONS.md.
  */
 
 // Words that make an icon a logo or a trademark, matched as whole hyphen-separated
@@ -82,7 +88,9 @@ const trademarkWords = new Set([
 /** Whether an Iconify icon name is a logo or names a trademark. */
 export const isBrandIcon = (name: string): boolean => {
   const parts = name.split('-');
-  return parts[0] === 'brand' || parts.some((part) => trademarkWords.has(part));
+  return (
+    parts[0] === 'brand' || parts[0] === 'logo' || parts.some((part) => trademarkWords.has(part))
+  );
 };
 
 /** The pack without logo and trademark icons, or aliases that point at them. */
@@ -98,15 +106,59 @@ const withoutBrands = (pack: IconifyJSON): IconifyJSON => {
   return { ...pack, aliases, icons };
 };
 
-export const iconPacks: AsyncIconLoader[] = [
-  {
-    loader: async () =>
-      withoutBrands((await import('@iconify-json/tabler/icons.json')).default as IconifyJSON),
-    name: 'tabler'
+type PackModule = Promise<{ default: unknown }>;
+
+const pack = (name: string, load: () => PackModule, stripBrands: boolean): AsyncIconLoader => ({
+  loader: async () => {
+    const json = (await load()).default as IconifyJSON;
+    return stripBrands ? withoutBrands(json) : json;
   },
-  {
-    loader: async () =>
-      withoutBrands((await import('@iconify-json/lucide/icons.json')).default as IconifyJSON),
-    name: 'lucide'
-  }
+  name
+});
+
+const genericPacks = (stripBrands: boolean): AsyncIconLoader[] => [
+  pack('tabler', () => import('@iconify-json/tabler/icons.json'), stripBrands),
+  pack('lucide', () => import('@iconify-json/lucide/icons.json'), stripBrands),
+  pack('carbon', () => import('@iconify-json/carbon/icons.json'), stripBrands),
+  pack('fluent', () => import('@iconify-json/fluent/icons.json'), stripBrands),
+  pack('flat-color-icons', () => import('@iconify-json/flat-color-icons/icons.json'), stripBrands),
+  pack('mdi', () => import('@iconify-json/mdi/icons.json'), stripBrands)
+];
+
+const logoPacks = (): AsyncIconLoader[] => [
+  pack('logos', () => import('@iconify-json/logos/icons.json'), false),
+  pack('simple-icons', () => import('@iconify-json/simple-icons/icons.json'), false),
+  pack('devicon', () => import('@iconify-json/devicon/icons.json'), false)
+];
+
+/** The bundled packs; the logo sets only when `bundleLogos`. */
+export const selectIconPacks = (bundleLogos: boolean): AsyncIconLoader[] =>
+  bundleLogos ? [...genericPacks(false), ...logoPacks()] : genericPacks(true);
+
+// Gated on the build-time constant directly, so MERMAID_BUNDLE_LOGOS=false
+// leaves the logo chunks out of the build rather than just unused.
+const bundledPacks: AsyncIconLoader[] =
+  import.meta.env.MERMAID_BUNDLE_LOGOS === 'false'
+    ? genericPacks(true)
+    : [...genericPacks(false), ...logoPacks()];
+
+/** The bundled packs, then the vendor packs fetched at build time (if any). */
+export const iconPacks: AsyncIconLoader[] = [
+  ...bundledPacks,
+  ...vendorIconPacks(
+    import.meta.glob('../vendor-icons/*.json'),
+    // Every bundled prefix, logo sets included, as plain names: listing them
+    // through logoPacks() would keep its chunks in a MERMAID_BUNDLE_LOGOS=false build.
+    [
+      'tabler',
+      'lucide',
+      'carbon',
+      'fluent',
+      'flat-color-icons',
+      'mdi',
+      'logos',
+      'simple-icons',
+      'devicon'
+    ]
+  )
 ];

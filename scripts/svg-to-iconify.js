@@ -43,10 +43,58 @@ const positive = (value) => {
 };
 
 /**
+ * Turn `<style>` class rules into attributes on the elements that use them.
+ * Vendor icons (Google Cloud's, for one) style paths with `.cls-1{fill:…}`;
+ * every icon in a diagram shares the page, so their class rules would restyle
+ * each other, and the app strips `<style>` anyway.
  * @param {string} text
+ */
+export const inlineStyles = (text) => {
+  /** @type {Map<string, [string, string][]>} */
+  const rules = new Map();
+  for (const [, css] of text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    for (const [, selectors, block] of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      const declarations = block
+        .split(';')
+        .map((declaration) => declaration.split(':').map((part) => part.trim()))
+        .filter(([property, value]) => /^[a-z-]+$/.test(property ?? '') && value)
+        .map(
+          ([property, value]) =>
+            /** @type {[string, string]} */ ([property, value.replaceAll('"', "'")])
+        );
+      for (const selector of selectors.split(',').map((part) => part.trim())) {
+        const name = /^\.([\w-]+)$/.exec(selector)?.[1];
+        if (name) rules.set(name, [...(rules.get(name) ?? []), ...declarations]);
+      }
+    }
+  }
+  return text
+    .replaceAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replaceAll(/<defs>\s*<\/defs>/gi, '')
+    .replaceAll(
+      /<([\w:-]+)([^>]*?)\sclass\s*=\s*["']([^"']*)["']([^>]*)>/g,
+      (_, tag, before, classes, after) => {
+        /** @type {Map<string, string>} */
+        const styles = new Map();
+        for (const name of classes.split(/\s+/)) {
+          for (const [property, value] of rules.get(name) ?? []) styles.set(property, value);
+        }
+        const drop = (/** @type {string} */ attributes) =>
+          attributes.replaceAll(/\s([\w:-]+)\s*=\s*("[^"]*"|'[^']*')/g, (attribute, name) =>
+            styles.has(name) ? '' : attribute
+          );
+        const added = [...styles].map(([property, value]) => ` ${property}="${value}"`).join('');
+        return `<${tag}${drop(before)}${added}${drop(after)}>`;
+      }
+    );
+};
+
+/**
+ * @param {string} source
  * @returns {{ body: string, width: number, height: number } | undefined}
  */
-const parseSvg = (text) => {
+export const parseSvg = (source) => {
+  const text = inlineStyles(source);
   const open = /<svg\b([^>]*)>/i.exec(text);
   const close = text.lastIndexOf('</svg>');
   if (!open || close === -1) return undefined;

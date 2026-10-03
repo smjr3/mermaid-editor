@@ -5,7 +5,7 @@ import type { SampleExample } from './mermaid';
  *
  * `@mermaid-js/examples` has no swimlane entry, yet swimlane support is the
  * reason this fork exists. "System Architecture" shows the bundled icon packs
- * (iconPacks.ts), which upstream's architecture samples do not use. Kept in its own file so `Preset.svelte` gains one
+ * (iconPacks.ts; the logo example needs MERMAID_BUNDLE_LOGOS left on), which upstream's architecture samples do not use. Kept in its own file so `Preset.svelte` gains one
  * spread rather than a block of code, and an upstream merge touches neither.
  * Drop an entry once `@mermaid-js/examples` ships one under the same name.
  */
@@ -64,6 +64,24 @@ export const localSamples: Record<string, SampleExample[]> = {
   app:B --> T:db
   app:R --> L:files`,
       title: 'Cloud (generic)'
+    },
+    {
+      code: `architecture-beta
+  group aws(logos:aws)[AWS]
+
+  service user(tabler:user)[User]
+  service cdn(logos:aws-cloudfront)[CloudFront] in aws
+  service api(logos:aws-api-gateway)[API Gateway] in aws
+  service app(logos:aws-ec2)[EC2] in aws
+  service db(logos:aws-rds)[RDS] in aws
+  service files(logos:aws-s3)[S3] in aws
+
+  user:R --> L:cdn
+  cdn:R --> L:api
+  api:R --> L:app
+  app:B --> T:db
+  app:R --> L:files`,
+      title: 'Cloud (AWS logos)'
     }
   ],
   Swimlane: [

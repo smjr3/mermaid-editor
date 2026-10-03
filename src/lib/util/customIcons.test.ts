@@ -3,6 +3,7 @@ import {
   buildIconSet,
   parseIconPackEnv,
   remoteIconPacks,
+  vendorIconPacks,
   sanitizeIconSet,
   svgToIcon,
   toIconName,
@@ -126,5 +127,25 @@ describe('remoteIconPacks', () => {
     );
     const [pack] = remoteIconPacks('azure=./missing.json');
     await expect(pack.loader()).rejects.toThrow(/404/);
+  });
+});
+
+describe('vendorIconPacks', () => {
+  it('loads the packs fetched at build time, sanitised, named after their files', async () => {
+    const packs = vendorIconPacks(
+      {
+        '../vendor-icons/gcp.json': () =>
+          Promise.resolve({
+            default: { icons: { vpc: { body: '<path d="M0 0"/><script>x</script>' } }, prefix: 'x' }
+          }),
+        '../vendor-icons/tabler.json': () =>
+          Promise.resolve({ default: { icons: {}, prefix: 'tabler' } })
+      },
+      ['tabler']
+    );
+    expect(packs.map(({ name }) => name)).toEqual(['gcp']);
+    const pack = await packs[0].loader();
+    expect(pack.prefix).toBe('gcp');
+    expect(pack.icons.vpc.body).toBe('<path d="M0 0"></path>');
   });
 });

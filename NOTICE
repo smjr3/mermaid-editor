@@ -93,10 +93,35 @@ and their code is included in the built static site.
       it derives from)
       License: ISC
 
+  Carbon Icons (@iconify-json/carbon)
+      Copyright IBM Corp.
+      License: Apache-2.0
+
+  Fluent UI System Icons (@iconify-json/fluent)
+      Copyright Microsoft Corporation
+      License: MIT
+
+  Flat Color Icons (@iconify-json/flat-color-icons)
+      Copyright Icons8
+      License: MIT
+
+  Material Design Icons (@iconify-json/mdi)
+      Copyright Pictogrammers
+      License: Apache-2.0
+
+  Devicon (@iconify-json/devicon)
+      Copyright konpa and Devicon contributors
+      License: MIT
+
+  SVG Logos (@iconify-json/logos), Simple Icons (@iconify-json/simple-icons)
+      License: CC0-1.0
+
       These are bundled as lazily loaded icon packs for diagrams
-      (prefix:name), unmodified except that their brand and logo icons are
-      left out (no third-party trademarks are bundled). Their licenses travel
-      with the built site through this notice and THIRD-PARTY-LICENSES.md.
+      (prefix:name), unmodified. Their licenses travel with the built site
+      through this notice and THIRD-PARTY-LICENSES.md. The licenses cover the
+      artwork only: the logos and brand icons show trademarks that remain
+      their respective owners'. Building with MERMAID_BUNDLE_LOGOS=false
+      leaves the logo sets out and removes the brand icons from the others.
 
 
 ------------------------------------------------------------------------------

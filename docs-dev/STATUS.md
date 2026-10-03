@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **127**.
+  every locally changed path — currently **130**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -31,7 +31,7 @@ The standing constraints, which shape almost every decision recorded here:
 | `FEATURE-FLAGS.md`            | Which surfaces are switched off for organisational use and by which variable                                                             |
 | `CROSS-PLATFORM.md`           | Why the build runs on Windows as well as Linux, and what is reasoned rather than executed                                                |
 | `THEME.md`                    | The accent palette per mode with measured contrast, and why the dark `--accent-foreground` must not be reverted                          |
-| `ICONS.md`                    | The bundled icon packs, packs a deployment hosts (`MERMAID_ICON_PACKS`), user-imported packs, and how their markup is sanitised          |
+| `ICONS.md`                    | The bundled icon packs and logos, build-time vendor sets, hosted and user-imported packs, redistribution, and sanitising                 |
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | The GitLab Pages deployment path                                                                                                         |
@@ -72,16 +72,20 @@ editor no longer shows the AI gutter button, which used to open an empty zone th
 closed. On desktop the editor column and the view are fixed panes with a visible divider instead
 of floating cards. Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
 
-**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from two bundled,
-generic OSS Iconify sets — `tabler` (MIT) and `lucide` (ISC): servers, databases, routers,
-switches, firewalls, load balancers, devices — loaded lazily from the site, never a CDN. No logos
-or trademarks are bundled: the brand icons both sets mix in are dropped on load, so nothing that
-could need clearance on an internal site ships. Vendor icon sets (AWS, Azure, Google Cloud) and
-logos can still be used once cleared: a deployment can host them (`MERMAID_ICON_PACKS`, with
-`scripts/svg-to-iconify.js` to convert an SVG folder) and a user can import SVG files or an
-Iconify JSON file from the "Icons" card (kept in IndexedDB). Hosted and imported icons are
-sanitised with DOMPurify before mermaid inserts them. A "System Architecture" sample entry shows
-a web system, an office network and a generic cloud. The packs add about 3 MB to the built site.
+**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from nine bundled OSS
+Iconify sets, loaded lazily from the site, never a CDN: six generic ones (`tabler`, `lucide`,
+`carbon`, `fluent`, `flat-color-icons`, `mdi`) and three logo sets (`logos`, `simple-icons`,
+`devicon`). They are npm dependencies, so the repository and the npm package carry no icon data.
+`MERMAID_BUNDLE_LOGOS=false` builds without the logo sets and strips the brand icons from the
+generic ones, for sites that may not host trademarks. Vendor architecture icon sets (AWS, Azure,
+Google Cloud) are not OSS, so they are imported from the vendor at build time
+(`MERMAID_FETCH_ICON_PACKS`, `scripts/fetch-icon-packs.js`, output gitignored and kept out of
+the npm package); verified with Google Cloud's archive (216 icons). A deployment can also host
+packs (`MERMAID_ICON_PACKS`) and a user can import SVG files or an Iconify JSON file from the
+"Icons" card (kept in IndexedDB). Every non-bundled icon is sanitised with DOMPurify before
+mermaid inserts it. A "System Architecture" sample entry shows a web system, an office network,
+a generic cloud and an AWS example with logos. The packs add about 36 MB to the built site (17 MB
+of it the logo sets); a page loads only the ones its diagram names.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

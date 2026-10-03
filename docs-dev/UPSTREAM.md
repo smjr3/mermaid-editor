@@ -220,13 +220,15 @@ taking upstream's version and re-adding those lines.
 | `src/lib/util/state.svelte.ts`                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                          |
 | `src/lib/components/ResetConfigButton.svelte`       | Added. The "Reset config" button on the config tab                                                                                                                                                                                    |
 | `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, and waits for the stored ones before rendering                                                                                                                                 |
-| `src/lib/util/iconPacks.ts`                         | Added. The two bundled generic packs (`tabler`, `lucide`) without their brand icons, loaded lazily — never from a CDN                                                                                                                 |
-| `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                           |
+| `src/lib/util/iconPacks.ts`                         | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                               |
+| `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                        |
 | `src/lib/components/IconPacks.svelte`               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                          |
-| `src/lib/util/env.ts`, `.env`                       | Add `iconPacks` / `MERMAID_ICON_PACKS`                                                                                                                                                                                                |
-| `scripts/svg-to-iconify.js`                         | Added. Converts an SVG folder into a pack a deployment can host; see `docs-dev/ICONS.md`                                                                                                                                              |
+| `src/lib/util/env.ts`, `.env`                       | Add `iconPacks` / `MERMAID_ICON_PACKS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                  |
+| `scripts/svg-to-iconify.js`                         | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                        |
+| `scripts/fetch-icon-packs.js`                       | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                            |
+| `.gitignore`                                        | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                       |
 | `src/routes/(app)/edit/+page.svelte`                | Renders `<ResetConfigButton>` in the editor card and `<IconPacks>` beside the samples, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
-| `package.json`                                      | Adds `@iconify-json/tabler`, `@iconify-json/lucide` and `dompurify` to `dependencies`                                                                                                                                                 |
+| `package.json`                                      | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, simple-icons, devicon) and `dompurify` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`               |
 
 The layout change is classes only. On a conflict in the pane markup, take upstream's
 structure and re-apply the `sm:` classes and `withHandle`; `tests/fixedLayout.spec.ts`
@@ -477,6 +479,8 @@ modifications as if they were local customizations.
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/prepare-pages.js`                             |
+| Added    | `scripts/fetch-icon-packs.d.ts`                        |
+| Added    | `scripts/fetch-icon-packs.js`                          |
 | Added    | `scripts/svg-to-iconify.d.ts`                          |
 | Added    | `scripts/svg-to-iconify.js`                            |
 | Added    | `scripts/update-upstream.sh`                           |
@@ -515,6 +519,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/customIcons.ts`                          |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
+| Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
 | Added    | `src/lib/util/iconPacks.ts`                            |
 | Added    | `src/lib/util/localSamples.test.ts`                    |

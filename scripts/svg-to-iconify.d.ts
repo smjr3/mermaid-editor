@@ -6,3 +6,7 @@ export declare const convertSvgDirectory: (
   prefix: string;
   icons: Record<string, { body: string; width: number; height: number }>;
 };
+export declare const inlineStyles: (text: string) => string;
+export declare const parseSvg: (
+  text: string
+) => { body: string; width: number; height: number } | undefined;

@@ -10,36 +10,89 @@ architecture-beta
   service db(lucide:database)[Database] in app
 ```
 
-Icons come from three places. All three end up registered with mermaid
+Icons come from four places. All of them end up registered with mermaid
 (`mermaid.registerIconPacks`) in `src/lib/util/mermaid.ts`.
 
 ## 1. Bundled packs
 
-Two generic, OSS [Iconify](https://icon-sets.iconify.design/) sets, shipped in the build as
-lazily loaded chunks — fetched from this site the first time a diagram uses the prefix, never
-from a CDN (`src/lib/util/iconPacks.ts`):
+OSS [Iconify](https://icon-sets.iconify.design/) sets, shipped in the build as lazily loaded
+chunks — fetched from this site the first time a diagram uses the prefix, never from a CDN
+(`src/lib/util/iconPacks.ts`):
 
-| Prefix   | License | Good for                                                                                              |
-| -------- | ------- | ----------------------------------------------------------------------------------------------------- |
-| `tabler` | MIT     | Infrastructure and IT: server, database, router, switch, firewall, load balancer, topologies, devices |
-| `lucide` | ISC     | General and IT: server, network, shield, brick-wall-fire, hard drive, container                       |
+| Prefix             | License    | Good for                                                                         |
+| ------------------ | ---------- | -------------------------------------------------------------------------------- |
+| `tabler`           | MIT        | Infrastructure and IT: server, database, router, switch, firewall, load balancer |
+| `lucide`           | ISC        | General and IT: server, network, shield, brick-wall-fire, hard drive             |
+| `carbon`           | Apache-2.0 | Network and cloud infrastructure (IBM): firewall, layer-3 switch, VPN, VM        |
+| `fluent`           | MIT        | Microsoft's Fluent UI icons: office, devices, documents                          |
+| `flat-color-icons` | MIT        | Colour icons: servers, documents, people                                         |
+| `mdi`              | Apache-2.0 | Material Design Icons: a very large general set                                  |
+| `logos`            | CC0-1.0    | Logos: AWS/Azure/Google Cloud services, products (`logos:aws-lambda`)            |
+| `simple-icons`     | CC0-1.0    | Brand logos of ~3,000 products and companies (`simple-icons:microsoftazure`)     |
+| `devicon`          | MIT        | Languages, databases, middleware, cloud (`devicon:microsoftsqlserver`)           |
 
-**No logos or trademarks are bundled.** The site is meant to be hosted internally, and shipping
-third-party marks — cloud vendors', software vendors', anyone's — could need clearance there.
-Both sets mix a few brand icons in with the generic ones (`tabler:brand-*`, `lucide:github`, …);
-`isBrandIcon` drops them when the pack loads, and `iconPacks.test.ts` fails if one slips through.
-For the same reason the packs considered earlier — `logos`, `simple-icons`, `devicon` (logo
-sets) and `mdi`, `carbon`, `fluent`, `flat-color-icons` (generic sets with brand icons mixed in
-that cannot be separated reliably) — are not bundled.
+The last three are logo sets. Names are the Iconify names; the "Icons" card in the editor links
+to the Iconify browser to look them up. All packs together add about 36 MB of chunks to the
+built site (17 MB of it the logo sets); a page loads only the packs its diagram names.
 
-Names are the Iconify names; the "Icons" card in the editor links to the Iconify browser to look
-them up. The two packs add about 3 MB of chunks to the built site.
+### Logos, trademarks and redistribution
 
-**Logos and vendor icon sets** (AWS, Azure, Google Cloud architecture icons, product logos) are
-not OSS: they come with their owners' terms, which generally allow use in diagrams but not
-redistribution as a set. Where the organisation has cleared them, use one of the next two routes.
+- **The repository and the npm package contain no icon data.** The packs are ordinary npm
+  dependencies (`package.json`); whoever builds the site downloads them from npm, under the
+  licences their authors publish them with. Publishing this project is therefore not a
+  redistribution of the icons.
+- **The built site does contain them** — the organisation that builds and hosts it distributes
+  them to its users. The licences above allow that (MIT/ISC/Apache-2.0 need their notice to
+  travel with the site, which `NOTICE` and `THIRD-PARTY-LICENSES.md` do; CC0 needs nothing).
+- **A licence covers the artwork, not the trademark it shows.** Showing a product's logo in an
+  architecture diagram to name that product is the use logo owners generally accept, but an
+  organisation whose policy forbids hosting third-party marks builds with
+  `MERMAID_BUNDLE_LOGOS=false`: the three logo sets drop out of the build, and the brand icons
+  mixed into the generic sets (`tabler:brand-*`, `mdi:microsoft-azure`, …) are removed when the
+  pack loads (`isBrandIcon`).
 
-## 2. Packs the deployment hosts (`MERMAID_ICON_PACKS`)
+Vendor **architecture icon sets** (AWS Architecture Icons, Azure icons, Google Cloud icons) are
+not OSS: their owners allow them in diagrams but restrict redistributing them as a set, so they
+never go into the repository or the npm package. Section 2 imports them at build time instead.
+
+## 2. Vendor icon sets imported at build time (`MERMAID_FETCH_ICON_PACKS`)
+
+A build-time variable of comma-separated `prefix=source` pairs. Each source is a vendor's zip
+archive (URL or local path) or a local folder of SVG files. `pnpm build` runs
+`scripts/fetch-icon-packs.js` first, which downloads each archive, converts its SVGs into an
+Iconify pack in `src/lib/vendor-icons/` (gitignored, excluded from the npm package), and the
+build bundles it under that prefix like the packs above:
+
+```
+MERMAID_FETCH_ICON_PACKS='gcp=https://cloud.google.com/static/icons/files/google-cloud-icons.zip' pnpm build
+```
+
+```
+architecture-beta
+  service sql(gcp:cloud-sql)[Cloud SQL]
+```
+
+This way the organisation that builds the site downloads the icons from the vendor itself,
+under the terms it accepts, and hosts them only on its own site. Icon names come from file
+names: AWS's `Arch_`/`Res_` prefixes and size and Light/Dark suffixes and Azure's
+`12345-icon-service-` prefix are dropped (`Arch_Amazon-EC2_64.svg` → `aws:amazon-ec2`), and of
+several variants the largest light one is kept. `<style>` class rules (Google Cloud's icons use
+them) are turned into attributes so icons in one diagram do not restyle each other. Without the
+variable nothing is fetched and an earlier run's packs are kept.
+
+The download pages and archive URLs, as of 2026-10 (they change with each release; check the
+page and copy the current link):
+
+| Vendor       | Page                                                    | Archive                                                                                                 |
+| ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Google Cloud | <https://cloud.google.com/icons>                        | `https://cloud.google.com/static/icons/files/google-cloud-icons.zip` (stable)                           |
+| AWS          | <https://aws.amazon.com/architecture/icons/>            | "Asset package" link (`https://d1.awsstatic.com/…/Asset-Package_….zip`)                                 |
+| Azure        | <https://learn.microsoft.com/azure/architecture/icons/> | "Download SVG icons" link (`https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V….zip`) |
+
+A source that cannot be fetched fails the build rather than silently shipping without the pack.
+A prefix that clashes with a bundled one is ignored.
+
+## 3. Packs the deployment hosts (`MERMAID_ICON_PACKS`)
 
 A build-time variable of comma-separated `prefix=url` pairs. Each pack is fetched on first use;
 relative URLs resolve against the site, so a pack can sit next to it on GitLab Pages:
@@ -49,7 +102,8 @@ MERMAID_ICON_PACKS='azure=./icon-packs/azure.json,corp=./icon-packs/corp.json'
 ```
 
 A pack is an [Iconify JSON](https://iconify.design/docs/types/iconify-json.html) file.
-`scripts/svg-to-iconify.js` makes one from a folder of SVG files (searched recursively; icon names
+Unlike section 2 the pack is a separate file next to the site, fetched on first use, so it can be
+replaced without a rebuild. `scripts/svg-to-iconify.js` makes one from a folder of SVG files (searched recursively; icon names
 come from file names, and Azure's `12345-icon-service-` prefix is dropped):
 
 ```sh
@@ -73,7 +127,7 @@ pages:
 
 `.gitlab-ci.yml` carries the same lines, commented.
 
-## 3. Packs a user imports
+## 4. Packs a user imports
 
 The "Icons" card in the editor imports either several SVG files (the user picks a prefix) or one
 Iconify JSON file (its own prefix, unless one is typed). Imported packs are stored in that
@@ -83,8 +137,8 @@ pack sees mermaid's `?` placeholder. Bundled prefixes cannot be reused.
 
 ## Security
 
-mermaid inserts an icon's `body` into the diagram SVG as markup. Hosted and imported packs are
+mermaid inserts an icon's `body` into the diagram SVG as markup. Build-time, hosted and imported packs are
 untrusted input, so every body is sanitised with DOMPurify (SVG profile, no `script`, `style` or
 `foreignObject`, no event handlers or `javascript:` URLs) when the pack is loaded — including
-packs read back from IndexedDB (`src/lib/util/customIcons.ts`). `scripts/svg-to-iconify.js` only
-extracts markup; the sanitising happens in the app.
+packs read back from IndexedDB (`src/lib/util/customIcons.ts`). `scripts/svg-to-iconify.js` and
+`scripts/fetch-icon-packs.js` only extract markup; the sanitising happens in the app.

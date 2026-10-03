@@ -33,4 +33,12 @@ test.describe('Icon packs', () => {
     await editPage.checkTextInView('Unknown');
     await expect(editPage.view.locator('text', { hasText: /^\?$/ }).first()).toBeAttached();
   });
+
+  test('keeps edges from running through service labels', async ({ editPage }) => {
+    await editPage.start(url);
+    await editPage.checkTextInView('Load balancer');
+    const label = editPage.view.locator('.architecture-service text').first();
+    await expect(label).toHaveCSS('paint-order', 'stroke');
+    await expect(label).toHaveCSS('stroke-width', '6px');
+  });
 });

@@ -219,7 +219,8 @@ taking upstream's version and re-adding those lines.
 | `src/lib/util/mermaidRename.ts`                     | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider                                                                                                                                 |
 | `src/lib/util/state.svelte.ts`                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                          |
 | `src/lib/components/ResetConfigButton.svelte`       | Added. The "Reset config" button on the config tab                                                                                                                                                                                    |
-| `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, and waits for the stored ones before rendering                                                                                                                                 |
+| `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`                                                                                          |
+| `src/lib/util/architectureLabels.ts`                | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                          |
 | `src/lib/util/iconPacks.ts`                         | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                               |
 | `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                        |
 | `src/lib/components/IconPacks.svelte`               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                          |
@@ -512,6 +513,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
+| Added    | `src/lib/util/architectureLabels.test.ts`              |
+| Added    | `src/lib/util/architectureLabels.ts`                   |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
 | Modified | `src/lib/util/autoSync.ts`                             |
 | Added    | `src/lib/util/customIconStore.ts`                      |

@@ -102,18 +102,18 @@ wholesale, which silently downgrades whatever this fork already moved forward.
 `.github/workflows/tests.yml`.
 
 `pnpm` is the third one to watch. The key exists upstream too, so it is a replacement
-rather than an addition, but the local value adds `overrides` with `lodash-es@<4.18.0`
-(the vulnerable `lodash-es` that mermaid 12's `chevrotain` pins; see
+rather than an addition, but the local value adds `overrides` with `monaco-editor>dompurify`
+(Monaco 0.57.0 pins a `dompurify` with a low advisory; see
 `QUALITY-AUDIT-2026-08-31.md`). Taking upstream's `pnpm` block silently removes the
-override and brings the production audit advisories back.
+override and brings the production audit advisory back.
 
 The top-level `overrides` (added) is the same fix for npm, which ignores `pnpm.overrides`.
 It is what protects the published tarball, built with `npm install` in the internal
 pipeline. Keep the two in step: an override added to one belongs in the other.
 
-`monaco-editor` must not go below **0.57.0**. It is pinned exactly, and 0.57.0 is the
-first release that depends on a patched DOMPurify, which is why the former
-`monaco-editor>dompurify` override could be removed. Upstream is still on 0.55.1, so
+`monaco-editor` must not go below **0.57.0**. It is pinned exactly; 0.57.0 was the
+first release that depended on a DOMPurify patched for the advisories known at the time
+(a later low advisory is what the current `monaco-editor>dompurify` override covers). Upstream is still on 0.55.1, so
 taking its side of that line reintroduces the vulnerable `dompurify@3.2.7` with no
 override left to catch it. 0.56 also moved the worker entry points behind an `exports`
 map, so `src/lib/components/DesktopEditor.svelte` imports

@@ -91,12 +91,14 @@ in English on purpose — they are keys into `@mermaid-js/examples`.
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
 tracker — that is where this project tracks findings, and the owner chose to keep it that way.
 
-**The `lodash-es` override.** mermaid 12 depends on `chevrotain ~11.1.2`, which (with two of its
-`@chevrotain/*` packages) pins `lodash-es@4.17.23` exactly — vulnerable to a high and a moderate
-advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1` — twice, because the package is
-built with both package managers: `pnpm.overrides` for this repository and a top-level npm
-`overrides` for the published tarball, which consumers install with `npm install`; see
-`QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
+**The `dompurify` override.** `monaco-editor` 0.57.0 (the latest) pins `dompurify@3.4.15`
+exactly, which a low advisory (GHSA-p98j-92pf-mc4p) covers. Monaco's copy is overridden to the
+patched `3.4.16` — twice, because the package is built with both package managers:
+`pnpm.overrides` (`monaco-editor>dompurify`) for this repository and a nested npm `overrides`
+for the published tarball, which consumers install with `npm install`; see
+`QUALITY-AUDIT-2026-08-31.md`. Remove both once a Monaco release depends on `dompurify >=3.4.16`.
+(The earlier `lodash-es` override is gone: mermaid 12.1.0 moved to chevrotain 13, which no longer
+pulls in the vulnerable `lodash-es`.)
 
 **TypeScript held at 6.x.** TypeScript 7 is the native (Go) compiler: its `typescript` package no
 longer exposes the compiler API (only a version export and `unstable/*` entry points), and

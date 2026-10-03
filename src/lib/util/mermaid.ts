@@ -3,9 +3,12 @@ import tidyTreeLayouts from '@mermaid-js/layout-tidy-tree';
 import zenuml from '@mermaid-js/mermaid-zenuml';
 import type { MermaidConfig, RenderResult } from 'mermaid';
 import mermaid from 'mermaid';
+import { iconPacks } from './iconPacks';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
+// Local: bundled icon packs (AWS, Azure, Google Cloud, …); see iconPacks.ts.
+mermaid.registerIconPacks(iconPacks);
 const init = mermaid.registerExternalDiagrams([zenuml]);
 
 export const render = async (

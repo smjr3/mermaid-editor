@@ -137,12 +137,15 @@
         'size-full',
         isMobile && ['w-[200%] duration-300', isViewMode && '-translate-x-1/2']
       ]}>
+      <!-- Local: on desktop the editor column and the view are fixed panes split by a
+           visible divider, with flat sections instead of floating cards. -->
       <Resizable.PaneGroup
         direction="horizontal"
         autoSaveId="liveEditor"
-        class="gap-4 p-2 pt-0 sm:gap-0 sm:p-6 sm:pt-0">
+        class="gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
         <Resizable.Pane bind:this={editorPane} defaultSize={30} minSize={15}>
-          <div class="flex h-full flex-col gap-4 sm:gap-6">
+          <div
+            class="flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border">
             <Card
               onselect={tabSelectHandler}
               isOpen
@@ -156,13 +159,13 @@
               <Editor {isMobile} />
             </Card>
 
-            <div class="group flex flex-wrap justify-between gap-4 sm:gap-6">
+            <div class="group flex flex-wrap justify-between gap-4 sm:gap-0">
               <Preset />
               <Actions />
             </div>
           </div>
         </Resizable.Pane>
-        <Resizable.Handle class="mr-1 hidden opacity-0 sm:block" />
+        <Resizable.Handle withHandle class="hidden sm:flex" />
         <Resizable.Pane minSize={15} class="relative flex h-full flex-1 flex-col overflow-hidden">
           <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
           {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
@@ -175,8 +178,11 @@
           <div class="absolute bottom-0 left-0 sm:left-5"><SyncRoughToolbar /></div>
         </Resizable.Pane>
         {#if isHistoryOpen}
-          <Resizable.Handle class="ml-1 hidden opacity-0 sm:block" />
-          <Resizable.Pane minSize={15} defaultSize={30} class="hidden h-full grow flex-col sm:flex">
+          <Resizable.Handle withHandle class="hidden sm:flex" />
+          <Resizable.Pane
+            minSize={15}
+            defaultSize={30}
+            class="hidden h-full grow flex-col sm:flex sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0">
             <History />
           </Resizable.Pane>
         {/if}

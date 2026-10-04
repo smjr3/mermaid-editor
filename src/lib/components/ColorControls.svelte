@@ -4,13 +4,14 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import {
+    clearColors,
     colorAllGroups,
-    getGroupColor,
+    getStyleColor,
     getLineColor,
     getTheme,
     lineColors,
     listGroups,
-    setGroupColor,
+    setStyleColor,
     setLineColor,
     setTheme,
     swatches,
@@ -19,12 +20,13 @@
     type Swatch,
     type ThemeChoice
   } from '$/util/colors';
-  import { inputState, updateCode, updateConfig } from '$/util/state.svelte';
+  import { flowNodes } from '$/util/mermaid';
+  import { inputState, updateCode, updateConfig, validatedState } from '$/util/state.svelte';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
 
-  // Local: the theme, the line colour and lane colours (colors.ts). The theme and
-  // line colour go in the config, lane colours in the code as `style` statements,
-  // so a shared link keeps them.
+  // Local: the theme, the line colour, and lane and node colours (colors.ts). The
+  // theme and line colour go in the config, lane and node colours in the code as
+  // `style` statements, so a shared link keeps them.
   const theme = $derived(getTheme(inputState.mermaid));
   const lineColor = $derived(getLineColor(inputState.mermaid));
   const groups = $derived(listGroups(inputState.code));
@@ -33,8 +35,37 @@
   const applyLine = (next: string | undefined) =>
     updateConfig(setLineColor(inputState.mermaid, next));
   const applyCode = (code: string) => updateCode(code, { updateDiagram: true });
-  const applyGroup = (id: string, swatch: Swatch | undefined) =>
-    applyCode(setGroupColor(inputState.code, id, swatch));
+  const applyColor = (id: string, swatch: Swatch | undefined) =>
+    applyCode(setStyleColor(inputState.code, id, swatch));
+
+  // Nodes come from mermaid's own parse of the last valid code.
+  let nodes = $state<{ id: string; label: string }[]>([]);
+  let selected = $state('');
+  $effect(() => {
+    const { code, error } = validatedState.current;
+    if (error) return;
+    let stale = false;
+    void flowNodes(code).then((found) => {
+      if (stale) return;
+      nodes = found;
+      if (!found.some(({ id }) => id === selected)) selected = found[0]?.id ?? '';
+    });
+    return () => {
+      stale = true;
+    };
+  });
+  const selectedNode = $derived(nodes.find(({ id }) => id === selected));
+
+  // A click on a node in the diagram picks it (mermaid ids it `<svg>-flowchart-<id>-<n>`).
+  $effect(() => {
+    const pick = (event: MouseEvent) => {
+      const node = (event.target as Element | null)?.closest?.('#view .node');
+      const id = node && /-flowchart-(.+)-\d+$/.exec(node.id)?.[1];
+      if (id && nodes.some((candidate) => candidate.id === id)) selected = id;
+    };
+    document.addEventListener('click', pick);
+    return () => document.removeEventListener('click', pick);
+  });
 
   const choice = (active: boolean) => (active ? 'default' : 'outline');
   const isCustomTheme = $derived(
@@ -63,6 +94,41 @@
     aria-pressed={active}
     data-testid={testID}
     {onclick}></button>
+{/snippet}
+
+{#snippet palette(id: string, label: string, testID: string)}
+  {@const current = getStyleColor(inputState.code, id)}
+  <div class="flex flex-wrap items-center gap-1.5">
+    {@render dot(
+      'transparent',
+      'var(--border)',
+      current === undefined,
+      t('colors.groupClear'),
+      `${testID}-none`,
+      () => applyColor(id, undefined)
+    )}
+    {#each swatches as swatch (swatch.name)}
+      {@render dot(
+        swatch.fill,
+        swatch.stroke,
+        current?.stroke === swatch.stroke && current.fill === swatch.fill,
+        t(`colors.swatch.${swatch.name}`),
+        `${testID}-${swatch.name}`,
+        () => applyColor(id, swatch)
+      )}
+    {/each}
+    <input
+      type="color"
+      class="h-6 w-8 cursor-pointer rounded border bg-transparent"
+      value={current?.stroke && /^#[\da-f]{6}$/i.test(current.stroke) ? current.stroke : '#3b73c9'}
+      title={t('colors.custom')}
+      aria-label={`${label}: ${t('colors.custom')}`}
+      data-testid={`${testID}-custom`}
+      onchange={(event) => {
+        const stroke = event.currentTarget.value;
+        applyColor(id, { fill: tint(stroke), stroke });
+      }} />
+  </div>
 {/snippet}
 
 <Card
@@ -132,46 +198,49 @@
         </div>
         <ul class="flex flex-col gap-2">
           {#each groups as group (group.id)}
-            {@const current = getGroupColor(inputState.code, group.id)}
             <li class="flex flex-col gap-1">
               <span class="truncate" title={group.id}>{group.label}</span>
-              <div class="flex flex-wrap items-center gap-1.5">
-                {@render dot(
-                  'transparent',
-                  'var(--border)',
-                  current === undefined,
-                  t('colors.groupClear'),
-                  `${TID.colorsGroup}-${group.id}-none`,
-                  () => applyGroup(group.id, undefined)
-                )}
-                {#each swatches as swatch (swatch.name)}
-                  {@render dot(
-                    swatch.fill,
-                    swatch.stroke,
-                    current?.stroke === swatch.stroke && current.fill === swatch.fill,
-                    t(`colors.swatch.${swatch.name}`),
-                    `${TID.colorsGroup}-${group.id}-${swatch.name}`,
-                    () => applyGroup(group.id, swatch)
-                  )}
-                {/each}
-                <input
-                  type="color"
-                  class="h-6 w-8 cursor-pointer rounded border bg-transparent"
-                  value={current?.stroke && /^#[\da-f]{6}$/i.test(current.stroke)
-                    ? current.stroke
-                    : '#3b73c9'}
-                  title={t('colors.custom')}
-                  aria-label={`${group.label}: ${t('colors.custom')}`}
-                  data-testid={`${TID.colorsGroup}-${group.id}-custom`}
-                  onchange={(event) => {
-                    const stroke = event.currentTarget.value;
-                    applyGroup(group.id, { fill: tint(stroke), stroke });
-                  }} />
-              </div>
+              {@render palette(group.id, group.label, `${TID.colorsGroup}-${group.id}`)}
             </li>
           {/each}
         </ul>
       {/if}
     </div>
+
+    {#if nodes.length > 0}
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('colors.nodes')}</span>
+        <select
+          bind:value={selected}
+          aria-label={t('colors.nodes')}
+          data-testid={TID.colorsNodeSelect}
+          class="h-9 rounded-md border border-input bg-background px-1 text-sm text-foreground">
+          {#each nodes as node (node.id)}
+            <option value={node.id}
+              >{getStyleColor(inputState.code, node.id) ? '● ' : ''}{node.label}{node.label ===
+              node.id
+                ? ''
+                : ` (${node.id})`}</option>
+          {/each}
+        </select>
+        {#if selectedNode}
+          {@render palette(selectedNode.id, selectedNode.label, TID.colorsNode)}
+        {/if}
+        <p class="text-xs text-muted-foreground">{t('colors.nodesHint')}</p>
+        <div>
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid={TID.colorsNodesClear}
+            onclick={() =>
+              applyCode(
+                clearColors(
+                  inputState.code,
+                  nodes.map(({ id }) => id)
+                )
+              )}>{t('colors.nodesClear')}</Button>
+        </div>
+      </div>
+    {/if}
   </div>
 </Card>

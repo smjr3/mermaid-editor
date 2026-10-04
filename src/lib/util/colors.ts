@@ -151,7 +151,7 @@ const readStyle = (properties: string): [string, string][] =>
     .filter(([key, value]) => key && value)
     .map(([key, value]) => [key, value]);
 
-export const getGroupColor = (code: string, id: string): Swatch | undefined => {
+export const getStyleColor = (code: string, id: string): Swatch | undefined => {
   const pattern = stylePattern(id);
   for (const line of splitLines(code).lines) {
     const match = pattern.exec(line);
@@ -165,7 +165,7 @@ export const getGroupColor = (code: string, id: string): Swatch | undefined => {
 };
 
 /** The code with the lane's fill and border set, or removed when `swatch` is undefined. */
-export const setGroupColor = (code: string, id: string, swatch: Swatch | undefined): string => {
+export const setStyleColor = (code: string, id: string, swatch: Swatch | undefined): string => {
   if (swatch && (!hexPattern.test(swatch.fill) || !hexPattern.test(swatch.stroke))) return code;
   const { eol, lines } = splitLines(code);
   const pattern = stylePattern(id);
@@ -201,6 +201,10 @@ export const setGroupColor = (code: string, id: string, swatch: Swatch | undefin
 export const colorAllGroups = (code: string, clear = false): string =>
   listGroups(code).reduce(
     (result, { id }, index) =>
-      setGroupColor(result, id, clear ? undefined : swatches[index % swatches.length]),
+      setStyleColor(result, id, clear ? undefined : swatches[index % swatches.length]),
     code
   );
+
+/** The code with the colours of the given lanes or nodes removed. */
+export const clearColors = (code: string, ids: string[]): string =>
+  ids.reduce((result, id) => setStyleColor(result, id, undefined), code);

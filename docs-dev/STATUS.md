@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **160**.
+  every locally changed path — currently **161**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -99,8 +99,10 @@ links and mermaid.live render the same. Diagram types without a direction (archi
 **Colours card (0.2.0)** (`src/lib/util/colors.ts`). Theme buttons (auto, plus the themes the
 editor does not manage: a managed one would be replaced, see `isManagedTheme`), a line colour
 (`themeVariables.lineColor` in the config; the dark-mode line brightening leaves it alone) and,
-for swimlane and flowchart diagrams, a colour per lane or subgraph, or all at once. Lane colours
-are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code — plain mermaid, so shared
+for swimlane and flowchart diagrams, a colour per lane or subgraph (or all at once) and per node
+(chosen from a list or by clicking it in the diagram; the list comes from mermaid's own parse,
+`flowNodes` in `mermaid.ts`, leaving out lanes that a `style` statement also registers as vertices). Lane and node
+colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code — plain mermaid, so shared
 links keep them; the dark title colour keeps lane titles readable on the light fills in dark mode.
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.

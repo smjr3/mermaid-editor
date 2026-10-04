@@ -108,10 +108,50 @@ test.describe('Colours card', () => {
     await expect.poll(async () => (await config(page)).themeVariables).toBeUndefined();
   });
 
+  test('colours a node chosen from the list or by clicking it in the diagram', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor(lanes));
+    await editPage.checkTextInView('Accept order');
+    await page.getByTestId(TID.colorsCard).click();
+    const green = { fill: '#def5e1', stroke: '#3f9b52' };
+
+    await page.getByTestId(TID.colorsNodeSelect).selectOption('C');
+    await page.getByTestId(`${TID.colorsNode}-green`).click();
+    await expect
+      .poll(async () => (await stored(page)).code)
+      .toContain(`style C fill:${green.fill},stroke:${green.stroke},color:#1f2329`);
+    const shape = page
+      .locator('#view .node[id*="-flowchart-C-"]')
+      .locator('rect, path, polygon')
+      .first();
+    await expect
+      .poll(() => shape.evaluate((el) => getComputedStyle(el).fill))
+      .toBe(rgb(green.fill));
+
+    // Clicking a node in the diagram picks it.
+    await page.locator('#view .node', { hasText: 'Place order' }).click();
+    await expect(page.getByTestId(TID.colorsNodeSelect)).toHaveValue('A');
+    await page.getByTestId(`${TID.colorsNode}-custom`).fill('#aa3377');
+    await expect.poll(async () => (await stored(page)).code).toContain('style A fill:');
+    expect((await stored(page)).code).toContain('stroke:#aa3377');
+
+    // Clearing node colours leaves lane colours alone.
+    await page.getByTestId(`${TID.colorsGroup}-Shop-blue`).click();
+    await expect.poll(async () => (await stored(page)).code).toContain('style Shop');
+    await page.getByTestId(TID.colorsNodesClear).click();
+    await expect.poll(async () => (await stored(page)).code).not.toContain('style C');
+    const code = (await stored(page)).code ?? '';
+    expect(code).not.toContain('style A');
+    expect(code).toContain('style Shop');
+  });
+
   test('explains when the diagram has no lanes', async ({ editPage, page }) => {
     await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');
     await page.getByTestId(TID.colorsCard).click();
     await expect(page.getByText(t('colors.groupsNone'))).toBeVisible();
+    await expect(page.getByTestId(TID.colorsNodeSelect)).toHaveCount(0);
   });
 });

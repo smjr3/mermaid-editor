@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clearColors,
   colorAllGroups,
-  getGroupColor,
+  getStyleColor,
   getLineColor,
   getTheme,
   laneText,
   listGroups,
-  setGroupColor,
+  setStyleColor,
   setLineColor,
   setTheme,
   swatches,
@@ -90,58 +91,58 @@ describe('listGroups', () => {
   });
 });
 
-describe('getGroupColor / setGroupColor', () => {
+describe('getStyleColor / setStyleColor', () => {
   const blue = swatches[0];
 
   it('adds a style statement for the lane', () => {
-    const code = setGroupColor(lanes, 'shop', blue);
+    const code = setStyleColor(lanes, 'shop', blue);
     expect(code).toBe(
       `${lanes}\n  style shop fill:${blue.fill},stroke:${blue.stroke},color:${laneText}`
     );
-    expect(getGroupColor(code, 'shop')).toEqual({ fill: blue.fill, stroke: blue.stroke });
-    expect(getGroupColor(code, 'Customer')).toBeUndefined();
+    expect(getStyleColor(code, 'shop')).toEqual({ fill: blue.fill, stroke: blue.stroke });
+    expect(getStyleColor(code, 'Customer')).toBeUndefined();
   });
 
   it('replaces the colours of an existing style statement, keeping its other properties', () => {
     const code = `${lanes}\n  style shop fill:#fff,stroke:#000,stroke-width:3px`;
-    expect(setGroupColor(code, 'shop', blue)).toBe(
+    expect(setStyleColor(code, 'shop', blue)).toBe(
       `${lanes}\n  style shop fill:${blue.fill},stroke:${blue.stroke},color:${laneText},stroke-width:3px`
     );
   });
 
   it('keeps the lane title readable on the light fill, also in dark mode', () => {
-    expect(setGroupColor(lanes, 'shop', blue)).toContain(`color:${laneText}`);
+    expect(setStyleColor(lanes, 'shop', blue)).toContain(`color:${laneText}`);
   });
 
   it('removes the colours, and the statement once nothing is left', () => {
-    const colored = setGroupColor(lanes, 'shop', blue);
-    expect(setGroupColor(colored, 'shop', undefined)).toBe(lanes);
+    const colored = setStyleColor(lanes, 'shop', blue);
+    expect(setStyleColor(colored, 'shop', undefined)).toBe(lanes);
     const wide = `${lanes}\n  style shop fill:#fff,color:#000,stroke-width:3px`;
-    expect(setGroupColor(wide, 'shop', undefined)).toBe(`${lanes}\n  style shop stroke-width:3px`);
+    expect(setStyleColor(wide, 'shop', undefined)).toBe(`${lanes}\n  style shop stroke-width:3px`);
   });
 
   it('does not touch the style of a node or lane with a longer name', () => {
     const code = `${lanes}\n  style shopper fill:#fff`;
-    expect(setGroupColor(code, 'shop', blue)).toBe(
+    expect(setStyleColor(code, 'shop', blue)).toBe(
       `${code}\n  style shop fill:${blue.fill},stroke:${blue.stroke},color:${laneText}`
     );
   });
 
   it('keeps a trailing newline at the end', () => {
-    expect(setGroupColor(`${lanes}\n`, 'shop', blue)).toBe(
+    expect(setStyleColor(`${lanes}\n`, 'shop', blue)).toBe(
       `${lanes}\n  style shop fill:${blue.fill},stroke:${blue.stroke},color:${laneText}\n`
     );
   });
 
   it('keeps Windows line endings', () => {
     const code = 'swimlane-beta LR\r\n  subgraph a\r\n    x\r\n  end';
-    expect(setGroupColor(code, 'a', blue)).toBe(
+    expect(setStyleColor(code, 'a', blue)).toBe(
       `${code}\r\n  style a fill:${blue.fill},stroke:${blue.stroke},color:${laneText}`
     );
   });
 
   it('builds a light fill from a custom colour', () => {
-    const code = setGroupColor(lanes, 'Customer', { fill: tint('#3366cc'), stroke: '#3366cc' });
+    const code = setStyleColor(lanes, 'Customer', { fill: tint('#3366cc'), stroke: '#3366cc' });
     expect(code).toContain(
       `style Customer fill:${tint('#3366cc')},stroke:#3366cc,color:${laneText}`
     );
@@ -154,11 +155,19 @@ describe('colorAllGroups', () => {
   it('gives every lane its own swatch, in order', () => {
     const code = colorAllGroups(lanes);
     listGroups(lanes).forEach(({ id }, index) => {
-      expect(getGroupColor(code, id)?.stroke).toBe(swatches[index % swatches.length].stroke);
+      expect(getStyleColor(code, id)?.stroke).toBe(swatches[index % swatches.length].stroke);
     });
   });
 
   it('clears every lane colour', () => {
     expect(colorAllGroups(colorAllGroups(lanes), true)).toBe(lanes);
+  });
+});
+
+describe('clearColors', () => {
+  it('removes the colours of the given lanes or nodes only', () => {
+    const blue = swatches[0];
+    const code = setStyleColor(setStyleColor(lanes, 'A', blue), 'shop', blue);
+    expect(clearColors(code, ['A', 'C'])).toBe(setStyleColor(lanes, 'shop', blue));
   });
 });

@@ -147,6 +147,54 @@ test.describe('Colours card', () => {
     expect(code).toContain('style Shop');
   });
 
+  test('colours an arrow picked by its label, and resets every arrow', async ({
+    editPage,
+    page
+  }) => {
+    const code = `${lanes}\n  B -->|done| C`;
+    await editPage.start(urlFor(code));
+    await editPage.checkTextInView('done');
+    await page.getByTestId(TID.colorsCard).click();
+
+    await page.locator('#view .edgeLabel', { hasText: 'done' }).click();
+    await expect(page.getByTestId(TID.colorsEdgeSelect)).toHaveValue('3');
+    await page.getByTestId(`${TID.colorsEdge}-#d64545`).click();
+    await expect
+      .poll(async () => (await stored(page)).code)
+      .toContain('linkStyle 3 stroke:#d64545');
+    const path = page.locator('#view path[data-id="L_B_C_0"]');
+    await expect
+      .poll(() => path.evaluate((el) => getComputedStyle(el).stroke))
+      .toBe(rgb('#d64545'));
+
+    await page.getByTestId(TID.colorsEdgeSelect).selectOption('0');
+    await page.getByTestId(`${TID.colorsEdge}-custom`).fill('#22aa55');
+    await expect
+      .poll(async () => (await stored(page)).code)
+      .toContain('linkStyle 0 stroke:#22aa55');
+
+    await page.getByTestId(TID.colorsEdgesClear).click();
+    await expect.poll(async () => (await stored(page)).code).toBe(code);
+  });
+
+  test('offers a freely picked colour again, also after a reload', async ({ editPage, page }) => {
+    await editPage.start(urlFor(lanes));
+    await editPage.checkTextInView('Accept order');
+    await page.getByTestId(TID.colorsCard).click();
+
+    await page.getByTestId(`${TID.colorsGroup}-Shop-custom`).fill('#336699');
+    await expect.poll(async () => (await stored(page)).code).toContain('style Shop fill:');
+    await page.getByTestId(TID.colorsNodeSelect).selectOption('A');
+    await page.getByTestId(`${TID.colorsNode}-recent-#336699`).click();
+    await expect.poll(async () => (await stored(page)).code).toContain('style A fill:');
+    expect((await stored(page)).code).toMatch(/style A fill:#[\da-f]{6},stroke:#336699/);
+
+    await page.reload();
+    await page.getByTestId(TID.colorsCard).click();
+    await expect(page.getByTestId(`${TID.colorsGroup}-Customer-recent-#336699`)).toBeVisible();
+    await expect(page.getByTestId(`${TID.colorsLine}-#336699`)).toBeVisible();
+  });
+
   test('explains when the diagram has nothing to colour one by one', async ({ editPage, page }) => {
     await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');

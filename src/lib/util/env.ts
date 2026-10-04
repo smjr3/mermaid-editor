@@ -1,5 +1,7 @@
 export const env = {
   analyticsUrl: import.meta.env.MERMAID_ANALYTICS_URL ?? '',
+  // Local: a palette of border colours for the Colours card, as `#rrggbb,…` (colors.ts).
+  colorPresets: import.meta.env.MERMAID_COLOR_PRESETS ?? '',
   docsUrl: import.meta.env.MERMAID_DOCS_URL ?? 'https://mermaid.js.org',
   domain: import.meta.env.MERMAID_DOMAIN ?? '',
   hidePrivacyPolicy: import.meta.env.MERMAID_HIDE_PRIVACY_POLICY === 'true',

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   darkVariantOf,
+  diagramEdges,
   diagramObjects,
   getDefaultTheme,
   getSampleDiagrams,
@@ -184,5 +185,26 @@ describe('diagramObjects', () => {
   it('is undefined for other diagrams and for code that does not parse', async () => {
     expect(await diagramObjects('sequenceDiagram\n  A->>B: hi')).toBeUndefined();
     expect(await diagramObjects('flowchart TD\n  A -->')).toBeUndefined();
+  });
+});
+
+describe('diagramEdges', () => {
+  it('lists the edges of a flowchart in linkStyle order, named by their ends and label', async () => {
+    const code =
+      'flowchart LR\n  A[Start] --> B\n  B -->|yes| C & D\n  C e2@--> A\n  linkStyle 1 stroke:#f00';
+    expect(await diagramEdges(code)).toEqual([
+      { id: 'L_A_B_0', index: 0, label: 'Start → B' },
+      { id: 'L_B_C_0', index: 1, label: 'B → C (yes)' },
+      { id: 'L_B_D_0', index: 2, label: 'B → D (yes)' },
+      { id: 'e2', index: 3, label: 'C → Start' }
+    ]);
+  });
+
+  it('lists the edges of a swimlane diagram, and none for other diagrams', async () => {
+    expect(await diagramEdges('swimlane-beta LR\n  subgraph L1\n    A --> B\n  end')).toEqual([
+      { id: 'L_A_B_0', index: 0, label: 'A → B' }
+    ]);
+    expect(await diagramEdges('stateDiagram-v2\n  A --> B')).toEqual([]);
+    expect(await diagramEdges('flowchart LR\n  A -->')).toEqual([]);
   });
 });

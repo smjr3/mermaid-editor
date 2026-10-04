@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **161**.
+  every locally changed path — currently **167**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -109,11 +109,21 @@ Colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the cod
 statement — plain mermaid, so shared links keep them; the dark text colour keeps titles readable
 on the light fills in dark mode. Sequence, mindmap, architecture, kanban and the chart types have
 no per-object colour syntax that works, so the card says so for them.
+Flowchart and swimlane arrows get a colour each too (`linkStyle <n> stroke:…`; `n` is the
+arrow's order in the code, so adding or removing arrows above it shifts the number — mermaid's own
+limitation). The colour buttons are the deployment's palette (`MERMAID_COLOR_PRESETS`) or the
+built-in eight, followed by the colours this browser picked freely ("any colour", kept in
+`localStorage` as `colorRecent`, latest eight).
+
+**Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
+lane, or a node into a lane, optionally joined by an arrow from another node; the next node is
+joined from the one just added. New statements go after the last statement and before trailing
+`style`/`linkStyle` lines, so existing arrow numbers do not change.
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 
 **Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
-column to a slim icon rail; each rail icon (code, config, layout, colours, icons, samples, actions)
+column to a slim icon rail; each rail icon (code, config, layout, add, colours, icons, samples, actions)
 expands the column and opens that section. The bar above the tool cards hides them so the
 editor fills the column (remembered per browser); the cards are stacked — layout, icons,
 samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
@@ -271,6 +281,13 @@ Two facts that cost time to rediscover:
   a render the app deliberately defers for large diagrams. `EditorPage.checkTextInView`
   carries a raised timeout for that reason; `checkTextNotInView` deliberately does not,
   because it asserts absence and returns as soon as the text is gone.
+- `EditorPage.start(url)` with a `#…` URL first goes to `about:blank`: the fixture has
+  already opened the editor, and changing only the hash could lose to the editor writing its
+  previous state back into the URL, leaving the default sample on screen.
+
+In Claude Code on the web, `.claude/hooks/session-start.sh` puts Node 24 first on PATH (the
+image defaults to Node 22, below `engines`), enables pnpm and installs the dependencies, so
+`pnpm` scripts and the husky pre-commit hook run there as they do locally.
 
 ## CodeQL
 

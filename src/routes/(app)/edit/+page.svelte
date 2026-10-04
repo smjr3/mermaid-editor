@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '$/i18n';
   import Actions from '$/components/Actions.svelte';
+  import AddControls from '$/components/AddControls.svelte';
   import Card from '$/components/Card/Card.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
@@ -86,6 +87,7 @@
   let isEditorCollapsed = $state(false);
   const railCards: Partial<Record<RailTarget, string>> = {
     actions: TID.actionsCard,
+    add: TID.addCard,
     colors: TID.colorsCard,
     icons: TID.iconPacksCard,
     layout: TID.layoutCard,
@@ -210,6 +212,7 @@
                 editorFocus.value && 'hidden'
               ]}>
               <LayoutControls />
+              <AddControls />
               <ColorControls />
               <IconPacks />
               <Preset />

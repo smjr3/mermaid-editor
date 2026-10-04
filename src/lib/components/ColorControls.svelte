@@ -4,34 +4,55 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import {
+    addRecent,
     colorAll,
     colorAllGroups,
-    getObjectColor,
-    pickedObject,
-    setObjectColor,
+    getEdgeColor,
     getLineColor,
+    getObjectColor,
     getTheme,
     lineColors,
     listGroups,
+    parsePresets,
+    pickedEdge,
+    pickedObject,
+    setEdgeColor,
     setLineColor,
+    setObjectColor,
     setTheme,
     swatches,
     themeChoices,
     tint,
     type ColorSyntax,
     type Swatch,
+    type SwatchName,
     type ThemeChoice
   } from '$/util/colors';
-  import { diagramObjects, type DiagramObjects } from '$/util/mermaid';
+  import { env } from '$/util/env';
+  import {
+    diagramEdges,
+    diagramObjects,
+    type DiagramEdge,
+    type DiagramObjects
+  } from '$/util/mermaid';
+  import { persisted } from '$/util/persist.svelte';
   import { inputState, updateCode, updateConfig, validatedState } from '$/util/state.svelte';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
 
-  // Local: the theme, the line colour, and lane and object colours (colors.ts). The
-  // theme and line colour go in the config, lane and object colours in the code
-  // (`style` statements, or C4's `UpdateElementStyle`), so a shared link keeps them.
+  // Local: the theme, the line colour, and lane, object and edge colours
+  // (colors.ts). The theme and line colour go in the config, the rest in the code
+  // (`style`, `linkStyle`, or C4's `UpdateElementStyle`), so a shared link keeps them.
   const theme = $derived(getTheme(inputState.mermaid));
   const lineColor = $derived(getLineColor(inputState.mermaid));
   const groups = $derived(listGroups(inputState.code));
+
+  // The buttons: a deployment's palette (MERMAID_COLOR_PRESETS) or the built-in
+  // one, then the colours this browser picked freely.
+  const presets = parsePresets(env.colorPresets);
+  const presetSwatches: (Swatch & { name?: SwatchName })[] = presets ?? swatches;
+  const lineChoices = presets ? presets.map(({ stroke }) => stroke) : lineColors;
+  const recent = persisted<string[]>('colorRecent', []);
+  const remember = (color: string) => (recent.value = addRecent(recent.value, color));
 
   const applyTheme = (next: ThemeChoice) => updateConfig(setTheme(inputState.mermaid, next));
   const applyLine = (next: string | undefined) =>
@@ -40,18 +61,22 @@
   const applyColor = (id: string, swatch: Swatch | undefined, syntax: ColorSyntax = 'style') =>
     applyCode(setObjectColor(inputState.code, id, swatch, syntax));
 
-  // Objects (nodes, states, classes, …) come from mermaid's own parse of the last valid code.
+  // Objects and edges come from mermaid's own parse of the last valid code.
   let objects = $state<DiagramObjects | undefined>();
+  let edges = $state<DiagramEdge[]>([]);
   let selected = $state('');
+  let selectedEdge = $state(0);
   $effect(() => {
     const { code, error } = validatedState.current;
     if (error) return;
     let stale = false;
-    void diagramObjects(code).then((found) => {
+    void Promise.all([diagramObjects(code), diagramEdges(code)]).then(([found, foundEdges]) => {
       if (stale) return;
       objects = found;
+      edges = foundEdges;
       const items = found?.items ?? [];
       if (!items.some(({ id }) => id === selected)) selected = items[0]?.id ?? '';
+      if (selectedEdge >= foundEdges.length) selectedEdge = 0;
     });
     return () => {
       stale = true;
@@ -59,10 +84,11 @@
   });
   const items = $derived(objects?.items ?? []);
   const ids = $derived(items.map(({ id }) => id));
+  const edgeIds = $derived(edges.map(({ id }) => id));
   const selectedItem = $derived(items.find(({ id }) => id === selected));
   const showLanes = $derived(groups.length > 0 || objects?.kind === 'flowchart');
 
-  // A click on an object in the diagram picks it (see pickedObject for the element ids).
+  // A click in the diagram picks the object or edge under it (see pickedObject, pickedEdge).
   $effect(() => {
     const pick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : undefined;
@@ -73,6 +99,14 @@
         element && element !== svg;
         element = element.parentElement
       ) {
+        const edge = pickedEdge(
+          { dataId: element.getAttribute('data-id'), id: element.id },
+          edgeIds
+        );
+        if (edge !== undefined) {
+          selectedEdge = edge;
+          return;
+        }
         const id = element.id ? pickedObject(element.id, svg.id, ids) : undefined;
         if (id) {
           selected = id;
@@ -88,6 +122,7 @@
   const isCustomTheme = $derived(
     theme !== 'auto' && !(themeChoices as readonly string[]).includes(theme)
   );
+  const same = (a: string | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
 </script>
 
 {#snippet dot(
@@ -113,6 +148,25 @@
     {onclick}></button>
 {/snippet}
 
+{#snippet picker(value: string, label: string, testID: string, onpick: (color: string) => void)}
+  <label
+    class="flex cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted">
+    <input
+      type="color"
+      class="h-5 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
+      {value}
+      aria-label={label}
+      data-testid={testID}
+      onchange={(event) => {
+        const color = event.currentTarget.value;
+        remember(color);
+        onpick(color);
+      }} />
+    {t('colors.custom')}
+  </label>
+{/snippet}
+
+<!-- Colours for an area (lane, node, …): fill plus border. -->
 {#snippet palette(id: string, label: string, testID: string, syntax: ColorSyntax = 'style')}
   {@const current = getObjectColor(inputState.code, id, syntax)}
   <div class="flex flex-wrap items-center gap-1.5">
@@ -124,27 +178,60 @@
       `${testID}-none`,
       () => applyColor(id, undefined, syntax)
     )}
-    {#each swatches as swatch (swatch.name)}
+    {#each presetSwatches as swatch (swatch.stroke)}
       {@render dot(
         swatch.fill,
         swatch.stroke,
-        current?.stroke === swatch.stroke && current.fill === swatch.fill,
-        t(`colors.swatch.${swatch.name}`),
-        `${testID}-${swatch.name}`,
+        same(current?.stroke, swatch.stroke) && same(current?.fill, swatch.fill),
+        swatch.name ? t(`colors.swatch.${swatch.name}`) : swatch.stroke,
+        `${testID}-${swatch.name ?? swatch.stroke}`,
         () => applyColor(id, swatch, syntax)
       )}
     {/each}
-    <input
-      type="color"
-      class="h-6 w-8 cursor-pointer rounded border bg-transparent"
-      value={current?.stroke && /^#[\da-f]{6}$/i.test(current.stroke) ? current.stroke : '#3b73c9'}
-      title={t('colors.custom')}
-      aria-label={`${label}: ${t('colors.custom')}`}
-      data-testid={`${testID}-custom`}
-      onchange={(event) => {
-        const stroke = event.currentTarget.value;
-        applyColor(id, { fill: tint(stroke), stroke }, syntax);
-      }} />
+    {#each recent.value as color (color)}
+      {@render dot(
+        tint(color),
+        color,
+        same(current?.stroke, color) && same(current?.fill, tint(color)),
+        color,
+        `${testID}-recent-${color}`,
+        () => applyColor(id, { fill: tint(color), stroke: color }, syntax)
+      )}
+    {/each}
+    {@render picker(
+      current?.stroke && /^#[\da-f]{6}$/i.test(current.stroke) ? current.stroke : '#3b73c9',
+      `${label}: ${t('colors.custom')}`,
+      `${testID}-custom`,
+      (color) => applyColor(id, { fill: tint(color), stroke: color }, syntax)
+    )}
+  </div>
+{/snippet}
+
+<!-- Colours for a line: one colour. -->
+{#snippet strokes(
+  current: string | undefined,
+  noneLabel: string,
+  label: string,
+  testID: string,
+  apply: (color: string | undefined) => void
+)}
+  <div class="flex flex-wrap items-center gap-1.5">
+    <Button
+      size="sm"
+      variant={choice(current === undefined)}
+      data-testid={`${testID}-default`}
+      onclick={() => apply(undefined)}>{noneLabel}</Button>
+    {#each [...lineChoices, ...recent.value.filter((color) => !lineChoices.includes(color))] as color (color)}
+      {@render dot(color, color, same(current, color), color, `${testID}-${color}`, () =>
+        apply(color)
+      )}
+    {/each}
+    {@render picker(
+      current ?? '#333333',
+      `${label}: ${t('colors.custom')}`,
+      `${testID}-custom`,
+      apply
+    )}
   </div>
 {/snippet}
 
@@ -172,26 +259,13 @@
 
     <div class="flex flex-col gap-1">
       <span class="font-semibold">{t('colors.line')}</span>
-      <div class="flex flex-wrap items-center gap-1.5">
-        <Button
-          size="sm"
-          variant={choice(lineColor === undefined)}
-          data-testid={TID.colorsLineDefault}
-          onclick={() => applyLine(undefined)}>{t('colors.lineDefault')}</Button>
-        {#each lineColors as color (color)}
-          {@render dot(color, color, lineColor === color, color, `${TID.colorsLine}-${color}`, () =>
-            applyLine(color)
-          )}
-        {/each}
-        <input
-          type="color"
-          class="h-6 w-8 cursor-pointer rounded border bg-transparent"
-          value={lineColor ?? '#333333'}
-          title={t('colors.custom')}
-          aria-label={`${t('colors.line')}: ${t('colors.custom')}`}
-          data-testid={TID.colorsLineCustom}
-          onchange={(event) => applyLine(event.currentTarget.value)} />
-      </div>
+      {@render strokes(
+        lineColor,
+        t('colors.lineDefault'),
+        t('colors.line'),
+        TID.colorsLine,
+        applyLine
+      )}
     </div>
 
     {#if !objects && groups.length === 0}
@@ -209,7 +283,7 @@
               size="sm"
               variant="outline"
               data-testid={TID.colorsGroupsAuto}
-              onclick={() => applyCode(colorAllGroups(inputState.code))}
+              onclick={() => applyCode(colorAllGroups(inputState.code, false, presetSwatches))}
               >{t('colors.groupsAuto')}</Button>
             <Button
               size="sm"
@@ -255,7 +329,7 @@
             size="sm"
             variant="outline"
             data-testid={TID.colorsNodesAuto}
-            onclick={() => applyCode(colorAll(inputState.code, ids, syntax))}
+            onclick={() => applyCode(colorAll(inputState.code, ids, syntax, false, presetSwatches))}
             >{t('colors.groupsAuto')}</Button>
           <Button
             size="sm"
@@ -263,6 +337,43 @@
             data-testid={TID.colorsNodesClear}
             onclick={() => applyCode(colorAll(inputState.code, ids, syntax, true))}
             >{t('colors.groupsClear')}</Button>
+        </div>
+      </div>
+    {/if}
+
+    {#if edges.length > 0}
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('colors.edges')}</span>
+        <select
+          bind:value={selectedEdge}
+          aria-label={t('colors.edges')}
+          data-testid={TID.colorsEdgeSelect}
+          class="h-9 rounded-md border border-input bg-background px-1 text-sm text-foreground">
+          {#each edges as edge (edge.id)}
+            <option value={edge.index}
+              >{getEdgeColor(inputState.code, edge.index) ? '● ' : ''}{edge.label}</option>
+          {/each}
+        </select>
+        {@render strokes(
+          getEdgeColor(inputState.code, selectedEdge),
+          t('colors.edgeDefault'),
+          t('colors.edges'),
+          TID.colorsEdge,
+          (color) => applyCode(setEdgeColor(inputState.code, selectedEdge, color))
+        )}
+        <p class="text-xs text-muted-foreground">{t('colors.edgesHint')}</p>
+        <div>
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid={TID.colorsEdgesClear}
+            onclick={() =>
+              applyCode(
+                edges.reduce(
+                  (code, { index }) => setEdgeColor(code, index, undefined),
+                  inputState.code
+                )
+              )}>{t('colors.edgesClear')}</Button>
         </div>
       </div>
     {/if}

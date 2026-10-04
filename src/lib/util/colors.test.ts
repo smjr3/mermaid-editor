@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addRecent,
   clearColors,
   colorAll,
   colorAllGroups,
   getObjectColor,
   getStyleColor,
+  getEdgeColor,
   getLineColor,
+  pickedEdge,
+  setEdgeColor,
   getTheme,
   laneText,
   listGroups,
+  parsePresets,
   pickedObject,
   setObjectColor,
   setStyleColor,
@@ -239,5 +244,95 @@ describe('pickedObject', () => {
   it('finds nothing for other elements', () => {
     expect(pickedObject('graph-2-flowchart-Z-0', 'graph-2', ids)).toBeUndefined();
     expect(pickedObject('other-a', 'graph-2', ids)).toBeUndefined();
+  });
+});
+
+const flow = 'flowchart LR\n  A --> B\n  B --> C\n  C --> D';
+
+describe('getEdgeColor / setEdgeColor', () => {
+  it('adds a linkStyle statement for the edge', () => {
+    const code = setEdgeColor(flow, 1, '#d64545');
+    expect(code).toBe(`${flow}\n  linkStyle 1 stroke:#d64545`);
+    expect(getEdgeColor(code, 1)).toBe('#d64545');
+    expect(getEdgeColor(code, 0)).toBeUndefined();
+  });
+
+  it('changes the colour of an existing statement, keeping its other properties', () => {
+    const code = `${flow}\n  linkStyle 2 stroke:#000,stroke-width:4px`;
+    expect(setEdgeColor(code, 2, '#3b73c9')).toBe(
+      `${flow}\n  linkStyle 2 stroke:#3b73c9,stroke-width:4px`
+    );
+    expect(setEdgeColor(code, 2, undefined)).toBe(`${flow}\n  linkStyle 2 stroke-width:4px`);
+    expect(setEdgeColor(setEdgeColor(flow, 0, '#3b73c9'), 0, undefined)).toBe(flow);
+  });
+
+  it('takes an edge out of a statement shared with other edges', () => {
+    const code = `${flow}\n  linkStyle 0,2 stroke:#000,stroke-width:4px`;
+    expect(getEdgeColor(code, 2)).toBe('#000');
+    expect(setEdgeColor(code, 2, '#d64545')).toBe(
+      `${flow}\n  linkStyle 0 stroke:#000,stroke-width:4px\n  linkStyle 2 stroke:#d64545,stroke-width:4px`
+    );
+  });
+
+  it('leaves linkStyle default alone and refuses a value that is not a colour', () => {
+    const code = `${flow}\n  linkStyle default stroke:#999`;
+    expect(getEdgeColor(code, 0)).toBeUndefined();
+    expect(setEdgeColor(code, 0, '#d64545')).toBe(`${code}\n  linkStyle 0 stroke:#d64545`);
+    expect(setEdgeColor(flow, 0, 'red;}')).toBe(flow);
+  });
+});
+
+describe('pickedEdge', () => {
+  const ids = ['L_A_B_0', 'L_B_C_0', 'e2'];
+  it('finds the edge behind a path or a label', () => {
+    expect(pickedEdge({ dataId: 'L_B_C_0', id: 'graph-2-L_B_C_0' }, ids)).toBe(1);
+    expect(pickedEdge({ dataId: null, id: 'edge-label-C-A-e2' }, ids)).toBe(2);
+    expect(pickedEdge({ dataId: null, id: 'graph-2-flowchart-A-0' }, ids)).toBeUndefined();
+  });
+});
+
+describe('parsePresets', () => {
+  it('reads a deployment palette of border colours, with light fills to match', () => {
+    expect(parsePresets('#003366, #E60012 #00a040')).toEqual([
+      { fill: tint('#003366'), stroke: '#003366' },
+      { fill: tint('#e60012'), stroke: '#e60012' },
+      { fill: tint('#00a040'), stroke: '#00a040' }
+    ]);
+  });
+
+  it('skips what is not a colour, and gives nothing for an empty setting', () => {
+    expect(parsePresets('#003366,red,#12345,url(x)')).toEqual([
+      { fill: tint('#003366'), stroke: '#003366' }
+    ]);
+    expect(parsePresets('')).toBeUndefined();
+    expect(parsePresets('nope')).toBeUndefined();
+  });
+});
+
+describe('addRecent', () => {
+  it('keeps the latest colours first, without repeats, at most eight', () => {
+    expect(addRecent(['#111111', '#222222'], '#222222')).toEqual(['#222222', '#111111']);
+    expect(addRecent([], '#ABCDEF')).toEqual(['#abcdef']);
+    const many = [
+      '#000001',
+      '#000002',
+      '#000003',
+      '#000004',
+      '#000005',
+      '#000006',
+      '#000007',
+      '#000008'
+    ];
+    expect(addRecent(many, '#000009')).toEqual(['#000009', ...many.slice(0, 7)]);
+    expect(addRecent(many, 'red')).toEqual(many);
+  });
+});
+
+describe('colorAll with a deployment palette', () => {
+  it('uses the given palette', () => {
+    const palette = parsePresets('#003366,#e60012') ?? [];
+    const colored = colorAll(c4, ['a', 's'], 'c4', false, palette);
+    expect(getObjectColor(colored, 's', 'c4')?.stroke).toBe('#e60012');
+    expect(getStyleColor(colorAllGroups(lanes, false, palette), 'shop')?.stroke).toBe('#e60012');
   });
 });

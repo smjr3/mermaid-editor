@@ -177,6 +177,39 @@ export const diagramObjects = async (code: string): Promise<DiagramObjects | und
   }
 };
 
+export interface DiagramEdge {
+  id: string;
+  /** Its number in `linkStyle` statements: the order the edges are written in. */
+  index: number;
+  label: string;
+}
+
+/**
+ * Local: the edges of a flowchart or swimlane diagram for the Colours card,
+ * named by the labels of their ends and their own label. Empty for other
+ * diagram types and for code that does not parse.
+ */
+export const diagramEdges = async (code: string): Promise<DiagramEdge[]> => {
+  try {
+    await mermaid.parse(code);
+    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+    if (extractors[diagram.type] !== extractors.flowchart) return [];
+    const db = diagram.db as Db;
+    const vertices = new Map(entries(read(db, 'getVertices')));
+    const name = (id: unknown) => plainLabel(vertices.get(String(id))?.text) || String(id);
+    return list(read(db, 'getEdges')).map((edge, index) => {
+      const text = plainLabel(edge.text);
+      return {
+        id: String(edge.id),
+        index,
+        label: `${name(edge.start)} → ${name(edge.end)}${text ? ` (${text})` : ''}`
+      };
+    });
+  } catch {
+    return [];
+  }
+};
+
 /**
  * @see https://mermaid.js.org/config/schema-docs/config.html
  */

@@ -4,6 +4,7 @@ import {
   addArchEdge,
   addArchGroup,
   addArchService,
+  addEdge,
   addLane,
   addNode,
   canAdd,
@@ -163,5 +164,31 @@ describe('front matter', () => {
     expect(canAdd(`${fm}flowchart TD\n  A`)).toBe(true);
     expect(canAdd(`${fm}sequenceDiagram\n  A->>B: hi`)).toBe(false);
     expect(isArchitecture(`${fm}architecture-beta\n  service a(server)[A]`)).toBe(true);
+  });
+});
+
+describe('addEdge and node shapes', () => {
+  it('joins two existing nodes, with a label', async () => {
+    expect(addEdge(lanes, { from: 'C', label: 'ship "it"', to: 'A' })).toBe(
+      lanes.replace('  A --> C\n', '  A --> C\n  C -->|ship #quot;it#quot;| A\n')
+    );
+    expect(addEdge(lanes, { from: 'A', to: 'C' })).toBe(
+      lanes.replace('  A --> C\n', '  A --> C\n  A --> C\n')
+    );
+    await expect(typeOf(addEdge(lanes, { from: 'C', label: 'x | y', to: 'A' }))).resolves.toBe(
+      'swimlane'
+    );
+  });
+
+  it.each([
+    ['rect', 'n1["Check"]'],
+    ['rounded', 'n1("Check")'],
+    ['diamond', 'n1{"Check"}'],
+    ['circle', 'n1(("Check"))'],
+    ['stadium', 'n1(["Check"])']
+  ] as const)('writes a %s node', async (shape, text) => {
+    const { code } = addNode(lanes, { label: 'Check', lane: 'Shop', shape });
+    expect(code).toContain(`    ${text}\n`);
+    await expect(typeOf(code)).resolves.toBe('swimlane');
   });
 });

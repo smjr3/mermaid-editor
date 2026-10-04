@@ -92,6 +92,11 @@ describe('diagramObjects', () => {
     });
   });
 
+  it('shows entity codes as the characters they stand for', async () => {
+    const code = 'flowchart TD\n  A["Say #quot;hi#quot; #35;1 #amp; more"]';
+    expect(await items(code)).toEqual([{ id: 'A', label: 'Say "hi" #1 & more' }]);
+  });
+
   it('lists the nodes of a swimlane diagram, not its lanes, even a styled one', async () => {
     expect(await items('swimlane-beta LR\n  subgraph L1\n    A[One]\n  end')).toEqual([
       { id: 'A', label: 'One' }
@@ -111,11 +116,10 @@ describe('diagramObjects', () => {
         { id: 'Idle', label: 'Idle' },
         { id: 'Busy', label: 'Busy' },
         { id: 'LN', label: 'Long name' },
-        { id: 'Comp', label: 'Comp' },
         { id: 'a', label: 'a' }
       ])
     );
-    expect(found?.items.some(({ id }) => /start|end/.test(id))).toBe(false);
+    expect(found?.items.some(({ id }) => /start|end|Comp/.test(id))).toBe(false);
   });
 
   it('leaves out the dividers of concurrent regions, and keeps underscores in labels', async () => {
@@ -123,9 +127,16 @@ describe('diagramObjects', () => {
       'stateDiagram-v2\n  state battery_check <<choice>>\n  state Active {\n    [*] --> P\n    --\n    [*] --> S\n  }';
     expect(await items(code)).toEqual([
       { id: 'battery_check', label: 'battery_check' },
-      { id: 'Active', label: 'Active' },
       { id: 'P', label: 'P' },
       { id: 'S', label: 'S' }
+    ]);
+  });
+
+  it('leaves out composite states, which a style statement does not colour', async () => {
+    const code = 'stateDiagram-v2\n  state Active {\n    [*] --> P\n  }\n  Active --> Done';
+    expect(await items(code)).toEqual([
+      { id: 'P', label: 'P' },
+      { id: 'Done', label: 'Done' }
     ]);
   });
 

@@ -17,6 +17,8 @@ const stored = async (page: import('@playwright/test').Page) =>
   );
 
 test.describe('Add card', () => {
+  const field = (action: string, key: string) => `${TID.addAction}-${action}-${key}`;
+
   test('adds a lane, then a node in it joined from another node', async ({ editPage, page }) => {
     await editPage.start(urlFor(lanes));
     await editPage.checkTextInView('Accept order');
@@ -38,6 +40,39 @@ test.describe('Add card', () => {
     await expect(page.getByTestId(TID.addMessage)).toHaveText(t('add.done', { name: 'Pack' }));
     // The next node follows the new one.
     await expect(page.getByTestId(TID.addNodeFrom)).toHaveValue('n1');
+  });
+
+  test('adds a decision node and connects two existing nodes', async ({ editPage, page }) => {
+    await editPage.start(urlFor(lanes));
+    await editPage.checkTextInView('Accept order');
+    await page.getByTestId(TID.addCard).click();
+
+    await page.getByTestId(TID.addNodeName).fill('In stock?');
+    await page.getByTestId(TID.addNodeShape).selectOption('diamond');
+    await page.getByTestId(TID.addNodeLane).selectOption('Shop');
+    await page.getByTestId(TID.addNodeFrom).selectOption('C');
+    await page.getByTestId(TID.addNodeButton).click();
+    await expect.poll(() => stored(page)).toContain('n1{"In stock?"}');
+    await editPage.checkTextInView('In stock?');
+
+    await page.getByTestId(TID.addEdgeFrom).selectOption('n1');
+    await page.getByTestId(TID.addEdgeTo).selectOption('A');
+    await page.getByTestId(TID.addEdgeLabel).fill('No');
+    await page.getByTestId(TID.addEdgeButton).click();
+    await expect.poll(() => stored(page)).toContain('n1 -->|No| A');
+    await editPage.checkTextInView('No');
+  });
+
+  test('keeps a # in a sequence message', async ({ editPage, page }) => {
+    await editPage.start(urlFor('sequenceDiagram\n  participant A as Alice\n  A->>A: hi'));
+    await editPage.checkTextInView('Alice');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('message', 'from')).selectOption('A');
+    await page.getByTestId(field('message', 'to')).selectOption('A');
+    await page.getByTestId(field('message', 'text')).fill('Ticket #12 done');
+    await page.getByTestId(field('message', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('A->>A: Ticket #35;12 done');
+    await editPage.checkTextInView('Ticket #12 done');
   });
 
   test('builds an architecture diagram: group, service joined below, connection', async ({
@@ -74,8 +109,6 @@ test.describe('Add card', () => {
     await expect.poll(() => stored(page)).toContain('db:B -- T:svc1');
     await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
   });
-
-  const field = (action: string, key: string) => `${TID.addAction}-${action}-${key}`;
 
   test('adds a participant and a message to a sequence diagram', async ({ editPage, page }) => {
     await editPage.start(urlFor('sequenceDiagram\n  participant A as Alice\n  A->>A: hi'));

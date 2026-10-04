@@ -63,13 +63,30 @@ const laneEnd = (lines: string[], id: string) => {
   return -1;
 };
 
+/** The node shapes the Add card offers, as the brackets around the label. */
+export type NodeShape = 'rect' | 'rounded' | 'diamond' | 'circle' | 'stadium';
+export const nodeShapes: NodeShape[] = ['rect', 'rounded', 'diamond', 'circle', 'stadium'];
+const brackets: Record<NodeShape, [string, string]> = {
+  circle: ['((', '))'],
+  diamond: ['{', '}'],
+  rect: ['[', ']'],
+  rounded: ['(', ')'],
+  stadium: ['([', '])']
+};
+
 export const addNode = (
   code: string,
-  { from, label, lane }: { from?: string; label: string; lane?: string }
+  {
+    from,
+    label,
+    lane,
+    shape = 'rect'
+  }: { from?: string; label: string; lane?: string; shape?: NodeShape }
 ): { code: string; id: string } => {
   const { eol, lines } = splitLines(code);
   const id = freshId(code, 'n');
-  const node = `${id}[${quoted(label)}]`;
+  const [open, close] = brackets[shape];
+  const node = `${id}${open}${quoted(label)}${close}`;
   // The arrow first: inserting it moves nothing above it.
   if (from) lines.splice(insertionIndex(lines), 0, `  ${from} --> ${id}`);
   const end = lane ? laneEnd(lines, lane) : -1;
@@ -80,6 +97,19 @@ export const addNode = (
     lines.splice(end, 0, `${indent}  ${node}`);
   }
   return { code: lines.join(eol), id };
+};
+
+/** The code with an arrow from one existing node to another, optionally labelled. */
+export const addEdge = (
+  code: string,
+  { from, label, to }: { from: string; label?: string; to: string }
+): string => {
+  const { eol, lines } = splitLines(code);
+  // `|…|` holds the label; a pipe inside would end it.
+  const text = label?.replaceAll('|', '/').trim();
+  const arrow = text ? `-->|${text.replaceAll('"', '#quot;')}|` : '-->';
+  lines.splice(insertionIndex(lines), 0, `  ${from} ${arrow} ${to}`);
+  return lines.join(eol);
 };
 
 // Architecture diagrams: groups, services and the edges between them.

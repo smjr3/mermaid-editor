@@ -291,3 +291,66 @@ describe('found by the all-diagram check', () => {
     expect(added(code, result.code)).toEqual(["  A --> B : has 'many' [1]"]);
   });
 });
+
+describe('found by the review', () => {
+  it('keeps a semicolon from splitting a state or sequence statement', async () => {
+    const state = await run('stateDiagram-v2\n  [*] --> A', 'state', {
+      from: 'A',
+      name: 'X; Y',
+      text: 'go; now'
+    });
+    if ('error' in state) throw new Error();
+    expect(added('stateDiagram-v2\n  [*] --> A', state.code)).toEqual([
+      '  state "X, Y" as s1',
+      '  A --> s1 : go, now'
+    ]);
+    const seq = await run('sequenceDiagram\n  A->>A: hi', 'participant', { name: 'X; Y' });
+    if ('error' in seq) throw new Error();
+    expect(added('sequenceDiagram\n  A->>A: hi', seq.code)).toEqual(['  participant p1 as X, Y']);
+  });
+
+  it('escapes # in sequence names and messages, which mermaid reads as an entity code', async () => {
+    const code = 'sequenceDiagram\n  participant A\n  A->>A: hi';
+    const name = await run(code, 'participant', { name: 'Ticket #12' });
+    if ('error' in name) throw new Error();
+    expect(added(code, name.code)).toEqual(['  participant p1 as Ticket #35;12']);
+    const message = await run(code, 'message', { from: 'A', text: 'price #1', to: 'A' });
+    if ('error' in message) throw new Error();
+    expect(added(code, message.code)).toEqual(['  A->>A: price #35;1']);
+  });
+
+  it('lists a participant whose name holds an escaped # by its real name', async () => {
+    const code = 'sequenceDiagram\n  participant p1 as Ticket #35;12\n  p1->>p1: hi';
+    expect((await specFor(code)?.parts(code))?.participants).toEqual([
+      { id: 'p1', label: 'Ticket #12' }
+    ]);
+  });
+
+  it('drops HTML tags typed into a name, which an unclosed one could blank the diagram with', async () => {
+    const code = 'kanban\n  todo[Todo]\n    t1[T]';
+    const card = await run(code, 'card', { column: '1', name: 'A <b>bold</b> x < 10' });
+    if ('error' in card) throw new Error();
+    expect(added(code, card.code)).toEqual(['    card1[A bold x < 10]']);
+  });
+
+  it('puts a C4 deployment element inside its node', async () => {
+    const code = 'C4Deployment\n  Deployment_Node(dn, "Node") {\n    Container(c, "C")\n  }';
+    expect((await specFor(code)?.parts(code))?.boundaries).toEqual([{ id: 'dn', label: 'Node' }]);
+    const result = await run(code, 'element', { boundary: 'dn', kind: 'Container', name: 'X' });
+    if ('error' in result) throw new Error();
+    expect(result.code).toBe(
+      'C4Deployment\n  Deployment_Node(dn, "Node") {\n    Container(c, "C")\n    Container(el1, "X")\n  }'
+    );
+  });
+
+  it('writes a gantt date as a unix time when the chart counts in seconds or milliseconds', async () => {
+    const seconds = 'gantt\n  dateFormat X\n  section S\n    T : 1700000000, 3d';
+    const result = await run(seconds, 'task', { name: 'X', start: '2024-02-01' });
+    if ('error' in result) throw new Error();
+    expect(added(seconds, result.code)).toEqual([`    X : ${Date.UTC(2024, 1, 1) / 1000}, 3d`]);
+    const millis = seconds.replace('dateFormat X', 'dateFormat x');
+    const ms = await run(millis, 'task', { name: 'X', start: '2024-02-01' });
+    if ('error' in ms) throw new Error();
+    expect(added(millis, ms.code)).toEqual([`    X : ${Date.UTC(2024, 1, 1)}, 3d`]);
+  });
+});

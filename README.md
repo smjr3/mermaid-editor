@@ -48,7 +48,7 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   選べます。用意された色のほか好きな色も選べ、選んだ色は次から色ボタンに並びます。色ボタンは `MERMAID_COLOR_PRESETS` で
   会社の色などに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
 - **レーン・ノードの追加**。画面左の「追加」で、名前を入れてボタンを押すだけでレーンやノード（入れるレーンと
-  矢印の元も選べます）をコードに書き足せます。アーキテクチャ図では、グループ・サービス（アイコン、入れるグループ、
+  矢印の元、形も選べます）をコードに書き足せます。「つなぐ」で既にある2つのノードを矢印でつなげます。アーキテクチャ図では、グループ・サービス（アイコン、入れるグループ、
   つなぐ元と置く位置を選択）・接続を追加できます。シーケンス図・状態図・クラス図・ER図・マインドマップ・ガントチャート・
   円グラフ・カンバン・タイムライン・C4図・ブロック図でも、それぞれの要素（登場人物とメッセージ、タスクなど）を追加できます
 - **使い方の案内**。画面右上の「使い方」で、各機能の使い方をまとめた画面が開きます
@@ -203,7 +203,8 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   subgraph) and per object — node, state, class, entity, requirement, block or C4 element (picked from a list or
   by clicking it) and per arrow; any colour can be picked, and picked colours are offered again. The
   colour buttons can be a company palette (`MERMAID_COLOR_PRESETS`).
-- An "Add" card adds a lane, or a node in a lane joined from another node, without writing the syntax;
+- An "Add" card adds a lane, or a node (box, decision, …) in a lane joined from another node, or an arrow
+  between two nodes, without writing the syntax;
   for architecture diagrams it adds groups, services (icon, group, side to join on) and connections,
   and sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams get
   their own forms (participants and messages, tasks, topics, …).

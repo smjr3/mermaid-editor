@@ -35,7 +35,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'add',
       items: [
         'Works for flowcharts, swimlanes, architecture, sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams.',
-        'Choose where it goes (lane, group, section, column, …) and what it is joined from.',
+        'Choose where it goes (lane, group, section, column, …), its shape, and what it is joined from; "Connect" joins two existing shapes.',
         'What you just added becomes the next "from", so a flow can be built step by step.'
       ],
       title: 'Adding shapes'
@@ -109,7 +109,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'add',
       items: [
         'フローチャート・スイムレーン・アーキテクチャ・シーケンス・状態・クラス・ER・マインドマップ・ガント・円グラフ・カンバン・タイムライン・C4・ブロック図で使えます。',
-        '入れる場所（レーン・グループ・セクション・列など）と、つなぐ元を選べます。',
+        '入れる場所（レーン・グループ・セクション・列など）、形、つなぐ元を選べます。「つなぐ」で、ある2つの図形の間に矢印を引けます。',
         '追加した直後のものが次の「つなぐ元」になるので、流れを順に作れます。'
       ],
       title: '要素の追加'

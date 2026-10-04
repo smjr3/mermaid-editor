@@ -52,7 +52,13 @@
   const presetSwatches: (Swatch & { name?: SwatchName })[] = presets ?? swatches;
   const lineChoices = presets ? presets.map(({ stroke }) => stroke) : lineColors;
   const recent = persisted<string[]>('colorRecent', []);
-  const remember = (color: string) => (recent.value = addRecent(recent.value, color));
+  // Whatever an older or hand-edited store holds, only a list of colours is used.
+  const recents = $derived(
+    Array.isArray(recent.value)
+      ? recent.value.filter((color) => typeof color === 'string' && /^#[\da-f]{6}$/i.test(color))
+      : []
+  );
+  const remember = (color: string) => (recent.value = addRecent(recents, color));
 
   const applyTheme = (next: ThemeChoice) => updateConfig(setTheme(inputState.mermaid, next));
   const applyLine = (next: string | undefined) =>
@@ -188,7 +194,7 @@
         () => applyColor(id, swatch, syntax)
       )}
     {/each}
-    {#each recent.value as color (color)}
+    {#each recents.filter((color) => !presetSwatches.some( ({ stroke }) => same(stroke, color) )) as color (color)}
       {@render dot(
         tint(color),
         color,
@@ -221,7 +227,7 @@
       variant={choice(current === undefined)}
       data-testid={`${testID}-default`}
       onclick={() => apply(undefined)}>{noneLabel}</Button>
-    {#each [...lineChoices, ...recent.value.filter((color) => !lineChoices.includes(color))] as color (color)}
+    {#each [...lineChoices, ...recents.filter((color) => !lineChoices.includes(color))] as color (color)}
       {@render dot(color, color, same(current, color), color, `${testID}-${color}`, () =>
         apply(color)
       )}
@@ -252,9 +258,11 @@
             onclick={() => applyTheme(id)}>{t(`colors.theme.${id}`)}</Button>
         {/each}
       </div>
-      <p class="text-xs text-muted-foreground">
-        {isCustomTheme ? t('colors.themeCustom', { theme }) : t('colors.themeAutoHint')}
-      </p>
+      {#if isCustomTheme || theme === 'auto'}
+        <p class="text-xs text-muted-foreground">
+          {isCustomTheme ? t('colors.themeCustom', { theme }) : t('colors.themeAutoHint')}
+        </p>
+      {/if}
     </div>
 
     <div class="flex flex-col gap-1">

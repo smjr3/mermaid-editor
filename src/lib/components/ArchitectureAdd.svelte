@@ -53,7 +53,7 @@
     const { code, id } = addArchGroup(inputState.code, {
       icon: groupIcon,
       label: name,
-      parent: parent || undefined
+      parent: groups.some((item) => item.id === parent) ? parent : undefined
     });
     apply(code, name);
     groupName = '';
@@ -62,10 +62,11 @@
   const onAddService = () => {
     const name = serviceName.trim() || t('add.arch.serviceDefault');
     const icon = serviceIcon === 'other' ? otherIcon.trim() : serviceIcon;
+    // A group or service deleted in the code may still be chosen here.
     const { code, id } = addArchService(inputState.code, {
       arrow,
-      from: from || undefined,
-      group: group || undefined,
+      from: services.some((service) => service.id === from) ? from : undefined,
+      group: groups.some((item) => item.id === group) ? group : undefined,
       icon,
       label: name,
       place
@@ -76,7 +77,8 @@
     from = id;
   };
   const onAddEdge = () => {
-    if (!edgeFrom || !edgeTo || edgeFrom === edgeTo) {
+    const known = (id: string) => services.some((service) => service.id === id);
+    if (!known(edgeFrom) || !known(edgeTo) || edgeFrom === edgeTo) {
       message = t('add.arch.edgeChoose');
       return;
     }

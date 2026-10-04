@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   addRecent,
-  clearColors,
   colorAll,
   colorAllGroups,
   getObjectColor,
@@ -170,14 +169,6 @@ describe('colorAllGroups', () => {
 
   it('clears every lane colour', () => {
     expect(colorAllGroups(colorAllGroups(lanes), true)).toBe(lanes);
-  });
-});
-
-describe('clearColors', () => {
-  it('removes the colours of the given lanes or nodes only', () => {
-    const blue = swatches[0];
-    const code = setStyleColor(setStyleColor(lanes, 'A', blue), 'shop', blue);
-    expect(clearColors(code, ['A', 'C'])).toBe(setStyleColor(lanes, 'shop', blue));
   });
 });
 

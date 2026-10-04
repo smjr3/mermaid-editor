@@ -116,8 +116,9 @@ built-in eight, followed by the colours this browser picked freely ("any colour"
 `localStorage` as `colorRecent`, latest eight).
 
 **Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
-lane, or a node into a lane, optionally joined by an arrow from another node; the next node is
-joined from the one just added. New statements go after the last statement and before trailing
+lane, or a node (box, rounded box, decision diamond, circle or stadium) into a lane, optionally
+joined by an arrow from another node; the next node is joined from the one just added; "Connect"
+joins two existing nodes with an optional label. New statements go after the last statement and before trailing
 `style`/`linkStyle` lines, so existing arrow numbers do not change.
 For architecture diagrams (`ArchitectureAdd.svelte`): add a group (in another group), a service
 with a standard or any pack icon, in a group and joined from another service on a chosen side
@@ -135,6 +136,17 @@ or, for indentation-based types, from the lines past front matter. The all-diagr
 every action on every matching sample; it found front matter being read as the header (kanban,
 mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
 Quadrant, XY and the other chart types have no add forms.
+**Review of the 0.2.0 additions.** A pass over every feature above with adversarial names
+(`A: B "q" #1 [x] (y) {z} | & ; <b>`) in every diagram type found and fixed: a `;` splitting a
+state or sequence statement (now a comma), `#` + digits in a sequence name or message read by
+mermaid as an entity code (now `#35;`), an HTML tag typed into a kanban card blanking the board
+without an error (tags are dropped from every typed name), composite states offered for colouring
+though a `style` statement colours nothing on them, a C4 Deployment element not placed inside its
+`Deployment_Node`, gantt dates for charts in unix time, and a choice that the code no longer has
+(a deleted lane, group or participant still selected in a form) writing a broken statement. What
+is left as mermaid's own behaviour: `<`/`>` in a flowchart, class or ER label render as HTML
+(`x < 10` is fine), and `linkStyle` numbers shift when arrows are added above by hand.
+
 The lists behind the Add and Colours cards come from mermaid's parse on every change; results
 are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It
 cut the heaviest sample's all-diagram e2e from about 15 s to 9 s locally (it had begun timing out

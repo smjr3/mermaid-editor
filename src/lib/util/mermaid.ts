@@ -45,9 +45,22 @@ export const parse = async (code: string) => {
   return await mermaid.parse(code);
 };
 
+// mermaid keeps `#35;` / `#quot;` entity codes as placeholders in what it parsed.
+const namedEntities: Record<string, string> = {
+  amp: '&',
+  gt: '>',
+  lt: '<',
+  nbsp: ' ',
+  quot: '"'
+};
+export const decodeEntities = (text: string): string =>
+  text
+    .replaceAll(/ﬂ°°(\d+)¶ß/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replaceAll(/ﬂ°(\w+)¶ß/g, (match, name: string) => namedEntities[name] ?? match);
+
 // A label as plain text: no HTML tags, markdown bold/italic stars or code marks (underscores stay: ids use them).
 const plainLabel = (text: unknown): string =>
-  (typeof text === 'string' ? text : '')
+  decodeEntities(typeof text === 'string' ? text : '')
     .replaceAll(/<[^>]*>/g, ' ')
     .replaceAll(/[*`]+/g, '')
     .replaceAll(/\s+/g, ' ')
@@ -137,12 +150,16 @@ const extractors: Record<
   stateDiagram: (db) => {
     const nodes = list((read(db, 'getData') as Entry | undefined)?.nodes);
     // Start and end points, notes, and the dividers between concurrent regions are not states.
+    // Composite states too: a style statement names one but colours nothing.
     const hidden = new Set(['divider', 'note', 'noteGroup', 'stateEnd', 'stateStart']);
     return {
       items: nodes
         .filter(
-          ({ id, shape }) =>
-            typeof id === 'string' && !hidden.has(String(shape)) && !id.includes('----')
+          ({ id, isGroup, shape }) =>
+            typeof id === 'string' &&
+            !hidden.has(String(shape)) &&
+            isGroup !== true &&
+            !id.includes('----')
         )
         .map(({ id, label }) => item(id as string, label)),
       kind: 'state',

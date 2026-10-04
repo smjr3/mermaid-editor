@@ -40,7 +40,13 @@
   };
 
   const run = (action: Action) => {
-    const current = values[action.id] ?? initialValues(action);
+    const current = { ...(values[action.id] ?? initialValues(action)) };
+    // A choice the diagram no longer has (the part was deleted in the code) is no choice.
+    for (const field of action.fields) {
+      if (field.kind !== 'item' || !current[field.key]) continue;
+      const known = (parts[field.source ?? ''] ?? []).some(({ id }) => id === current[field.key]);
+      if (!known) current[field.key] = '';
+    }
     const result = action.apply(inputState.code, current);
     if ('error' in result) {
       message = t(result.error);
@@ -67,8 +73,11 @@
   const optionLabel = (label: MessageKey, option: string) => t(`${label}.${option}` as MessageKey);
   const selectClass =
     'h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-sm text-foreground';
+  // A line number is not a name worth showing (mindmap, kanban, timeline).
   const name = (part: DiagramObject) =>
-    part.label.trim() === part.id ? part.label : `${part.label} (${part.id})`;
+    part.label.trim() === part.id || /^\d+$/.test(part.id)
+      ? part.label
+      : `${part.label} (${part.id})`;
 </script>
 
 {#each spec.actions as action (action.id)}

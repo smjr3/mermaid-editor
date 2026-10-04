@@ -205,10 +205,6 @@ export const colorAllGroups = (code: string, clear = false, palette: Swatch[] = 
     code
   );
 
-/** The code with the colours of the given lanes or nodes removed. */
-export const clearColors = (code: string, ids: string[]): string =>
-  ids.reduce((result, id) => setStyleColor(result, id, undefined), code);
-
 export type ColorSyntax = 'style' | 'c4';
 
 const c4Pattern = (id: string) =>

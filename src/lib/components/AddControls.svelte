@@ -8,7 +8,15 @@
   import AddActions from '$/components/AddActions.svelte';
   import ArchitectureAdd from '$/components/ArchitectureAdd.svelte';
   import { specFor } from '$/util/addActions';
-  import { addLane, addNode, canAdd, isArchitecture } from '$/util/diagramEdit';
+  import {
+    addEdge,
+    addLane,
+    addNode,
+    canAdd,
+    isArchitecture,
+    nodeShapes,
+    type NodeShape
+  } from '$/util/diagramEdit';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
@@ -36,6 +44,10 @@
   let nodeName = $state('');
   let lane = $state('');
   let from = $state('');
+  let shape = $state<NodeShape>('rect');
+  let edgeFrom = $state('');
+  let edgeTo = $state('');
+  let edgeLabel = $state('');
   let message = $state('');
 
   const apply = (code: string, name: string) => {
@@ -51,15 +63,30 @@
   };
   const onAddNode = () => {
     const name = nodeName.trim() || t('add.nodeDefault');
+    // A lane or node deleted in the code may still be chosen here.
     const { code, id } = addNode(inputState.code, {
-      from: from || undefined,
+      from: nodes.some((node) => node.id === from) ? from : undefined,
       label: name,
-      lane: lane || undefined
+      lane: groups.some((group) => group.id === lane) ? lane : undefined,
+      shape
     });
     apply(code, name);
     nodeName = '';
     // The next node most likely follows this one.
     from = id;
+  };
+
+  const onAddEdge = () => {
+    const known = (id: string) => nodes.some((node) => node.id === id);
+    if (!known(edgeFrom) || !known(edgeTo)) {
+      message = t('add.choose');
+      return;
+    }
+    updateCode(addEdge(inputState.code, { from: edgeFrom, label: edgeLabel, to: edgeTo }), {
+      updateDiagram: true
+    });
+    message = t('add.arch.edgeDone');
+    edgeLabel = '';
   };
 
   const selectClass =
@@ -104,6 +131,14 @@
             >{t('add.nodeButton')}</Button>
         </div>
         <div class="flex items-center gap-1">
+          <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('add.nodeShape')}</span>
+          <select bind:value={shape} class={selectClass} data-testid={TID.addNodeShape}>
+            {#each nodeShapes as option (option)}
+              <option value={option}>{t(`add.shape.${option}`)}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
           <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('add.nodeLane')}</span>
           <select bind:value={lane} class={selectClass} data-testid={TID.addNodeLane}>
             <option value="">{t('add.noLane')}</option>
@@ -123,6 +158,45 @@
           </select>
         </div>
       </div>
+      {#if nodes.length > 1}
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold">{t('add.arch.edge')}</span>
+          <div class="flex items-center gap-1">
+            <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('add.f.from')}</span>
+            <select bind:value={edgeFrom} class={selectClass} data-testid={TID.addEdgeFrom}>
+              <option value=""></option>
+              {#each nodes as node (node.id)}
+                <option value={node.id}
+                  >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('add.f.to')}</span>
+            <select bind:value={edgeTo} class={selectClass} data-testid={TID.addEdgeTo}>
+              <option value=""></option>
+              {#each nodes as node (node.id)}
+                <option value={node.id}
+                  >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="flex gap-1">
+            <Input
+              bind:value={edgeLabel}
+              placeholder={t('add.f.text')}
+              aria-label={t('add.f.text')}
+              data-testid={TID.addEdgeLabel}
+              onkeydown={(event) => event.key === 'Enter' && onAddEdge()} />
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-9"
+              data-testid={TID.addEdgeButton}
+              onclick={onAddEdge}>{t('add.connectButton')}</Button>
+          </div>
+        </div>
+      {/if}
       {#if message}
         <p role="status" class="text-muted-foreground" data-testid={TID.addMessage}>{message}</p>
       {/if}

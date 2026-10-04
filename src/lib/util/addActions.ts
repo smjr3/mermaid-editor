@@ -9,7 +9,7 @@ import type { MessageKey } from '$/i18n/messages';
 import mermaid from 'mermaid';
 import { freshId, splitLines } from './diagramEdit';
 import { memoByCode } from './memo';
-import { diagramObjects, type DiagramObject } from './mermaid';
+import { decodeEntities, diagramObjects, type DiagramObject } from './mermaid';
 
 export type FieldKind = 'text' | 'number' | 'date' | 'choice' | 'item';
 
@@ -60,7 +60,16 @@ const insert = (code: string, added: string[], index?: number) => {
   return lines.join(eol);
 };
 
-const oneLine = (text: string) => text.replaceAll(/[\r\n]+/g, ' ').trim();
+// One line; a `;` ends a statement in several grammars, and an HTML tag typed into
+// a form (an unclosed one blanks a kanban board) is never meant literally.
+const oneLine = (text: string) =>
+  text
+    .replaceAll(/[\r\n]+/g, ' ')
+    .replaceAll(';', ',')
+    .replaceAll(/<\/?[a-z][^<>]*>/gi, '')
+    .trim();
+// Sequence diagrams read `#…;` as an entity code and `#` + digits breaks the message.
+const sequenceText = (text: string) => oneLine(text).replaceAll('#', '#35;');
 const noQuotes = (text: string) => oneLine(text).replaceAll('"', "'");
 const noBrackets = (text: string) => oneLine(text).replaceAll(/[()[\]{}]/g, '');
 const indentOf = (line: string) => /^\s*/.exec(line)?.[0].length ?? 0;
@@ -68,7 +77,10 @@ const isContent = (line: string) => line.trim() !== '' && !line.trim().startsWit
 
 const need = (values: Values, ...keys: string[]) => keys.every((key) => values[key]);
 
-const item = (id: string, label: string): DiagramObject => ({ id, label: label || id });
+const item = (id: string, label: string): DiagramObject => ({
+  id,
+  label: decodeEntities(label) || id
+});
 
 // ---- Indentation-based diagrams (mindmap, kanban) ----
 
@@ -167,7 +179,7 @@ const sequence: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'p');
-        const name = oneLine(values.name) || id;
+        const name = sequenceText(values.name) || id;
         return {
           code: insert(code, [`  ${values.kind || 'participant'} ${id} as ${name}`]),
           follow: { to: id },
@@ -192,7 +204,7 @@ const sequence: AddSpec = {
       apply: (code, values) => {
         if (!need(values, 'from', 'to')) return { error: 'add.choose' };
         const arrows: Record<string, string> = { async: '-)', reply: '-->>', sync: '->>' };
-        const text = oneLine(values.text).replaceAll(';', ',');
+        const text = sequenceText(values.text);
         return {
           code: insert(code, [
             `  ${values.from}${arrows[values.kind] ?? '->>'}${values.to}: ${text}`
@@ -414,7 +426,13 @@ const mindmap: AddSpec = {
 const ganttDate = (code: string, date: string) => {
   const format = /^\s*dateFormat\s+(\S+)/m.exec(code)?.[1] ?? 'YYYY-MM-DD';
   const [year, month, day] = date.split('-');
-  if (!/^[YMD\-./]+$/.test(format) || !year || !month || !day) return date;
+  if (!year || !month || !day) return date;
+  // Unix time, in seconds (X) or milliseconds (x).
+  if (format === 'X' || format === 'x') {
+    const ms = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    return String(format === 'X' ? ms / 1000 : ms);
+  }
+  if (!/^[YMD\-./]+$/.test(format)) return date;
   return format.replace('YYYY', year).replace('MM', month).replace('DD', day);
 };
 
@@ -601,7 +619,7 @@ const timeline: AddSpec = {
 /** The index of the `}` that closes the C4 boundary `alias`, or -1. */
 const boundaryEnd = (lines: string[], alias: string) => {
   const start = lines.findIndex((line) =>
-    new RegExp(`^\\s*\\w*Boundary\\(\\s*${alias}\\s*,`).test(line)
+    new RegExp(`^\\s*(?:\\w*Boundary|Deployment_Node)\\(\\s*${alias}\\s*,`).test(line)
   );
   if (start === -1) return -1;
   let depth = 0;

@@ -23,6 +23,8 @@ export const TID = {
   embedSnippet: 'embed-snippet',
   embedToolbar: 'embed-toolbar',
   errorContainer: 'error-container',
+  exportGitLab: 'export-gitlab',
+  exportMessage: 'export-message',
   historyCard: 'history-card',
   historyRevisionsTab: 'history-revisions-tab',
   iconPackFiles: 'icon-pack-files',

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **153**.
+  every locally changed path — currently **154**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -115,7 +115,20 @@ GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,
 nothing loaded from the network) or copies it as one self-contained `<img>` tag (SVG data URI) to
 paste into wikis, intranet pages or e-mail, where mermaid or this editor's icon packs are
-unavailable.
+unavailable. "Export for GitLab" saves the diagram as an SVG and copies Markdown that shows it,
+links back to the editor and keeps the source in a collapsed plain-text block (not a mermaid
+block, which GitLab would render without the icons). Known limit: Font Awesome icons (`fa:`) are
+not embedded in the HTML export.
+
+**0.2.0 release check.** Every 0.2.0 feature was re-checked end to end (`tests/releaseAudit.spec.ts`
+covers the cross-feature cases: icons on the view and embed pages, mobile, the config tab, PNG
+export with logos, state diagrams in the layout card, the English UI and failure paths), against
+the dev server and a production build, plus a logos-off build, a build-time vendor import, and an
+install and build from the npm tarball. Bugs found and fixed: the layout card misread code with
+Windows line endings (which Monaco can write); the icon picker could stay on "loading" when the
+search was cleared mid-load; HTML/GitLab exports of a broken diagram failed silently; inserting a
+standard icon into a non-architecture diagram gave no warning; the AWS logo sample stayed in a
+logos-off build. Firefox is covered only by CI's `@smoke` run.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

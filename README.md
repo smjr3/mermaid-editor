@@ -50,6 +50,8 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   緑の印は Mermaid 標準のアイコン（GitLab などでも表示）、橙の印は拡張アイコン（このエディタだけで表示）です
 - **HTML で書き出し**。「操作」の「HTML」で、図を入れた HTML ファイルを保存できます（ネットなしで開け、元のコードも入ります）。
   「HTMLタグをコピー」は、Wiki やメールなどに貼れる `<img>` タグ1つを作ります。どちらもアイコンごと図に入っています
+- **GitLab 用に書き出し**。「操作」の「GitLab 用に書き出し」で、図を SVG で保存し、それを表示する Markdown（編集リンクと元のコード付き）を
+  コピーします。SVG をリポジトリのページと同じ場所に置き、Markdown を貼り付けると、アイコン入りの図がそのまま表示されます
 - **ダークモードの見やすさ**。ダークモードでは図の線を明るく描き、明るいテーマの図にはライトグレーの下地を付けます
 - **名前の一括変更**。エディタでノード名などにカーソルを置いて F2 を押すと、使われている箇所をまとめて
   書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
@@ -192,7 +194,8 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.
 - HTML export: a standalone page (works offline, keeps the source) or one self-contained `<img>`
-  tag to paste anywhere, icons included.
+  tag to paste anywhere, icons included. "Export for GitLab" saves an SVG and copies Markdown that
+  shows it, links back to the editor and keeps the source.
 - F2 renames a node id everywhere it is used; the config tab can reset a broken config; on
   desktop the editor and the view are fixed panes split by a draggable divider.
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are

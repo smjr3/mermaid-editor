@@ -181,8 +181,7 @@
           minSize={15}
           collapsible={!isMobile}
           collapsedSize={0}
-          onCollapse={() => (isEditorCollapsed = true)}
-          onExpand={() => (isEditorCollapsed = false)}>
+          onResize={(size) => (isEditorCollapsed = !isMobile && size === 0)}>
           <div
             class="flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border">
             <Card

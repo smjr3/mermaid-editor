@@ -39,4 +39,34 @@ test.describe('HTML export', () => {
       .poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toMatch(/^<img alt="[^"]*" src="data:image\/svg\+xml;base64,/);
   });
+
+  test('exports for GitLab: an SVG file and Markdown that shows it', async ({
+    editPage,
+    page,
+    context,
+    browserName
+  }) => {
+    test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await editPage.start(url);
+    await editPage.checkTextInView('Orders DB');
+    await page.getByTestId(TID.actionsCard).click();
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByTestId(TID.exportGitLab).click()
+    ]);
+    const fileName = download.suggestedFilename();
+    expect(fileName).toMatch(/^mermaid-diagram-.*\.svg$/);
+    const svg = readFileSync((await download.path()) ?? '', 'utf8');
+    expect(svg.startsWith('<?xml')).toBe(true);
+    expect(svg).toContain('#336791');
+    expect(svg).toContain('background-color');
+
+    await expect(page.getByTestId(TID.exportMessage)).toContainText(fileName);
+    const markdown = await page.evaluate(() => navigator.clipboard.readText());
+    expect(markdown).toContain(`](${fileName})`);
+    expect(markdown).toMatch(/\]\(http[^)]*\/edit#pako:/);
+    expect(markdown).toContain('service db(logos:postgresql)[Orders DB]');
+  });
 });

@@ -38,7 +38,8 @@ picker in a large dialog, with each icon's name and pack under it.
 
 The picker also lists mermaid's five built-in architecture icons (`database`, `server`, `disk`,
 `internet`, `cloud`), first and marked **standard** (green): they are written without a prefix
-and render anywhere mermaid runs, GitLab included. Every other icon is marked **extended**
+and render anywhere mermaid runs, GitLab included — in architecture diagrams only (a flowchart
+shows `?` for them; the picker warns when inserting one elsewhere). Every other icon is marked **extended**
 (amber): it renders only in this editor, so share such diagrams as an exported image. The card also links to the
 Iconify browser, an external site. All packs together add about 36 MB of chunks to the
 built site (17 MB of it the logo sets); a page loads only the packs its diagram names.

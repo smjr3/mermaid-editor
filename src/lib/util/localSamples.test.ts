@@ -1,5 +1,5 @@
 import mermaid from 'mermaid';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { localSamples } from './localSamples';
 import { getSampleDiagrams } from './mermaid';
 
@@ -52,6 +52,22 @@ describe('localSamples', () => {
     const upstream = getSampleDiagrams();
     for (const name of Object.keys(localSamples)) {
       expect(upstream, name).not.toHaveProperty(name);
+    }
+  });
+});
+
+describe('localSamples without logos', () => {
+  it('leaves out the logo example when MERMAID_BUNDLE_LOGOS is false', async () => {
+    vi.stubEnv('MERMAID_BUNDLE_LOGOS', 'false');
+    vi.resetModules();
+    try {
+      const { localSamples: withoutLogos } = await import('./localSamples');
+      const codes = withoutLogos['System Architecture'].map(({ code }) => code);
+      expect(codes.length).toBeGreaterThan(0);
+      expect(codes.join('\n')).not.toContain('logos:');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
     }
   });
 });

@@ -27,6 +27,12 @@ const statementHeaderPattern =
   /^\s*(?:stateDiagram-v2|stateDiagram|classDiagram-v2|classDiagram|erDiagram|requirementDiagram)\b/;
 const statementPattern = /^(\s*direction[ \t]+)(TB|BT|LR|RL)\b/;
 
+// Monaco can write Windows line endings; split on either and write back what was there.
+const splitLines = (code: string) => ({
+  eol: code.includes('\r\n') ? '\r\n' : '\n',
+  lines: code.split(/\r?\n/)
+});
+
 const orientation = (value: string | undefined): Direction =>
   value === 'LR' || value === 'RL' ? 'LR' : 'TB';
 
@@ -57,7 +63,7 @@ const statementIndex = (lines: string[], header: number): number => {
 
 /** The diagram's direction, or undefined for a diagram type whose direction cannot be set. */
 export const getDirection = (code: string): Direction | undefined => {
-  const lines = code.split('\n');
+  const { lines } = splitLines(code);
   const header = headerIndex(lines);
   const line = lines[header] ?? '';
   const match = headerPattern.exec(line);
@@ -69,13 +75,13 @@ export const getDirection = (code: string): Direction | undefined => {
 
 /** The code with its direction set; unchanged for a diagram type that has none. */
 export const setDirection = (code: string, direction: Direction): string => {
-  const lines = code.split('\n');
+  const { eol, lines } = splitLines(code);
   const header = headerIndex(lines);
   const line = lines[header] ?? '';
   const match = headerPattern.exec(line);
   if (match) {
     lines[header] = `${match[1]} ${direction}${match[3]}`;
-    return lines.join('\n');
+    return lines.join(eol);
   }
   if (!statementHeaderPattern.test(line)) return code;
   const statement = statementIndex(lines, header);
@@ -86,7 +92,7 @@ export const setDirection = (code: string, direction: Direction): string => {
   } else {
     lines[statement] = lines[statement].replace(statementPattern, `$1${direction}`);
   }
-  return lines.join('\n');
+  return lines.join(eol);
 };
 
 // How much smaller left-to-right may show a diagram and still be chosen: the

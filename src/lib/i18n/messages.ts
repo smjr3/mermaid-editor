@@ -18,8 +18,18 @@ export const messages = {
     'actions.copyHtmlTag': 'Copy HTML tag',
     'actions.copyImage': 'Copy Image',
     'actions.copyMarkdown': 'Copy Markdown',
+    'actions.exportFailed':
+      'The diagram has an error, so it was not exported. Fix it and try again.',
     'actions.gistPlaceholder': 'Enter Gist URL',
     'actions.gistRequired': 'Please enter a Gist URL first',
+    'actions.gitlab': 'Export for GitLab',
+    'actions.gitlabCopyFailed': 'Saved {file}. Copying the Markdown failed; try again.',
+    'actions.gitlabDone':
+      'Saved {file} and copied the Markdown. Put the file next to the page in the repository and paste the Markdown into it.',
+    'actions.gitlabEdit': 'Edit this diagram',
+    'actions.gitlabHint':
+      'Save the diagram as an SVG and copy Markdown that shows it, links back here and keeps the source',
+    'actions.gitlabSource': 'Mermaid source',
     'actions.htmlHint':
       'Download a standalone HTML page with the diagram (opens anywhere, offline)',
     'actions.loadGist': 'Load Gist',
@@ -119,7 +129,10 @@ export const messages = {
     'icons.pickPack': 'Icon pack',
     'icons.pickPlaceholder': 'Search, e.g. server, aws lambda',
     'icons.pickStandard': 'standard',
-    'icons.pickStandardLegend': 'Standard: shows anywhere mermaid runs (GitLab, …)',
+    'icons.pickStandardArchitectureOnly':
+      'Standard icons work in architecture diagrams (architecture-beta) only; this diagram will show a "?".',
+    'icons.pickStandardLegend':
+      'Standard: architecture diagrams, shown anywhere mermaid runs (GitLab, …)',
     'icons.pickStandardPack': 'standard (mermaid)',
     'icons.pickTitle': 'Find an icon and insert it',
     'icons.prefix': 'Name (prefix)',
@@ -211,8 +224,19 @@ export const messages = {
     'actions.copyHtmlTag': 'HTMLタグをコピー',
     'actions.copyImage': '画像をコピー',
     'actions.copyMarkdown': 'Markdown をコピー',
+    'actions.exportFailed':
+      '図にエラーがあるため書き出せませんでした。直してからもう一度試してください。',
     'actions.gistPlaceholder': 'Gist の URL を入力',
     'actions.gistRequired': '先に Gist の URL を入力してください',
+    'actions.gitlab': 'GitLab 用に書き出し',
+    'actions.gitlabCopyFailed':
+      '{file} を保存しました。Markdown のコピーに失敗したので、もう一度押してください。',
+    'actions.gitlabDone':
+      '{file} を保存し、Markdown をコピーしました。ファイルをリポジトリのページと同じ場所に置き、Markdown をページに貼り付けてください。',
+    'actions.gitlabEdit': 'この図を編集',
+    'actions.gitlabHint':
+      '図を SVG で保存し、それを表示する Markdown（編集リンクと元のコード付き）をコピーします',
+    'actions.gitlabSource': 'Mermaid のコード',
     'actions.htmlHint': '図を入れた HTML ファイルを保存します（どこでも、ネットなしで開けます）',
     'actions.loadGist': 'Gist を読み込む',
     'actions.pngSize': 'PNG サイズ',
@@ -311,7 +335,10 @@ export const messages = {
     'icons.pickPack': 'アイコン集',
     'icons.pickPlaceholder': '検索（例: server、aws lambda）',
     'icons.pickStandard': '標準',
-    'icons.pickStandardLegend': '標準：GitLab など Mermaid が動く所ならどこでも表示',
+    'icons.pickStandardArchitectureOnly':
+      '標準アイコンはシステム構成図（architecture-beta）専用です。この図では「?」になります。',
+    'icons.pickStandardLegend':
+      '標準：システム構成図用。GitLab など Mermaid が動く所ならどこでも表示',
     'icons.pickStandardPack': '標準（mermaid）',
     'icons.pickTitle': 'アイコンを探して入れる',
     'icons.prefix': '名前（prefix）',

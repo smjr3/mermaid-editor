@@ -14,6 +14,7 @@
   import { t } from '$/i18n';
   import { remoteIconPacks } from '$/util/customIcons';
   import { listIconPacks } from '$/util/customIconStore';
+  import { validatedState } from '$/util/state.svelte';
   import { env } from '$/util/env';
   import { iconPacks } from '$/util/iconPacks';
   import {
@@ -91,7 +92,9 @@
   const search = async (text: string, chosen: string) => {
     const id = ++searchId;
     if (text.trim().length < 2) {
+      // Also ends any search still loading, which will see it was superseded.
       results = [];
+      loading = false;
       return;
     }
     loading = true;
@@ -125,7 +128,12 @@
 
   const choose = async (choice: string) => {
     const id = iconReference(choice);
-    const note = isStandardIcon(choice) ? '' : ` ${t('icons.pickExtendedNote')}`;
+    // Standard icons render everywhere, but only architecture diagrams know them.
+    const note = !isStandardIcon(choice)
+      ? ` ${t('icons.pickExtendedNote')}`
+      : validatedState.current.diagramType === 'architecture'
+        ? ''
+        : ` ${t('icons.pickStandardArchitectureOnly')}`;
     if (insertIntoEditor(id)) {
       message = t('icons.pickInserted', { id }) + note;
       onchosen?.();

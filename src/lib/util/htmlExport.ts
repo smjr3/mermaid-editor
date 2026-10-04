@@ -55,3 +55,55 @@ ${svg}
 
 export const toImgTag = (svg: string, alt: string): string =>
   `<img alt="${escapeHtml(alt)}" src="data:image/svg+xml;base64,${toBase64(svg)}">`;
+
+/** An SVG file from rendered SVG: XML declaration and an opaque background. */
+export const svgFile = (svg: string, background: string): string => {
+  const colour = safeColour(background);
+  const withBackground = svg.replace(/<svg\b[^>]*>/, (open) =>
+    /\sstyle="/.test(open)
+      ? open.replace(/\sstyle="([^"]*)"/, (_, style: string) => {
+          const base = style.trim().replace(/;?$/, ';');
+          return ` style="${base} background-color: ${colour}"`;
+        })
+      : open.replace(/^<svg/, `<svg style="background-color: ${colour}"`)
+  );
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${withBackground}`;
+};
+
+const escapeMarkdownText = (value: string): string => value.replaceAll(/[[\]\\]/g, '\\$&');
+
+/**
+ * Markdown for a GitLab (or GitHub) page: the exported SVG, which shows the
+ * diagram with every icon wherever GitLab's own mermaid cannot, a link back to
+ * the editor, and the source in a collapsed plain-text block (not a mermaid
+ * block, which GitLab would try to render without the icons).
+ */
+export const gitlabMarkdown = ({
+  alt,
+  code,
+  editUrl,
+  fileName,
+  labels
+}: {
+  alt: string;
+  code: string;
+  editUrl: string;
+  fileName: string;
+  labels: { edit: string; source: string };
+}): string => {
+  const longestRun = Math.max(0, ...(code.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = '`'.repeat(Math.max(4, longestRun + 1));
+  return `![${escapeMarkdownText(alt)}](${encodeURI(fileName)})
+
+[${escapeMarkdownText(labels.edit)}](${editUrl})
+
+<details>
+<summary>${escapeHtml(labels.source)}</summary>
+
+${fence}text
+${code}
+${fence}
+
+</details>
+`;
+};

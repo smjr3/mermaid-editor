@@ -9,6 +9,26 @@ import type { SampleExample } from './mermaid';
  * spread rather than a block of code, and an upstream merge touches neither.
  * Drop an entry once `@mermaid-js/examples` ships one under the same name.
  */
+// Uses the `logos` pack, so it is left out of builds without logos.
+const awsLogos: SampleExample = {
+  code: `architecture-beta
+  group aws(logos:aws)[AWS]
+
+  service user(tabler:user)[User]
+  service cdn(logos:aws-cloudfront)[CloudFront] in aws
+  service api(logos:aws-api-gateway)[API Gateway] in aws
+  service app(logos:aws-ec2)[EC2] in aws
+  service db(logos:aws-rds)[RDS] in aws
+  service files(logos:aws-s3)[S3] in aws
+
+  user:R --> L:cdn
+  cdn:R --> L:api
+  api:R --> L:app
+  app:B --> T:db
+  app:R --> L:files`,
+  title: 'Cloud (AWS logos)'
+};
+
 export const localSamples: Record<string, SampleExample[]> = {
   'System Architecture': [
     {
@@ -65,24 +85,8 @@ export const localSamples: Record<string, SampleExample[]> = {
   app:R --> L:files`,
       title: 'Cloud (generic)'
     },
-    {
-      code: `architecture-beta
-  group aws(logos:aws)[AWS]
-
-  service user(tabler:user)[User]
-  service cdn(logos:aws-cloudfront)[CloudFront] in aws
-  service api(logos:aws-api-gateway)[API Gateway] in aws
-  service app(logos:aws-ec2)[EC2] in aws
-  service db(logos:aws-rds)[RDS] in aws
-  service files(logos:aws-s3)[S3] in aws
-
-  user:R --> L:cdn
-  cdn:R --> L:api
-  api:R --> L:app
-  app:B --> T:db
-  app:R --> L:files`,
-      title: 'Cloud (AWS logos)'
-    }
+    // Only when the logo sets are bundled (iconPacks.ts).
+    ...(import.meta.env.MERMAID_BUNDLE_LOGOS === 'false' ? [] : [awsLogos])
   ],
   Swimlane: [
     {

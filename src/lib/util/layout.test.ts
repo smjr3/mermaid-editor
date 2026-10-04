@@ -46,6 +46,15 @@ describe('getDirection / setDirection', () => {
     expect(setDirection(code, 'TB')).toBe('classDiagram\n  direction TB\n  A <|-- B');
   });
 
+  it('handles Windows line endings, which Monaco can write, and keeps them', () => {
+    expect(getDirection('flowchart TD\r\n  A --> B')).toBe('TB');
+    expect(setDirection('flowchart TD\r\n  A --> B', 'LR')).toBe('flowchart LR\r\n  A --> B');
+    expect(getDirection('classDiagram\r\n  direction RL\r\n  A <|-- B')).toBe('LR');
+    expect(setDirection('stateDiagram-v2\r\n  [*] --> A', 'LR')).toBe(
+      'stateDiagram-v2\r\n  direction LR\r\n  [*] --> A'
+    );
+  });
+
   it('reports diagrams whose direction cannot be set', () => {
     expect(getDirection('architecture-beta\n  service a(server)[A]')).toBeUndefined();
     expect(getDirection('sequenceDiagram\n  A->>B: hi')).toBeUndefined();

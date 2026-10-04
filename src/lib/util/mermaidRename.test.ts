@@ -75,3 +75,16 @@ describe('isValidIdentifier', () => {
     expect(isValidIdentifier('')).toBe(false);
   });
 });
+
+describe('Windows line endings', () => {
+  it('renames across CRLF lines and keeps the line endings', () => {
+    const code = 'flowchart TD\r\n  order[Order] --> ship\r\n  order --> cancel';
+    expect(renameIn(code, 'order', 'purchase')).toBe(
+      'flowchart TD\r\n  purchase[Order] --> ship\r\n  purchase --> cancel'
+    );
+    expect(findOccurrences(code, 'order').map(({ line, start }) => [line, start])).toEqual([
+      [2, 3],
+      [3, 3]
+    ]);
+  });
+});

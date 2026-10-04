@@ -571,6 +571,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/localSamples.ts`                         |
 | Modified | `src/lib/util/mermaid.test.ts`                         |
 | Modified | `src/lib/util/mermaid.ts`                              |
+| Added    | `src/lib/util/memo.test.ts`                            |
+| Added    | `src/lib/util/memo.ts`                                 |
 | Added    | `src/lib/util/mermaidRename.test.ts`                   |
 | Added    | `src/lib/util/mermaidRename.ts`                        |
 | Added    | `src/lib/util/monacoInsert.ts`                         |

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **175**.
+  every locally changed path — currently **177**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -135,6 +135,10 @@ or, for indentation-based types, from the lines past front matter. The all-diagr
 every action on every matching sample; it found front matter being read as the header (kanban,
 mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
 Quadrant, XY and the other chart types have no add forms.
+The lists behind the Add and Colours cards come from mermaid's parse on every change; results
+are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It
+cut the heaviest sample's all-diagram e2e from about 15 s to 9 s locally (it had begun timing out
+on CI).
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 

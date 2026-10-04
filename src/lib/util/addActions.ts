@@ -8,6 +8,7 @@
 import type { MessageKey } from '$/i18n/messages';
 import mermaid from 'mermaid';
 import { freshId, splitLines } from './diagramEdit';
+import { memoByCode } from './memo';
 import { diagramObjects, type DiagramObject } from './mermaid';
 
 export type FieldKind = 'text' | 'number' | 'date' | 'choice' | 'item';
@@ -126,7 +127,7 @@ const addChild = (code: string, parent: number, text: string) => {
 
 const objects = async (code: string) => (await diagramObjects(code))?.items ?? [];
 
-const sequenceParts = async (code: string) => {
+const sequenceParts = memoByCode(async (code: string) => {
   try {
     await mermaid.parse(code);
     const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as {
@@ -140,9 +141,9 @@ const sequenceParts = async (code: string) => {
   } catch {
     return { participants: [] };
   }
-};
+});
 
-const c4Parts = async (code: string) => {
+const c4Parts = memoByCode(async (code: string) => {
   try {
     await mermaid.parse(code);
     const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as {
@@ -157,7 +158,7 @@ const c4Parts = async (code: string) => {
   } catch {
     return { boundaries: [], elements: [] };
   }
-};
+});
 
 // ---- The specs ----
 

@@ -9,6 +9,7 @@ import { addDarkSiteBackdrop, withVisibleLines } from './darkLines';
 import { registerStoredIconPacks } from './customIconStore';
 import { env } from './env';
 import { iconPacks } from './iconPacks';
+import { memoByCode } from './memo';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
@@ -159,23 +160,25 @@ extractors.swimlane = extractors.flowchart;
  * own parse, with plain-text labels. Only ids a statement can name are kept.
  * Undefined for other diagram types and for code that does not parse.
  */
-export const diagramObjects = async (code: string): Promise<DiagramObjects | undefined> => {
-  try {
-    await mermaid.parse(code);
-    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
-    const found = extractors[diagram.type]?.(diagram.db as Db);
-    if (!found) return undefined;
-    const seen = new Set<string>();
-    const items = found.items.filter(({ id }) => {
-      if (!/^[\w-]+$/.test(id) || seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-    return { ...found, items };
-  } catch {
-    return undefined;
+export const diagramObjects = memoByCode(
+  async (code: string): Promise<DiagramObjects | undefined> => {
+    try {
+      await mermaid.parse(code);
+      const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+      const found = extractors[diagram.type]?.(diagram.db as Db);
+      if (!found) return undefined;
+      const seen = new Set<string>();
+      const items = found.items.filter(({ id }) => {
+        if (!/^[\w-]+$/.test(id) || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      return { ...found, items };
+    } catch {
+      return undefined;
+    }
   }
-};
+);
 
 export interface DiagramEdge {
   id: string;
@@ -189,7 +192,7 @@ export interface DiagramEdge {
  * named by the labels of their ends and their own label. Empty for other
  * diagram types and for code that does not parse.
  */
-export const diagramEdges = async (code: string): Promise<DiagramEdge[]> => {
+export const diagramEdges = memoByCode(async (code: string): Promise<DiagramEdge[]> => {
   try {
     await mermaid.parse(code);
     const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
@@ -208,24 +211,24 @@ export const diagramEdges = async (code: string): Promise<DiagramEdge[]> => {
   } catch {
     return [];
   }
-};
+});
 
 /** Local: the groups and services of an architecture diagram, for the Add card. */
-export const architectureParts = async (
-  code: string
-): Promise<{ groups: DiagramObject[]; services: DiagramObject[] }> => {
-  try {
-    await mermaid.parse(code);
-    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
-    if (diagram.type !== 'architecture') return { groups: [], services: [] };
-    const db = diagram.db as Db;
-    const parts = (name: string) =>
-      list(read(db, name)).map(({ id, title }) => item(String(id), title));
-    return { groups: parts('getGroups'), services: parts('getServices') };
-  } catch {
-    return { groups: [], services: [] };
+export const architectureParts = memoByCode(
+  async (code: string): Promise<{ groups: DiagramObject[]; services: DiagramObject[] }> => {
+    try {
+      await mermaid.parse(code);
+      const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+      if (diagram.type !== 'architecture') return { groups: [], services: [] };
+      const db = diagram.db as Db;
+      const parts = (name: string) =>
+        list(read(db, name)).map(({ id, title }) => item(String(id), title));
+      return { groups: parts('getGroups'), services: parts('getServices') };
+    } catch {
+      return { groups: [], services: [] };
+    }
   }
-};
+);
 
 /**
  * @see https://mermaid.js.org/config/schema-docs/config.html

@@ -1,5 +1,5 @@
 import { TID } from '$/constants';
-import { expect, test } from './test';
+import { expect, t, test } from './test';
 
 const urlFor = (code: string, mermaid = '{}') =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid })).toString('base64')}`;
@@ -72,7 +72,7 @@ test.describe('Icon picker', () => {
     await page.getByTestId(TID.iconPickerPack).selectOption('logos');
     await page.getByTestId(TID.iconPickerSearch).fill('aws lambda');
     const first = page.getByTestId(TID.iconPickerResults).getByRole('button').first();
-    await expect(first).toHaveAttribute('title', 'logos:aws-lambda', { timeout: 30_000 });
+    await expect(first).toHaveAttribute('title', /^logos:aws-lambda /, { timeout: 30_000 });
 
     // Cursor between the parentheses of fn().
     await editPage.editor.getByText('fn()').click();
@@ -99,11 +99,9 @@ test.describe('Icon picker', () => {
     await page.getByTestId(TID.iconPickerLargePack).selectOption('tabler');
     await page.getByTestId(TID.iconPickerLargeSearch).fill('database');
     const results = page.getByTestId(TID.iconPickerLargeResults);
-    await expect(results.getByRole('button', { name: 'tabler:database', exact: true })).toBeVisible(
-      {
-        timeout: 30_000
-      }
-    );
+    await expect(results.getByRole('button', { name: /^tabler:database —/ })).toBeVisible({
+      timeout: 30_000
+    });
     await expect(results).toContainText('database');
 
     await page.keyboard.press('Escape');
@@ -115,7 +113,7 @@ test.describe('Icon picker', () => {
     await page.getByTestId(TID.iconPickerEnlarge).click();
     await page
       .getByTestId(TID.iconPickerLargeResults)
-      .getByRole('button', { name: 'tabler:database', exact: true })
+      .getByRole('button', { name: /^tabler:database —/ })
       .click();
     await expect(page.getByTestId(TID.iconPickerLargeResults)).toBeHidden();
     await expect
@@ -125,5 +123,34 @@ test.describe('Icon picker', () => {
         )
       )
       .toContain('service db(tabler:database)[Database]');
+  });
+
+  test('lists mermaid standard icons first, written without a prefix', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('architecture-beta\n  service db()[Database]'));
+    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
+    await page.getByTestId(TID.iconPickerSearch).fill('database');
+    const first = page.getByTestId(TID.iconPickerResults).getByRole('button').first();
+    await expect(first).toHaveAttribute('data-standard', 'true', { timeout: 30_000 });
+
+    await editPage.editor.getByText('db()').click();
+    await page.keyboard.press('End');
+    for (let index = 0; index < '[Database]'.length + 1; index++) {
+      await page.keyboard.press('ArrowLeft');
+    }
+    await first.click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { code?: string }).code
+        )
+      )
+      .toContain('service db(database)[Database]');
+    await expect(page.getByTestId(TID.iconPickerMessage)).not.toContainText(
+      t('icons.pickExtendedNote')
+    );
   });
 });

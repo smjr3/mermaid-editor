@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **147**.
+  every locally changed path — currently **149**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -108,7 +108,8 @@ gets a light grey background so its dark lines stay visible (`src/lib/util/darkL
 packs by name, shows the matches as icons, and inserts the clicked icon's `prefix:name` at the
 cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no editor can take it
 (mobile, config tab) the name is copied instead. "Enlarge" opens a large dialog with names under
-the icons.
+the icons. mermaid's five built-in icons are listed first and marked standard (they render in
+GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

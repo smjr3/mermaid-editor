@@ -23,6 +23,12 @@
     type IconMatch,
     type SearchablePack
   } from '$/util/iconSearch';
+  import {
+    iconReference,
+    isStandardIcon,
+    standardIconPack,
+    standardPrefix
+  } from '$/util/standardIcons';
   import type { AsyncIconLoader } from 'mermaid';
   import { onMount } from 'svelte';
   import EnlargeIcon from '~icons/material-symbols/open-in-full-rounded';
@@ -44,7 +50,12 @@
   let isLargeOpen = $state(false);
   const loaders: AsyncIconLoader[] = [...iconPacks, ...remoteIconPacks(env.iconPacks)];
   let imported = $state<SearchablePack[]>([]);
-  const names = $derived([...loaders.map(({ name }) => name), ...imported.map((p) => p.prefix)]);
+  // mermaid's built-in icons first: they are the only ones every renderer knows.
+  const names = $derived([
+    standardPrefix,
+    ...loaders.map(({ name }) => name),
+    ...imported.map((p) => p.prefix)
+  ]);
 
   let results = $state<IconMatch[]>([]);
   let loading = $state(false);
@@ -59,6 +70,7 @@
   });
 
   const load = (name: string): Promise<SearchablePack | undefined> => {
+    if (name === standardPrefix) return Promise.resolve(standardIconPack);
     const own = imported.find((candidate) => candidate.prefix === name);
     if (own) return Promise.resolve(own);
     let cached = cache[name];
@@ -85,11 +97,20 @@
     loading = true;
     const packs = await Promise.all((chosen === 'all' ? names : [chosen]).map(load));
     if (id !== searchId) return;
-    results = searchIcons(
-      packs.filter((candidate) => candidate !== undefined),
-      text,
-      large ? 300 : 60
-    );
+    const found = packs.filter((candidate) => candidate !== undefined);
+    const limit = large ? 300 : 60;
+    // Standard matches lead, whatever their score against the other packs.
+    results = [
+      ...searchIcons(
+        found.filter((candidate) => candidate.prefix === standardPrefix),
+        text
+      ),
+      ...searchIcons(
+        found.filter((candidate) => candidate.prefix !== standardPrefix),
+        text,
+        limit
+      )
+    ].slice(0, limit);
     loading = false;
   };
 
@@ -102,19 +123,24 @@
     return () => clearTimeout(timer);
   });
 
-  const choose = async (id: string) => {
+  const choose = async (choice: string) => {
+    const id = iconReference(choice);
+    const note = isStandardIcon(choice) ? '' : ` ${t('icons.pickExtendedNote')}`;
     if (insertIntoEditor(id)) {
-      message = t('icons.pickInserted', { id });
+      message = t('icons.pickInserted', { id }) + note;
       onchosen?.();
       return;
     }
     try {
       await navigator.clipboard.writeText(id);
-      message = t('icons.pickCopied', { id });
+      message = t('icons.pickCopied', { id }) + note;
     } catch {
       message = id;
     }
   };
+
+  const label = (id: string) =>
+    `${iconReference(id)} — ${isStandardIcon(id) ? t('icons.pickStandard') : t('icons.pickExtended')}`;
 </script>
 
 <div class={['flex flex-col gap-2', large && 'min-h-0 flex-1']}>
@@ -127,7 +153,7 @@
       class="h-9 max-w-[40%] rounded-md border border-input bg-background px-1 text-sm text-foreground">
       <option value="all">{t('icons.pickAll')}</option>
       {#each names as name (name)}
-        <option value={name}>{name}</option>
+        <option value={name}>{name === standardPrefix ? t('icons.pickStandardPack') : name}</option>
       {/each}
     </select>
     <Input
@@ -148,6 +174,14 @@
       </Button>
     {/if}
   </div>
+  <p class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+    <span class="flex items-center gap-1"
+      ><span class="size-2 rounded-full bg-emerald-500"></span>{t(
+        'icons.pickStandardLegend'
+      )}</span>
+    <span class="flex items-center gap-1"
+      ><span class="size-2 rounded-full bg-amber-500"></span>{t('icons.pickExtendedLegend')}</span>
+  </p>
   {#if loading}
     <p class="text-muted-foreground">{t('icons.pickLoading')}</p>
   {:else if query.trim().length >= 2 && results.length === 0}
@@ -165,12 +199,18 @@
         <button
           type="button"
           class={[
-            'flex flex-col items-center justify-center rounded-md border border-transparent hover:border-border hover:bg-muted',
+            'relative flex flex-col items-center justify-center rounded-md border border-transparent hover:border-border hover:bg-muted',
             large ? 'gap-1 p-2' : 'aspect-square p-1.5'
           ]}
-          title={result.id}
-          aria-label={result.id}
+          title={label(result.id)}
+          aria-label={label(result.id)}
+          data-standard={isStandardIcon(result.id)}
           onclick={() => choose(result.id)}>
+          <span
+            class={[
+              'absolute top-1 right-1 size-2 rounded-full',
+              isStandardIcon(result.id) ? 'bg-emerald-500' : 'bg-amber-500'
+            ]}></span>
           <span class={large ? 'size-12' : 'size-full'}>
             <!-- eslint-disable-next-line svelte/no-at-html-tags -- bundled packs, or packs sanitised when loaded -->
             {@html iconSvg(result.icon)}
@@ -178,8 +218,16 @@
           {#if large}
             <span class="w-full truncate text-center text-xs"
               >{result.id.slice(result.id.indexOf(':') + 1)}</span>
-            <span class="w-full truncate text-center text-[10px] text-muted-foreground"
-              >{result.id.slice(0, result.id.indexOf(':'))}</span>
+            <span
+              class={[
+                'w-full truncate text-center text-[10px]',
+                isStandardIcon(result.id)
+                  ? 'font-semibold text-emerald-600 dark:text-emerald-400'
+                  : 'text-muted-foreground'
+              ]}
+              >{isStandardIcon(result.id)
+                ? t('icons.pickStandard')
+                : result.id.slice(0, result.id.indexOf(':'))}</span>
           {/if}
         </button>
       {/each}

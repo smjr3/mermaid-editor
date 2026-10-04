@@ -34,7 +34,12 @@ chunks — fetched from this site the first time a diagram uses the prefix, neve
 The last three are logo sets. Names are the Iconify names. The "Icons" card has a picker: type part of a name (`server`,
 `aws lambda`), optionally pick a pack, and click an icon to insert its `prefix:name` at the cursor
 in the code (it is copied instead on mobile or on the config tab). "Enlarge" opens the same
-picker in a large dialog, with each icon's name and pack under it. The card also links to the
+picker in a large dialog, with each icon's name and pack under it.
+
+The picker also lists mermaid's five built-in architecture icons (`database`, `server`, `disk`,
+`internet`, `cloud`), first and marked **standard** (green): they are written without a prefix
+and render anywhere mermaid runs, GitLab included. Every other icon is marked **extended**
+(amber): it renders only in this editor, so share such diagrams as an exported image. The card also links to the
 Iconify browser, an external site. All packs together add about 36 MB of chunks to the
 built site (17 MB of it the logo sets); a page loads only the packs its diagram names.
 

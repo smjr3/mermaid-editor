@@ -1,6 +1,7 @@
 import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
+import { colorAllGroups, listGroups } from './colors';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
 import { localSamples } from './localSamples';
@@ -38,6 +39,14 @@ describe.each(samples)('$name', ({ code }) => {
     }
     // Setting the direction it already has changes nothing else.
     expect(setDirection(setDirection(code, 'LR'), direction)).toBe(setDirection(code, direction));
+  });
+
+  it('keeps parsing, as the same type, with every lane or subgraph coloured', async () => {
+    if (listGroups(code).length === 0) return;
+    const colored = colorAllGroups(code);
+    expect(colored).not.toBe(code);
+    await expect(typeOf(colored)).resolves.toBe(await typeOf(code));
+    expect(colorAllGroups(colored, true)).toBe(code);
   });
 
   it('exports to HTML, an img tag and GitLab Markdown with the source intact', () => {

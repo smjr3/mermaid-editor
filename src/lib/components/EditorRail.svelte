@@ -1,6 +1,6 @@
 <script lang="ts" module>
   export type RailTarget =
-    'expand' | 'code' | 'config' | 'layout' | 'icons' | 'samples' | 'actions';
+    'expand' | 'code' | 'config' | 'layout' | 'colors' | 'icons' | 'samples' | 'actions';
 </script>
 
 <script lang="ts">
@@ -13,6 +13,7 @@
   import IconsIcon from '~icons/material-symbols/category-outline-rounded';
   import DownloadIcon from '~icons/material-symbols/download';
   import OpenIcon from '~icons/material-symbols/left-panel-open-outline-rounded';
+  import PaletteIcon from '~icons/material-symbols/palette-outline';
   import GearIcon from '~icons/material-symbols/settings-outline-rounded';
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
 
@@ -24,6 +25,7 @@
     { icon: CodeIcon, label: t('editor.textTab'), target: 'code' },
     { icon: GearIcon, label: t('editor.configTab'), target: 'config' },
     { icon: LayoutIcon, label: t('layout.title'), target: 'layout' },
+    { icon: PaletteIcon, label: t('colors.title'), target: 'colors' },
     { icon: IconsIcon, label: t('icons.title'), target: 'icons' },
     { icon: SamplesIcon, label: t('preset.title'), target: 'samples' },
     { class: 'rotate-180', icon: DownloadIcon, label: t('actions.title'), target: 'actions' }

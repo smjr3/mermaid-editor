@@ -9,6 +9,7 @@
   import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
   import History from '$/components/History/History.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
+  import ColorControls from '$/components/ColorControls.svelte';
   import LayoutControls from '$/components/LayoutControls.svelte';
   import { startAutoSave } from '$/components/History/historyState.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
@@ -85,6 +86,7 @@
   let isEditorCollapsed = $state(false);
   const railCards: Partial<Record<RailTarget, string>> = {
     actions: TID.actionsCard,
+    colors: TID.colorsCard,
     icons: TID.iconPacksCard,
     layout: TID.layoutCard,
     samples: TID.sampleDiagramsCard
@@ -208,6 +210,7 @@
                 editorFocus.value && 'hidden'
               ]}>
               <LayoutControls />
+              <ColorControls />
               <IconPacks />
               <Preset />
               <Actions />

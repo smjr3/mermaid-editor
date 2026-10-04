@@ -21,6 +21,11 @@ export class EditorPage {
   }
 
   async start(url = '/edit') {
+    // A full page load: changing only the hash of the already open editor can
+    // lose to the editor writing its previous state back into the URL.
+    if (url.includes('#') && this.page.url() !== 'about:blank') {
+      await this.page.goto('about:blank');
+    }
     await this.page.goto(url);
     await expect(this.page)
       .toHaveURL(/.*\/edit#pako/)

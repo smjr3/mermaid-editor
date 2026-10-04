@@ -219,18 +219,21 @@ taking upstream's version and re-adding those lines.
 | `src/lib/util/mermaidRename.ts`                                                                                            | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider, which applies a rename only if the diagram still parses as the same type                                                                                                                                                                                                                                                                  |
 | `src/lib/util/state.svelte.ts`                                                                                             | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                                                                                                                                                                                                                                     |
 | `src/lib/components/ResetConfigButton.svelte`                                                                              | Added. The "Reset config" button on the config tab                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/util/mermaid.ts`                                                                                                  | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`; `flowNodes` lists flowchart/swimlane nodes for the Colours card                                                                                                                                                                                                                                    |
+| `src/lib/util/mermaid.ts`                                                                                                  | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`; `diagramObjects` lists the objects the Colours card can colour                                                                                                                                                                                                                                     |
 | `src/lib/util/architectureLabels.ts`                                                                                       | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                                                                                                                                                                                                                                     |
 | `src/lib/util/darkLines.ts`                                                                                                | Added. Dark themes render with near-white lines unless the user set `lineColor`; a light-themed diagram gets its own background while the site is dark                                                                                                                                                                                                                                                                                           |
 | `src/lib/util/iconPacks.ts`                                                                                                | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                                                                                                                                                                                                                                          |
 | `src/lib/util/customIcons.ts`, `customIconStore.ts`                                                                        | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                                                                                                                                                                                                                   |
 | `src/lib/components/IconPacks.svelte`                                                                                      | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                                                                                                                                                                                                                                     |
-| `src/lib/util/env.ts`, `.env`                                                                                              | Add `iconPacks` / `MERMAID_ICON_PACKS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                                                                                                                                                                                                                             |
+| `src/lib/util/env.ts`, `.env`                                                                                              | Add `iconPacks` / `MERMAID_ICON_PACKS` and `colorPresets` / `MERMAID_COLOR_PRESETS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                                                                                                                                                                                |
 | `scripts/svg-to-iconify.js`                                                                                                | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                                                                                                                                                                                                                                   |
 | `scripts/fetch-icon-packs.js`                                                                                              | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                                                                                                                                                                                                                                       |
 | `.gitignore`                                                                                                               | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `src/lib/components/LayoutControls.svelte`, `src/lib/util/layout.ts`                                                       | Added. The "Layout" card: direction (top-to-bottom, left-to-right, fit to view), layout engine (standard / ELK) and spacing, written into the code and the config                                                                                                                                                                                                                                                                                |
-| `src/lib/components/ColorControls.svelte`, `src/lib/util/colors.ts`                                                        | Added. The "Colours" card: theme buttons, line colour (config `themeVariables.lineColor`) and lane/subgraph and node colours written as `style` statements in the code                                                                                                                                                                                                                                                                           |
+| `src/lib/components/ColorControls.svelte`, `src/lib/util/colors.ts`                                                        | Added. The "Colours" card: theme buttons, line colour (config `themeVariables.lineColor`) lane/subgraph, object and arrow colours written into the code (`style`, `linkStyle`; `UpdateElementStyle` for C4), the deployment palette and freely picked recent colours                                                                                                                                                                             |
+| `src/lib/components/AddControls.svelte`, `src/lib/util/diagramEdit.ts`                                                     | Added. The "Add" card: a new lane, or a node in a lane joined by an arrow from another node, for flowcharts and swimlane diagrams; groups, services and connections for architecture diagrams (`ArchitectureAdd.svelte`); per-type forms for sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams (`AddActions.svelte`, `src/lib/util/addActions.ts`)                                                        |
+| `src/lib/components/HelpButton.svelte`, `src/lib/util/helpContent.ts`                                                      | Added. The "How to use" button in the header (Navbar) and its guide dialog; the guide text per language                                                                                                                                                                                                                                                                                                                                          |
+| `.claude/settings.json`, `.claude/hooks/session-start.sh`                                                                  | Added. Claude Code on the web: a SessionStart hook puts Node 24 first on PATH, enables pnpm and installs the dependencies                                                                                                                                                                                                                                                                                                                        |
 | `src/lib/components/EditorPaneToggle.svelte`, `EditorRail.svelte`, `ToolsBar.svelte`, `src/lib/util/editorFocus.svelte.ts` | Added. The editor header button collapses the column to an icon rail (each icon reopens its section); the bar above the tool cards hides them (per browser)                                                                                                                                                                                                                                                                                      |
 | `src/lib/components/IconPicker.svelte`, `src/lib/util/iconSearch.ts`, `src/lib/util/monacoInsert.ts`                       | Added. Search the icon packs in the "Icons" card and click an icon to insert its `prefix:name` at the cursor (or copy it when no editor can take it)                                                                                                                                                                                                                                                                                             |
 | `src/lib/util/standardIcons.ts`                                                                                            | Added. mermaid's five built-in architecture icons (copied, MIT) so the picker can show and mark them as standard                                                                                                                                                                                                                                                                                                                                 |
@@ -436,6 +439,8 @@ modifications as if they were local customizations.
 
 | Status   | Path                                                   |
 | -------- | ------------------------------------------------------ |
+| Added    | `.claude/hooks/session-start.sh`                       |
+| Added    | `.claude/settings.json`                                |
 | Deleted  | `.dockerignore`                                        |
 | Modified | `.env`                                                 |
 | Added    | `.gitattributes`                                       |
@@ -496,6 +501,9 @@ modifications as if they were local customizations.
 | Modified | `src/app.css`                                          |
 | Modified | `src/app.html`                                         |
 | Modified | `src/lib/components/Actions.svelte`                    |
+| Added    | `src/lib/components/AddActions.svelte`                 |
+| Added    | `src/lib/components/AddControls.svelte`                |
+| Added    | `src/lib/components/ArchitectureAdd.svelte`            |
 | Modified | `src/lib/components/Card/Card.svelte`                  |
 | Added    | `src/lib/components/ColorControls.svelte`              |
 | Modified | `src/lib/components/CopyButton.svelte`                 |
@@ -506,6 +514,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/EditorPaneToggle.svelte`           |
 | Added    | `src/lib/components/EditorRail.svelte`                 |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
+| Added    | `src/lib/components/HelpButton.svelte`                 |
 | Modified | `src/lib/components/History/History.svelte`            |
 | Added    | `src/lib/components/HtmlExport.svelte`                 |
 | Added    | `src/lib/components/IconPacks.svelte`                  |
@@ -528,6 +537,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
+| Added    | `src/lib/util/addActions.test.ts`                      |
+| Added    | `src/lib/util/addActions.ts`                           |
 | Added    | `src/lib/util/allDiagrams.test.ts`                     |
 | Added    | `src/lib/util/architectureLabels.test.ts`              |
 | Added    | `src/lib/util/architectureLabels.ts`                   |
@@ -540,10 +551,14 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/customIcons.ts`                          |
 | Added    | `src/lib/util/darkLines.test.ts`                       |
 | Added    | `src/lib/util/darkLines.ts`                            |
+| Added    | `src/lib/util/diagramEdit.test.ts`                     |
+| Added    | `src/lib/util/diagramEdit.ts`                          |
 | Added    | `src/lib/util/editorFocus.svelte.ts`                   |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
+| Added    | `src/lib/util/helpContent.test.ts`                     |
+| Added    | `src/lib/util/helpContent.ts`                          |
 | Added    | `src/lib/util/htmlExport.test.ts`                      |
 | Added    | `src/lib/util/htmlExport.ts`                           |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
@@ -556,6 +571,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/localSamples.ts`                         |
 | Modified | `src/lib/util/mermaid.test.ts`                         |
 | Modified | `src/lib/util/mermaid.ts`                              |
+| Added    | `src/lib/util/memo.test.ts`                            |
+| Added    | `src/lib/util/memo.ts`                                 |
 | Added    | `src/lib/util/mermaidRename.test.ts`                   |
 | Added    | `src/lib/util/mermaidRename.ts`                        |
 | Added    | `src/lib/util/monacoInsert.ts`                         |
@@ -575,6 +592,7 @@ modifications as if they were local customizations.
 | Deleted  | `static/icons/mermaid.svg`                             |
 | Modified | `static/manifest.json`                                 |
 | Modified | `tests/actions.spec.ts`                                |
+| Added    | `tests/addControls.spec.ts`                            |
 | Added    | `tests/allDiagrams.spec.ts`                            |
 | Added    | `tests/colors.spec.ts`                                 |
 | Modified | `tests/configMigration.spec.ts`                        |
@@ -585,6 +603,7 @@ modifications as if they were local customizations.
 | Modified | `tests/embed.spec.ts`                                  |
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Added    | `tests/fixedLayout.spec.ts`                            |
+| Added    | `tests/help.spec.ts`                                   |
 | Modified | `tests/history.spec.ts`                                |
 | Added    | `tests/htmlExport.spec.ts`                             |
 | Added    | `tests/iconImport.spec.ts`                             |

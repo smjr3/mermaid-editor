@@ -10,6 +10,7 @@
 
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import HelpButton from '$/components/HelpButton.svelte';
   import MainMenu from '$/components/MainMenu.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -90,6 +91,10 @@
       {/if}
       Live Editor
     </a>
+  </div>
+  <!-- Local: the guide to the editor, on every page and screen size. -->
+  <div class="flex items-center">
+    <HelpButton />
   </div>
   <div
     id="menu"

@@ -147,11 +147,127 @@ test.describe('Colours card', () => {
     expect(code).toContain('style Shop');
   });
 
-  test('explains when the diagram has no lanes', async ({ editPage, page }) => {
+  test('colours an arrow picked by its label, and resets every arrow', async ({
+    editPage,
+    page
+  }) => {
+    const code = `${lanes}\n  B -->|done| C`;
+    await editPage.start(urlFor(code));
+    await editPage.checkTextInView('done');
+    await page.getByTestId(TID.colorsCard).click();
+
+    await page.locator('#view .edgeLabel', { hasText: 'done' }).click();
+    await expect(page.getByTestId(TID.colorsEdgeSelect)).toHaveValue('3');
+    await page.getByTestId(`${TID.colorsEdge}-#d64545`).click();
+    await expect
+      .poll(async () => (await stored(page)).code)
+      .toContain('linkStyle 3 stroke:#d64545');
+    const path = page.locator('#view path[data-id="L_B_C_0"]');
+    await expect
+      .poll(() => path.evaluate((el) => getComputedStyle(el).stroke))
+      .toBe(rgb('#d64545'));
+
+    await page.getByTestId(TID.colorsEdgeSelect).selectOption('0');
+    await page.getByTestId(`${TID.colorsEdge}-custom`).fill('#22aa55');
+    await expect
+      .poll(async () => (await stored(page)).code)
+      .toContain('linkStyle 0 stroke:#22aa55');
+
+    await page.getByTestId(TID.colorsEdgesClear).click();
+    await expect.poll(async () => (await stored(page)).code).toBe(code);
+  });
+
+  test('offers a freely picked colour again, also after a reload', async ({ editPage, page }) => {
+    await editPage.start(urlFor(lanes));
+    await editPage.checkTextInView('Accept order');
+    await page.getByTestId(TID.colorsCard).click();
+
+    await page.getByTestId(`${TID.colorsGroup}-Shop-custom`).fill('#336699');
+    await expect.poll(async () => (await stored(page)).code).toContain('style Shop fill:');
+    await page.getByTestId(TID.colorsNodeSelect).selectOption('A');
+    await page.getByTestId(`${TID.colorsNode}-recent-#336699`).click();
+    await expect.poll(async () => (await stored(page)).code).toContain('style A fill:');
+    expect((await stored(page)).code).toMatch(/style A fill:#[\da-f]{6},stroke:#336699/);
+
+    await page.reload();
+    await page.getByTestId(TID.colorsCard).click();
+    await expect(page.getByTestId(`${TID.colorsGroup}-Customer-recent-#336699`)).toBeVisible();
+    await expect(page.getByTestId(`${TID.colorsLine}-#336699`)).toBeVisible();
+  });
+
+  test('explains when the diagram has nothing to colour one by one', async ({ editPage, page }) => {
     await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');
     await page.getByTestId(TID.colorsCard).click();
-    await expect(page.getByText(t('colors.groupsNone'))).toBeVisible();
+    await expect(page.getByText(t('colors.objectsNone'))).toBeVisible();
     await expect(page.getByTestId(TID.colorsNodeSelect)).toHaveCount(0);
   });
+
+  for (const { code, id, kind, text } of [
+    {
+      code: 'classDiagram\n  class Animal\n  Animal <|-- Dog',
+      id: 'Animal',
+      kind: 'class',
+      text: 'Animal'
+    },
+    {
+      code: 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy',
+      id: 'Busy',
+      kind: 'state',
+      text: 'Busy'
+    },
+    {
+      code: 'erDiagram\n  CUSTOMER ||--o{ ORDER : places',
+      id: 'ORDER',
+      kind: 'er',
+      text: 'ORDER'
+    },
+    {
+      code: 'block-beta\n  columns 2\n  a["Alpha"] b["Beta"]',
+      // The left block: the one on the right can sit under the zoom buttons.
+      id: 'a',
+      kind: 'block',
+      text: 'Alpha'
+    },
+    {
+      code: 'C4Context\n  Person(a, "Alice")\n  System(s, "Shop")',
+      id: 's',
+      kind: 'c4',
+      text: 'Shop'
+    }
+  ]) {
+    test(`colours a ${kind} diagram's object picked in the diagram`, async ({ editPage, page }) => {
+      await editPage.start(urlFor(code));
+      await editPage.checkTextInView(text);
+      await page.getByTestId(TID.colorsCard).click();
+      await expect(
+        page.getByText(t(`colors.objects.${kind}` as Parameters<typeof t>[0]))
+      ).toBeVisible();
+
+      await page.locator('#view svg').getByText(text, { exact: true }).first().click();
+      await expect(page.getByTestId(TID.colorsNodeSelect)).toHaveValue(id);
+      await page.getByTestId(`${TID.colorsNode}-red`).click();
+      const red = '#fde2e1';
+      await expect
+        .poll(async () => (await stored(page)).code)
+        .toContain(
+          kind === 'c4' ? `UpdateElementStyle(${id}, $bgColor="${red}"` : `style ${id} fill:${red}`
+        );
+      // The colour reaches the drawing.
+      await expect
+        .poll(() =>
+          page.evaluate(
+            (fill) =>
+              [...document.querySelectorAll('#view svg *')].some(
+                (element) => getComputedStyle(element).fill === fill
+              ),
+            rgb(red)
+          )
+        )
+        .toBe(true);
+
+      await page.getByTestId(TID.colorsNodesClear).click();
+      await expect.poll(async () => (await stored(page)).code).toBe(code);
+    });
+  }
 });

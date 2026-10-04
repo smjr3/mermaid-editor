@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clearColors,
+  addRecent,
+  colorAll,
   colorAllGroups,
+  getObjectColor,
   getStyleColor,
+  getEdgeColor,
   getLineColor,
+  pickedEdge,
+  setEdgeColor,
   getTheme,
   laneText,
   listGroups,
+  parsePresets,
+  pickedObject,
+  setObjectColor,
   setStyleColor,
   setLineColor,
   setTheme,
@@ -164,10 +172,166 @@ describe('colorAllGroups', () => {
   });
 });
 
-describe('clearColors', () => {
-  it('removes the colours of the given lanes or nodes only', () => {
-    const blue = swatches[0];
-    const code = setStyleColor(setStyleColor(lanes, 'A', blue), 'shop', blue);
-    expect(clearColors(code, ['A', 'C'])).toBe(setStyleColor(lanes, 'shop', blue));
+const c4 = 'C4Context\n  Person(a, "Alice")\n  System(s, "Sys")';
+
+describe('getObjectColor / setObjectColor (C4)', () => {
+  const blue = swatches[0];
+
+  it('adds an UpdateElementStyle statement', () => {
+    const code = setObjectColor(c4, 'a', blue, 'c4');
+    expect(code).toBe(
+      `${c4}\n  UpdateElementStyle(a, $bgColor="${blue.fill}", $borderColor="${blue.stroke}", $fontColor="${laneText}")`
+    );
+    expect(getObjectColor(code, 'a', 'c4')).toEqual({ fill: blue.fill, stroke: blue.stroke });
+    expect(getObjectColor(code, 's', 'c4')).toBeUndefined();
+  });
+
+  it('replaces the colours of an existing statement, keeping its other settings', () => {
+    const code = `${c4}\n  UpdateElementStyle(a, $bgColor="grey", $shape="RoundedBoxShape()")`;
+    expect(setObjectColor(code, 'a', blue, 'c4')).toBe(
+      `${c4}\n  UpdateElementStyle(a, $bgColor="${blue.fill}", $borderColor="${blue.stroke}", $fontColor="${laneText}", $shape="RoundedBoxShape()")`
+    );
+    expect(setObjectColor(code, 'a', undefined, 'c4')).toBe(
+      `${c4}\n  UpdateElementStyle(a, $shape="RoundedBoxShape()")`
+    );
+  });
+
+  it('removes the statement once nothing is left', () => {
+    expect(setObjectColor(setObjectColor(c4, 'a', blue, 'c4'), 'a', undefined, 'c4')).toBe(c4);
+  });
+
+  it('uses style statements for every other diagram', () => {
+    expect(setObjectColor(lanes, 'shop', blue, 'style')).toBe(setStyleColor(lanes, 'shop', blue));
+    expect(getObjectColor(setStyleColor(lanes, 'A', blue), 'A', 'style')).toEqual({
+      fill: blue.fill,
+      stroke: blue.stroke
+    });
+  });
+});
+
+describe('colorAll', () => {
+  it('gives each object its own swatch, and clears them again', () => {
+    const colored = colorAll(c4, ['a', 's'], 'c4');
+    expect(getObjectColor(colored, 'a', 'c4')?.stroke).toBe(swatches[0].stroke);
+    expect(getObjectColor(colored, 's', 'c4')?.stroke).toBe(swatches[1].stroke);
+    expect(colorAll(colored, ['a', 's'], 'c4', true)).toBe(c4);
+  });
+});
+
+describe('pickedObject', () => {
+  const ids = ['A', 'Idle', 'Animal', 'CUSTOMER', 'r1', 'a', 'my-node'];
+  it.each([
+    ['graph-2-flowchart-A-0', 'A'],
+    ['graph-2-flowchart-my-node-3', 'my-node'],
+    ['graph-2-state-Idle-1', 'Idle'],
+    ['graph-4-classId-Animal-34', 'Animal'],
+    ['graph-6-entity-CUSTOMER-0', 'CUSTOMER'],
+    ['graph-8-r1', 'r1'],
+    ['graph-14-a', 'a']
+  ])('finds the object behind the element %s', (domId, id) => {
+    expect(pickedObject(domId, domId.split('-').slice(0, 2).join('-'), ids)).toBe(id);
+  });
+
+  it('finds nothing for other elements', () => {
+    expect(pickedObject('graph-2-flowchart-Z-0', 'graph-2', ids)).toBeUndefined();
+    expect(pickedObject('other-a', 'graph-2', ids)).toBeUndefined();
+  });
+});
+
+const flow = 'flowchart LR\n  A --> B\n  B --> C\n  C --> D';
+
+describe('getEdgeColor / setEdgeColor', () => {
+  it('adds a linkStyle statement for the edge', () => {
+    const code = setEdgeColor(flow, 1, '#d64545');
+    expect(code).toBe(`${flow}\n  linkStyle 1 stroke:#d64545`);
+    expect(getEdgeColor(code, 1)).toBe('#d64545');
+    expect(getEdgeColor(code, 0)).toBeUndefined();
+  });
+
+  it('changes the colour of an existing statement, keeping its other properties', () => {
+    const code = `${flow}\n  linkStyle 2 stroke:#000,stroke-width:4px`;
+    expect(setEdgeColor(code, 2, '#3b73c9')).toBe(
+      `${flow}\n  linkStyle 2 stroke:#3b73c9,stroke-width:4px`
+    );
+    expect(setEdgeColor(code, 2, undefined)).toBe(`${flow}\n  linkStyle 2 stroke-width:4px`);
+    expect(setEdgeColor(setEdgeColor(flow, 0, '#3b73c9'), 0, undefined)).toBe(flow);
+  });
+
+  it('takes an edge out of a statement shared with other edges', () => {
+    const code = `${flow}\n  linkStyle 0,2 stroke:#000,stroke-width:4px`;
+    expect(getEdgeColor(code, 2)).toBe('#000');
+    expect(setEdgeColor(code, 2, '#d64545')).toBe(
+      `${flow}\n  linkStyle 0 stroke:#000,stroke-width:4px\n  linkStyle 2 stroke:#d64545,stroke-width:4px`
+    );
+  });
+
+  it('leaves linkStyle default alone and refuses a value that is not a colour', () => {
+    const code = `${flow}\n  linkStyle default stroke:#999`;
+    expect(getEdgeColor(code, 0)).toBeUndefined();
+    expect(setEdgeColor(code, 0, '#d64545')).toBe(`${code}\n  linkStyle 0 stroke:#d64545`);
+    expect(setEdgeColor(flow, 0, 'red;}')).toBe(flow);
+  });
+});
+
+describe('pickedEdge', () => {
+  const ids = ['L_A_B_0', 'L_B_C_0', 'e2'];
+  it('finds the edge behind a path or a label', () => {
+    expect(pickedEdge({ dataId: 'L_B_C_0', id: 'graph-2-L_B_C_0' }, ids)).toBe(1);
+    expect(pickedEdge({ dataId: null, id: 'edge-label-C-A-e2' }, ids)).toBe(2);
+    expect(pickedEdge({ dataId: null, id: 'graph-2-flowchart-A-0' }, ids)).toBeUndefined();
+  });
+});
+
+describe('parsePresets', () => {
+  it('reads a deployment palette of border colours, with light fills to match', () => {
+    expect(parsePresets('#003366, #E60012 #00a040')).toEqual([
+      { fill: tint('#003366'), stroke: '#003366' },
+      { fill: tint('#e60012'), stroke: '#e60012' },
+      { fill: tint('#00a040'), stroke: '#00a040' }
+    ]);
+  });
+
+  it('skips what is not a colour, and gives nothing for an empty setting', () => {
+    expect(parsePresets('#003366,red,#12345,url(x)')).toEqual([
+      { fill: tint('#003366'), stroke: '#003366' }
+    ]);
+    expect(parsePresets('')).toBeUndefined();
+    expect(parsePresets('nope')).toBeUndefined();
+  });
+});
+
+describe('addRecent', () => {
+  it('keeps the latest colours first, without repeats, at most eight', () => {
+    expect(addRecent(['#111111', '#222222'], '#222222')).toEqual(['#222222', '#111111']);
+    expect(addRecent([], '#ABCDEF')).toEqual(['#abcdef']);
+    const many = [
+      '#000001',
+      '#000002',
+      '#000003',
+      '#000004',
+      '#000005',
+      '#000006',
+      '#000007',
+      '#000008'
+    ];
+    expect(addRecent(many, '#000009')).toEqual(['#000009', ...many.slice(0, 7)]);
+    expect(addRecent(many, 'red')).toEqual(many);
+  });
+});
+
+describe('colorAll with a deployment palette', () => {
+  it('uses the given palette', () => {
+    const palette = parsePresets('#003366,#e60012') ?? [];
+    const colored = colorAll(c4, ['a', 's'], 'c4', false, palette);
+    expect(getObjectColor(colored, 's', 'c4')?.stroke).toBe('#e60012');
+    expect(getStyleColor(colorAllGroups(lanes, false, palette), 'shop')?.stroke).toBe('#e60012');
+  });
+});
+
+describe('listGroups with front matter', () => {
+  it('lists the lanes of a swimlane diagram that starts with front matter', () => {
+    expect(listGroups('---\ntitle: T\n---\nswimlane-beta LR\n  subgraph L\n    a\n  end')).toEqual([
+      { id: 'L', label: 'L' }
+    ]);
   });
 });

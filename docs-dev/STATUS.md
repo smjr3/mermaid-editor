@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **161**.
+  every locally changed path — currently **177**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -99,16 +99,68 @@ links and mermaid.live render the same. Diagram types without a direction (archi
 **Colours card (0.2.0)** (`src/lib/util/colors.ts`). Theme buttons (auto, plus the themes the
 editor does not manage: a managed one would be replaced, see `isManagedTheme`), a line colour
 (`themeVariables.lineColor` in the config; the dark-mode line brightening leaves it alone) and,
-for swimlane and flowchart diagrams, a colour per lane or subgraph (or all at once) and per node
-(chosen from a list or by clicking it in the diagram; the list comes from mermaid's own parse,
-`flowNodes` in `mermaid.ts`, leaving out lanes that a `style` statement also registers as vertices). Lane and node
-colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code — plain mermaid, so shared
-links keep them; the dark title colour keeps lane titles readable on the light fills in dark mode.
+for swimlane and flowchart diagrams, a colour per lane or subgraph (or all at once), and a colour
+per object — flowchart nodes, states, classes, ER entities, requirements and elements, blocks and
+C4 elements — chosen from a list or by clicking it in the diagram. The list comes from mermaid's
+own parse (`diagramObjects` in `mermaid.ts`), leaving out what is not an object (start and end
+points, notes, concurrency dividers, lanes that a `style` statement also registers as vertices).
+Colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code, or
+`UpdateElementStyle(id, $bgColor=…, $borderColor=…, $fontColor=…)` for C4, which has no `style`
+statement — plain mermaid, so shared links keep them; the dark text colour keeps titles readable
+on the light fills in dark mode. Sequence, mindmap, architecture, kanban and the chart types have
+no per-object colour syntax that works, so the card says so for them.
+Flowchart and swimlane arrows get a colour each too (`linkStyle <n> stroke:…`; `n` is the
+arrow's order in the code, so adding or removing arrows above it shifts the number — mermaid's own
+limitation). The colour buttons are the deployment's palette (`MERMAID_COLOR_PRESETS`) or the
+built-in eight, followed by the colours this browser picked freely ("any colour", kept in
+`localStorage` as `colorRecent`, latest eight).
+
+**Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
+lane, or a node (box, rounded box, decision diamond, circle or stadium) into a lane, optionally
+joined by an arrow from another node; the next node is joined from the one just added; "Connect"
+joins two existing nodes with an optional label. New statements go after the last statement and before trailing
+`style`/`linkStyle` lines, so existing arrow numbers do not change.
+For architecture diagrams (`ArchitectureAdd.svelte`): add a group (in another group), a service
+with a standard or any pack icon, in a group and joined from another service on a chosen side
+(right/below/left/above, with or without an arrowhead), or connect two existing services. Ids
+are `grpN`/`svcN`, lower case, since an architecture id may not start with a capital R, L, T or B.
+Every other type with a simple add syntax gets forms from `src/lib/util/addActions.ts`, one
+spec per type listing its actions and their fields (rendered by `AddActions.svelte`): sequence
+(participant, message), state (state joined from another, transition, incl. `[*]`), class (class,
+relation by kind), ER (entity, relationship by cardinality), mindmap (topic under a chosen parent,
+after its last descendant), gantt (task at the end of a section, on a date in the chart's
+`dateFormat` or straight after the previous task; section), pie (slice), kanban (card in a column,
+column), timeline (event in a period, period), C4 (element of a kind, optionally in a boundary
+and joined from another; relationship) and block (block, arrow). Lists come from mermaid's parse
+or, for indentation-based types, from the lines past front matter. The all-diagram check runs
+every action on every matching sample; it found front matter being read as the header (kanban,
+mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
+Quadrant, XY and the other chart types have no add forms.
+**Review of the 0.2.0 additions.** A pass over every feature above with adversarial names
+(`A: B "q" #1 [x] (y) {z} | & ; <b>`) in every diagram type found and fixed: a `;` splitting a
+state or sequence statement (now a comma), `#` + digits in a sequence name or message read by
+mermaid as an entity code (now `#35;`), an HTML tag typed into a kanban card blanking the board
+without an error (tags are dropped from every typed name), composite states offered for colouring
+though a `style` statement colours nothing on them, a C4 Deployment element not placed inside its
+`Deployment_Node`, gantt dates for charts in unix time, and a choice that the code no longer has
+(a deleted lane, group or participant still selected in a form) writing a broken statement. What
+is left as mermaid's own behaviour: `<`/`>` in a flowchart, class or ER label render as HTML
+(`x < 10` is fine), and `linkStyle` numbers shift when arrows are added above by hand.
+
+The lists behind the Add and Colours cards come from mermaid's parse on every change; results
+are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It
+cut the heaviest sample's all-diagram e2e from about 15 s to 9 s locally (it had begun timing out
+on CI).
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 
+**How to use (0.2.0)** (`src/lib/util/helpContent.ts`). A "How to use" button in the editor's
+header opens a short guide: the basics, starting a diagram, adding shapes, layout, colours, icons,
+export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the
+languages' sections and points in step. Update it when a tool changes.
+
 **Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
-column to a slim icon rail; each rail icon (code, config, layout, colours, icons, samples, actions)
+column to a slim icon rail; each rail icon (code, config, layout, add, colours, icons, samples, actions)
 expands the column and opens that section. The bar above the tool cards hides them so the
 editor fills the column (remembered per browser); the cards are stacked — layout, icons,
 samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
@@ -266,6 +318,13 @@ Two facts that cost time to rediscover:
   a render the app deliberately defers for large diagrams. `EditorPage.checkTextInView`
   carries a raised timeout for that reason; `checkTextNotInView` deliberately does not,
   because it asserts absence and returns as soon as the text is gone.
+- `EditorPage.start(url)` with a `#…` URL first goes to `about:blank`: the fixture has
+  already opened the editor, and changing only the hash could lose to the editor writing its
+  previous state back into the URL, leaving the default sample on screen.
+
+In Claude Code on the web, `.claude/hooks/session-start.sh` puts Node 24 first on PATH (the
+image defaults to Node 22, below `engines`), enables pnpm and installs the dependencies, so
+`pnpm` scripts and the husky pre-commit hook run there as they do locally.
 
 ## CodeQL
 

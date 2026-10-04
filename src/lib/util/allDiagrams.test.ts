@@ -1,11 +1,21 @@
 import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
-import { clearColors, colorAllGroups, listGroups, setStyleColor, swatches } from './colors';
+import { initialValues, specFor } from './addActions';
+import { colorAll, colorAllGroups, listGroups, setEdgeColor } from './colors';
+import {
+  addArchEdge,
+  addArchGroup,
+  addArchService,
+  addLane,
+  addNode,
+  canAdd,
+  isArchitecture
+} from './diagramEdit';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
 import { localSamples } from './localSamples';
-import { flowNodes } from './mermaid';
+import { architectureParts, diagramEdges, diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 
 // Every sample diagram the editor offers (mermaid's examples and this fork's
@@ -50,12 +60,85 @@ describe.each(samples)('$name', ({ code }) => {
     expect(colorAllGroups(colored, true)).toBe(code);
   });
 
-  it('keeps parsing, as the same type, with every node coloured', async () => {
-    const ids = (await flowNodes(code)).map(({ id }) => id);
-    if (ids.length === 0) return;
-    const colored = ids.reduce((result, id) => setStyleColor(result, id, swatches[1]), code);
+  it('keeps parsing, as the same type and with the same objects, with every object coloured', async () => {
+    const objects = await diagramObjects(code);
+    if (!objects) return;
+    const ids = objects.items.map(({ id }) => id);
+    const colored = colorAll(code, ids, objects.syntax);
     await expect(typeOf(colored)).resolves.toBe(await typeOf(code));
-    expect(clearColors(colored, ids)).toBe(clearColors(code, ids));
+    expect((await diagramObjects(colored))?.items.map(({ id }) => id)).toEqual(ids);
+    const cleared = colorAll(colored, ids, objects.syntax, true);
+    expect(cleared).toBe(colorAll(code, ids, objects.syntax, true));
+  });
+
+  it('keeps parsing, with the same arrows, with every arrow coloured', async () => {
+    const edges = await diagramEdges(code);
+    if (edges.length === 0) return;
+    const colored = edges.reduce(
+      (result, { index }) => setEdgeColor(result, index, '#d64545'),
+      code
+    );
+    await expect(typeOf(colored)).resolves.toBe(await typeOf(code));
+    expect((await diagramEdges(colored)).map(({ id }) => id)).toEqual(edges.map(({ id }) => id));
+  });
+
+  it('keeps parsing, as the same type, after adding a lane and a joined node', async () => {
+    if (!canAdd(code)) return;
+    const type = await typeOf(code);
+    const { code: withLane, id: lane } = addLane(code, 'New lane');
+    await expect(typeOf(withLane)).resolves.toBe(type);
+    const from = (await diagramObjects(code))?.items[0]?.id;
+    const before = await diagramEdges(code);
+    const { code: withNode, id } = addNode(withLane, { from, label: 'New node', lane });
+    await expect(typeOf(withNode)).resolves.toBe(type);
+    expect((await diagramObjects(withNode))?.items.map((item) => item.id)).toContain(id);
+    // Existing arrows keep their numbers.
+    expect((await diagramEdges(withNode)).slice(0, before.length).map((edge) => edge.id)).toEqual(
+      before.map((edge) => edge.id)
+    );
+  });
+
+  it('keeps parsing as architecture after adding a group, a joined service and a connection', async () => {
+    if (!isArchitecture(code)) return;
+    const { services } = await architectureParts(code);
+    const { code: withGroup, id: group } = addArchGroup(code, {
+      icon: 'cloud',
+      label: '新しいグループ'
+    });
+    const { code: withService, id } = addArchService(withGroup, {
+      arrow: true,
+      from: services[0]?.id,
+      group,
+      icon: 'logos:aws-lambda',
+      label: 'New (service)',
+      place: 'down'
+    });
+    const joined = services[1]
+      ? addArchEdge(withService, { from: services[1].id, place: 'right', to: id })
+      : withService;
+    await expect(typeOf(joined)).resolves.toBe('architecture');
+    expect((await architectureParts(joined)).services.map((service) => service.id)).toContain(id);
+  });
+
+  it('keeps parsing, as the same type, after each action of its Add card', async () => {
+    const spec = specFor(code);
+    if (!spec) return;
+    const type = await typeOf(code);
+    const parts = await spec.parts(code);
+    for (const action of spec.actions) {
+      // Every field filled: the first and last of each list, a name, a date, a number.
+      const values = initialValues(action);
+      for (const field of action.fields) {
+        const list = parts[field.source ?? ''] ?? [];
+        if (field.kind === 'item')
+          values[field.key] = (field.key === 'to' ? list.at(-1) : list[0])?.id ?? '';
+        if (field.kind === 'text') values[field.key] = 'Added: "x" [1]';
+        if (field.kind === 'date') values[field.key] = '2025-01-02';
+      }
+      const result = action.apply(code, values);
+      if ('error' in result) continue;
+      await expect(typeOf(result.code), `${spec.kind} ${action.id}`).resolves.toBe(type);
+    }
   });
 
   it('exports to HTML, an img tag and GitLab Markdown with the source intact', () => {

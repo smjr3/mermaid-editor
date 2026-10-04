@@ -5,6 +5,7 @@
  * colours are ordinary `style <id> fill:…,stroke:…` statements in the code.
  * Either way the result is plain mermaid, so a shared link keeps the colours.
  */
+import { headerLine } from './diagramEdit';
 import { isManagedTheme } from './mermaid';
 
 /** Themes offered besides "auto"; the managed ones (see isManagedTheme) are not, since the editor would replace them. */
@@ -129,8 +130,7 @@ export interface Group {
 /** The lanes of a swimlane diagram, or the subgraphs of a flowchart, that a style statement can name. */
 export const listGroups = (code: string): Group[] => {
   const { lines } = splitLines(code);
-  const header = lines.find((line) => line.trim() && !line.trim().startsWith('%%'));
-  if (!header || !groupHeader.test(header)) return [];
+  if (!groupHeader.test(headerLine(code))) return [];
   const groups: Group[] = [];
   for (const line of lines) {
     const match = subgraphPattern.exec(line);
@@ -198,13 +198,191 @@ export const setStyleColor = (code: string, id: string, swatch: Swatch | undefin
 };
 
 /** Every lane coloured with its own swatch, in order; or every lane colour removed. */
-export const colorAllGroups = (code: string, clear = false): string =>
+export const colorAllGroups = (code: string, clear = false, palette: Swatch[] = swatches): string =>
   listGroups(code).reduce(
     (result, { id }, index) =>
-      setStyleColor(result, id, clear ? undefined : swatches[index % swatches.length]),
+      setStyleColor(result, id, clear ? undefined : palette[index % palette.length]),
     code
   );
 
-/** The code with the colours of the given lanes or nodes removed. */
-export const clearColors = (code: string, ids: string[]): string =>
-  ids.reduce((result, id) => setStyleColor(result, id, undefined), code);
+export type ColorSyntax = 'style' | 'c4';
+
+const c4Pattern = (id: string) =>
+  new RegExp(`^(\\s*)UpdateElementStyle\\(\\s*${id.replaceAll('-', '\\-')}\\s*(?:,(.*))?\\)\\s*$`);
+// `$name="value"` settings, in order.
+const c4Settings = (text: string): [string, string][] =>
+  [...text.matchAll(/\$(\w+)\s*=\s*"([^"]*)"/g)].map(([, key, value]) => [key, value]);
+const c4Keys = new Set(['bgColor', 'borderColor', 'fontColor']);
+
+const getC4Color = (code: string, id: string): Swatch | undefined => {
+  const pattern = c4Pattern(id);
+  for (const line of splitLines(code).lines) {
+    const match = pattern.exec(line);
+    if (!match) continue;
+    const settings = Object.fromEntries(c4Settings(match[2] ?? ''));
+    if (settings.bgColor || settings.borderColor) {
+      return { fill: settings.bgColor ?? '', stroke: settings.borderColor ?? '' };
+    }
+  }
+  return undefined;
+};
+
+/** C4 has no `style` statement: colours go in `UpdateElementStyle(id, $bgColor=…, …)`. */
+const setC4Color = (code: string, id: string, swatch: Swatch | undefined): string => {
+  if (swatch && (!hexPattern.test(swatch.fill) || !hexPattern.test(swatch.stroke))) return code;
+  const { eol, lines } = splitLines(code);
+  const pattern = c4Pattern(id);
+  const index = lines.findIndex((line) => pattern.test(line));
+  const colors: [string, string][] = swatch
+    ? [
+        ['bgColor', swatch.fill],
+        ['borderColor', swatch.stroke],
+        ['fontColor', laneText]
+      ]
+    : [];
+  const statement = (indent: string, settings: [string, string][]) =>
+    `${indent}UpdateElementStyle(${[id, ...settings.map(([key, value]) => `$${key}="${value}"`)].join(', ')})`;
+  if (index === -1) {
+    if (!swatch) return code;
+    const last = lines.findLastIndex((line) => line.trim());
+    lines.splice(last + 1, 0, statement('  ', colors));
+    return lines.join(eol);
+  }
+  const [, indent = '  ', rest = ''] = pattern.exec(lines[index]) ?? [];
+  const next = [...colors, ...c4Settings(rest).filter(([key]) => !c4Keys.has(key))];
+  if (next.length === 0) {
+    lines.splice(index, 1);
+  } else {
+    lines[index] = statement(indent, next);
+  }
+  return lines.join(eol);
+};
+
+export const getObjectColor = (code: string, id: string, syntax: ColorSyntax) =>
+  syntax === 'c4' ? getC4Color(code, id) : getStyleColor(code, id);
+
+/** The code with the object's colours set, or removed when `swatch` is undefined. */
+export const setObjectColor = (
+  code: string,
+  id: string,
+  swatch: Swatch | undefined,
+  syntax: ColorSyntax
+): string => (syntax === 'c4' ? setC4Color(code, id, swatch) : setStyleColor(code, id, swatch));
+
+/** Every object coloured with its own swatch, in order; or every object's colour removed. */
+export const colorAll = (
+  code: string,
+  ids: string[],
+  syntax: ColorSyntax,
+  clear = false,
+  palette: Swatch[] = swatches
+): string =>
+  ids.reduce(
+    (result, id, index) =>
+      setObjectColor(result, id, clear ? undefined : palette[index % palette.length], syntax),
+    code
+  );
+
+/**
+ * The object behind a clicked SVG element, from its id: mermaid ids elements
+ * `<svg id>-<id>` (requirement, block, C4) or `<svg id>-<kind>-<id>-<n>`
+ * (flowchart, state, class, ER).
+ */
+export const pickedObject = (domId: string, svgId: string, ids: string[]): string | undefined => {
+  if (!domId.startsWith(`${svgId}-`)) return undefined;
+  const rest = domId.slice(svgId.length + 1);
+  const candidate = ids.includes(rest)
+    ? rest
+    : /^(?:flowchart|state|classId|entity)-(.+)-\d+$/.exec(rest)?.[1];
+  return candidate !== undefined && ids.includes(candidate) ? candidate : undefined;
+};
+
+// `linkStyle 1 …` or `linkStyle 0,2 …`; `linkStyle default` is left alone.
+const linkStylePattern = /^(\s*)linkStyle\s+(\d+(?:\s*,\s*\d+)*)\s+(.*?)\s*;?\s*$/;
+
+const parseLinkStyle = (line: string) => {
+  const match = linkStylePattern.exec(line);
+  if (!match) return undefined;
+  return {
+    indent: match[1],
+    indices: match[2].split(',').map((value) => Number(value.trim())),
+    properties: readStyle(match[3])
+  };
+};
+
+const linkStyleLine = (indent: string, indices: number[], properties: [string, string][]) =>
+  `${indent}linkStyle ${indices.join(',')} ${properties.map((pair) => pair.join(':')).join(',')}`;
+
+/** The stroke colour a linkStyle statement gives the edge, if any. */
+export const getEdgeColor = (code: string, index: number): string | undefined => {
+  for (const line of splitLines(code).lines) {
+    const parsed = parseLinkStyle(line);
+    const stroke = parsed?.properties.find(([key]) => key === 'stroke')?.[1];
+    if (parsed?.indices.includes(index) && stroke) return stroke;
+  }
+  return undefined;
+};
+
+/** The code with the edge's colour set, or removed when `color` is undefined. */
+export const setEdgeColor = (code: string, index: number, color: string | undefined): string => {
+  if (color !== undefined && !hexPattern.test(color)) return code;
+  const { eol, lines } = splitLines(code);
+  const at = lines.findIndex((line) => parseLinkStyle(line)?.indices.includes(index));
+  const parsed = at === -1 ? undefined : parseLinkStyle(lines[at]);
+  const others = (parsed?.properties ?? []).filter(([key]) => key !== 'stroke');
+  const next: [string, string][] = color === undefined ? others : [['stroke', color], ...others];
+  const own = next.length > 0 ? linkStyleLine(parsed?.indent ?? '  ', [index], next) : undefined;
+  if (!parsed) {
+    if (!own) return code;
+    const last = lines.findLastIndex((line) => line.trim());
+    lines.splice(last + 1, 0, own);
+  } else if (parsed.indices.length === 1) {
+    lines.splice(at, 1, ...(own ? [own] : []));
+  } else {
+    // Shared with other edges: they keep the statement, this edge gets its own.
+    const rest = parsed.indices.filter((value) => value !== index);
+    lines.splice(
+      at,
+      1,
+      linkStyleLine(parsed.indent, rest, parsed.properties),
+      ...(own ? [own] : [])
+    );
+  }
+  return lines.join(eol);
+};
+
+/**
+ * The edge behind a clicked SVG element: a path carries the edge id in
+ * `data-id`, a label is `edge-label-<start>-<end>-<id>`.
+ */
+export const pickedEdge = (
+  element: { dataId: string | null; id: string },
+  ids: string[]
+): number | undefined => {
+  const index = ids.findIndex(
+    (id) =>
+      element.dataId === id ||
+      (element.id.startsWith('edge-label-') && element.id.endsWith(`-${id}`))
+  );
+  return index === -1 ? undefined : index;
+};
+
+/**
+ * A deployment's own palette (`MERMAID_COLOR_PRESETS`: border colours as
+ * `#rrggbb`, separated by commas or spaces), each with a light fill to match.
+ * Undefined when the setting names no colour, so the built-in swatches apply.
+ */
+export const parsePresets = (value: string): Swatch[] | undefined => {
+  const colors = value
+    .split(/[\s,]+/)
+    .map((color) => color.trim().toLowerCase())
+    .filter((color) => hexPattern.test(color));
+  return colors.length > 0 ? colors.map((stroke) => ({ fill: tint(stroke), stroke })) : undefined;
+};
+
+/** The colours picked freely, latest first, without repeats, at most eight. */
+export const addRecent = (recent: string[], color: string): string[] => {
+  const value = color.toLowerCase();
+  if (!hexPattern.test(value)) return recent;
+  return [value, ...recent.filter((other) => other.toLowerCase() !== value)].slice(0, 8);
+};

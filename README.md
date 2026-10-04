@@ -44,7 +44,14 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 - **レイアウトの調整**。画面左の「レイアウト」で、図の向き（上→下・左→右・画面に合わせる）、配置方式（標準・ELK）、
   間隔（詰める・標準・広く）を切り替えられます。結果は図のコードと設定に書き込まれるので、共有リンクでも同じ形で表示されます
 - **配色**。画面左の「配色」で、テーマ、線の色、スイムレーン（フローチャートのグループ）ごとの色、
-  ノードごとの色（一覧か図のクリックで選択）をボタンで選べます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
+  ノード・状態・クラス・エンティティ・要件・ブロック・C4 要素ごとの色、矢印ごとの色（一覧か図のクリックで選択）を
+  選べます。用意された色のほか好きな色も選べ、選んだ色は次から色ボタンに並びます。色ボタンは `MERMAID_COLOR_PRESETS` で
+  会社の色などに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
+- **レーン・ノードの追加**。画面左の「追加」で、名前を入れてボタンを押すだけでレーンやノード（入れるレーンと
+  矢印の元、形も選べます）をコードに書き足せます。「つなぐ」で既にある2つのノードを矢印でつなげます。アーキテクチャ図では、グループ・サービス（アイコン、入れるグループ、
+  つなぐ元と置く位置を選択）・接続を追加できます。シーケンス図・状態図・クラス図・ER図・マインドマップ・ガントチャート・
+  円グラフ・カンバン・タイムライン・C4図・ブロック図でも、それぞれの要素（登場人物とメッセージ、タスクなど）を追加できます
+- **使い方の案内**。画面右上の「使い方」で、各機能の使い方をまとめた画面が開きます
 - **左側の表示切り替え**。エディタ上部のボタンで左側をアイコンだけの細い列にでき、アイコンを押すとその項目を開いて戻ります。
   ツールの上にある「ツールを隠す」で、下のツールを隠してコードを広く使えます
 - **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
@@ -193,7 +200,15 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 - A "Layout" card sets the direction (top-to-bottom, left-to-right, or fit to view), the layout
   engine (standard / ELK) and the spacing, written into the code and the config.
 - A "Colours" card picks the theme, the line colour and a colour per swimlane lane (or flowchart
-  subgraph) and per node (picked from a list or by clicking it); colours are written into the code as `style` statements.
+  subgraph) and per object — node, state, class, entity, requirement, block or C4 element (picked from a list or
+  by clicking it) and per arrow; any colour can be picked, and picked colours are offered again. The
+  colour buttons can be a company palette (`MERMAID_COLOR_PRESETS`).
+- An "Add" card adds a lane, or a node (box, decision, …) in a lane joined from another node, or an arrow
+  between two nodes, without writing the syntax;
+  for architecture diagrams it adds groups, services (icon, group, side to join on) and connections,
+  and sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams get
+  their own forms (participants and messages, tasks, topics, …).
+- A "How to use" button in the header opens a short guide to the tools.
 - The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
   searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.

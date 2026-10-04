@@ -107,7 +107,8 @@ gets a light grey background so its dark lines stay visible (`src/lib/util/darkL
 **Icon picker (0.2.0).** The "Icons" card searches the bundled, build-time, hosted and imported
 packs by name, shows the matches as icons, and inserts the clicked icon's `prefix:name` at the
 cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no editor can take it
-(mobile, config tab) the name is copied instead.
+(mobile, config tab) the name is copied instead. "Enlarge" opens a large dialog with names under
+the icons.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

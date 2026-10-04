@@ -91,4 +91,39 @@ test.describe('Icon picker', () => {
       .toContain('service fn(logos:aws-lambda)[Function]');
     await editPage.checkTextInView('Function');
   });
+
+  test('picks from the enlarged view, with names under the icons', async ({ editPage, page }) => {
+    await editPage.start(urlFor('architecture-beta\n  service db()[Database]'));
+    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.iconPickerEnlarge).click();
+    await page.getByTestId(TID.iconPickerLargePack).selectOption('tabler');
+    await page.getByTestId(TID.iconPickerLargeSearch).fill('database');
+    const results = page.getByTestId(TID.iconPickerLargeResults);
+    await expect(results.getByRole('button', { name: 'tabler:database', exact: true })).toBeVisible(
+      {
+        timeout: 30_000
+      }
+    );
+    await expect(results).toContainText('database');
+
+    await page.keyboard.press('Escape');
+    await editPage.editor.getByText('db()').click();
+    await page.keyboard.press('End');
+    for (let index = 0; index < '[Database]'.length + 1; index++) {
+      await page.keyboard.press('ArrowLeft');
+    }
+    await page.getByTestId(TID.iconPickerEnlarge).click();
+    await page
+      .getByTestId(TID.iconPickerLargeResults)
+      .getByRole('button', { name: 'tabler:database', exact: true })
+      .click();
+    await expect(page.getByTestId(TID.iconPickerLargeResults)).toBeHidden();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { code?: string }).code
+        )
+      )
+      .toContain('service db(tabler:database)[Database]');
+  });
 });

@@ -232,6 +232,7 @@ taking upstream's version and re-adding those lines.
 | `src/lib/components/LayoutControls.svelte`, `src/lib/util/layout.ts`                                                       | Added. The "Layout" card: direction (top-to-bottom, left-to-right, fit to view), layout engine (standard / ELK) and spacing, written into the code and the config                                                                                                                                                                                                                                                                                |
 | `src/lib/components/ColorControls.svelte`, `src/lib/util/colors.ts`                                                        | Added. The "Colours" card: theme buttons, line colour (config `themeVariables.lineColor`) lane/subgraph, object and arrow colours written into the code (`style`, `linkStyle`; `UpdateElementStyle` for C4), the deployment palette and freely picked recent colours                                                                                                                                                                             |
 | `src/lib/components/AddControls.svelte`, `src/lib/util/diagramEdit.ts`                                                     | Added. The "Add" card: a new lane, or a node in a lane joined by an arrow from another node, for flowcharts and swimlane diagrams; groups, services and connections for architecture diagrams (`ArchitectureAdd.svelte`); per-type forms for sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams (`AddActions.svelte`, `src/lib/util/addActions.ts`)                                                        |
+| `src/lib/components/HelpButton.svelte`, `src/lib/util/helpContent.ts`                                                      | Added. The "How to use" button in the header (Navbar) and its guide dialog; the guide text per language                                                                                                                                                                                                                                                                                                                                          |
 | `.claude/settings.json`, `.claude/hooks/session-start.sh`                                                                  | Added. Claude Code on the web: a SessionStart hook puts Node 24 first on PATH, enables pnpm and installs the dependencies                                                                                                                                                                                                                                                                                                                        |
 | `src/lib/components/EditorPaneToggle.svelte`, `EditorRail.svelte`, `ToolsBar.svelte`, `src/lib/util/editorFocus.svelte.ts` | Added. The editor header button collapses the column to an icon rail (each icon reopens its section); the bar above the tool cards hides them (per browser)                                                                                                                                                                                                                                                                                      |
 | `src/lib/components/IconPicker.svelte`, `src/lib/util/iconSearch.ts`, `src/lib/util/monacoInsert.ts`                       | Added. Search the icon packs in the "Icons" card and click an icon to insert its `prefix:name` at the cursor (or copy it when no editor can take it)                                                                                                                                                                                                                                                                                             |
@@ -513,6 +514,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/EditorPaneToggle.svelte`           |
 | Added    | `src/lib/components/EditorRail.svelte`                 |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
+| Added    | `src/lib/components/HelpButton.svelte`                 |
 | Modified | `src/lib/components/History/History.svelte`            |
 | Added    | `src/lib/components/HtmlExport.svelte`                 |
 | Added    | `src/lib/components/IconPacks.svelte`                  |
@@ -555,6 +557,8 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
+| Added    | `src/lib/util/helpContent.test.ts`                     |
+| Added    | `src/lib/util/helpContent.ts`                          |
 | Added    | `src/lib/util/htmlExport.test.ts`                      |
 | Added    | `src/lib/util/htmlExport.ts`                           |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
@@ -597,6 +601,7 @@ modifications as if they were local customizations.
 | Modified | `tests/embed.spec.ts`                                  |
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Added    | `tests/fixedLayout.spec.ts`                            |
+| Added    | `tests/help.spec.ts`                                   |
 | Modified | `tests/history.spec.ts`                                |
 | Added    | `tests/htmlExport.spec.ts`                             |
 | Added    | `tests/iconImport.spec.ts`                             |

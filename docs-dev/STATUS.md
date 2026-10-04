@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **171**.
+  every locally changed path — currently **175**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -137,6 +137,11 @@ mindmap, the flowchart/architecture Add and lane colours) and class labels with 
 Quadrant, XY and the other chart types have no add forms.
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
+
+**How to use (0.2.0)** (`src/lib/util/helpContent.ts`). A "How to use" button in the editor's
+header opens a short guide: the basics, starting a diagram, adding shapes, layout, colours, icons,
+export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the
+languages' sections and points in step. Update it when a tool changes.
 
 **Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
 column to a slim icon rail; each rail icon (code, config, layout, add, colours, icons, samples, actions)

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Card from '$/components/Card/Card.svelte';
+  import IconPicker from '$/components/IconPicker.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
@@ -95,6 +96,7 @@
   isStackable
   icon={{ component: IconsIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
+    <IconPicker />
     <p>
       {t('icons.bundled', { packs: bundled.join(', ') })}
       <a

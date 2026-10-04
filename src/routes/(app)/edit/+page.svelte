@@ -4,8 +4,8 @@
   import Card from '$/components/Card/Card.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
-  import EditorFocusButton from '$/components/EditorFocusButton.svelte';
   import EditorPaneToggle from '$/components/EditorPaneToggle.svelte';
+  import EditorRail, { type RailTarget } from '$/components/EditorRail.svelte';
   import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
   import History from '$/components/History/History.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
@@ -19,6 +19,8 @@
   import Preset from '$/components/Preset.svelte';
   import ResetConfigButton from '$/components/ResetConfigButton.svelte';
   import Share from '$/components/Share.svelte';
+  import { TID } from '$/constants';
+  import ToolsBar from '$/components/ToolsBar.svelte';
   import SyncRoughToolbar from '$/components/SyncRoughToolbar.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -35,7 +37,7 @@
   import { validatedState, updateCodeStore, urls } from '$/util/state.svelte';
   import { logEvent, logMermaidChartClick } from '$/util/stats';
   import { getContactSalesUrl, initHandler } from '$/util/util';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import CodeIcon from '~icons/custom/code';
   import HistoryIcon from '~icons/material-symbols/history';
   import GearIcon from '~icons/material-symbols/settings-outline-rounded';
@@ -79,14 +81,27 @@
   let isHistoryOpen = $state(false);
 
   let editorPane: Resizable.Pane | undefined;
-  // Local: the editor column can be collapsed from the navbar (EditorPaneToggle).
+  // Local: the editor column collapses to an icon rail (EditorPaneToggle, EditorRail).
   let isEditorCollapsed = $state(false);
-  const toggleEditorPane = () => {
-    if (editorPane?.isCollapsed()) {
-      editorPane.expand();
-    } else {
-      editorPane?.collapse();
+  const railCards: Partial<Record<RailTarget, string>> = {
+    actions: TID.actionsCard,
+    icons: TID.iconPacksCard,
+    layout: TID.layoutCard,
+    samples: TID.sampleDiagramsCard
+  };
+  const openFromRail = async (target: RailTarget) => {
+    editorPane?.expand();
+    if (target === 'code' || target === 'config') {
+      updateCodeStore({ editorMode: target });
+      return;
     }
+    const card = railCards[target];
+    if (!card) return;
+    editorFocus.value = false;
+    await tick();
+    const header = document.querySelector<HTMLElement>(`[data-testid="${card}"]`);
+    if (header && !header.closest('.card')?.classList.contains('isOpen')) header.click();
+    header?.scrollIntoView({ block: 'nearest' });
   };
   $effect(() => {
     if (isMobile) {
@@ -111,9 +126,6 @@
   {/snippet}
 
   <Navbar mobileToggle={isMobile ? mobileToggle : undefined}>
-    {#if !isMobile}
-      <EditorPaneToggle collapsed={isEditorCollapsed} ontoggle={toggleEditorPane} />
-    {/if}
     <Toggle
       bind:pressed={isHistoryOpen}
       size="sm"
@@ -151,15 +163,18 @@
   <div class="flex flex-1 flex-col overflow-hidden" bind:clientWidth={width}>
     <div
       class={[
-        'size-full',
+        'flex size-full',
         isMobile && ['w-[200%] duration-300', isViewMode && '-translate-x-1/2']
       ]}>
+      {#if isEditorCollapsed && !isMobile}
+        <EditorRail onopen={openFromRail} />
+      {/if}
       <!-- Local: on desktop the editor column and the view are fixed panes split by a
            visible divider, with flat sections instead of floating cards. -->
       <Resizable.PaneGroup
         direction="horizontal"
         autoSaveId="liveEditor"
-        class="gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
+        class="min-w-0 flex-1 gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
         <Resizable.Pane
           bind:this={editorPane}
           defaultSize={30}
@@ -179,14 +194,18 @@
               {#snippet actions()}
                 <ResetConfigButton />
                 <DiagramDocButton />
-                <EditorFocusButton />
+                {#if !isMobile}
+                  <EditorPaneToggle collapsed={false} ontoggle={() => editorPane?.collapse()} />
+                {/if}
               {/snippet}
               <Editor {isMobile} />
             </Card>
 
+            <ToolsBar />
             <div
               class={[
-                'group flex flex-wrap justify-between gap-4 sm:flex-col sm:flex-nowrap sm:gap-0',
+                // The tools scroll rather than squeeze the editor away.
+                'group flex flex-wrap justify-between gap-4 sm:max-h-[55%] sm:shrink-0 sm:flex-col sm:flex-nowrap sm:gap-0 sm:overflow-y-auto',
                 editorFocus.value && 'hidden'
               ]}>
               <LayoutControls />

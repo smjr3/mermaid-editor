@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { addDarkSiteBackdrop, darkLineColor, withVisibleLines } from './darkLines';
+import {
+  addDarkSiteBackdrop,
+  darkLineColor,
+  darkSiteBackdrop,
+  withVisibleLines
+} from './darkLines';
 
 describe('withVisibleLines', () => {
   it.each(['redux-dark-color', 'redux-dark', 'dark'])('brightens the lines of %s', (theme) => {
@@ -31,10 +36,10 @@ describe('addDarkSiteBackdrop', () => {
   const svg = '<svg id="d1" xmlns="http://www.w3.org/2000/svg"><g></g></svg>';
 
   it.each(['white', '#ffffff', '#fff', '#f4f4f4', 'rgb(250, 250, 250)'])(
-    'gives a light-themed diagram (%s) its own background while the site is dark',
+    'gives a light-themed diagram (%s) a light grey background while the site is dark',
     (background) => {
       expect(addDarkSiteBackdrop(svg, 'd1', background)).toBe(
-        `<svg id="d1" xmlns="http://www.w3.org/2000/svg"><style>.dark #d1{background-color:${background};--background:${background};}</style><g></g></svg>`
+        `<svg id="d1" xmlns="http://www.w3.org/2000/svg"><style>.dark #d1{background-color:${darkSiteBackdrop};--background:${darkSiteBackdrop};}</style><g></g></svg>`
       );
     }
   );

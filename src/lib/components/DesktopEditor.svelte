@@ -4,7 +4,9 @@
   import { urls, validatedState } from '$/util/state.svelte';
   import { logMermaidChartClick } from '$/util/stats';
   import { AIPromptViewZoneManager } from '$lib/util/AIPromptViewZoneManager';
+  import { registerEditorInserter } from '$lib/util/iconSearch';
   import { registerMermaidRename } from '$lib/util/mermaidRename';
+  import { insertAtCursor } from '$lib/util/monacoInsert';
   import { initEditor } from '$lib/util/monacoExtra';
   import { errorDebug } from '$lib/util/util';
   import { mode } from 'mode-watcher';
@@ -136,6 +138,10 @@
     editor = monaco.editor.create(divElement, editorOptions);
     aiPromptManager.setEditor(editor);
     decorationsCollection = editor.createDecorationsCollection([]);
+    // Local: lets the icon picker insert `prefix:name` at the cursor.
+    const unregisterInserter = registerEditorInserter(
+      (text) => !!editor && insertAtCursor(editor, mermaidModel, text)
+    );
 
     editor.onMouseDown((e) => {
       const isGutter = e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN;
@@ -185,6 +191,7 @@
     renderAIPromptGutterGlyphIcon();
 
     return () => {
+      unregisterInserter();
       resizeObserver.disconnect();
       jsonModel.dispose();
       mermaidModel.dispose();

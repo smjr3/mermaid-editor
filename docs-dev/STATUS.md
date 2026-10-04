@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **142**.
+  every locally changed path — currently **147**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -96,12 +96,18 @@ ER and requirement diagrams, the `swimlane-beta` header) and the rest into the c
 links and mermaid.live render the same. Diagram types without a direction (architecture, sequence,
 …) get an explanation instead of the buttons.
 
-**Editor column and dark mode (0.2.0).** The navbar button collapses the whole editor column (or
-drag the divider); the button in the editor header switches a per-browser "focus on code" mode
-that hides the tool cards so the editor fills the column. The tool cards are stacked: layout,
-icons, samples, actions. In dark mode, the dark themes render with near-white lines unless the
-user set `lineColor`, and a diagram in a light theme gets its own light background so its dark
-lines stay visible (`src/lib/util/darkLines.ts`).
+**Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
+column to a slim icon rail; each rail icon (code, config, layout, icons, samples, actions)
+expands the column and opens that section. The bar above the tool cards hides them so the
+editor fills the column (remembered per browser); the cards are stacked — layout, icons,
+samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
+render with near-white lines unless the user set `lineColor`, and a diagram in a light theme
+gets a light grey background so its dark lines stay visible (`src/lib/util/darkLines.ts`).
+
+**Icon picker (0.2.0).** The "Icons" card searches the bundled, build-time, hosted and imported
+packs by name, shows the matches as icons, and inserts the clicked icon's `prefix:name` at the
+cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no editor can take it
+(mobile, config tab) the name is copied instead.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

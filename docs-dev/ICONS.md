@@ -31,8 +31,10 @@ chunks — fetched from this site the first time a diagram uses the prefix, neve
 | `simple-icons`     | CC0-1.0    | Brand logos of ~3,000 products and companies (`simple-icons:microsoftazure`)     |
 | `devicon`          | MIT        | Languages, databases, middleware, cloud (`devicon:microsoftsqlserver`)           |
 
-The last three are logo sets. Names are the Iconify names; the "Icons" card in the editor links
-to the Iconify browser to look them up. All packs together add about 36 MB of chunks to the
+The last three are logo sets. Names are the Iconify names. The "Icons" card has a picker: type part of a name (`server`,
+`aws lambda`), optionally pick a pack, and click an icon to insert its `prefix:name` at the cursor
+in the code (it is copied instead on mobile or on the config tab). The card also links to the
+Iconify browser, an external site. All packs together add about 36 MB of chunks to the
 built site (17 MB of it the logo sets); a page loads only the packs its diagram names.
 
 ### Logos, trademarks and redistribution

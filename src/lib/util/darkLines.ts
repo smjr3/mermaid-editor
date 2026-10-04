@@ -42,12 +42,15 @@ const isLight = (color: string): boolean => {
  * Local: a diagram in a light theme (one the user picked, or one rendered
  * before the managed theme caught up) draws dark lines that vanish on the
  * dark site. While the site is dark (`.dark` on the page), give such a diagram
- * its theme's own light background. Exported files carry no `.dark` ancestor,
+ * a light grey background. Exported files carry no `.dark` ancestor,
  * so they are unaffected.
  */
+// A soft grey rather than the theme's white: white glares on the dark site.
+export const darkSiteBackdrop = '#cfd4da';
+
 export const addDarkSiteBackdrop = (svg: string, id: string, background: string): string => {
   if (!isLight(background)) return svg;
   // --background also feeds the label outline (architectureLabels.ts).
-  const style = `<style>.dark #${id}{background-color:${background.trim()};--background:${background.trim()};}</style>`;
+  const style = `<style>.dark #${id}{background-color:${darkSiteBackdrop};--background:${darkSiteBackdrop};}</style>`;
   return svg.replace(/<svg\b[^>]*>/, (open) => open + style);
 };

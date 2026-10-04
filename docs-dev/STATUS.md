@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **132**.
+  every locally changed path — currently **136**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -86,6 +86,15 @@ packs (`MERMAID_ICON_PACKS`) and a user can import SVG files or an Iconify JSON 
 mermaid inserts it. A "System Architecture" sample entry shows a web system, an office network,
 a generic cloud and an AWS example with logos. The packs add about 36 MB to the built site (17 MB
 of it the logo sets); a page loads only the ones its diagram names.
+
+**Layout card (0.2.0)** (`src/lib/util/layout.ts`). mermaid has no aspect-ratio setting, so the
+"Layout" card adjusts what shapes a diagram instead: its direction (top-to-bottom, left-to-right,
+or "fit to view", which renders both and keeps the one that shows larger in the view, preferring
+left-to-right when they are close), the layout engine (standard or ELK) and the node/rank
+spacing. The direction is written into the code (`flowchart LR`, `direction LR` for state, class,
+ER and requirement diagrams, the `swimlane-beta` header) and the rest into the config, so shared
+links and mermaid.live render the same. Diagram types without a direction (architecture, sequence,
+…) get an explanation instead of the buttons.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

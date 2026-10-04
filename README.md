@@ -41,6 +41,8 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   （`MERMAID_FETCH_ICON_PACKS`）。リポジトリと npm パッケージにはアイコンのデータを含めていません。
   画面左の「アイコン」から SVG ファイルを取り込むこともできます（`docs-dev/ICONS.md`）。
   「サンプル図」の「System Architecture」に例があります
+- **レイアウトの調整**。画面左の「レイアウト」で、図の向き（上→下・左→右・画面に合わせる）、配置方式（標準・ELK）、
+  間隔（詰める・標準・広く）を切り替えられます。結果は図のコードと設定に書き込まれるので、共有リンクでも同じ形で表示されます
 - **名前の一括変更**。エディタでノード名などにカーソルを置いて F2 を押すと、使われている箇所をまとめて
   書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
   Ctrl+Shift+L、Alt+クリックでの複数カーソルも使えます
@@ -176,6 +178,8 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   Azure, Google Cloud) are imported from the vendor at build time
   (`MERMAID_FETCH_ICON_PACKS`), so neither the repository nor the npm package carries icon data
   (`docs-dev/ICONS.md`).
+- A "Layout" card sets the direction (top-to-bottom, left-to-right, or fit to view), the layout
+  engine (standard / ELK) and the spacing, written into the code and the config.
 - F2 renames a node id everywhere it is used; the config tab can reset a broken config; on
   desktop the editor and the view are fixed panes split by a draggable divider.
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are

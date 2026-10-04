@@ -213,23 +213,24 @@ Fork features that touch upstream files. Each upstream file gains a few lines th
 into a fork-local file; the logic lives in the fork-local file, so a conflict is resolved by
 taking upstream's version and re-adding those lines.
 
-| Path                                                | Local change                                                                                                                                                                                                                          |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/components/DesktopEditor.svelte`           | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language                                                                                                                               |
-| `src/lib/util/mermaidRename.ts`                     | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider                                                                                                                                 |
-| `src/lib/util/state.svelte.ts`                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                          |
-| `src/lib/components/ResetConfigButton.svelte`       | Added. The "Reset config" button on the config tab                                                                                                                                                                                    |
-| `src/lib/util/mermaid.ts`                           | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`                                                                                          |
-| `src/lib/util/architectureLabels.ts`                | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                          |
-| `src/lib/util/iconPacks.ts`                         | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                               |
-| `src/lib/util/customIcons.ts`, `customIconStore.ts` | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                        |
-| `src/lib/components/IconPacks.svelte`               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                          |
-| `src/lib/util/env.ts`, `.env`                       | Add `iconPacks` / `MERMAID_ICON_PACKS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                  |
-| `scripts/svg-to-iconify.js`                         | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                        |
-| `scripts/fetch-icon-packs.js`                       | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                            |
-| `.gitignore`                                        | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                       |
-| `src/routes/(app)/edit/+page.svelte`                | Renders `<ResetConfigButton>` in the editor card and `<IconPacks>` beside the samples, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
-| `package.json`                                      | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, simple-icons, devicon) and `dompurify` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`               |
+| Path                                                                 | Local change                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/components/DesktopEditor.svelte`                            | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language                                                                                                                                                      |
+| `src/lib/util/mermaidRename.ts`                                      | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider                                                                                                                                                        |
+| `src/lib/util/state.svelte.ts`                                       | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                                                 |
+| `src/lib/components/ResetConfigButton.svelte`                        | Added. The "Reset config" button on the config tab                                                                                                                                                                                                           |
+| `src/lib/util/mermaid.ts`                                            | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`                                                                                                                 |
+| `src/lib/util/architectureLabels.ts`                                 | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                                                 |
+| `src/lib/util/iconPacks.ts`                                          | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                                                      |
+| `src/lib/util/customIcons.ts`, `customIconStore.ts`                  | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                               |
+| `src/lib/components/IconPacks.svelte`                                | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                                                 |
+| `src/lib/util/env.ts`, `.env`                                        | Add `iconPacks` / `MERMAID_ICON_PACKS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                                         |
+| `scripts/svg-to-iconify.js`                                          | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                                               |
+| `scripts/fetch-icon-packs.js`                                        | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                                                   |
+| `.gitignore`                                                         | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                                              |
+| `src/lib/components/LayoutControls.svelte`, `src/lib/util/layout.ts` | Added. The "Layout" card: direction (top-to-bottom, left-to-right, fit to view), layout engine (standard / ELK) and spacing, written into the code and the config                                                                                            |
+| `src/routes/(app)/edit/+page.svelte`                                 | Renders `<ResetConfigButton>` in the editor card and `<LayoutControls>` and `<IconPacks>` beside the samples, and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections in the editor and history columns |
+| `package.json`                                                       | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, simple-icons, devicon) and `dompurify` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`                                      |
 
 The layout change is classes only. On a conflict in the pane markup, take upstream's
 structure and re-apply the `sm:` classes and `withHandle`; `tests/fixedLayout.spec.ts`
@@ -499,6 +500,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/IconPacks.svelte`                  |
 | Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
+| Added    | `src/lib/components/LayoutControls.svelte`             |
 | Modified | `src/lib/components/Navbar.svelte`                     |
 | Modified | `src/lib/components/PanZoomToolbar.svelte`             |
 | Modified | `src/lib/components/Preset.svelte`                     |
@@ -525,6 +527,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
 | Added    | `src/lib/util/iconPacks.ts`                            |
+| Added    | `src/lib/util/layout.test.ts`                          |
+| Added    | `src/lib/util/layout.ts`                               |
 | Added    | `src/lib/util/localSamples.test.ts`                    |
 | Added    | `src/lib/util/localSamples.ts`                         |
 | Modified | `src/lib/util/mermaid.ts`                              |
@@ -554,6 +558,7 @@ modifications as if they were local customizations.
 | Modified | `tests/history.spec.ts`                                |
 | Added    | `tests/iconImport.spec.ts`                             |
 | Added    | `tests/iconPacks.spec.ts`                              |
+| Added    | `tests/layout.spec.ts`                                 |
 | Modified | `tests/loadSite.spec.ts`                               |
 | Added    | `tests/locale.spec.ts`                                 |
 | Added    | `tests/renameSymbol.spec.ts`                           |

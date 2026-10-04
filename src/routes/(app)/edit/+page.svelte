@@ -7,6 +7,7 @@
   import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
   import History from '$/components/History/History.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
+  import LayoutControls from '$/components/LayoutControls.svelte';
   import { startAutoSave } from '$/components/History/historyState.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
   import MermaidChartIcon from '$/components/MermaidChartIcon.svelte';
@@ -162,6 +163,7 @@
 
             <div class="group flex flex-wrap justify-between gap-4 sm:gap-0">
               <Preset />
+              <LayoutControls />
               <IconPacks />
               <Actions />
             </div>

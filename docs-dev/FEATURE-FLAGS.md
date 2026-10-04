@@ -13,11 +13,14 @@ variables in GitLab) — see `docs-dev/GITLAB-PAGES.md` for the deployment side.
 | Variable                                 | Default here | Upstream              | What it controls                                                                                                                                                                                    |
 | ---------------------------------------- | ------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MERMAID_IS_ENABLED_MERMAID_CHART_LINKS` | `false`      | `true`                | Promotional banners, "Save to Mermaid Chart", "Contact sales", Edit in Playground, Plugins, the Mermaid Chart menu entry, the AI Repair button beside syntax errors, and the domain-migration modal |
-| `MERMAID_IS_ENABLED_AI_FEATURES`         | `false`      | — (added here)        | The in-editor AI prompt popup and the Visual Edit button                                                                                                                                            |
+| `MERMAID_IS_ENABLED_AI_FEATURES`         | `false`      | — (added here)        | The in-editor AI prompt popup, its gutter button, and the Visual Edit button                                                                                                                        |
 | `MERMAID_IS_ENABLED_COMMUNITY_LINKS`     | `false`      | — (added here)        | The GitHub dropdown in the navbar and the Discord entry in the main menu                                                                                                                            |
 | `MERMAID_HIDE_PRIVACY_POLICY`            | `true`       | unset                 | The privacy-policy link in the version toolbar                                                                                                                                                      |
 | `MERMAID_RENDERER_URL`                   | empty        | `https://mermaid.ink` | Server-rendered PNG/SVG links and the "Copy Markdown" field                                                                                                                                         |
 | `MERMAID_KROKI_RENDERER_URL`             | empty        | `https://kroki.io`    | The Kroki export button                                                                                                                                                                             |
+| `MERMAID_BUNDLE_LOGOS`                   | `true`       | — (added here)        | `false` leaves the logo icon sets (`logos`, `simple-icons`, `devicon`) out of the build and strips brand icons from the generic sets (`docs-dev/ICONS.md`)                                          |
+| `MERMAID_FETCH_ICON_PACKS`               | empty        | — (added here)        | Build time only: `prefix=zip` pairs of vendor icon sets that `pnpm build` downloads and bundles (`scripts/fetch-icon-packs.js`, `docs-dev/ICONS.md`)                                                |
+| `MERMAID_ICON_PACKS`                     | empty        | — (added here)        | Extra icon packs the deployment hosts, as `prefix=url` pairs; fetched from those URLs on first use. Empty means bundled packs only (`docs-dev/ICONS.md`)                                            |
 | `MERMAID_ANALYTICS_URL`                  | empty        | empty                 | Usage analytics. Already empty upstream, so nothing is sent either way                                                                                                                              |
 
 `plausible-tracker` (the analytics client behind `MERMAID_ANALYTICS_URL`) is deprecated on
@@ -56,7 +59,7 @@ ones.
 
 ## Remaining external calls
 
-Two are left, and neither carries diagram content:
+Two are left, and neither carries diagram content (plus what the icon features add, below):
 
 - `mermaid.js.org/schemas/config.schema.json` — fetched by the Monaco editor for
   config autocompletion (`src/lib/components/DesktopEditor.svelte`). On a closed
@@ -65,6 +68,13 @@ Two are left, and neither carries diagram content:
   Mermaid.js and Documentation menu links, so changing it affects both.
 - `api.github.com` — only when someone actually uses **Load Gist**. It is a feature
   the user invokes, not a background call, so it is left enabled.
+- The **Icons** card's "Browse icons" link opens `icon-sets.iconify.design` in a new tab
+  when clicked. It is a plain link and sends nothing about the diagram.
+- `MERMAID_FETCH_ICON_PACKS` archives are downloaded by the build machine, not by the site; the
+  icons are bundled, so viewers fetch them from the site.
+- `MERMAID_ICON_PACKS` URLs, when a deployment sets them — fetched the first time a diagram
+  names that prefix. They are the deployment's own URLs (typically next to the site), empty by
+  default; the bundled packs never leave the site (`docs-dev/ICONS.md`).
 
 ## Tests
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { darkVariantOf, getDefaultTheme, getSampleDiagrams, isManagedTheme } from './mermaid';
+import {
+  darkVariantOf,
+  flowNodes,
+  getDefaultTheme,
+  getSampleDiagrams,
+  isManagedTheme
+} from './mermaid';
 
 describe('getDefaultTheme', () => {
   it.each([
@@ -61,5 +67,36 @@ describe('getSampleDiagrams', () => {
     for (const [name, examples] of Object.entries(samples)) {
       expect(examples[0].isDefault, `${name} should have its default example first`).toBe(true);
     }
+  });
+});
+
+describe('flowNodes', () => {
+  it('lists the nodes of a flowchart with plain-text labels', async () => {
+    const code =
+      'flowchart TD\n  A[Start here] --> B{Ok?}\n  B -->|y| C@{ shape: rounded, label: "Done **now**" }\n' +
+      '  subgraph g1 [G]\n    D\n  end\n  E["<b>Bold</b>  text"]';
+    expect(await flowNodes(code)).toEqual([
+      { id: 'A', label: 'Start here' },
+      { id: 'B', label: 'Ok?' },
+      { id: 'C', label: 'Done now' },
+      { id: 'D', label: 'D' },
+      { id: 'E', label: 'Bold text' }
+    ]);
+  });
+
+  it('lists the nodes of a swimlane diagram, not its lanes', async () => {
+    expect(await flowNodes('swimlane-beta LR\n  subgraph L1\n    A[One]\n  end')).toEqual([
+      { id: 'A', label: 'One' }
+    ]);
+  });
+
+  it('leaves out a lane that a style statement names', async () => {
+    const code = 'swimlane-beta LR\n  subgraph L1\n    A[One]\n  end\n  style L1 fill:#dde9fb';
+    expect(await flowNodes(code)).toEqual([{ id: 'A', label: 'One' }]);
+  });
+
+  it('is empty for other diagrams and for code that does not parse', async () => {
+    expect(await flowNodes('sequenceDiagram\n  A->>B: hi')).toEqual([]);
+    expect(await flowNodes('flowchart TD\n  A -->')).toEqual([]);
   });
 });

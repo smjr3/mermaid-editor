@@ -20,16 +20,17 @@ outside the redistributed output.
 
 ## License summary
 
-Production dependency tree at the snapshot described below: **227 packages**.
+Production dependency tree at the snapshot described below: **225 packages**.
 
 | Count | License                                    |
 | ----: | ------------------------------------------ |
-|   158 | MIT                                        |
+|   155 | MIT                                        |
 |    33 | ISC                                        |
-|    18 | Apache-2.0                                 |
+|    19 | Apache-2.0                                 |
 |     9 | BSD-3-Clause                               |
-|     2 | (MPL-2.0 OR Apache-2.0)                    |
+|     1 | (MPL-2.0 OR Apache-2.0)                    |
 |     1 | OFL-1.1                                    |
+|     1 | CC0-1.0                                    |
 |     1 | EPL-2.0                                    |
 |     1 | (MIT AND Zlib)                             |
 |     1 | Unlicense                                  |
@@ -79,6 +80,26 @@ emitted into the built static site. Its fonts are licensed under OFL-1.1, its co
 its icons under CC BY 4.0. The icons' CC BY 4.0 terms require attribution. Font Awesome Free is
 Copyright Fonticons, Inc.; see <https://fontawesome.com/license/free>.
 
+### Iconify icon packs — MIT, ISC, Apache-2.0 and CC0-1.0
+
+Nine icon sets are bundled as lazily loaded chunks so diagrams can name icons such as
+`tabler:server` or `logos:aws-lambda` (`src/lib/util/iconPacks.ts`, `docs-dev/ICONS.md`):
+`@iconify-json/tabler` (Tabler Icons, MIT), `@iconify-json/lucide` (Lucide, ISC),
+`@iconify-json/carbon` (IBM Carbon, Apache-2.0), `@iconify-json/fluent` (Microsoft Fluent UI
+System Icons, MIT), `@iconify-json/flat-color-icons` (Icons8, MIT), `@iconify-json/mdi` (Material
+Design Icons, Apache-2.0; a development dependency, as upstream has it), `@iconify-json/logos`
+(SVG Logos, CC0-1.0; also a development dependency), `@iconify-json/simple-icons` (Simple Icons,
+CC0-1.0) and `@iconify-json/devicon` (Devicon, MIT). The MIT, ISC and Apache-2.0 licenses require
+their notice to travel with the redistributed icons, which `NOTICE` and this file do; CC0 asks
+nothing.
+
+These licenses cover the artwork. The logos in `logos`, `simple-icons` and `devicon` (and the few
+brand icons in the generic sets) show **third-party trademarks**, which remain their owners'. A
+deployment that may not host them builds with `MERMAID_BUNDLE_LOGOS=false`, which leaves the logo
+sets out and removes the brand icons when a generic pack loads. Vendor architecture icon sets
+(AWS, Azure, Google Cloud) are not dependencies at all: a deployment imports them at build time
+from the vendor (`MERMAID_FETCH_ICON_PACKS`), under the vendor's terms.
+
 ### `khroma` — MIT (reported as "Unknown")
 
 `khroma` ships **no `license` field in its `package.json`**, so license-scanning tools report it as
@@ -106,13 +127,12 @@ redistribution solely from the dependency section in `package.json`.
 
 The counts above are a **point-in-time snapshot**, taken against:
 
-- upstream commit `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (upstream version 2.0.67), merged
-  on 2026-09-27
-- this repository's `pnpm-lock.yaml` after that merge and the patch/minor dependency refresh
-  that followed it (2026-09-27), including its `pnpm.overrides`. That refresh took
-  `@zenuml/core` to 3.50.1, which no longer pulls Tailwind 3 tooling into the production tree —
-  hence the drop from 320 packages. `dompurify` appears twice (3.4.15 under Monaco,
-  3.4.16 under mermaid and ZenUML); the Apache-2.0 election applies to both.
+- upstream commit `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (upstream version 2.0.67), merged
+  on 2026-10-03
+- this repository's `pnpm-lock.yaml` after that merge, the move to mermaid 12.1.0, the
+  nine bundled icon packs and the direct `dompurify` dependency (2026-10-03), including its `pnpm.overrides`. mermaid 12.1.0's chevrotain 13
+  no longer pulls in `lodash-es@4.17.23`, and Monaco's `dompurify` is overridden to 3.4.16, so a
+  single `dompurify` (3.4.16) is installed; the Apache-2.0 election applies to it.
 
 Dependency versions — and therefore this table — will change whenever the lockfile changes.
 **Regenerate this file after any dependency update or upstream merge**, and re-check the

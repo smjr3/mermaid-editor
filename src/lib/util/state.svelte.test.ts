@@ -7,6 +7,7 @@ import {
   inputState,
   loadState,
   replaceInputState,
+  resetConfig,
   toggleDarkTheme,
   updateCode,
   updateCodeStore,
@@ -219,5 +220,16 @@ describe('clearDefaultThemeConfig migration', () => {
     updateConfig('{ "theme": ');
     expect(() => clearDefaultThemeConfig()).not.toThrow();
     expect(inputState.mermaid).toBe('{ "theme": ');
+  });
+});
+
+describe('resetConfig', () => {
+  it('replaces a broken config with the default and keeps the diagram', () => {
+    updateCode('graph TD\n keep-me');
+    updateConfig('{ "theme": "no-such-theme", "flowchart": ');
+    resetConfig();
+    expect(JSON.parse(inputState.mermaid)).toEqual({});
+    expect(inputState.code).toBe('graph TD\n keep-me');
+    expect(JSON.parse(readStoredState().mermaid)).toEqual({});
   });
 });

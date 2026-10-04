@@ -3,9 +3,19 @@ import tidyTreeLayouts from '@mermaid-js/layout-tidy-tree';
 import zenuml from '@mermaid-js/mermaid-zenuml';
 import type { MermaidConfig, RenderResult } from 'mermaid';
 import mermaid from 'mermaid';
+import { addLabelHalo } from './architectureLabels';
+import { remoteIconPacks } from './customIcons';
+import { addDarkSiteBackdrop, withVisibleLines } from './darkLines';
+import { registerStoredIconPacks } from './customIconStore';
+import { env } from './env';
+import { iconPacks } from './iconPacks';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
+// Local: bundled icon packs (AWS, Azure, Google Cloud, …), the ones this deployment hosts,
+// and the ones the user imported; see iconPacks.ts and customIcons.ts.
+mermaid.registerIconPacks([...iconPacks, ...remoteIconPacks(env.iconPacks)]);
+const storedIconPacks = registerStoredIconPacks();
 const init = mermaid.registerExternalDiagrams([zenuml]);
 
 export const render = async (
@@ -14,14 +24,58 @@ export const render = async (
   id: string
 ): Promise<RenderResult> => {
   await init;
+  await storedIconPacks;
 
   // Should be able to call this multiple times without any issues.
-  mermaid.initialize(config);
-  return await mermaid.render(id, code);
+  // Local: brighter lines in dark themes (darkLines.ts).
+  mermaid.initialize(withVisibleLines(config));
+  const result = await mermaid.render(id, code);
+  // Local: keep architecture edges from running through service labels (architectureLabels.ts),
+  // and keep a light-themed diagram readable on the dark site (darkLines.ts).
+  const themeBackground = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
+  const background = typeof themeBackground === 'string' ? themeBackground : '';
+  return {
+    ...result,
+    svg: addDarkSiteBackdrop(addLabelHalo(result.svg, id, background), id, background)
+  };
 };
 
 export const parse = async (code: string) => {
   return await mermaid.parse(code);
+};
+
+const flowTypes = new Set(['flowchart', 'flowchart-elk', 'flowchart-v2', 'swimlane']);
+
+// A node label as plain text: no HTML tags, markdown emphasis or code marks.
+const plainLabel = (text: string): string =>
+  text
+    .replaceAll(/<[^>]*>/g, ' ')
+    .replaceAll(/[*_`]+/g, '')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Local: the nodes of a flowchart or swimlane diagram that a `style` statement
+ * can name, with plain-text labels, for the Colours card. Empty for other
+ * diagram types and for code that does not parse.
+ */
+export const flowNodes = async (code: string): Promise<{ id: string; label: string }[]> => {
+  try {
+    await mermaid.parse(code);
+    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+    const db = diagram.db as {
+      getSubGraphs?: () => { id: string }[];
+      getVertices?: () => Map<string, { id: string; text?: string }>;
+    };
+    if (!flowTypes.has(diagram.type) || !db.getVertices) return [];
+    // A `style` statement naming a lane or subgraph also registers it as a vertex.
+    const groups = new Set((db.getSubGraphs?.() ?? []).map(({ id }) => id));
+    return [...db.getVertices().values()]
+      .filter(({ id }) => /^[\w-]+$/.test(id) && !groups.has(id))
+      .map(({ id, text }) => ({ id, label: plainLabel(text ?? '') || id }));
+  } catch {
+    return [];
+  }
 };
 
 /**
@@ -86,24 +140,6 @@ for (const theme of [
 /** Whether the editor may replace this theme (a missing theme counts as managed). */
 export const isManagedTheme = (theme: unknown): boolean =>
   theme === undefined || (typeof theme === 'string' && managedThemes.has(theme));
-
-export const standardizeDiagramType = (diagramType: string) => {
-  switch (diagramType) {
-    case 'class':
-    case 'classDiagram': {
-      return 'classDiagram';
-    }
-    case 'graph':
-    case 'flowchart':
-    case 'flowchart-elk':
-    case 'flowchart-v2': {
-      return 'flowchart';
-    }
-    default: {
-      return diagramType;
-    }
-  }
-};
 
 type DiagramDefinition = (typeof diagramData)[number];
 

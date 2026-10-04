@@ -3,13 +3,13 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-09-27**, including the release dependency refresh (PR #27), the
-Monaco DOMPurify override (PR #28), and the upstream merge that brought mermaid 12.
+Accurate as of **2026-10-03**, including the 0.2.0 work: the upstream merge of `a70ed76`,
+mermaid 12.1.0, and the editor, layout and icon features below.
 
 ## What this is
 
 `@smjr3/mermaid-editor` is a fork of [mermaid-live-editor](https://github.com/mermaid-js/mermaid-live-editor),
-imported at upstream **2.0.67** and last merged from upstream commit `e5e2ca4` (2026-09-22), customised for internal organisational use.
+imported at upstream **2.0.67** and last merged from upstream commit `a70ed76` (2026-09-30), customised for internal organisational use.
 
 The standing constraints, which shape almost every decision recorded here:
 
@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **106**.
+  every locally changed path — currently **161**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -31,6 +31,7 @@ The standing constraints, which shape almost every decision recorded here:
 | `FEATURE-FLAGS.md`            | Which surfaces are switched off for organisational use and by which variable                                                             |
 | `CROSS-PLATFORM.md`           | Why the build runs on Windows as well as Linux, and what is reasoned rather than executed                                                |
 | `THEME.md`                    | The accent palette per mode with measured contrast, and why the dark `--accent-foreground` must not be reverted                          |
+| `ICONS.md`                    | The bundled icon packs and logos, build-time vendor sets, hosted and user-imported packs, redistribution, and sanitising                 |
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | The GitLab Pages deployment path                                                                                                         |
@@ -64,12 +65,98 @@ nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge fro
 gains a local `Swimlane` entry (`src/lib/util/localSamples.ts`) with two examples; a `@smoke`
 e2e test renders it in Chromium and Firefox. See `UPSTREAM.md`.
 
+**Editor and layout (0.2.0).** F2 renames a node, participant or service id everywhere it is
+used, leaving labels and messages alone (`mermaidRename.ts`). The config tab has a "Reset
+config" button for a config that leaves every render failing. With AI features off, the
+editor no longer shows the AI gutter button, which used to open an empty zone that could not be
+closed. On desktop the editor column and the view are fixed panes with a visible divider instead
+of floating cards. Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
+
+**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from nine bundled OSS
+Iconify sets, loaded lazily from the site, never a CDN: six generic ones (`tabler`, `lucide`,
+`carbon`, `fluent`, `flat-color-icons`, `mdi`) and three logo sets (`logos`, `simple-icons`,
+`devicon`). They are npm dependencies, so the repository and the npm package carry no icon data.
+`MERMAID_BUNDLE_LOGOS=false` builds without the logo sets and strips the brand icons from the
+generic ones, for sites that may not host trademarks. Vendor architecture icon sets (AWS, Azure,
+Google Cloud) are not OSS, so they are imported from the vendor at build time
+(`MERMAID_FETCH_ICON_PACKS`, `scripts/fetch-icon-packs.js`, output gitignored and kept out of
+the npm package); verified with Google Cloud's archive (216 icons). A deployment can also host
+packs (`MERMAID_ICON_PACKS`) and a user can import SVG files or an Iconify JSON file from the
+"Icons" card (kept in IndexedDB). Every non-bundled icon is sanitised with DOMPurify before
+mermaid inserts it. A "System Architecture" sample entry shows a web system, an office network,
+a generic cloud and an AWS example with logos. The packs add about 36 MB to the built site (17 MB
+of it the logo sets); a page loads only the ones its diagram names.
+
+**Layout card (0.2.0)** (`src/lib/util/layout.ts`). mermaid has no aspect-ratio setting, so the
+"Layout" card adjusts what shapes a diagram instead: its direction (top-to-bottom, left-to-right,
+or "fit to view", which renders both and keeps the one that shows larger in the view, preferring
+left-to-right when they are close), the layout engine (standard or ELK) and the node/rank
+spacing. The direction is written into the code (`flowchart LR`, `direction LR` for state, class,
+ER and requirement diagrams, the `swimlane-beta` header) and the rest into the config, so shared
+links and mermaid.live render the same. Diagram types without a direction (architecture, sequence,
+…) get an explanation instead of the buttons.
+
+**Colours card (0.2.0)** (`src/lib/util/colors.ts`). Theme buttons (auto, plus the themes the
+editor does not manage: a managed one would be replaced, see `isManagedTheme`), a line colour
+(`themeVariables.lineColor` in the config; the dark-mode line brightening leaves it alone) and,
+for swimlane and flowchart diagrams, a colour per lane or subgraph (or all at once) and per node
+(chosen from a list or by clicking it in the diagram; the list comes from mermaid's own parse,
+`flowNodes` in `mermaid.ts`, leaving out lanes that a `style` statement also registers as vertices). Lane and node
+colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code — plain mermaid, so shared
+links keep them; the dark title colour keeps lane titles readable on the light fills in dark mode.
+Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
+has no id a `style` statement could name.
+
+**Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
+column to a slim icon rail; each rail icon (code, config, layout, colours, icons, samples, actions)
+expands the column and opens that section. The bar above the tool cards hides them so the
+editor fills the column (remembered per browser); the cards are stacked — layout, icons,
+samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
+render with near-white lines unless the user set `lineColor`, and a diagram in a light theme
+gets a light grey background so its dark lines stay visible (`src/lib/util/darkLines.ts`).
+
+**Icon picker (0.2.0).** The "Icons" card searches the bundled, build-time, hosted and imported
+packs by name, shows the matches as icons, and inserts the clicked icon's `prefix:name` at the
+cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no editor can take it
+(mobile, config tab) the name is copied instead. "Enlarge" opens a large dialog with names under
+the icons. mermaid's five built-in icons are listed first and marked standard (they render in
+GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
+
+**HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
+as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,
+nothing loaded from the network) or copies it as one self-contained `<img>` tag (SVG data URI) to
+paste into wikis, intranet pages or e-mail, where mermaid or this editor's icon packs are
+unavailable. "Export for GitLab" saves the diagram as an SVG and copies Markdown that shows it,
+links back to the editor and keeps the source in a collapsed plain-text block (not a mermaid
+block, which GitLab would render without the icons). Known limit: Font Awesome icons (`fa:`) are
+not embedded in the HTML export.
+
+**0.2.0 release check.** Every 0.2.0 feature was re-checked end to end (`tests/releaseAudit.spec.ts`
+covers the cross-feature cases: icons on the view and embed pages, mobile, the config tab, PNG
+export with logos, state diagrams in the layout card, the English UI and failure paths), against
+the dev server and a production build, plus a logos-off build, a build-time vendor import, and an
+install and build from the npm tarball. Bugs found and fixed: the layout card misread code with
+Windows line endings (which Monaco can write); the icon picker could stay on "loading" when the
+search was cleared mid-load; HTML/GitLab exports of a broken diagram failed silently; inserting a
+standard icon into a non-architecture diagram gave no warning; the AWS logo sample stayed in a
+logos-off build. Firefox is covered only by CI's `@smoke` run.
+
+**All-diagram check.** Every sample diagram (all of `@mermaid-js/examples`, the local samples and
+ZenUML) runs through every feature: parse, layout direction, HTML/GitLab source round trip and F2
+rename (`src/lib/util/allDiagrams.test.ts`), plus light and dark rendering, the layout card, the
+HTML, GitLab, SVG and PNG exports and the view and embed pages in a browser
+(`tests/allDiagrams.spec.ts`, about 6 minutes). Bugs found and fixed: PNG export silently did
+nothing, and SVG files were not valid XML, for diagrams with `&nbsp;` (block arrows, event
+modeling) or kanban ticket links — the SVG now goes through `toXmlSvg` (`htmlExport.ts`); F2
+rename could produce broken code (renaming to a keyword, a number, or an architecture id starting
+with R/L/T/B), so a rename is now applied only if the diagram still parses as the same type.
+
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **111 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **130 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -91,12 +178,14 @@ in English on purpose — they are keys into `@mermaid-js/examples`.
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
 tracker — that is where this project tracks findings, and the owner chose to keep it that way.
 
-**The `lodash-es` override.** mermaid 12 depends on `chevrotain ~11.1.2`, which (with two of its
-`@chevrotain/*` packages) pins `lodash-es@4.17.23` exactly — vulnerable to a high and a moderate
-advisory. `lodash-es@<4.18.0` is overridden to the patched `4.18.1` — twice, because the package is
-built with both package managers: `pnpm.overrides` for this repository and a top-level npm
-`overrides` for the published tarball, which consumers install with `npm install`; see
-`QUALITY-AUDIT-2026-08-31.md`. Remove it once mermaid's chevrotain depends on `lodash-es >=4.18.0`.
+**The `dompurify` override.** `monaco-editor` 0.57.0 (the latest) pins `dompurify@3.4.15`
+exactly, which a low advisory (GHSA-p98j-92pf-mc4p) covers. Monaco's copy is overridden to the
+patched `3.4.16` — twice, because the package is built with both package managers:
+`pnpm.overrides` (`monaco-editor>dompurify`) for this repository and a nested npm `overrides`
+for the published tarball, which consumers install with `npm install`; see
+`QUALITY-AUDIT-2026-08-31.md`. Remove both once a Monaco release depends on `dompurify >=3.4.16`.
+(The earlier `lodash-es` override is gone: mermaid 12.1.0 moved to chevrotain 13, which no longer
+pulls in the vulnerable `lodash-es`.)
 
 **TypeScript held at 6.x.** TypeScript 7 is the native (Go) compiler: its `typescript` package no
 longer exposes the compiler API (only a version export and `unstable/*` entry points), and
@@ -155,7 +244,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 165 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 230 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

@@ -26,12 +26,40 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 この派生版で加えたもの:
 
 - **日本語 UI**（標準）と、画面上で切り替えられる英語 UI。選んだ言語はブラウザに保存されます
-- **スイムレーン図**（`swimlane-beta`）。描画には `mermaid` `^12.0.0` を使っています。スイムレーン図は
+- **スイムレーン図**（`swimlane-beta`）。描画には `mermaid` `^12.1.0` を使っています。スイムレーン図は
   mermaid 11.16.0 で追加され、mermaid 12 でもキーワードは変わらないため、mermaid 11 で保存した図も
   そのまま描画できます。上流のサンプル集にはないスイムレーンの例を「サンプル図」に加えています
 - **外部サービスへの送信を既定で無効化**。Mermaid Chart へのリンク、AI 機能、コミュニティリンク、
   図のソースを第三者の URL に載せるレンダラー連携を、環境変数でオフにしています
   （`docs-dev/FEATURE-FLAGS.md`）。PNG / SVG の書き出しはブラウザ内で描画するので使えます
+- **システム構成図のアイコン**。サーバー・データベース・ルーター・スイッチ・ファイアウォール・
+  ロードバランサー・端末などのアイコンを `prefix:name` の形で図に使えます（例: `service fw(tabler:firewall-check)[FW]`）。
+  OSS のアイコン集 9 種（tabler、lucide、carbon、fluent、flat-color-icons、mdi と、ロゴ集の logos、
+  simple-icons、devicon）をサイトに同梱し、外部からは取得しません（例: `logos:aws-lambda`）。
+  ロゴを置けない環境では `MERMAID_BUNDLE_LOGOS=false` でロゴを外してビルドできます。
+  AWS・Azure・Google Cloud の公式アイコンは、ビルド時に各社のサイトから取り込めます
+  （`MERMAID_FETCH_ICON_PACKS`）。リポジトリと npm パッケージにはアイコンのデータを含めていません。
+  画面左の「アイコン」から SVG ファイルを取り込むこともできます（`docs-dev/ICONS.md`）。
+  「サンプル図」の「System Architecture」に例があります
+- **レイアウトの調整**。画面左の「レイアウト」で、図の向き（上→下・左→右・画面に合わせる）、配置方式（標準・ELK）、
+  間隔（詰める・標準・広く）を切り替えられます。結果は図のコードと設定に書き込まれるので、共有リンクでも同じ形で表示されます
+- **配色**。画面左の「配色」で、テーマ、線の色、スイムレーン（フローチャートのグループ）ごとの色、
+  ノードごとの色（一覧か図のクリックで選択）をボタンで選べます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
+- **左側の表示切り替え**。エディタ上部のボタンで左側をアイコンだけの細い列にでき、アイコンを押すとその項目を開いて戻ります。
+  ツールの上にある「ツールを隠す」で、下のツールを隠してコードを広く使えます
+- **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
+  `logos:aws-lambda` のような名前が入ります。「大きく表示」で広い画面から名前付きで選ぶこともできます。
+  緑の印は Mermaid 標準のアイコン（GitLab などでも表示）、橙の印は拡張アイコン（このエディタだけで表示）です
+- **HTML で書き出し**。「操作」の「HTML」で、図を入れた HTML ファイルを保存できます（ネットなしで開け、元のコードも入ります）。
+  「HTMLタグをコピー」は、Wiki やメールなどに貼れる `<img>` タグ1つを作ります。どちらもアイコンごと図に入っています
+- **GitLab 用に書き出し**。「操作」の「GitLab 用に書き出し」で、図を SVG で保存し、それを表示する Markdown（編集リンクと元のコード付き）を
+  コピーします。SVG をリポジトリのページと同じ場所に置き、Markdown を貼り付けると、アイコン入りの図がそのまま表示されます
+- **ダークモードの見やすさ**。ダークモードでは図の線を明るく描き、明るいテーマの図にはライトグレーの下地を付けます
+- **名前の一括変更**。エディタでノード名などにカーソルを置いて F2 を押すと、使われている箇所をまとめて
+  書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
+  Ctrl+Shift+L、Alt+クリックでの複数カーソルも使えます
+- **設定のリセット**。「設定」タブの「設定をリセット」で、壊れた設定を初期状態に戻せます（図のコードは残ります）
+- デスクトップでは、エディタと図の表示を固定の 2 画面に分け、境目をドラッグして幅を変えられます
 - ライト / ダークそれぞれで WCAG AA を満たすアクセントカラー（`docs-dev/THEME.md`）
 - Windows でもビルドできるスクリプト構成（`docs-dev/CROSS-PLATFORM.md`）
 
@@ -83,6 +111,8 @@ npm run build
 | `MERMAID_LOCALE`                                      | `ja`    | UI の標準言語（`ja` / `en`）。閲覧者が画面で選んだ言語はこれより優先されます |
 | `MERMAID_IS_ENABLED_*`                                | `false` | Mermaid Chart リンク、AI 機能、コミュニティリンクの有効化                    |
 | `MERMAID_RENDERER_URL` / `MERMAID_KROKI_RENDERER_URL` | 空      | 外部レンダラー（mermaid.ink / Kroki）の URL。空なら連携を無効化              |
+| `MERMAID_BUNDLE_LOGOS`                                | `true`  | `false` でロゴのアイコン集を同梱しない                                       |
+| `MERMAID_FETCH_ICON_PACKS`                            | 空      | ビルド時に取り込む各社アイコン（`gcp=<zip の URL>` など）                    |
 
 全体は `docs-dev/FEATURE-FLAGS.md` を参照してください。
 
@@ -118,9 +148,9 @@ MIT ライセンスです。上流の MIT ライセンスを継承していま�
 - **リポジトリ:** <https://github.com/mermaid-js/mermaid-live-editor>
 - **著作権:** Copyright (c) 2020 - 2023 Knut Sveidqvist
 - **ライセンス:** MIT
-- **取り込み元コミット:** `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc`（ブランチ `master`）
+- **取り込み元コミット:** `a70ed761a7d040a38f71bf13d999e387f4bf68ca`（ブランチ `master`）
 - **上流バージョン:** 2.0.67
-- **取り込み日:** 2026-09-27（初回取り込みは 2026-08-25、`990dd241f2acf39c10db9da94464cbb833150426`）
+- **取り込み日:** 2026-10-03（初回取り込みは 2026-08-25、`990dd241f2acf39c10db9da94464cbb833150426`）
 
 上流は git タグを付けていないため、取り込み元はコミット SHA で識別しています。
 
@@ -152,14 +182,32 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 > <https://mermaid.live>. Report problems with this distribution in this repository's issue
 > tracker, not upstream's.
 
-- Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.0.0` —
+- Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.1.0` —
   including swimlane diagrams (`swimlane-beta`), with swimlane examples in the sample panel.
+- Nine bundled OSS icon packs for system diagrams, logo sets included (e.g.
+  `service fw(tabler:firewall-check)[FW]`, `logos:aws-lambda`), loaded from the site, never a
+  CDN; `MERMAID_BUNDLE_LOGOS=false` leaves the logos out. Vendor architecture icon sets (AWS,
+  Azure, Google Cloud) are imported from the vendor at build time
+  (`MERMAID_FETCH_ICON_PACKS`), so neither the repository nor the npm package carries icon data
+  (`docs-dev/ICONS.md`).
+- A "Layout" card sets the direction (top-to-bottom, left-to-right, or fit to view), the layout
+  engine (standard / ELK) and the spacing, written into the code and the config.
+- A "Colours" card picks the theme, the line colour and a colour per swimlane lane (or flowchart
+  subgraph) and per node (picked from a list or by clicking it); colours are written into the code as `style` statements.
+- The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
+  searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
+  drawn brighter and light-themed diagrams get a light grey background.
+- HTML export: a standalone page (works offline, keeps the source) or one self-contained `<img>`
+  tag to paste anywhere, icons included. "Export for GitLab" saves an SVG and copies Markdown that
+  shows it, links back to the editor and keeps the source.
+- F2 renames a node id everywhere it is used; the config tab can reset a broken config; on
+  desktop the editor and the view are fixed panes split by a draggable divider.
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are
   switched off by default (`docs-dev/FEATURE-FLAGS.md`); local PNG/SVG export still works.
 - Requires Node.js >= 24.16.0; use pnpm for development (`pnpm install`, `pnpm dev`,
   `pnpm build` → `docs/`). See `docs-dev/PACKAGING.md` to build from the npm package.
 - MIT licensed, inheriting upstream's MIT license (Copyright (c) 2020 - 2023 Knut Sveidqvist);
   see `LICENSE`, `NOTICE` and `THIRD-PARTY-LICENSES.md`. Imported from upstream commit
-  `e5e2ca41e96c93b30abd4a60c0f2be727019e8bc` (version 2.0.67); the procedure for following
+  `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (version 2.0.67); the procedure for following
   upstream is in `docs-dev/UPSTREAM.md`, and upstream's own README is kept in
   [`README.upstream.md`](README.upstream.md).

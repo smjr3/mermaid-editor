@@ -4,8 +4,13 @@
   import Card from '$/components/Card/Card.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
+  import EditorPaneToggle from '$/components/EditorPaneToggle.svelte';
+  import EditorRail, { type RailTarget } from '$/components/EditorRail.svelte';
   import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
   import History from '$/components/History/History.svelte';
+  import IconPacks from '$/components/IconPacks.svelte';
+  import ColorControls from '$/components/ColorControls.svelte';
+  import LayoutControls from '$/components/LayoutControls.svelte';
   import { startAutoSave } from '$/components/History/historyState.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
   import MermaidChartIcon from '$/components/MermaidChartIcon.svelte';
@@ -13,7 +18,10 @@
   import Navbar from '$/components/Navbar.svelte';
   import PanZoomToolbar from '$/components/PanZoomToolbar.svelte';
   import Preset from '$/components/Preset.svelte';
+  import ResetConfigButton from '$/components/ResetConfigButton.svelte';
   import Share from '$/components/Share.svelte';
+  import { TID } from '$/constants';
+  import ToolsBar from '$/components/ToolsBar.svelte';
   import SyncRoughToolbar from '$/components/SyncRoughToolbar.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -24,12 +32,13 @@
   import View from '$/components/View.svelte';
   import type { EditorMode, Tab } from '$/types';
   import { shouldShowEditorChooser } from '$/util/migration/domainMigration';
+  import { editorFocus } from '$/util/editorFocus.svelte';
   import { PanZoomState } from '$/util/panZoom';
   import { env } from '$/util/env';
   import { validatedState, updateCodeStore, urls } from '$/util/state.svelte';
   import { logEvent, logMermaidChartClick } from '$/util/stats';
   import { getContactSalesUrl, initHandler } from '$/util/util';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import CodeIcon from '~icons/custom/code';
   import HistoryIcon from '~icons/material-symbols/history';
   import GearIcon from '~icons/material-symbols/settings-outline-rounded';
@@ -73,6 +82,29 @@
   let isHistoryOpen = $state(false);
 
   let editorPane: Resizable.Pane | undefined;
+  // Local: the editor column collapses to an icon rail (EditorPaneToggle, EditorRail).
+  let isEditorCollapsed = $state(false);
+  const railCards: Partial<Record<RailTarget, string>> = {
+    actions: TID.actionsCard,
+    colors: TID.colorsCard,
+    icons: TID.iconPacksCard,
+    layout: TID.layoutCard,
+    samples: TID.sampleDiagramsCard
+  };
+  const openFromRail = async (target: RailTarget) => {
+    editorPane?.expand();
+    if (target === 'code' || target === 'config') {
+      updateCodeStore({ editorMode: target });
+      return;
+    }
+    const card = railCards[target];
+    if (!card) return;
+    editorFocus.value = false;
+    await tick();
+    const header = document.querySelector<HTMLElement>(`[data-testid="${card}"]`);
+    if (header && !header.closest('.card')?.classList.contains('isOpen')) header.click();
+    header?.scrollIntoView({ block: 'nearest' });
+  };
   $effect(() => {
     if (isMobile) {
       editorPane?.resize(50);
@@ -133,15 +165,27 @@
   <div class="flex flex-1 flex-col overflow-hidden" bind:clientWidth={width}>
     <div
       class={[
-        'size-full',
+        'flex size-full',
         isMobile && ['w-[200%] duration-300', isViewMode && '-translate-x-1/2']
       ]}>
+      {#if isEditorCollapsed && !isMobile}
+        <EditorRail onopen={openFromRail} />
+      {/if}
+      <!-- Local: on desktop the editor column and the view are fixed panes split by a
+           visible divider, with flat sections instead of floating cards. -->
       <Resizable.PaneGroup
         direction="horizontal"
         autoSaveId="liveEditor"
-        class="gap-4 p-2 pt-0 sm:gap-0 sm:p-6 sm:pt-0">
-        <Resizable.Pane bind:this={editorPane} defaultSize={30} minSize={15}>
-          <div class="flex h-full flex-col gap-4 sm:gap-6">
+        class="min-w-0 flex-1 gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
+        <Resizable.Pane
+          bind:this={editorPane}
+          defaultSize={30}
+          minSize={15}
+          collapsible={!isMobile}
+          collapsedSize={0}
+          onResize={(size) => (isEditorCollapsed = !isMobile && size === 0)}>
+          <div
+            class="flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border">
             <Card
               onselect={tabSelectHandler}
               isOpen
@@ -149,18 +193,31 @@
               activeTabID={validatedState.current.editorMode}
               isClosable={false}>
               {#snippet actions()}
+                <ResetConfigButton />
                 <DiagramDocButton />
+                {#if !isMobile}
+                  <EditorPaneToggle collapsed={false} ontoggle={() => editorPane?.collapse()} />
+                {/if}
               {/snippet}
               <Editor {isMobile} />
             </Card>
 
-            <div class="group flex flex-wrap justify-between gap-4 sm:gap-6">
+            <ToolsBar />
+            <div
+              class={[
+                // The tools scroll rather than squeeze the editor away.
+                'group flex flex-wrap justify-between gap-4 sm:max-h-[55%] sm:shrink-0 sm:flex-col sm:flex-nowrap sm:gap-0 sm:overflow-y-auto',
+                editorFocus.value && 'hidden'
+              ]}>
+              <LayoutControls />
+              <ColorControls />
+              <IconPacks />
               <Preset />
               <Actions />
             </div>
           </div>
         </Resizable.Pane>
-        <Resizable.Handle class="mr-1 hidden opacity-0 sm:block" />
+        <Resizable.Handle withHandle class="hidden sm:flex" />
         <Resizable.Pane minSize={15} class="relative flex h-full flex-1 flex-col overflow-hidden">
           <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
           {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
@@ -173,8 +230,11 @@
           <div class="absolute bottom-0 left-0 sm:left-5"><SyncRoughToolbar /></div>
         </Resizable.Pane>
         {#if isHistoryOpen}
-          <Resizable.Handle class="ml-1 hidden opacity-0 sm:block" />
-          <Resizable.Pane minSize={15} defaultSize={30} class="hidden h-full grow flex-col sm:flex">
+          <Resizable.Handle withHandle class="hidden sm:flex" />
+          <Resizable.Pane
+            minSize={15}
+            defaultSize={30}
+            class="hidden h-full grow flex-col sm:flex sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0">
             <History />
           </Resizable.Pane>
         {/if}

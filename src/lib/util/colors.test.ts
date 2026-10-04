@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   clearColors,
+  colorAll,
   colorAllGroups,
+  getObjectColor,
   getStyleColor,
   getLineColor,
   getTheme,
   laneText,
   listGroups,
+  pickedObject,
+  setObjectColor,
   setStyleColor,
   setLineColor,
   setTheme,
@@ -169,5 +173,71 @@ describe('clearColors', () => {
     const blue = swatches[0];
     const code = setStyleColor(setStyleColor(lanes, 'A', blue), 'shop', blue);
     expect(clearColors(code, ['A', 'C'])).toBe(setStyleColor(lanes, 'shop', blue));
+  });
+});
+
+const c4 = 'C4Context\n  Person(a, "Alice")\n  System(s, "Sys")';
+
+describe('getObjectColor / setObjectColor (C4)', () => {
+  const blue = swatches[0];
+
+  it('adds an UpdateElementStyle statement', () => {
+    const code = setObjectColor(c4, 'a', blue, 'c4');
+    expect(code).toBe(
+      `${c4}\n  UpdateElementStyle(a, $bgColor="${blue.fill}", $borderColor="${blue.stroke}", $fontColor="${laneText}")`
+    );
+    expect(getObjectColor(code, 'a', 'c4')).toEqual({ fill: blue.fill, stroke: blue.stroke });
+    expect(getObjectColor(code, 's', 'c4')).toBeUndefined();
+  });
+
+  it('replaces the colours of an existing statement, keeping its other settings', () => {
+    const code = `${c4}\n  UpdateElementStyle(a, $bgColor="grey", $shape="RoundedBoxShape()")`;
+    expect(setObjectColor(code, 'a', blue, 'c4')).toBe(
+      `${c4}\n  UpdateElementStyle(a, $bgColor="${blue.fill}", $borderColor="${blue.stroke}", $fontColor="${laneText}", $shape="RoundedBoxShape()")`
+    );
+    expect(setObjectColor(code, 'a', undefined, 'c4')).toBe(
+      `${c4}\n  UpdateElementStyle(a, $shape="RoundedBoxShape()")`
+    );
+  });
+
+  it('removes the statement once nothing is left', () => {
+    expect(setObjectColor(setObjectColor(c4, 'a', blue, 'c4'), 'a', undefined, 'c4')).toBe(c4);
+  });
+
+  it('uses style statements for every other diagram', () => {
+    expect(setObjectColor(lanes, 'shop', blue, 'style')).toBe(setStyleColor(lanes, 'shop', blue));
+    expect(getObjectColor(setStyleColor(lanes, 'A', blue), 'A', 'style')).toEqual({
+      fill: blue.fill,
+      stroke: blue.stroke
+    });
+  });
+});
+
+describe('colorAll', () => {
+  it('gives each object its own swatch, and clears them again', () => {
+    const colored = colorAll(c4, ['a', 's'], 'c4');
+    expect(getObjectColor(colored, 'a', 'c4')?.stroke).toBe(swatches[0].stroke);
+    expect(getObjectColor(colored, 's', 'c4')?.stroke).toBe(swatches[1].stroke);
+    expect(colorAll(colored, ['a', 's'], 'c4', true)).toBe(c4);
+  });
+});
+
+describe('pickedObject', () => {
+  const ids = ['A', 'Idle', 'Animal', 'CUSTOMER', 'r1', 'a', 'my-node'];
+  it.each([
+    ['graph-2-flowchart-A-0', 'A'],
+    ['graph-2-flowchart-my-node-3', 'my-node'],
+    ['graph-2-state-Idle-1', 'Idle'],
+    ['graph-4-classId-Animal-34', 'Animal'],
+    ['graph-6-entity-CUSTOMER-0', 'CUSTOMER'],
+    ['graph-8-r1', 'r1'],
+    ['graph-14-a', 'a']
+  ])('finds the object behind the element %s', (domId, id) => {
+    expect(pickedObject(domId, domId.split('-').slice(0, 2).join('-'), ids)).toBe(id);
+  });
+
+  it('finds nothing for other elements', () => {
+    expect(pickedObject('graph-2-flowchart-Z-0', 'graph-2', ids)).toBeUndefined();
+    expect(pickedObject('other-a', 'graph-2', ids)).toBeUndefined();
   });
 });

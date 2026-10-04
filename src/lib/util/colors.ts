@@ -208,3 +208,89 @@ export const colorAllGroups = (code: string, clear = false): string =>
 /** The code with the colours of the given lanes or nodes removed. */
 export const clearColors = (code: string, ids: string[]): string =>
   ids.reduce((result, id) => setStyleColor(result, id, undefined), code);
+
+export type ColorSyntax = 'style' | 'c4';
+
+const c4Pattern = (id: string) =>
+  new RegExp(`^(\\s*)UpdateElementStyle\\(\\s*${id.replaceAll('-', '\\-')}\\s*(?:,(.*))?\\)\\s*$`);
+// `$name="value"` settings, in order.
+const c4Settings = (text: string): [string, string][] =>
+  [...text.matchAll(/\$(\w+)\s*=\s*"([^"]*)"/g)].map(([, key, value]) => [key, value]);
+const c4Keys = new Set(['bgColor', 'borderColor', 'fontColor']);
+
+const getC4Color = (code: string, id: string): Swatch | undefined => {
+  const pattern = c4Pattern(id);
+  for (const line of splitLines(code).lines) {
+    const match = pattern.exec(line);
+    if (!match) continue;
+    const settings = Object.fromEntries(c4Settings(match[2] ?? ''));
+    if (settings.bgColor || settings.borderColor) {
+      return { fill: settings.bgColor ?? '', stroke: settings.borderColor ?? '' };
+    }
+  }
+  return undefined;
+};
+
+/** C4 has no `style` statement: colours go in `UpdateElementStyle(id, $bgColor=…, …)`. */
+const setC4Color = (code: string, id: string, swatch: Swatch | undefined): string => {
+  if (swatch && (!hexPattern.test(swatch.fill) || !hexPattern.test(swatch.stroke))) return code;
+  const { eol, lines } = splitLines(code);
+  const pattern = c4Pattern(id);
+  const index = lines.findIndex((line) => pattern.test(line));
+  const colors: [string, string][] = swatch
+    ? [
+        ['bgColor', swatch.fill],
+        ['borderColor', swatch.stroke],
+        ['fontColor', laneText]
+      ]
+    : [];
+  const statement = (indent: string, settings: [string, string][]) =>
+    `${indent}UpdateElementStyle(${[id, ...settings.map(([key, value]) => `$${key}="${value}"`)].join(', ')})`;
+  if (index === -1) {
+    if (!swatch) return code;
+    const last = lines.findLastIndex((line) => line.trim());
+    lines.splice(last + 1, 0, statement('  ', colors));
+    return lines.join(eol);
+  }
+  const [, indent = '  ', rest = ''] = pattern.exec(lines[index]) ?? [];
+  const next = [...colors, ...c4Settings(rest).filter(([key]) => !c4Keys.has(key))];
+  if (next.length === 0) {
+    lines.splice(index, 1);
+  } else {
+    lines[index] = statement(indent, next);
+  }
+  return lines.join(eol);
+};
+
+export const getObjectColor = (code: string, id: string, syntax: ColorSyntax) =>
+  syntax === 'c4' ? getC4Color(code, id) : getStyleColor(code, id);
+
+/** The code with the object's colours set, or removed when `swatch` is undefined. */
+export const setObjectColor = (
+  code: string,
+  id: string,
+  swatch: Swatch | undefined,
+  syntax: ColorSyntax
+): string => (syntax === 'c4' ? setC4Color(code, id, swatch) : setStyleColor(code, id, swatch));
+
+/** Every object coloured with its own swatch, in order; or every object's colour removed. */
+export const colorAll = (code: string, ids: string[], syntax: ColorSyntax, clear = false): string =>
+  ids.reduce(
+    (result, id, index) =>
+      setObjectColor(result, id, clear ? undefined : swatches[index % swatches.length], syntax),
+    code
+  );
+
+/**
+ * The object behind a clicked SVG element, from its id: mermaid ids elements
+ * `<svg id>-<id>` (requirement, block, C4) or `<svg id>-<kind>-<id>-<n>`
+ * (flowchart, state, class, ER).
+ */
+export const pickedObject = (domId: string, svgId: string, ids: string[]): string | undefined => {
+  if (!domId.startsWith(`${svgId}-`)) return undefined;
+  const rest = domId.slice(svgId.length + 1);
+  const candidate = ids.includes(rest)
+    ? rest
+    : /^(?:flowchart|state|classId|entity)-(.+)-\d+$/.exec(rest)?.[1];
+  return candidate !== undefined && ids.includes(candidate) ? candidate : undefined;
+};

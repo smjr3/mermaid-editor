@@ -44,7 +44,7 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 - **レイアウトの調整**。画面左の「レイアウト」で、図の向き（上→下・左→右・画面に合わせる）、配置方式（標準・ELK）、
   間隔（詰める・標準・広く）を切り替えられます。結果は図のコードと設定に書き込まれるので、共有リンクでも同じ形で表示されます
 - **配色**。画面左の「配色」で、テーマ、線の色、スイムレーン（フローチャートのグループ）ごとの色、
-  ノードごとの色（一覧か図のクリックで選択）をボタンで選べます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
+  ノード・状態・クラス・エンティティ・要件・ブロック・C4 要素ごとの色（一覧か図のクリックで選択）をボタンで選べます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
 - **左側の表示切り替え**。エディタ上部のボタンで左側をアイコンだけの細い列にでき、アイコンを押すとその項目を開いて戻ります。
   ツールの上にある「ツールを隠す」で、下のツールを隠してコードを広く使えます
 - **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
@@ -193,7 +193,8 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 - A "Layout" card sets the direction (top-to-bottom, left-to-right, or fit to view), the layout
   engine (standard / ELK) and the spacing, written into the code and the config.
 - A "Colours" card picks the theme, the line colour and a colour per swimlane lane (or flowchart
-  subgraph) and per node (picked from a list or by clicking it); colours are written into the code as `style` statements.
+  subgraph) and per object — node, state, class, entity, requirement, block or C4 element (picked from a list or
+  by clicking it); colours are written into the code as `style` statements.
 - The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
   searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.

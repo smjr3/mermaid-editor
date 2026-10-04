@@ -1,11 +1,11 @@
 import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
-import { clearColors, colorAllGroups, listGroups, setStyleColor, swatches } from './colors';
+import { colorAll, colorAllGroups, listGroups } from './colors';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
 import { localSamples } from './localSamples';
-import { flowNodes } from './mermaid';
+import { diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 
 // Every sample diagram the editor offers (mermaid's examples and this fork's
@@ -50,12 +50,15 @@ describe.each(samples)('$name', ({ code }) => {
     expect(colorAllGroups(colored, true)).toBe(code);
   });
 
-  it('keeps parsing, as the same type, with every node coloured', async () => {
-    const ids = (await flowNodes(code)).map(({ id }) => id);
-    if (ids.length === 0) return;
-    const colored = ids.reduce((result, id) => setStyleColor(result, id, swatches[1]), code);
+  it('keeps parsing, as the same type and with the same objects, with every object coloured', async () => {
+    const objects = await diagramObjects(code);
+    if (!objects) return;
+    const ids = objects.items.map(({ id }) => id);
+    const colored = colorAll(code, ids, objects.syntax);
     await expect(typeOf(colored)).resolves.toBe(await typeOf(code));
-    expect(clearColors(colored, ids)).toBe(clearColors(code, ids));
+    expect((await diagramObjects(colored))?.items.map(({ id }) => id)).toEqual(ids);
+    const cleared = colorAll(colored, ids, objects.syntax, true);
+    expect(cleared).toBe(colorAll(code, ids, objects.syntax, true));
   });
 
   it('exports to HTML, an img tag and GitLab Markdown with the source intact', () => {

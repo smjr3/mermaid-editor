@@ -147,11 +147,78 @@ test.describe('Colours card', () => {
     expect(code).toContain('style Shop');
   });
 
-  test('explains when the diagram has no lanes', async ({ editPage, page }) => {
+  test('explains when the diagram has nothing to colour one by one', async ({ editPage, page }) => {
     await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');
     await page.getByTestId(TID.colorsCard).click();
-    await expect(page.getByText(t('colors.groupsNone'))).toBeVisible();
+    await expect(page.getByText(t('colors.objectsNone'))).toBeVisible();
     await expect(page.getByTestId(TID.colorsNodeSelect)).toHaveCount(0);
   });
+
+  for (const { code, id, kind, text } of [
+    {
+      code: 'classDiagram\n  class Animal\n  Animal <|-- Dog',
+      id: 'Animal',
+      kind: 'class',
+      text: 'Animal'
+    },
+    {
+      code: 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy',
+      id: 'Busy',
+      kind: 'state',
+      text: 'Busy'
+    },
+    {
+      code: 'erDiagram\n  CUSTOMER ||--o{ ORDER : places',
+      id: 'ORDER',
+      kind: 'er',
+      text: 'ORDER'
+    },
+    {
+      code: 'block-beta\n  columns 2\n  a["Alpha"] b["Beta"]',
+      id: 'b',
+      kind: 'block',
+      text: 'Beta'
+    },
+    {
+      code: 'C4Context\n  Person(a, "Alice")\n  System(s, "Shop")',
+      id: 's',
+      kind: 'c4',
+      text: 'Shop'
+    }
+  ]) {
+    test(`colours a ${kind} diagram's object picked in the diagram`, async ({ editPage, page }) => {
+      await editPage.start(urlFor(code));
+      await editPage.checkTextInView(text);
+      await page.getByTestId(TID.colorsCard).click();
+      await expect(
+        page.getByText(t(`colors.objects.${kind}` as Parameters<typeof t>[0]))
+      ).toBeVisible();
+
+      await page.locator('#view svg').getByText(text, { exact: true }).first().click();
+      await expect(page.getByTestId(TID.colorsNodeSelect)).toHaveValue(id);
+      await page.getByTestId(`${TID.colorsNode}-red`).click();
+      const red = '#fde2e1';
+      await expect
+        .poll(async () => (await stored(page)).code)
+        .toContain(
+          kind === 'c4' ? `UpdateElementStyle(${id}, $bgColor="${red}"` : `style ${id} fill:${red}`
+        );
+      // The colour reaches the drawing.
+      await expect
+        .poll(() =>
+          page.evaluate(
+            (fill) =>
+              [...document.querySelectorAll('#view svg *')].some(
+                (element) => getComputedStyle(element).fill === fill
+              ),
+            rgb(red)
+          )
+        )
+        .toBe(true);
+
+      await page.getByTestId(TID.colorsNodesClear).click();
+      await expect.poll(async () => (await stored(page)).code).toBe(code);
+    });
+  }
 });

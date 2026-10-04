@@ -13,6 +13,7 @@ export const TID = {
   colorsLineDefault: 'colors-line-default',
   colorsNode: 'colors-node',
   colorsNodeSelect: 'colors-node-select',
+  colorsNodesAuto: 'colors-nodes-auto',
   colorsNodesClear: 'colors-nodes-clear',
   colorsTheme: 'colors-theme',
   copyMarkdown: 'copy-markdown',

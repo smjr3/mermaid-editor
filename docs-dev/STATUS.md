@@ -99,11 +99,16 @@ links and mermaid.live render the same. Diagram types without a direction (archi
 **Colours card (0.2.0)** (`src/lib/util/colors.ts`). Theme buttons (auto, plus the themes the
 editor does not manage: a managed one would be replaced, see `isManagedTheme`), a line colour
 (`themeVariables.lineColor` in the config; the dark-mode line brightening leaves it alone) and,
-for swimlane and flowchart diagrams, a colour per lane or subgraph (or all at once) and per node
-(chosen from a list or by clicking it in the diagram; the list comes from mermaid's own parse,
-`flowNodes` in `mermaid.ts`, leaving out lanes that a `style` statement also registers as vertices). Lane and node
-colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code — plain mermaid, so shared
-links keep them; the dark title colour keeps lane titles readable on the light fills in dark mode.
+for swimlane and flowchart diagrams, a colour per lane or subgraph (or all at once), and a colour
+per object — flowchart nodes, states, classes, ER entities, requirements and elements, blocks and
+C4 elements — chosen from a list or by clicking it in the diagram. The list comes from mermaid's
+own parse (`diagramObjects` in `mermaid.ts`), leaving out what is not an object (start and end
+points, notes, concurrency dividers, lanes that a `style` statement also registers as vertices).
+Colours are `style <id> fill:…,stroke:…,color:#1f2329` statements in the code, or
+`UpdateElementStyle(id, $bgColor=…, $borderColor=…, $fontColor=…)` for C4, which has no `style`
+statement — plain mermaid, so shared links keep them; the dark text colour keeps titles readable
+on the light fills in dark mode. Sequence, mindmap, architecture, kanban and the chart types have
+no per-object colour syntax that works, so the card says so for them.
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 

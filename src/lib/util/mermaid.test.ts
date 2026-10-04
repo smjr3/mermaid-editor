@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   darkVariantOf,
-  flowNodes,
+  diagramObjects,
   getDefaultTheme,
   getSampleDiagrams,
   isManagedTheme
@@ -70,33 +70,119 @@ describe('getSampleDiagrams', () => {
   });
 });
 
-describe('flowNodes', () => {
+const items = async (code: string) => (await diagramObjects(code))?.items ?? [];
+
+describe('diagramObjects', () => {
   it('lists the nodes of a flowchart with plain-text labels', async () => {
     const code =
       'flowchart TD\n  A[Start here] --> B{Ok?}\n  B -->|y| C@{ shape: rounded, label: "Done **now**" }\n' +
       '  subgraph g1 [G]\n    D\n  end\n  E["<b>Bold</b>  text"]';
-    expect(await flowNodes(code)).toEqual([
-      { id: 'A', label: 'Start here' },
-      { id: 'B', label: 'Ok?' },
-      { id: 'C', label: 'Done now' },
-      { id: 'D', label: 'D' },
-      { id: 'E', label: 'Bold text' }
-    ]);
+    expect(await diagramObjects(code)).toEqual({
+      items: [
+        { id: 'A', label: 'Start here' },
+        { id: 'B', label: 'Ok?' },
+        { id: 'C', label: 'Done now' },
+        { id: 'D', label: 'D' },
+        { id: 'E', label: 'Bold text' }
+      ],
+      kind: 'flowchart',
+      syntax: 'style'
+    });
   });
 
-  it('lists the nodes of a swimlane diagram, not its lanes', async () => {
-    expect(await flowNodes('swimlane-beta LR\n  subgraph L1\n    A[One]\n  end')).toEqual([
+  it('lists the nodes of a swimlane diagram, not its lanes, even a styled one', async () => {
+    expect(await items('swimlane-beta LR\n  subgraph L1\n    A[One]\n  end')).toEqual([
       { id: 'A', label: 'One' }
     ]);
+    const styled = 'swimlane-beta LR\n  subgraph L1\n    A[One]\n  end\n  style L1 fill:#dde9fb';
+    expect(await items(styled)).toEqual([{ id: 'A', label: 'One' }]);
   });
 
-  it('leaves out a lane that a style statement names', async () => {
-    const code = 'swimlane-beta LR\n  subgraph L1\n    A[One]\n  end\n  style L1 fill:#dde9fb';
-    expect(await flowNodes(code)).toEqual([{ id: 'A', label: 'One' }]);
+  it('lists the states of a state diagram, without start and end', async () => {
+    const code =
+      'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy\n  Busy --> [*]\n  state "Long name" as LN\n' +
+      '  state Comp {\n    a --> b\n  }';
+    const found = await diagramObjects(code);
+    expect(found?.kind).toBe('state');
+    expect(found?.items).toEqual(
+      expect.arrayContaining([
+        { id: 'Idle', label: 'Idle' },
+        { id: 'Busy', label: 'Busy' },
+        { id: 'LN', label: 'Long name' },
+        { id: 'Comp', label: 'Comp' },
+        { id: 'a', label: 'a' }
+      ])
+    );
+    expect(found?.items.some(({ id }) => /start|end/.test(id))).toBe(false);
   });
 
-  it('is empty for other diagrams and for code that does not parse', async () => {
-    expect(await flowNodes('sequenceDiagram\n  A->>B: hi')).toEqual([]);
-    expect(await flowNodes('flowchart TD\n  A -->')).toEqual([]);
+  it('leaves out the dividers of concurrent regions, and keeps underscores in labels', async () => {
+    const code =
+      'stateDiagram-v2\n  state battery_check <<choice>>\n  state Active {\n    [*] --> P\n    --\n    [*] --> S\n  }';
+    expect(await items(code)).toEqual([
+      { id: 'battery_check', label: 'battery_check' },
+      { id: 'Active', label: 'Active' },
+      { id: 'P', label: 'P' },
+      { id: 'S', label: 'S' }
+    ]);
+  });
+
+  it('lists classes, entities, requirements and blocks', async () => {
+    expect(
+      await items(
+        'classDiagram\n  class Animal["Animal thing"]\n  Animal <|-- Dog\n  namespace N {\n    class Cat\n  }'
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        { id: 'Animal', label: 'Animal thing' },
+        { id: 'Dog', label: 'Dog' },
+        { id: 'Cat', label: 'Cat' }
+      ])
+    );
+    expect(
+      await items(
+        'erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  p[Person] {\n    string name\n  }'
+      )
+    ).toEqual([
+      { id: 'CUSTOMER', label: 'CUSTOMER' },
+      { id: 'ORDER', label: 'ORDER' },
+      { id: 'p', label: 'Person' }
+    ]);
+    expect(
+      await items(
+        'requirementDiagram\n  requirement r1 {\n    id: 1\n    text: t\n  }\n  element e1 {\n    type: sim\n  }\n  e1 - satisfies -> r1'
+      )
+    ).toEqual([
+      { id: 'r1', label: 'r1' },
+      { id: 'e1', label: 'e1' }
+    ]);
+    expect(
+      await items('block-beta\n  columns 2\n  a["Alpha"] b\n  block:g\n    c\n  end\n  space')
+    ).toEqual([
+      { id: 'a', label: 'Alpha' },
+      { id: 'b', label: 'b' },
+      { id: 'g', label: 'g' },
+      { id: 'c', label: 'c' }
+    ]);
+  });
+
+  it('lists C4 elements, coloured with UpdateElementStyle', async () => {
+    const found = await diagramObjects(
+      'C4Context\n  Person(a, "Alice")\n  System(s, "Sys")\n  Boundary(bb, "B") {\n    System(x, "X")\n  }'
+    );
+    expect(found).toEqual({
+      items: [
+        { id: 'a', label: 'Alice' },
+        { id: 's', label: 'Sys' },
+        { id: 'x', label: 'X' }
+      ],
+      kind: 'c4',
+      syntax: 'c4'
+    });
+  });
+
+  it('is undefined for other diagrams and for code that does not parse', async () => {
+    expect(await diagramObjects('sequenceDiagram\n  A->>B: hi')).toBeUndefined();
+    expect(await diagramObjects('flowchart TD\n  A -->')).toBeUndefined();
   });
 });

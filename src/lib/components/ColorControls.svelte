@@ -4,29 +4,31 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import {
-    clearColors,
+    colorAll,
     colorAllGroups,
-    getStyleColor,
+    getObjectColor,
+    pickedObject,
+    setObjectColor,
     getLineColor,
     getTheme,
     lineColors,
     listGroups,
-    setStyleColor,
     setLineColor,
     setTheme,
     swatches,
     themeChoices,
     tint,
+    type ColorSyntax,
     type Swatch,
     type ThemeChoice
   } from '$/util/colors';
-  import { flowNodes } from '$/util/mermaid';
+  import { diagramObjects, type DiagramObjects } from '$/util/mermaid';
   import { inputState, updateCode, updateConfig, validatedState } from '$/util/state.svelte';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
 
-  // Local: the theme, the line colour, and lane and node colours (colors.ts). The
-  // theme and line colour go in the config, lane and node colours in the code as
-  // `style` statements, so a shared link keeps them.
+  // Local: the theme, the line colour, and lane and object colours (colors.ts). The
+  // theme and line colour go in the config, lane and object colours in the code
+  // (`style` statements, or C4's `UpdateElementStyle`), so a shared link keeps them.
   const theme = $derived(getTheme(inputState.mermaid));
   const lineColor = $derived(getLineColor(inputState.mermaid));
   const groups = $derived(listGroups(inputState.code));
@@ -35,33 +37,48 @@
   const applyLine = (next: string | undefined) =>
     updateConfig(setLineColor(inputState.mermaid, next));
   const applyCode = (code: string) => updateCode(code, { updateDiagram: true });
-  const applyColor = (id: string, swatch: Swatch | undefined) =>
-    applyCode(setStyleColor(inputState.code, id, swatch));
+  const applyColor = (id: string, swatch: Swatch | undefined, syntax: ColorSyntax = 'style') =>
+    applyCode(setObjectColor(inputState.code, id, swatch, syntax));
 
-  // Nodes come from mermaid's own parse of the last valid code.
-  let nodes = $state<{ id: string; label: string }[]>([]);
+  // Objects (nodes, states, classes, …) come from mermaid's own parse of the last valid code.
+  let objects = $state<DiagramObjects | undefined>();
   let selected = $state('');
   $effect(() => {
     const { code, error } = validatedState.current;
     if (error) return;
     let stale = false;
-    void flowNodes(code).then((found) => {
+    void diagramObjects(code).then((found) => {
       if (stale) return;
-      nodes = found;
-      if (!found.some(({ id }) => id === selected)) selected = found[0]?.id ?? '';
+      objects = found;
+      const items = found?.items ?? [];
+      if (!items.some(({ id }) => id === selected)) selected = items[0]?.id ?? '';
     });
     return () => {
       stale = true;
     };
   });
-  const selectedNode = $derived(nodes.find(({ id }) => id === selected));
+  const items = $derived(objects?.items ?? []);
+  const ids = $derived(items.map(({ id }) => id));
+  const selectedItem = $derived(items.find(({ id }) => id === selected));
+  const showLanes = $derived(groups.length > 0 || objects?.kind === 'flowchart');
 
-  // A click on a node in the diagram picks it (mermaid ids it `<svg>-flowchart-<id>-<n>`).
+  // A click on an object in the diagram picks it (see pickedObject for the element ids).
   $effect(() => {
     const pick = (event: MouseEvent) => {
-      const node = (event.target as Element | null)?.closest?.('#view .node');
-      const id = node && /-flowchart-(.+)-\d+$/.exec(node.id)?.[1];
-      if (id && nodes.some((candidate) => candidate.id === id)) selected = id;
+      const target = event.target instanceof Element ? event.target : undefined;
+      const svg = target?.closest('#view svg');
+      if (!target || !svg?.id) return;
+      for (
+        let element: Element | null = target;
+        element && element !== svg;
+        element = element.parentElement
+      ) {
+        const id = element.id ? pickedObject(element.id, svg.id, ids) : undefined;
+        if (id) {
+          selected = id;
+          return;
+        }
+      }
     };
     document.addEventListener('click', pick);
     return () => document.removeEventListener('click', pick);
@@ -96,8 +113,8 @@
     {onclick}></button>
 {/snippet}
 
-{#snippet palette(id: string, label: string, testID: string)}
-  {@const current = getStyleColor(inputState.code, id)}
+{#snippet palette(id: string, label: string, testID: string, syntax: ColorSyntax = 'style')}
+  {@const current = getObjectColor(inputState.code, id, syntax)}
   <div class="flex flex-wrap items-center gap-1.5">
     {@render dot(
       'transparent',
@@ -105,7 +122,7 @@
       current === undefined,
       t('colors.groupClear'),
       `${testID}-none`,
-      () => applyColor(id, undefined)
+      () => applyColor(id, undefined, syntax)
     )}
     {#each swatches as swatch (swatch.name)}
       {@render dot(
@@ -114,7 +131,7 @@
         current?.stroke === swatch.stroke && current.fill === swatch.fill,
         t(`colors.swatch.${swatch.name}`),
         `${testID}-${swatch.name}`,
-        () => applyColor(id, swatch)
+        () => applyColor(id, swatch, syntax)
       )}
     {/each}
     <input
@@ -126,7 +143,7 @@
       data-testid={`${testID}-custom`}
       onchange={(event) => {
         const stroke = event.currentTarget.value;
-        applyColor(id, { fill: tint(stroke), stroke });
+        applyColor(id, { fill: tint(stroke), stroke }, syntax);
       }} />
   </div>
 {/snippet}
@@ -177,68 +194,75 @@
       </div>
     </div>
 
-    <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('colors.groups')}</span>
-      {#if groups.length === 0}
-        <p class="text-muted-foreground">{t('colors.groupsNone')}</p>
-      {:else}
+    {#if !objects && groups.length === 0}
+      <p class="text-muted-foreground">{t('colors.objectsNone')}</p>
+    {/if}
+
+    {#if showLanes}
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('colors.groups')}</span>
+        {#if groups.length === 0}
+          <p class="text-muted-foreground">{t('colors.groupsNone')}</p>
+        {:else}
+          <div class="flex flex-wrap gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid={TID.colorsGroupsAuto}
+              onclick={() => applyCode(colorAllGroups(inputState.code))}
+              >{t('colors.groupsAuto')}</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid={TID.colorsGroupsClear}
+              onclick={() => applyCode(colorAllGroups(inputState.code, true))}
+              >{t('colors.groupsClear')}</Button>
+          </div>
+          <ul class="flex flex-col gap-2">
+            {#each groups as group (group.id)}
+              <li class="flex flex-col gap-1">
+                <span class="truncate" title={group.id}>{group.label}</span>
+                {@render palette(group.id, group.label, `${TID.colorsGroup}-${group.id}`)}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
+
+    {#if objects && items.length > 0}
+      {@const syntax = objects.syntax}
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t(`colors.objects.${objects.kind}`)}</span>
+        <select
+          bind:value={selected}
+          aria-label={t(`colors.objects.${objects.kind}`)}
+          data-testid={TID.colorsNodeSelect}
+          class="h-9 rounded-md border border-input bg-background px-1 text-sm text-foreground">
+          {#each items as object (object.id)}
+            <option value={object.id}
+              >{getObjectColor(inputState.code, object.id, syntax)
+                ? '● '
+                : ''}{object.label}{object.label === object.id ? '' : ` (${object.id})`}</option>
+          {/each}
+        </select>
+        {#if selectedItem}
+          {@render palette(selectedItem.id, selectedItem.label, TID.colorsNode, syntax)}
+        {/if}
+        <p class="text-xs text-muted-foreground">{t('colors.objectsHint')}</p>
         <div class="flex flex-wrap gap-1">
           <Button
             size="sm"
             variant="outline"
-            data-testid={TID.colorsGroupsAuto}
-            onclick={() => applyCode(colorAllGroups(inputState.code))}
+            data-testid={TID.colorsNodesAuto}
+            onclick={() => applyCode(colorAll(inputState.code, ids, syntax))}
             >{t('colors.groupsAuto')}</Button>
           <Button
             size="sm"
             variant="outline"
-            data-testid={TID.colorsGroupsClear}
-            onclick={() => applyCode(colorAllGroups(inputState.code, true))}
-            >{t('colors.groupsClear')}</Button>
-        </div>
-        <ul class="flex flex-col gap-2">
-          {#each groups as group (group.id)}
-            <li class="flex flex-col gap-1">
-              <span class="truncate" title={group.id}>{group.label}</span>
-              {@render palette(group.id, group.label, `${TID.colorsGroup}-${group.id}`)}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
-
-    {#if nodes.length > 0}
-      <div class="flex flex-col gap-1">
-        <span class="font-semibold">{t('colors.nodes')}</span>
-        <select
-          bind:value={selected}
-          aria-label={t('colors.nodes')}
-          data-testid={TID.colorsNodeSelect}
-          class="h-9 rounded-md border border-input bg-background px-1 text-sm text-foreground">
-          {#each nodes as node (node.id)}
-            <option value={node.id}
-              >{getStyleColor(inputState.code, node.id) ? '● ' : ''}{node.label}{node.label ===
-              node.id
-                ? ''
-                : ` (${node.id})`}</option>
-          {/each}
-        </select>
-        {#if selectedNode}
-          {@render palette(selectedNode.id, selectedNode.label, TID.colorsNode)}
-        {/if}
-        <p class="text-xs text-muted-foreground">{t('colors.nodesHint')}</p>
-        <div>
-          <Button
-            size="sm"
-            variant="outline"
             data-testid={TID.colorsNodesClear}
-            onclick={() =>
-              applyCode(
-                clearColors(
-                  inputState.code,
-                  nodes.map(({ id }) => id)
-                )
-              )}>{t('colors.nodesClear')}</Button>
+            onclick={() => applyCode(colorAll(inputState.code, ids, syntax, true))}
+            >{t('colors.groupsClear')}</Button>
         </div>
       </div>
     {/if}

@@ -44,37 +44,136 @@ export const parse = async (code: string) => {
   return await mermaid.parse(code);
 };
 
-const flowTypes = new Set(['flowchart', 'flowchart-elk', 'flowchart-v2', 'swimlane']);
-
-// A node label as plain text: no HTML tags, markdown emphasis or code marks.
-const plainLabel = (text: string): string =>
-  text
+// A label as plain text: no HTML tags, markdown bold/italic stars or code marks (underscores stay: ids use them).
+const plainLabel = (text: unknown): string =>
+  (typeof text === 'string' ? text : '')
     .replaceAll(/<[^>]*>/g, ' ')
-    .replaceAll(/[*_`]+/g, '')
+    .replaceAll(/[*`]+/g, '')
     .replaceAll(/\s+/g, ' ')
     .trim();
 
+export interface DiagramObject {
+  id: string;
+  label: string;
+}
+export interface DiagramObjects {
+  items: DiagramObject[];
+  /** Which list this is, for the card's heading. */
+  kind: 'flowchart' | 'state' | 'class' | 'er' | 'requirement' | 'block' | 'c4';
+  /** How a colour is written: a `style` statement, or C4's `UpdateElementStyle`. */
+  syntax: 'style' | 'c4';
+}
+
+type Db = Record<string, unknown>;
+type Entry = Record<string, unknown>;
+
+/** Calls a getter of the diagram's database, if it has one. */
+const read = (db: Db, name: string): unknown =>
+  typeof db[name] === 'function' ? (db[name] as () => unknown).call(db) : undefined;
+const entries = (value: unknown): [string, Entry][] =>
+  value instanceof Map ? ([...value.entries()] as [string, Entry][]) : [];
+const list = (value: unknown): Entry[] => (Array.isArray(value) ? (value as Entry[]) : []);
+
+const item = (id: string, label: unknown): DiagramObject => ({
+  id,
+  label: plainLabel(label) || id
+});
+
+const blockItems = (blocks: Entry[]): DiagramObject[] =>
+  blocks.flatMap((block) => [
+    ...(block.type === 'space' || typeof block.id !== 'string'
+      ? []
+      : [item(block.id, block.label)]),
+    ...blockItems(list(block.children))
+  ]);
+
+const extractors: Record<
+  string,
+  (db: Db) => Omit<DiagramObjects, 'items'> & { items: DiagramObject[] }
+> = {
+  block: (db) => ({
+    items: blockItems(list(read(db, 'getBlocks'))),
+    kind: 'block',
+    syntax: 'style'
+  }),
+  c4: (db) => ({
+    items: list(read(db, 'getC4ShapeArray')).map((shape) =>
+      item(String(shape.alias), (shape.label as Entry | undefined)?.text)
+    ),
+    kind: 'c4',
+    syntax: 'c4'
+  }),
+  classDiagram: (db) => ({
+    items: entries(read(db, 'getClasses')).map(([id, value]) => item(id, value.label)),
+    kind: 'class',
+    syntax: 'style'
+  }),
+  er: (db) => ({
+    items: entries(read(db, 'getEntities')).map(([id, value]) =>
+      item(id, value.alias || value.label)
+    ),
+    kind: 'er',
+    syntax: 'style'
+  }),
+  flowchart: (db) => {
+    // A `style` statement naming a lane or subgraph also registers it as a vertex.
+    const groups = new Set(list(read(db, 'getSubGraphs')).map(({ id }) => id));
+    return {
+      items: entries(read(db, 'getVertices'))
+        .filter(([id]) => !groups.has(id))
+        .map(([id, value]) => item(id, value.text)),
+      kind: 'flowchart',
+      syntax: 'style'
+    };
+  },
+  requirement: (db) => ({
+    items: [...entries(read(db, 'getRequirements')), ...entries(read(db, 'getElements'))].map(
+      ([id]) => item(id, id)
+    ),
+    kind: 'requirement',
+    syntax: 'style'
+  }),
+  stateDiagram: (db) => {
+    const nodes = list((read(db, 'getData') as Entry | undefined)?.nodes);
+    // Start and end points, notes, and the dividers between concurrent regions are not states.
+    const hidden = new Set(['divider', 'note', 'noteGroup', 'stateEnd', 'stateStart']);
+    return {
+      items: nodes
+        .filter(
+          ({ id, shape }) =>
+            typeof id === 'string' && !hidden.has(String(shape)) && !id.includes('----')
+        )
+        .map(({ id, label }) => item(id as string, label)),
+      kind: 'state',
+      syntax: 'style'
+    };
+  }
+};
+extractors['flowchart-v2'] = extractors.flowchart;
+extractors['flowchart-elk'] = extractors.flowchart;
+extractors.swimlane = extractors.flowchart;
+
 /**
- * Local: the nodes of a flowchart or swimlane diagram that a `style` statement
- * can name, with plain-text labels, for the Colours card. Empty for other
- * diagram types and for code that does not parse.
+ * Local: the objects of a diagram that the Colours card can colour (nodes,
+ * states, classes, entities, requirements, blocks, C4 elements), from mermaid's
+ * own parse, with plain-text labels. Only ids a statement can name are kept.
+ * Undefined for other diagram types and for code that does not parse.
  */
-export const flowNodes = async (code: string): Promise<{ id: string; label: string }[]> => {
+export const diagramObjects = async (code: string): Promise<DiagramObjects | undefined> => {
   try {
     await mermaid.parse(code);
     const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
-    const db = diagram.db as {
-      getSubGraphs?: () => { id: string }[];
-      getVertices?: () => Map<string, { id: string; text?: string }>;
-    };
-    if (!flowTypes.has(diagram.type) || !db.getVertices) return [];
-    // A `style` statement naming a lane or subgraph also registers it as a vertex.
-    const groups = new Set((db.getSubGraphs?.() ?? []).map(({ id }) => id));
-    return [...db.getVertices().values()]
-      .filter(({ id }) => /^[\w-]+$/.test(id) && !groups.has(id))
-      .map(({ id, text }) => ({ id, label: plainLabel(text ?? '') || id }));
+    const found = extractors[diagram.type]?.(diagram.db as Db);
+    if (!found) return undefined;
+    const seen = new Set<string>();
+    const items = found.items.filter(({ id }) => {
+      if (!/^[\w-]+$/.test(id) || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    return { ...found, items };
   } catch {
-    return [];
+    return undefined;
   }
 };
 

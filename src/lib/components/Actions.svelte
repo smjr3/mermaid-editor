@@ -17,6 +17,7 @@
   import { logEvent } from '$lib/util/stats';
   import { version as FAVersion } from '@fortawesome/fontawesome-free/package.json';
   import dayjs from 'dayjs';
+  import { toXmlSvg } from '$/util/htmlExport';
   import { toBase64 } from 'js-base64';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
@@ -90,9 +91,8 @@
       .getComputedStyle(document.body)
       .getPropertyValue('--background');
 
-    const svgString = svg.outerHTML
-      .replaceAll('<br>', '<br/>')
-      .replaceAll(/<img([^>]*)>/g, (m, g: string) => `<img ${g} />`);
+    // Local: well-formed XML; `&nbsp;` or kanban's `xlink:href` made the image fail to load.
+    const svgString = toXmlSvg(svg.outerHTML);
 
     return toBase64(`<?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="${FONT_AWESOME_URL}" type="text/css"?>
@@ -151,6 +151,10 @@ ${svgString}`);
     const image = new Image();
     image.addEventListener('load', () => {
       exporter(context, image)();
+      updateCodeStore({ panZoom: true });
+    });
+    image.addEventListener('error', () => {
+      console.error('The diagram could not be drawn as an image');
       updateCodeStore({ panZoom: true });
     });
     image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, canvas.width, canvas.height)}`;

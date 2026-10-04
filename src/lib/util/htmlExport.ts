@@ -53,13 +53,30 @@ ${svg}
 </html>
 `;
 
+/**
+ * Rendered SVG as well-formed XML. mermaid's output is HTML (`&nbsp;`, `<br>`,
+ * `xlink:href` with no prefix declared), which an SVG file or an image refuses:
+ * re-read it as HTML and write it back as XML.
+ */
+export const toXmlSvg = (svg: string): string => {
+  const element = new DOMParser().parseFromString(svg, 'text/html').querySelector('svg');
+  if (!element) return svg;
+  // The serializer declares the namespaces it needs; copied declarations can clash with them.
+  for (const node of [element, ...element.querySelectorAll('*')]) {
+    for (const { name } of [...node.attributes]) {
+      if (name === 'xmlns' || name.startsWith('xmlns:')) node.removeAttribute(name);
+    }
+  }
+  return new XMLSerializer().serializeToString(element);
+};
+
 export const toImgTag = (svg: string, alt: string): string =>
-  `<img alt="${escapeHtml(alt)}" src="data:image/svg+xml;base64,${toBase64(svg)}">`;
+  `<img alt="${escapeHtml(alt)}" src="data:image/svg+xml;base64,${toBase64(toXmlSvg(svg))}">`;
 
 /** An SVG file from rendered SVG: XML declaration and an opaque background. */
 export const svgFile = (svg: string, background: string): string => {
   const colour = safeColour(background);
-  const withBackground = svg.replace(/<svg\b[^>]*>/, (open) =>
+  const withBackground = toXmlSvg(svg).replace(/<svg\b[^>]*>/, (open) =>
     /\sstyle="/.test(open)
       ? open.replace(/\sstyle="([^"]*)"/, (_, style: string) => {
           const base = style.trim().replace(/;?$/, ';');

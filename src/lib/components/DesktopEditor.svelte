@@ -5,6 +5,7 @@
   import { logMermaidChartClick } from '$/util/stats';
   import { AIPromptViewZoneManager } from '$lib/util/AIPromptViewZoneManager';
   import { registerEditorInserter } from '$lib/util/iconSearch';
+  import { parse } from '$lib/util/mermaid';
   import { registerMermaidRename } from '$lib/util/mermaidRename';
   import { insertAtCursor } from '$lib/util/monacoInsert';
   import { initEditor } from '$lib/util/monacoExtra';
@@ -133,7 +134,7 @@
     });
 
     initEditor(monaco);
-    registerMermaidRename(monaco);
+    registerMermaidRename(monaco, async (code) => (await parse(code)).diagramType);
     errorDebug();
     editor = monaco.editor.create(divElement, editorOptions);
     aiPromptManager.setEditor(editor);

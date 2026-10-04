@@ -85,8 +85,8 @@ export const localSamples: Record<string, SampleExample[]> = {
   app:R --> L:files`,
       title: 'Cloud (generic)'
     },
-    // Only when the logo sets are bundled (iconPacks.ts).
-    ...(import.meta.env.MERMAID_BUNDLE_LOGOS === 'false' ? [] : [awsLogos])
+    // Only when the logo sets are bundled (iconPacks.ts). `?.`: also read outside Vite (Playwright).
+    ...(import.meta.env?.MERMAID_BUNDLE_LOGOS === 'false' ? [] : [awsLogos])
   ],
   Swimlane: [
     {

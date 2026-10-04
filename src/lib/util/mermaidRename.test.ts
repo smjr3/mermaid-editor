@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { findOccurrences, identifierAt, isValidIdentifier, renameIn } from './mermaidRename';
+import mermaid from 'mermaid';
+import {
+  checkedRename,
+  findOccurrences,
+  identifierAt,
+  isValidIdentifier,
+  renameIn
+} from './mermaidRename';
 
 const flowchart = `flowchart TD
   A[Start A] --> B{Is A ok?}
@@ -86,5 +93,36 @@ describe('Windows line endings', () => {
       [2, 3],
       [3, 3]
     ]);
+  });
+});
+
+describe('isValidIdentifier', () => {
+  it('rejects plain numbers, which are values rather than names', () => {
+    expect(isValidIdentifier('16')).toBe(false);
+    expect(isValidIdentifier('node16')).toBe(true);
+  });
+});
+
+describe('checkedRename', () => {
+  const parse = async (code: string) => (await mermaid.parse(code)).diagramType;
+  const code =
+    'architecture-beta\n  service db(database)[DB]\n  service api(server)[API]\n  db:L -- R:api';
+
+  it('returns the renamed code when it still parses as the same diagram', async () => {
+    await expect(checkedRename(code, 'db', 'store', parse)).resolves.toEqual({
+      code: code.replaceAll('db:', 'store:').replace('service db(', 'service store(')
+    });
+  });
+
+  it('refuses a rename that breaks the diagram', async () => {
+    // Architecture ids may not start with a capital R, L, T or B.
+    await expect(checkedRename(code, 'db', 'Renamed', parse)).resolves.toEqual({
+      reason: 'breaks'
+    });
+    await expect(checkedRename(code, 'R', 'X', parse)).resolves.toEqual({ reason: 'breaks' });
+  });
+
+  it('refuses an invalid new name', async () => {
+    await expect(checkedRename(code, 'db', 'end', parse)).resolves.toEqual({ reason: 'invalid' });
   });
 });

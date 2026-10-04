@@ -1,3 +1,4 @@
+import { t } from '$/i18n';
 import type * as Monaco from 'monaco-editor';
 
 /**
@@ -102,8 +103,9 @@ const keywords = new Set(
 const isIdentifierChar = (char: string | undefined): boolean =>
   char !== undefined && identifierChar.test(char);
 
+// Plain numbers are values (coordinates, sizes, data), not names.
 export const isValidIdentifier = (name: string): boolean =>
-  identifierPattern.test(name) && !keywords.has(name.toLowerCase());
+  identifierPattern.test(name) && !/^\p{N}+$/u.test(name) && !keywords.has(name.toLowerCase());
 
 /** The identifier at a 1-based Monaco column (the character after or before the cursor). */
 export const identifierAt = (
@@ -218,10 +220,38 @@ export const renameIn = (code: string, from: string, to: string): string => {
   return lines.join('\n');
 };
 
+/**
+ * A rename checked against mermaid itself: the lexical scan above cannot know
+ * every grammar (C4's `Rel`, xychart's `axis`, architecture's `R`/`L`/`T`/`B`
+ * sides, which also forbid ids starting with those capitals), so a rename is
+ * only applied when the result still parses as the same diagram type.
+ */
+export const checkedRename = async (
+  code: string,
+  from: string,
+  to: string,
+  parse: (code: string) => Promise<string | undefined>
+): Promise<{ code: string } | { reason: 'invalid' | 'breaks' }> => {
+  if (!isValidIdentifier(to)) return { reason: 'invalid' };
+  const renamed = renameIn(code, from, to);
+  try {
+    const [before, after] = await Promise.all([parse(code), parse(renamed)]);
+    return before === after ? { code: renamed } : { reason: 'breaks' };
+  } catch {
+    return { reason: 'breaks' };
+  }
+};
+
 let registered = false;
 
-/** F2 / "Rename Symbol" in the Monaco editor for the `mermaid` language. */
-export const registerMermaidRename = (monaco: typeof Monaco): void => {
+/**
+ * F2 / "Rename Symbol" in the Monaco editor for the `mermaid` language.
+ * `parse` returns the diagram type (mermaid.parse), for checkedRename.
+ */
+export const registerMermaidRename = (
+  monaco: typeof Monaco,
+  parse: (code: string) => Promise<string | undefined>
+): void => {
   if (registered) return;
   registered = true;
 
@@ -235,17 +265,26 @@ export const registerMermaidRename = (monaco: typeof Monaco): void => {
   };
 
   monaco.languages.registerRenameProvider('mermaid', {
-    provideRenameEdits(model, position, newName) {
+    async provideRenameEdits(model, position, newName) {
       const found = target(model, position);
-      if (!found) return { edits: [], rejectReason: 'Not a renameable name' };
-      if (!isValidIdentifier(newName)) {
-        return { edits: [], rejectReason: `"${newName}" cannot be used as a name` };
+      if (!found) return { edits: [], rejectReason: t('editor.renameNotName') };
+      const versionId = model.getVersionId();
+      const code = model.getValue();
+      const result = await checkedRename(code, found.name, newName, parse);
+      if ('reason' in result) {
+        return {
+          edits: [],
+          rejectReason:
+            result.reason === 'invalid'
+              ? t('editor.renameInvalid', { name: newName })
+              : t('editor.renameBreaks', { name: newName })
+        };
       }
       return {
-        edits: findOccurrences(model.getValue(), found.name).map(({ line, start, end }) => ({
+        edits: findOccurrences(code, found.name).map(({ line, start, end }) => ({
           resource: model.uri,
           textEdit: { range: new monaco.Range(line, start, line, end), text: newName },
-          versionId: model.getVersionId()
+          versionId
         }))
       };
     },
@@ -259,7 +298,7 @@ export const registerMermaidRename = (monaco: typeof Monaco): void => {
             position.lineNumber,
             position.column
           ),
-          rejectReason: 'Not a renameable name',
+          rejectReason: t('editor.renameNotName'),
           text: ''
         };
       }

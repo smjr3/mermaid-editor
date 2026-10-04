@@ -1,6 +1,6 @@
 import { fromBase64 } from 'js-base64';
 import { describe, expect, it } from 'vitest';
-import { gitlabMarkdown, svgFile, toImgTag, toStandaloneHtml } from './htmlExport';
+import { gitlabMarkdown, svgFile, toImgTag, toStandaloneHtml, toXmlSvg } from './htmlExport';
 
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><text>図</text></svg>';
 
@@ -67,6 +67,31 @@ describe('svgFile', () => {
       'style="max-width: 300px; background-color: rgb(1, 2, 3)"'
     );
     expect(svgFile(svg, '"><script>')).toContain('background-color: #fff');
+  });
+});
+
+// mermaid renders HTML: `&nbsp;` (block arrows), `<br>`, and kanban's `xlink:href`
+// without a declared prefix. An SVG file or an <img> needs well-formed XML.
+const htmlSvg =
+  '<svg id="d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><a xlink:href="https://example.com/1"><text>x</text></a>' +
+  '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml"><p>a&nbsp;b<br>c</p><img src="x.png"></div></foreignObject></svg>';
+const parsesAsXml = (text: string) =>
+  new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('parsererror') === null;
+
+describe('toXmlSvg', () => {
+  it('turns the HTML that mermaid renders into well-formed SVG', () => {
+    expect(parsesAsXml(htmlSvg)).toBe(false);
+    const xml = toXmlSvg(htmlSvg);
+    expect(parsesAsXml(xml)).toBe(true);
+    expect(xml).toMatch(/^<svg[^>]* xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+    expect(xml).toContain('a\u00A0b');
+    expect(xml).toContain('https://example.com/1');
+  });
+
+  it('is used by the SVG file and the img tag', () => {
+    expect(parsesAsXml(svgFile(htmlSvg, '#fff').replace(/^<\?xml[^>]*>\n/, ''))).toBe(true);
+    const tag = toImgTag(htmlSvg, 'd');
+    expect(parsesAsXml(fromBase64(/base64,([^"]+)/.exec(tag)?.[1] ?? ''))).toBe(true);
   });
 });
 

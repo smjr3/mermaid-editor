@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **154**.
+  every locally changed path — currently **156**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -129,6 +129,16 @@ Windows line endings (which Monaco can write); the icon picker could stay on "lo
 search was cleared mid-load; HTML/GitLab exports of a broken diagram failed silently; inserting a
 standard icon into a non-architecture diagram gave no warning; the AWS logo sample stayed in a
 logos-off build. Firefox is covered only by CI's `@smoke` run.
+
+**All-diagram check.** Every sample diagram (all of `@mermaid-js/examples`, the local samples and
+ZenUML) runs through every feature: parse, layout direction, HTML/GitLab source round trip and F2
+rename (`src/lib/util/allDiagrams.test.ts`), plus light and dark rendering, the layout card, the
+HTML, GitLab, SVG and PNG exports and the view and embed pages in a browser
+(`tests/allDiagrams.spec.ts`, about 6 minutes). Bugs found and fixed: PNG export silently did
+nothing, and SVG files were not valid XML, for diagrams with `&nbsp;` (block arrows, event
+modeling) or kanban ticket links — the SVG now goes through `toXmlSvg` (`htmlExport.ts`); F2
+rename could produce broken code (renaming to a keyword, a number, or an architecture id starting
+with R/L/T/B), so a rename is now applied only if the diagram still parses as the same type.
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

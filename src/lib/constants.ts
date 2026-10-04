@@ -8,6 +8,8 @@ export const TID = {
   diagramDocumentationButton: 'diagram-documentation-button',
   downloadPNG: 'download-PNG',
   downloadSVG: 'download-SVG',
+  editorFocusToggle: 'editor-focus-toggle',
+  editorPaneToggle: 'editor-pane-toggle',
   embedEditLink: 'embed-edit-link',
   embedErrorCard: 'embed-error-card',
   embedFooter: 'embed-footer',

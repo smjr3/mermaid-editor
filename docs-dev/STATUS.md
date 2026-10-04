@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **136**.
+  every locally changed path — currently **142**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -95,6 +95,13 @@ spacing. The direction is written into the code (`flowchart LR`, `direction LR` 
 ER and requirement diagrams, the `swimlane-beta` header) and the rest into the config, so shared
 links and mermaid.live render the same. Diagram types without a direction (architecture, sequence,
 …) get an explanation instead of the buttons.
+
+**Editor column and dark mode (0.2.0).** The navbar button collapses the whole editor column (or
+drag the divider); the button in the editor header switches a per-browser "focus on code" mode
+that hides the tool cards so the editor fills the column. The tool cards are stacked: layout,
+icons, samples, actions. In dark mode, the dark themes render with near-white lines unless the
+user set `lineColor`, and a diagram in a light theme gets its own light background so its dark
+lines stay visible (`src/lib/util/darkLines.ts`).
 
 **Theme** (`THEME.md`). Upstream's single pink accent is replaced by one per mode, both at
 WCAG AA, with the figures computed rather than eyeballed. The editor follows the operating

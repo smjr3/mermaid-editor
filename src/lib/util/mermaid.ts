@@ -5,6 +5,7 @@ import type { MermaidConfig, RenderResult } from 'mermaid';
 import mermaid from 'mermaid';
 import { addLabelHalo } from './architectureLabels';
 import { remoteIconPacks } from './customIcons';
+import { addDarkSiteBackdrop, withVisibleLines } from './darkLines';
 import { registerStoredIconPacks } from './customIconStore';
 import { env } from './env';
 import { iconPacks } from './iconPacks';
@@ -26,13 +27,16 @@ export const render = async (
   await storedIconPacks;
 
   // Should be able to call this multiple times without any issues.
-  mermaid.initialize(config);
+  // Local: brighter lines in dark themes (darkLines.ts).
+  mermaid.initialize(withVisibleLines(config));
   const result = await mermaid.render(id, code);
-  // Local: keep architecture edges from running through service labels (architectureLabels.ts).
-  const background = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
+  // Local: keep architecture edges from running through service labels (architectureLabels.ts),
+  // and keep a light-themed diagram readable on the dark site (darkLines.ts).
+  const themeBackground = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
+  const background = typeof themeBackground === 'string' ? themeBackground : '';
   return {
     ...result,
-    svg: addLabelHalo(result.svg, id, typeof background === 'string' ? background : '')
+    svg: addDarkSiteBackdrop(addLabelHalo(result.svg, id, background), id, background)
   };
 };
 

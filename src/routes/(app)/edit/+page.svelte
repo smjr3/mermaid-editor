@@ -4,6 +4,8 @@
   import Card from '$/components/Card/Card.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
+  import EditorFocusButton from '$/components/EditorFocusButton.svelte';
+  import EditorPaneToggle from '$/components/EditorPaneToggle.svelte';
   import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
   import History from '$/components/History/History.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
@@ -27,6 +29,7 @@
   import View from '$/components/View.svelte';
   import type { EditorMode, Tab } from '$/types';
   import { shouldShowEditorChooser } from '$/util/migration/domainMigration';
+  import { editorFocus } from '$/util/editorFocus.svelte';
   import { PanZoomState } from '$/util/panZoom';
   import { env } from '$/util/env';
   import { validatedState, updateCodeStore, urls } from '$/util/state.svelte';
@@ -76,6 +79,15 @@
   let isHistoryOpen = $state(false);
 
   let editorPane: Resizable.Pane | undefined;
+  // Local: the editor column can be collapsed from the navbar (EditorPaneToggle).
+  let isEditorCollapsed = $state(false);
+  const toggleEditorPane = () => {
+    if (editorPane?.isCollapsed()) {
+      editorPane.expand();
+    } else {
+      editorPane?.collapse();
+    }
+  };
   $effect(() => {
     if (isMobile) {
       editorPane?.resize(50);
@@ -99,6 +111,9 @@
   {/snippet}
 
   <Navbar mobileToggle={isMobile ? mobileToggle : undefined}>
+    {#if !isMobile}
+      <EditorPaneToggle collapsed={isEditorCollapsed} ontoggle={toggleEditorPane} />
+    {/if}
     <Toggle
       bind:pressed={isHistoryOpen}
       size="sm"
@@ -145,7 +160,14 @@
         direction="horizontal"
         autoSaveId="liveEditor"
         class="gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
-        <Resizable.Pane bind:this={editorPane} defaultSize={30} minSize={15}>
+        <Resizable.Pane
+          bind:this={editorPane}
+          defaultSize={30}
+          minSize={15}
+          collapsible={!isMobile}
+          collapsedSize={0}
+          onCollapse={() => (isEditorCollapsed = true)}
+          onExpand={() => (isEditorCollapsed = false)}>
           <div
             class="flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border">
             <Card
@@ -157,14 +179,19 @@
               {#snippet actions()}
                 <ResetConfigButton />
                 <DiagramDocButton />
+                <EditorFocusButton />
               {/snippet}
               <Editor {isMobile} />
             </Card>
 
-            <div class="group flex flex-wrap justify-between gap-4 sm:gap-0">
-              <Preset />
+            <div
+              class={[
+                'group flex flex-wrap justify-between gap-4 sm:flex-col sm:flex-nowrap sm:gap-0',
+                editorFocus.value && 'hidden'
+              ]}>
               <LayoutControls />
               <IconPacks />
+              <Preset />
               <Actions />
             </div>
           </div>

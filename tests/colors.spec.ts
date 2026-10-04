@@ -13,6 +13,13 @@ const lanes = `swimlane-beta LR
 const urlFor = (code: string, mermaid = '{}') =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid })).toString('base64')}`;
 
+// A full page load with the diagram in the hash. Changing only the hash of the
+// already open editor can lose to the editor writing its previous state back.
+const open = async (page: import('@playwright/test').Page, url: string) => {
+  await page.goto('about:blank');
+  await page.goto(url);
+};
+
 const stored = async (page: import('@playwright/test').Page) =>
   page.evaluate(
     () =>
@@ -37,7 +44,7 @@ const rgb = (hex: string) =>
 
 test.describe('Colours card', () => {
   test('colours one lane, then clears it', async ({ editPage, page }) => {
-    await editPage.start(urlFor(lanes));
+    await open(page, urlFor(lanes));
     await editPage.checkTextInView('Accept order');
     await page.getByTestId(TID.colorsCard).click();
     // The first swatch in colors.ts (not imported: it pulls in mermaid).
@@ -61,7 +68,7 @@ test.describe('Colours card', () => {
   });
 
   test('colours every lane at once, from any colour', async ({ editPage, page }) => {
-    await editPage.start(urlFor(lanes));
+    await open(page, urlFor(lanes));
     await editPage.checkTextInView('Accept order');
     await page.getByTestId(TID.colorsCard).click();
 
@@ -77,7 +84,7 @@ test.describe('Colours card', () => {
   });
 
   test('picks a theme and returns to the automatic one', async ({ editPage, page }) => {
-    await editPage.start(urlFor(lanes));
+    await open(page, urlFor(lanes));
     await editPage.checkTextInView('Accept order');
     await page.getByTestId(TID.colorsCard).click();
 
@@ -89,7 +96,7 @@ test.describe('Colours card', () => {
   });
 
   test('sets the line colour, and keeps it in dark mode', async ({ editPage, page }) => {
-    await editPage.start(urlFor(lanes));
+    await open(page, urlFor(lanes));
     await editPage.checkTextInView('Accept order');
     await page.getByTestId(TID.colorsCard).click();
 
@@ -112,7 +119,7 @@ test.describe('Colours card', () => {
     editPage,
     page
   }) => {
-    await editPage.start(urlFor(lanes));
+    await open(page, urlFor(lanes));
     await editPage.checkTextInView('Accept order');
     await page.getByTestId(TID.colorsCard).click();
     const green = { fill: '#def5e1', stroke: '#3f9b52' };
@@ -148,7 +155,7 @@ test.describe('Colours card', () => {
   });
 
   test('explains when the diagram has nothing to colour one by one', async ({ editPage, page }) => {
-    await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
+    await open(page, urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');
     await page.getByTestId(TID.colorsCard).click();
     await expect(page.getByText(t('colors.objectsNone'))).toBeVisible();
@@ -176,9 +183,10 @@ test.describe('Colours card', () => {
     },
     {
       code: 'block-beta\n  columns 2\n  a["Alpha"] b["Beta"]',
-      id: 'b',
+      // The left block: the one on the right can sit under the zoom buttons.
+      id: 'a',
       kind: 'block',
-      text: 'Beta'
+      text: 'Alpha'
     },
     {
       code: 'C4Context\n  Person(a, "Alice")\n  System(s, "Shop")',
@@ -188,7 +196,7 @@ test.describe('Colours card', () => {
     }
   ]) {
     test(`colours a ${kind} diagram's object picked in the diagram`, async ({ editPage, page }) => {
-      await editPage.start(urlFor(code));
+      await open(page, urlFor(code));
       await editPage.checkTextInView(text);
       await page.getByTestId(TID.colorsCard).click();
       await expect(

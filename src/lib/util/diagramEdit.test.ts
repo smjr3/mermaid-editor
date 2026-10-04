@@ -156,3 +156,12 @@ describe('architecture', () => {
     await expect(typeOf(code)).resolves.toBe('architecture');
   });
 });
+
+describe('front matter', () => {
+  const fm = '---\ntitle: T\nconfig:\n  look: neo\n---\n';
+  it('is skipped when telling the diagram type', () => {
+    expect(canAdd(`${fm}flowchart TD\n  A`)).toBe(true);
+    expect(canAdd(`${fm}sequenceDiagram\n  A->>B: hi`)).toBe(false);
+    expect(isArchitecture(`${fm}architecture-beta\n  service a(server)[A]`)).toBe(true);
+  });
+});

@@ -5,6 +5,7 @@
  * colours are ordinary `style <id> fill:…,stroke:…` statements in the code.
  * Either way the result is plain mermaid, so a shared link keeps the colours.
  */
+import { headerLine } from './diagramEdit';
 import { isManagedTheme } from './mermaid';
 
 /** Themes offered besides "auto"; the managed ones (see isManagedTheme) are not, since the editor would replace them. */
@@ -129,8 +130,7 @@ export interface Group {
 /** The lanes of a swimlane diagram, or the subgraphs of a flowchart, that a style statement can name. */
 export const listGroups = (code: string): Group[] => {
   const { lines } = splitLines(code);
-  const header = lines.find((line) => line.trim() && !line.trim().startsWith('%%'));
-  if (!header || !groupHeader.test(header)) return [];
+  if (!groupHeader.test(headerLine(code))) return [];
   const groups: Group[] = [];
   for (const line of lines) {
     const match = subgraphPattern.exec(line);

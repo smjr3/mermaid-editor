@@ -49,7 +49,8 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   会社の色などに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
 - **レーン・ノードの追加**。画面左の「追加」で、名前を入れてボタンを押すだけでレーンやノード（入れるレーンと
   矢印の元も選べます）をコードに書き足せます。アーキテクチャ図では、グループ・サービス（アイコン、入れるグループ、
-  つなぐ元と置く位置を選択）・接続を追加できます
+  つなぐ元と置く位置を選択）・接続を追加できます。シーケンス図・状態図・クラス図・ER図・マインドマップ・ガントチャート・
+  円グラフ・カンバン・タイムライン・C4図・ブロック図でも、それぞれの要素（登場人物とメッセージ、タスクなど）を追加できます
 - **左側の表示切り替え**。エディタ上部のボタンで左側をアイコンだけの細い列にでき、アイコンを押すとその項目を開いて戻ります。
   ツールの上にある「ツールを隠す」で、下のツールを隠してコードを広く使えます
 - **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
@@ -202,7 +203,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   by clicking it) and per arrow; any colour can be picked, and picked colours are offered again. The
   colour buttons can be a company palette (`MERMAID_COLOR_PRESETS`).
 - An "Add" card adds a lane, or a node in a lane joined from another node, without writing the syntax;
-  for architecture diagrams it adds groups, services (icon, group, side to join on) and connections.
+  for architecture diagrams it adds groups, services (icon, group, side to join on) and connections,
+  and sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams get
+  their own forms (participants and messages, tasks, topics, …).
 - The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
   searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.

@@ -1,6 +1,7 @@
 import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
+import { initialValues, specFor } from './addActions';
 import { colorAll, colorAllGroups, listGroups, setEdgeColor } from './colors';
 import {
   addArchEdge,
@@ -117,6 +118,27 @@ describe.each(samples)('$name', ({ code }) => {
       : withService;
     await expect(typeOf(joined)).resolves.toBe('architecture');
     expect((await architectureParts(joined)).services.map((service) => service.id)).toContain(id);
+  });
+
+  it('keeps parsing, as the same type, after each action of its Add card', async () => {
+    const spec = specFor(code);
+    if (!spec) return;
+    const type = await typeOf(code);
+    const parts = await spec.parts(code);
+    for (const action of spec.actions) {
+      // Every field filled: the first and last of each list, a name, a date, a number.
+      const values = initialValues(action);
+      for (const field of action.fields) {
+        const list = parts[field.source ?? ''] ?? [];
+        if (field.kind === 'item')
+          values[field.key] = (field.key === 'to' ? list.at(-1) : list[0])?.id ?? '';
+        if (field.kind === 'text') values[field.key] = 'Added: "x" [1]';
+        if (field.kind === 'date') values[field.key] = '2025-01-02';
+      }
+      const result = action.apply(code, values);
+      if ('error' in result) continue;
+      await expect(typeOf(result.code), `${spec.kind} ${action.id}`).resolves.toBe(type);
+    }
   });
 
   it('exports to HTML, an img tag and GitLab Markdown with the source intact', () => {

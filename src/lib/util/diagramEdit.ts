@@ -9,21 +9,29 @@
 const header = /^\s*(?:flowchart-elk|flowchart|graph|swimlane-beta)\b/;
 const styleStatement = /^\s*(?:style|linkStyle|classDef|class|click)\b/;
 
-const splitLines = (code: string) => ({
+export const splitLines = (code: string) => ({
   eol: code.includes('\r\n') ? '\r\n' : '\n',
   lines: code.split(/\r?\n/)
 });
 
-export const canAdd = (code: string): boolean => {
-  const first = splitLines(code).lines.find((line) => line.trim() && !line.trim().startsWith('%%'));
-  return first !== undefined && header.test(first);
+/** The diagram's header line: the first line past front matter that is not blank or a comment. */
+export const headerLine = (code: string): string => {
+  const { lines } = splitLines(code);
+  let start = 0;
+  if (lines[0]?.trim() === '---') {
+    const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+    start = end === -1 ? lines.length : end + 1;
+  }
+  return lines.slice(start).find((line) => line.trim() && !line.trim().startsWith('%%')) ?? '';
 };
+
+export const canAdd = (code: string): boolean => header.test(headerLine(code));
 
 // A title in quotes; a quote inside would end it, so it becomes mermaid's entity.
 const quoted = (text: string) => `"${text.replaceAll('"', '#quot;')}"`;
 
 /** The first `<prefix><n>` that does not appear anywhere in the code. */
-const freshId = (code: string, prefix: string) => {
+export const freshId = (code: string, prefix: string) => {
   let n = 1;
   while (new RegExp(`\\b${prefix}${n}\\b`).test(code)) n++;
   return `${prefix}${n}`;
@@ -78,10 +86,7 @@ export const addNode = (
 
 const archHeader = /^\s*architecture-beta\b/;
 
-export const isArchitecture = (code: string): boolean => {
-  const first = splitLines(code).lines.find((line) => line.trim() && !line.trim().startsWith('%%'));
-  return first !== undefined && archHeader.test(first);
-};
+export const isArchitecture = (code: string): boolean => archHeader.test(headerLine(code));
 
 /** Where the new service sits relative to the one it is joined from. */
 export type Placement = 'right' | 'down' | 'left' | 'up';

@@ -5,16 +5,19 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { listGroups } from '$/util/colors';
+  import AddActions from '$/components/AddActions.svelte';
   import ArchitectureAdd from '$/components/ArchitectureAdd.svelte';
+  import { specFor } from '$/util/addActions';
   import { addLane, addNode, canAdd, isArchitecture } from '$/util/diagramEdit';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
 
   // Local: add a lane, or a node (in a lane, joined from another node), without
-  // writing the syntax (diagramEdit.ts); architecture diagrams get ArchitectureAdd.
+  // writing the syntax (diagramEdit.ts); architecture diagrams get ArchitectureAdd, the rest AddActions.
   const enabled = $derived(canAdd(inputState.code));
   const architecture = $derived(isArchitecture(inputState.code));
+  const spec = $derived(specFor(inputState.code));
   const groups = $derived(listGroups(inputState.code));
   let nodes = $state<DiagramObject[]>([]);
   $effect(() => {
@@ -67,6 +70,10 @@
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
     {#if architecture}
       <ArchitectureAdd />
+    {:else if spec}
+      {#key spec.kind}
+        <AddActions {spec} />
+      {/key}
     {:else if !enabled}
       <p class="text-muted-foreground">{t('add.unsupported')}</p>
     {:else}

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **168**.
+  every locally changed path — currently **171**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -123,6 +123,18 @@ For architecture diagrams (`ArchitectureAdd.svelte`): add a group (in another gr
 with a standard or any pack icon, in a group and joined from another service on a chosen side
 (right/below/left/above, with or without an arrowhead), or connect two existing services. Ids
 are `grpN`/`svcN`, lower case, since an architecture id may not start with a capital R, L, T or B.
+Every other type with a simple add syntax gets forms from `src/lib/util/addActions.ts`, one
+spec per type listing its actions and their fields (rendered by `AddActions.svelte`): sequence
+(participant, message), state (state joined from another, transition, incl. `[*]`), class (class,
+relation by kind), ER (entity, relationship by cardinality), mindmap (topic under a chosen parent,
+after its last descendant), gantt (task at the end of a section, on a date in the chart's
+`dateFormat` or straight after the previous task; section), pie (slice), kanban (card in a column,
+column), timeline (event in a period, period), C4 (element of a kind, optionally in a boundary
+and joined from another; relationship) and block (block, arrow). Lists come from mermaid's parse
+or, for indentation-based types, from the lines past front matter. The all-diagram check runs
+every action on every matching sample; it found front matter being read as the header (kanban,
+mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
+Quadrant, XY and the other chart types have no add forms.
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 

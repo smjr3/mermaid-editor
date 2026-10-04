@@ -336,3 +336,11 @@ describe('colorAll with a deployment palette', () => {
     expect(getStyleColor(colorAllGroups(lanes, false, palette), 'shop')?.stroke).toBe('#e60012');
   });
 });
+
+describe('listGroups with front matter', () => {
+  it('lists the lanes of a swimlane diagram that starts with front matter', () => {
+    expect(listGroups('---\ntitle: T\n---\nswimlane-beta LR\n  subgraph L\n    a\n  end')).toEqual([
+      { id: 'L', label: 'L' }
+    ]);
+  });
+});

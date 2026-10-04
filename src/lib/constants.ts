@@ -2,6 +2,7 @@ import type { State } from './types';
 
 export const TID = {
   actionsCard: 'actions-card',
+  addAction: 'add-action',
   addArchArrow: 'add-arch-arrow',
   addArchEdgeButton: 'add-arch-edge-button',
   addArchEdgeFrom: 'add-arch-edge-from',

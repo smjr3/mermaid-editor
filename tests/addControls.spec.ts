@@ -75,9 +75,77 @@ test.describe('Add card', () => {
     await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
   });
 
-  test('explains which diagrams it works for', async ({ editPage, page }) => {
-    await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
-    await editPage.checkTextInView('hi');
+  const field = (action: string, key: string) => `${TID.addAction}-${action}-${key}`;
+
+  test('adds a participant and a message to a sequence diagram', async ({ editPage, page }) => {
+    await editPage.start(urlFor('sequenceDiagram\n  participant A as Alice\n  A->>A: hi'));
+    await editPage.checkTextInView('Alice');
+    await page.getByTestId(TID.addCard).click();
+
+    await page.getByTestId(field('participant', 'name')).fill('顧客');
+    await page.getByTestId(field('participant', 'kind')).selectOption('actor');
+    await page.getByTestId(field('participant', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('actor p1 as 顧客');
+    await editPage.checkTextInView('顧客');
+    // The new participant is chosen as the next message's receiver.
+    await expect(page.getByTestId(field('message', 'to'))).toHaveValue('p1');
+
+    await page.getByTestId(field('message', 'from')).selectOption('A');
+    await page.getByTestId(field('message', 'text')).fill('ご注文を受け付けました');
+    await page.getByTestId(field('message', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('A->>p1: ご注文を受け付けました');
+    await editPage.checkTextInView('ご注文を受け付けました');
+  });
+
+  test('adds a task to a gantt section and a topic to a mindmap', async ({ editPage, page }) => {
+    const gantt =
+      'gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n    Spec :a1, 2024-01-01, 3d\n  section Build\n    Code : 5d';
+    await editPage.start(urlFor(gantt));
+    await editPage.checkTextInView('Spec');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('task', 'name')).fill('Review');
+    await page.getByTestId(field('task', 'section')).selectOption('Plan');
+    await page.getByTestId(field('task', 'days')).fill('2');
+    await page.getByTestId(field('task', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('3d\n    Review : 2d\n  section Build');
+    await editPage.checkTextInView('Review');
+
+    await editPage.start(urlFor('mindmap\n  root((Centre))\n    A\n    B'));
+    await editPage.checkTextInView('Centre');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('topic', 'parent')).selectOption('2');
+    await page.getByTestId(field('topic', 'name')).fill('A1');
+    await page.getByTestId(field('topic', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('    A\n      A1\n    B');
+    await editPage.checkTextInView('A1');
+  });
+
+  test('adds a C4 element inside a boundary, joined from another', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor(
+        'C4Context\n  Person(a, "Alice")\n  System_Boundary(b1, "Shop") {\n    System(s, "Web")\n  }'
+      )
+    );
+    await editPage.checkTextInView('Alice');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('element', 'name')).fill('Orders DB');
+    await page.getByTestId(field('element', 'kind')).selectOption('SystemDb');
+    await page.getByTestId(field('element', 'boundary')).selectOption('b1');
+    await page.getByTestId(field('element', 'from')).selectOption('s');
+    await page.getByTestId(field('element', 'text')).fill('writes');
+    await page.getByTestId(field('element', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('    SystemDb(el1, "Orders DB")\n  }');
+    expect(await stored(page)).toContain('Rel(s, el1, "writes")');
+    await editPage.checkTextInView('Orders DB');
+  });
+
+  test('explains when a diagram has nothing to add from here', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor(
+        'quadrantChart\n  title Reach\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]'
+      )
+    );
+    await editPage.checkTextInView('Reach');
     await page.getByTestId(TID.addCard).click();
     await expect(page.getByText(t('add.unsupported'))).toBeVisible();
   });

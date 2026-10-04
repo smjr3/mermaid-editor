@@ -4,6 +4,7 @@
   import CopyButton from '$/components/CopyButton.svelte';
   import CopyInput from '$/components/CopyInput.svelte';
   import ExternalLinkWrapper from '$/components/ExternalLinkWrapper.svelte';
+  import HtmlExport from '$/components/HtmlExport.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
   import { Separator } from '$/components/ui/separator';
@@ -303,6 +304,8 @@ ${svgString}`);
         </a>
       </ExternalLinkWrapper>
     </div>
+    <!-- Local: HTML page / <img> tag export. -->
+    <HtmlExport />
     <Separator />
     {#if isClipboardAvailable()}
       <CopyButton onclick={onCopyClipboard} label={t('actions.copyImage')} />

@@ -6,6 +6,7 @@ export const TID = {
   aiRepairButton: 'ai-repair-button',
   copyMarkdown: 'copy-markdown',
   diagramDocumentationButton: 'diagram-documentation-button',
+  downloadHTML: 'download-HTML',
   downloadPNG: 'download-PNG',
   downloadSVG: 'download-SVG',
   editorFocusToggle: 'editor-focus-toggle',

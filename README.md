@@ -48,6 +48,8 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 - **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
   `logos:aws-lambda` のような名前が入ります。「大きく表示」で広い画面から名前付きで選ぶこともできます。
   緑の印は Mermaid 標準のアイコン（GitLab などでも表示）、橙の印は拡張アイコン（このエディタだけで表示）です
+- **HTML で書き出し**。「操作」の「HTML」で、図を入れた HTML ファイルを保存できます（ネットなしで開け、元のコードも入ります）。
+  「HTMLタグをコピー」は、Wiki やメールなどに貼れる `<img>` タグ1つを作ります。どちらもアイコンごと図に入っています
 - **ダークモードの見やすさ**。ダークモードでは図の線を明るく描き、明るいテーマの図にはライトグレーの下地を付けます
 - **名前の一括変更**。エディタでノード名などにカーソルを置いて F2 を押すと、使われている箇所をまとめて
   書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
@@ -189,6 +191,8 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 - The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
   searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.
+- HTML export: a standalone page (works offline, keeps the source) or one self-contained `<img>`
+  tag to paste anywhere, icons included.
 - F2 renames a node id everywhere it is used; the config tab can reset a broken config; on
   desktop the editor and the view are fixed panes split by a draggable divider.
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are

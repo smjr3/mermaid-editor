@@ -233,6 +233,8 @@ taking upstream's version and re-adding those lines.
 | `src/lib/components/EditorPaneToggle.svelte`, `EditorRail.svelte`, `ToolsBar.svelte`, `src/lib/util/editorFocus.svelte.ts` | Added. The editor header button collapses the column to an icon rail (each icon reopens its section); the bar above the tool cards hides them (per browser)                                                                                                                                                                                                                                                                   |
 | `src/lib/components/IconPicker.svelte`, `src/lib/util/iconSearch.ts`, `src/lib/util/monacoInsert.ts`                       | Added. Search the icon packs in the "Icons" card and click an icon to insert its `prefix:name` at the cursor (or copy it when no editor can take it)                                                                                                                                                                                                                                                                          |
 | `src/lib/util/standardIcons.ts`                                                                                            | Added. mermaid's five built-in architecture icons (copied, MIT) so the picker can show and mark them as standard                                                                                                                                                                                                                                                                                                              |
+| `src/lib/components/HtmlExport.svelte`, `src/lib/util/htmlExport.ts`                                                       | Added. HTML export: a standalone page (diagram, icons inlined, source in a `<details>`) and a single self-contained `<img>` tag                                                                                                                                                                                                                                                                                               |
+| `src/lib/components/Actions.svelte`                                                                                        | Renders `<HtmlExport>` under the PNG / SVG buttons                                                                                                                                                                                                                                                                                                                                                                            |
 | `src/routes/(app)/edit/+page.svelte`                                                                                       | Renders `<ResetConfigButton>` and `<EditorPaneToggle>` in the editor card, `<EditorRail>` while the editor column is collapsed, `<ToolsBar>` above `<LayoutControls>`, `<IconPacks>`, the samples and actions (in that order, scrolling, hidden by the bar), and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections stacked in the editor column and the history column |
 | `package.json`                                                                                                             | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, simple-icons, devicon) and `dompurify` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`                                                                                                                                                                                                       |
 
@@ -503,6 +505,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/EditorRail.svelte`                 |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
 | Modified | `src/lib/components/History/History.svelte`            |
+| Added    | `src/lib/components/HtmlExport.svelte`                 |
 | Added    | `src/lib/components/IconPacks.svelte`                  |
 | Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
@@ -536,6 +539,8 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
+| Added    | `src/lib/util/htmlExport.test.ts`                      |
+| Added    | `src/lib/util/htmlExport.ts`                           |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
 | Added    | `src/lib/util/iconPacks.ts`                            |
 | Added    | `src/lib/util/iconSearch.test.ts`                      |
@@ -573,6 +578,7 @@ modifications as if they were local customizations.
 | Modified | `tests/errorDisplay.spec.ts`                           |
 | Added    | `tests/fixedLayout.spec.ts`                            |
 | Modified | `tests/history.spec.ts`                                |
+| Added    | `tests/htmlExport.spec.ts`                             |
 | Added    | `tests/iconImport.spec.ts`                             |
 | Added    | `tests/iconPacks.spec.ts`                              |
 | Added    | `tests/layout.spec.ts`                                 |

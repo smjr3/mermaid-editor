@@ -15,10 +15,13 @@
 export const messages = {
   en: {
     'actions.copy': 'Copy',
+    'actions.copyHtmlTag': 'Copy HTML tag',
     'actions.copyImage': 'Copy Image',
     'actions.copyMarkdown': 'Copy Markdown',
     'actions.gistPlaceholder': 'Enter Gist URL',
     'actions.gistRequired': 'Please enter a Gist URL first',
+    'actions.htmlHint':
+      'Download a standalone HTML page with the diagram (opens anywhere, offline)',
     'actions.loadGist': 'Load Gist',
     'actions.pngSize': 'PNG size',
     'actions.sizeAuto': 'Auto',
@@ -205,10 +208,12 @@ export const messages = {
   },
   ja: {
     'actions.copy': 'コピー',
+    'actions.copyHtmlTag': 'HTMLタグをコピー',
     'actions.copyImage': '画像をコピー',
     'actions.copyMarkdown': 'Markdown をコピー',
     'actions.gistPlaceholder': 'Gist の URL を入力',
     'actions.gistRequired': '先に Gist の URL を入力してください',
+    'actions.htmlHint': '図を入れた HTML ファイルを保存します（どこでも、ネットなしで開けます）',
     'actions.loadGist': 'Gist を読み込む',
     'actions.pngSize': 'PNG サイズ',
     'actions.sizeAuto': '自動',

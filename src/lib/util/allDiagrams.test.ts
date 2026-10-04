@@ -2,11 +2,19 @@ import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
 import { colorAll, colorAllGroups, listGroups, setEdgeColor } from './colors';
-import { addLane, addNode, canAdd } from './diagramEdit';
+import {
+  addArchEdge,
+  addArchGroup,
+  addArchService,
+  addLane,
+  addNode,
+  canAdd,
+  isArchitecture
+} from './diagramEdit';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
 import { localSamples } from './localSamples';
-import { diagramEdges, diagramObjects } from './mermaid';
+import { architectureParts, diagramEdges, diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 
 // Every sample diagram the editor offers (mermaid's examples and this fork's
@@ -87,6 +95,28 @@ describe.each(samples)('$name', ({ code }) => {
     expect((await diagramEdges(withNode)).slice(0, before.length).map((edge) => edge.id)).toEqual(
       before.map((edge) => edge.id)
     );
+  });
+
+  it('keeps parsing as architecture after adding a group, a joined service and a connection', async () => {
+    if (!isArchitecture(code)) return;
+    const { services } = await architectureParts(code);
+    const { code: withGroup, id: group } = addArchGroup(code, {
+      icon: 'cloud',
+      label: '新しいグループ'
+    });
+    const { code: withService, id } = addArchService(withGroup, {
+      arrow: true,
+      from: services[0]?.id,
+      group,
+      icon: 'logos:aws-lambda',
+      label: 'New (service)',
+      place: 'down'
+    });
+    const joined = services[1]
+      ? addArchEdge(withService, { from: services[1].id, place: 'right', to: id })
+      : withService;
+    await expect(typeOf(joined)).resolves.toBe('architecture');
+    expect((await architectureParts(joined)).services.map((service) => service.id)).toContain(id);
   });
 
   it('exports to HTML, an img tag and GitLab Markdown with the source intact', () => {

@@ -5,14 +5,16 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { listGroups } from '$/util/colors';
-  import { addLane, addNode, canAdd } from '$/util/diagramEdit';
+  import ArchitectureAdd from '$/components/ArchitectureAdd.svelte';
+  import { addLane, addNode, canAdd, isArchitecture } from '$/util/diagramEdit';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
 
   // Local: add a lane, or a node (in a lane, joined from another node), without
-  // writing the syntax (diagramEdit.ts).
+  // writing the syntax (diagramEdit.ts); architecture diagrams get ArchitectureAdd.
   const enabled = $derived(canAdd(inputState.code));
+  const architecture = $derived(isArchitecture(inputState.code));
   const groups = $derived(listGroups(inputState.code));
   let nodes = $state<DiagramObject[]>([]);
   $effect(() => {
@@ -63,7 +65,9 @@
 
 <Card title={t('add.title')} testID={TID.addCard} isStackable icon={{ component: AddIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
-    {#if !enabled}
+    {#if architecture}
+      <ArchitectureAdd />
+    {:else if !enabled}
       <p class="text-muted-foreground">{t('add.unsupported')}</p>
     {:else}
       <div class="flex flex-col gap-1">

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   darkVariantOf,
+  architectureParts,
   diagramEdges,
   diagramObjects,
   getDefaultTheme,
@@ -206,5 +207,27 @@ describe('diagramEdges', () => {
     ]);
     expect(await diagramEdges('stateDiagram-v2\n  A --> B')).toEqual([]);
     expect(await diagramEdges('flowchart LR\n  A -->')).toEqual([]);
+  });
+});
+
+describe('architectureParts', () => {
+  it('lists the groups and services of an architecture diagram', async () => {
+    const code =
+      'architecture-beta\n  group api(cloud)[API]\n  service db(database)[データベース] in api\n  service web(server)[Web] in api';
+    expect(await architectureParts(code)).toEqual({
+      groups: [{ id: 'api', label: 'API' }],
+      services: [
+        { id: 'db', label: 'データベース' },
+        { id: 'web', label: 'Web' }
+      ]
+    });
+  });
+
+  it('is empty for other diagrams and for code that does not parse', async () => {
+    expect(await architectureParts('flowchart TD\n  A')).toEqual({ groups: [], services: [] });
+    expect(await architectureParts('architecture-beta\n  service')).toEqual({
+      groups: [],
+      services: []
+    });
   });
 });

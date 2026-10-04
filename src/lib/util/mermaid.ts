@@ -210,6 +210,23 @@ export const diagramEdges = async (code: string): Promise<DiagramEdge[]> => {
   }
 };
 
+/** Local: the groups and services of an architecture diagram, for the Add card. */
+export const architectureParts = async (
+  code: string
+): Promise<{ groups: DiagramObject[]; services: DiagramObject[] }> => {
+  try {
+    await mermaid.parse(code);
+    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+    if (diagram.type !== 'architecture') return { groups: [], services: [] };
+    const db = diagram.db as Db;
+    const parts = (name: string) =>
+      list(read(db, name)).map(({ id, title }) => item(String(id), title));
+    return { groups: parts('getGroups'), services: parts('getServices') };
+  } catch {
+    return { groups: [], services: [] };
+  }
+};
+
 /**
  * @see https://mermaid.js.org/config/schema-docs/config.html
  */

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **167**.
+  every locally changed path — currently **168**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -119,6 +119,10 @@ built-in eight, followed by the colours this browser picked freely ("any colour"
 lane, or a node into a lane, optionally joined by an arrow from another node; the next node is
 joined from the one just added. New statements go after the last statement and before trailing
 `style`/`linkStyle` lines, so existing arrow numbers do not change.
+For architecture diagrams (`ArchitectureAdd.svelte`): add a group (in another group), a service
+with a standard or any pack icon, in a group and joined from another service on a chosen side
+(right/below/left/above, with or without an arrowhead), or connect two existing services. Ids
+are `grpN`/`svcN`, lower case, since an architecture id may not start with a capital R, L, T or B.
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 

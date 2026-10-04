@@ -1,6 +1,14 @@
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
-import { addLane, addNode, canAdd } from './diagramEdit';
+import {
+  addArchEdge,
+  addArchGroup,
+  addArchService,
+  addLane,
+  addNode,
+  canAdd,
+  isArchitecture
+} from './diagramEdit';
 
 const lanes = `swimlane-beta LR
   subgraph Customer
@@ -81,5 +89,70 @@ describe('addNode', () => {
     expect(addNode(code, { label: 'c', lane: 'Outer' }).code).toBe(
       'flowchart TD\n  subgraph Outer\n    subgraph Inner\n      a\n    end\n    b\n    n1["c"]\n  end'
     );
+  });
+});
+
+const arch = `architecture-beta
+  group api(cloud)[API]
+  service db(database)[Database] in api
+  service web(server)[Web] in api
+  db:R --> L:web
+`;
+
+describe('architecture', () => {
+  it('is recognised', () => {
+    expect(isArchitecture(arch)).toBe(true);
+    expect(isArchitecture(lanes)).toBe(false);
+    expect(canAdd(arch)).toBe(false);
+  });
+
+  it('adds a group, inside another group if asked', async () => {
+    const { code, id } = addArchGroup(arch, { icon: 'cloud', label: 'Back office', parent: 'api' });
+    expect(id).toBe('grp1');
+    expect(code).toBe(`${arch}  group grp1(cloud)[Back office] in api\n`);
+    await expect(typeOf(code)).resolves.toBe('architecture');
+    expect(addArchGroup(arch, { icon: 'internet', label: 'Edge' }).code).toContain(
+      '  group grp1(internet)[Edge]\n'
+    );
+  });
+
+  it('adds a service in a group, joined from another service on the chosen side', async () => {
+    const { code, id } = addArchService(arch, {
+      arrow: true,
+      from: 'web',
+      group: 'api',
+      icon: 'disk',
+      label: 'ストレージ (本番)',
+      place: 'down'
+    });
+    expect(id).toBe('svc1');
+    expect(code).toBe(
+      `${arch}  service svc1(disk)[ストレージ (本番)] in api\n  web:B --> T:svc1\n`
+    );
+    await expect(typeOf(code)).resolves.toBe('architecture');
+  });
+
+  it.each([
+    ['right', 'web:R -- L:svc1'],
+    ['left', 'web:L -- R:svc1'],
+    ['up', 'web:T -- B:svc1']
+  ] as const)('places the new service %s of the other', (place, edge) => {
+    const { code } = addArchService(arch, { from: 'web', icon: 'server', label: 'x', place });
+    expect(code).toContain(`  ${edge}\n`);
+  });
+
+  it('joins two existing services', async () => {
+    const code = addArchEdge(arch, { arrow: false, from: 'web', place: 'right', to: 'db' });
+    expect(code).toBe(`${arch}  web:R -- L:db\n`);
+    await expect(typeOf(code)).resolves.toBe('architecture');
+  });
+
+  it('takes any icon name, and keeps brackets out of the label', async () => {
+    const { code } = addArchService(arch, { icon: 'logos:aws-lambda', label: 'Fn [beta]' });
+    expect(code).toContain('  service svc1(logos:aws-lambda)[Fn beta]\n');
+    expect(addArchService(arch, { icon: 'bad icon)', label: 'x' }).code).toContain(
+      'service svc1(server)[x]'
+    );
+    await expect(typeOf(code)).resolves.toBe('architecture');
   });
 });

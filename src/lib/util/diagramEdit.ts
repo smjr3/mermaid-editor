@@ -73,3 +73,84 @@ export const addNode = (
   }
   return { code: lines.join(eol), id };
 };
+
+// Architecture diagrams: groups, services and the edges between them.
+
+const archHeader = /^\s*architecture-beta\b/;
+
+export const isArchitecture = (code: string): boolean => {
+  const first = splitLines(code).lines.find((line) => line.trim() && !line.trim().startsWith('%%'));
+  return first !== undefined && archHeader.test(first);
+};
+
+/** Where the new service sits relative to the one it is joined from. */
+export type Placement = 'right' | 'down' | 'left' | 'up';
+const sides: Record<Placement, [string, string]> = {
+  down: ['B', 'T'],
+  left: ['L', 'R'],
+  right: ['R', 'L'],
+  up: ['T', 'B']
+};
+
+// `[…]` ends the title; any icon name a pack could hold, else the standard server.
+const archLabel = (text: string) =>
+  text
+    .replaceAll(/[[\]\r\n]+/g, ' ')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
+const archIcon = (icon: string) => (/^[\w-]+(?::[\w-]+)?$/.test(icon) ? icon : 'server');
+
+/** The code with lines added after its last statement. */
+const append = (code: string, added: string[]) => {
+  const { eol, lines } = splitLines(code);
+  const last = lines.findLastIndex((line) => line.trim());
+  lines.splice(last + 1, 0, ...added);
+  return lines.join(eol);
+};
+
+const edge = (from: string, to: string, place: Placement, arrow: boolean) => {
+  const [out, into] = sides[place];
+  return `  ${from}:${out} ${arrow ? '-->' : '--'} ${into}:${to}`;
+};
+
+export const addArchGroup = (
+  code: string,
+  { icon, label, parent }: { icon: string; label: string; parent?: string }
+): { code: string; id: string } => {
+  const id = freshId(code, 'grp');
+  const statement = `  group ${id}(${archIcon(icon)})[${archLabel(label)}]${parent ? ` in ${parent}` : ''}`;
+  return { code: append(code, [statement]), id };
+};
+
+export const addArchService = (
+  code: string,
+  {
+    arrow = false,
+    from,
+    group,
+    icon,
+    label,
+    place = 'right'
+  }: {
+    arrow?: boolean;
+    from?: string;
+    group?: string;
+    icon: string;
+    label: string;
+    place?: Placement;
+  }
+): { code: string; id: string } => {
+  const id = freshId(code, 'svc');
+  const statement = `  service ${id}(${archIcon(icon)})[${archLabel(label)}]${group ? ` in ${group}` : ''}`;
+  return { code: append(code, [statement, ...(from ? [edge(from, id, place, arrow)] : [])]), id };
+};
+
+export const addArchEdge = (
+  code: string,
+  {
+    arrow = false,
+    from,
+    place,
+    to
+  }: { arrow?: boolean; from: string; place: Placement; to: string }
+): string => append(code, [edge(from, to, place, arrow)]);

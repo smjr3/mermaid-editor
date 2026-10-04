@@ -40,6 +40,41 @@ test.describe('Add card', () => {
     await expect(page.getByTestId(TID.addNodeFrom)).toHaveValue('n1');
   });
 
+  test('builds an architecture diagram: group, service joined below, connection', async ({
+    editPage,
+    page
+  }) => {
+    const arch =
+      'architecture-beta\n  group api(cloud)[API]\n  service db(database)[Database] in api\n  service web(server)[Web] in api\n  db:R --> L:web';
+    await editPage.start(urlFor(arch));
+    await editPage.checkTextInView('Database');
+    await page.getByTestId(TID.addCard).click();
+
+    await page.getByTestId(TID.addArchGroupName).fill('Back office');
+    await page.getByTestId(TID.addArchGroupButton).click();
+    await expect.poll(() => stored(page)).toContain('group grp1(cloud)[Back office]');
+    await editPage.checkTextInView('Back office');
+    // The new group is chosen for the next service.
+    await expect(page.getByTestId(TID.addArchServiceGroup)).toHaveValue('grp1');
+
+    await page.getByTestId(TID.addArchServiceName).fill('ストレージ');
+    await page.getByTestId(TID.addArchServiceIcon).selectOption('disk');
+    await page.getByTestId(TID.addArchServiceFrom).selectOption('web');
+    await page.getByTestId(TID.addArchServicePlace).selectOption('down');
+    await page.getByTestId(TID.addArchServiceButton).click();
+    await expect.poll(() => stored(page)).toContain('web:B --> T:svc1');
+    expect(await stored(page)).toContain('service svc1(disk)[ストレージ] in grp1');
+    await editPage.checkTextInView('ストレージ');
+
+    await page.getByTestId(TID.addArchEdgeFrom).selectOption('db');
+    await page.getByTestId(TID.addArchEdgeTo).selectOption('svc1');
+    await page.getByTestId(TID.addArchEdgePlace).selectOption('down');
+    await page.getByTestId(TID.addArchArrow).uncheck();
+    await page.getByTestId(TID.addArchEdgeButton).click();
+    await expect.poll(() => stored(page)).toContain('db:B -- T:svc1');
+    await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
+  });
+
   test('explains which diagrams it works for', async ({ editPage, page }) => {
     await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');

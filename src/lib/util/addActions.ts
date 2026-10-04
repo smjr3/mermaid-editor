@@ -62,12 +62,18 @@ const insert = (code: string, added: string[], index?: number) => {
 
 // One line; a `;` ends a statement in several grammars, and an HTML tag typed into
 // a form (an unclosed one blanks a kanban board) is never meant literally.
+const tagPattern = /<\/?[a-z][^<>]*>/gi;
+const stripTags = (text: string) => {
+  // Removing a tag can expose another (`<<b>b>`): repeat until nothing is left.
+  let previous;
+  do {
+    previous = text;
+    text = text.replaceAll(tagPattern, '');
+  } while (text !== previous);
+  return text;
+};
 const oneLine = (text: string) =>
-  text
-    .replaceAll(/[\r\n]+/g, ' ')
-    .replaceAll(';', ',')
-    .replaceAll(/<\/?[a-z][^<>]*>/gi, '')
-    .trim();
+  stripTags(text.replaceAll(/[\r\n]+/g, ' ').replaceAll(';', ',')).trim();
 // Sequence diagrams read `#…;` as an entity code and `#` + digits breaks the message.
 const sequenceText = (text: string) => oneLine(text).replaceAll('#', '#35;');
 const noQuotes = (text: string) => oneLine(text).replaceAll('"', "'");

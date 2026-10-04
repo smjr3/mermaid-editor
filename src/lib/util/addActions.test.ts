@@ -333,6 +333,16 @@ describe('found by the review', () => {
     expect(added(code, card.code)).toEqual(['    card1[A bold x < 10]']);
   });
 
+  it('strips tags that only appear once another tag is removed', async () => {
+    const code = 'kanban\n  todo[Todo]\n    t1[T]';
+    const card = await run(code, 'card', {
+      column: '1',
+      name: 'A <<script>script>alert(1)</script> B'
+    });
+    if ('error' in card) throw new Error();
+    expect(added(code, card.code)).toEqual(['    card1[A alert1 B]']);
+  });
+
   it('puts a C4 deployment element inside its node', async () => {
     const code = 'C4Deployment\n  Deployment_Node(dn, "Node") {\n    Container(c, "C")\n  }';
     expect((await specFor(code)?.parts(code))?.boundaries).toEqual([{ id: 'dn', label: 'Node' }]);

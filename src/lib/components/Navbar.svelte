@@ -82,7 +82,7 @@
   </div>
 {/if}
 
-<nav class="z-50 flex p-4 sm:p-6">
+<nav class="z-50 flex items-center px-4 py-2 sm:px-6">
   <div class="flex flex-1 items-center gap-2">
     <MainMenu />
     <a href={resolve('/', {})} class="whitespace-nowrap text-accent">

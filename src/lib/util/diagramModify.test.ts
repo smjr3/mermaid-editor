@@ -58,7 +58,8 @@ describe('editKind', () => {
     expect(editKind(lanes)).toBe('flowchart');
     expect(editKind('---\ntitle: x\n---\nflowchart TD\n  A')).toBe('flowchart');
     expect(editKind('sequenceDiagram\n  A->>B: hi')).toBe('sequence');
-    expect(editKind('pie\n  "a" : 1')).toBeUndefined();
+    expect(editKind('pie\n  "a" : 1')).toBe('pie');
+    expect(editKind('quadrantChart\n  A: [0.1, 0.2]')).toBeUndefined();
   });
 });
 
@@ -263,6 +264,67 @@ describe('state diagrams', () => {
     );
     expect(reverseEdge(code, 'state', await edge(code, 1))).toContain('  Busy --> Idle : go');
     expect(deleteEdge(code, 'state', await edge(code, 1))).not.toContain('Idle --> Busy');
+  });
+});
+
+describe('composite states', () => {
+  const code = `stateDiagram-v2
+    direction LR
+    [*] --> Placed
+    Placed --> Paid : payment received
+    Paid --> Fulfilment
+
+    state Fulfilment {
+        [*] --> Packing
+        Packing --> Shipped : handed to courier
+        Shipped --> [*]
+    }
+
+    Fulfilment --> Delivered : courier confirms
+    Delivered --> [*]
+
+    note right of Paid
+        Payment can be card
+    end note`;
+
+  it('edits every arrow, those inside the composite state too', async () => {
+    const edges = await editableEdges(code);
+    expect(edges?.unsure).toBeUndefined();
+    expect(edges?.items.map(({ from, to }) => `${from}>${to}`)).toEqual([
+      '[*]>Placed',
+      'Placed>Paid',
+      'Paid>Fulfilment',
+      '[*]>Packing',
+      'Packing>Shipped',
+      'Shipped>[*]',
+      'Fulfilment>Delivered',
+      'Delivered>[*]'
+    ]);
+    const relabelled = setEdgeLabel(code, 'state', await edge(code, 4), '出荷');
+    expect(relabelled).toContain('        Packing --> Shipped : 出荷\n');
+    await expect(typeOf(relabelled)).resolves.toBe('stateDiagram');
+  });
+
+  it('lists the composite state as a group holding its states', async () => {
+    const fulfilment = await object(code, 'Fulfilment');
+    expect(fulfilment).toMatchObject({ group: true, members: ['Packing', 'Shipped'] });
+  });
+
+  it('renames a composite state', async () => {
+    const renamed = renameObject(code, 'state', await object(code, 'Fulfilment'), '出荷 "準備"');
+    expect(renamed).toContain(`    state "出荷 '準備'" as Fulfilment {\n`);
+    await expect(typeOf(renamed ?? '')).resolves.toBe('stateDiagram');
+  });
+
+  it('deletes a composite state with what is inside, or keeps its states', async () => {
+    const fulfilment = await object(code, 'Fulfilment');
+    const gone = deleteObject(code, 'state', fulfilment);
+    expect(gone).not.toMatch(/Fulfilment|Packing|Shipped/);
+    await expect(typeOf(gone)).resolves.toBe('stateDiagram');
+    const kept = deleteObject(code, 'state', fulfilment, { keepContents: true });
+    expect(kept).not.toContain('Fulfilment');
+    expect(kept).toContain('\n    [*] --> Packing\n    Packing --> Shipped : handed to courier\n');
+    await expect(typeOf(kept)).resolves.toBe('stateDiagram');
   });
 });
 
@@ -512,6 +574,33 @@ describe('C4 diagrams', () => {
     expect(result).toBe('C4Context\n  Person(a, "Alice", "A user")');
     await expect(typeOf(result)).resolves.toBe('c4');
   });
+
+  it('lists, renames and deletes a boundary, with what is inside or keeping it', async () => {
+    const nested = `C4Context
+  Person(a, "Alice")
+  Enterprise_Boundary(e1, "会社") {
+    System_Boundary(b1, "Shop") {
+      System(s, "Web")
+    }
+    System(m, "Mail")
+  }
+  Rel(a, s, "uses")
+  UpdateElementStyle(b1, $fontColor="red")`;
+    const company = await object(nested, 'e1');
+    expect(company).toMatchObject({ group: true, label: '会社', members: ['m', 'b1', 's'] });
+    expect(renameObject(nested, 'c4', await object(nested, 'b1'), 'Store')).toContain(
+      '    System_Boundary(b1, "Store") {\n'
+    );
+    const gone = deleteObject(nested, 'c4', company);
+    // The relationship and the style of what was inside go too.
+    expect(gone).toBe('C4Context\n  Person(a, "Alice")');
+    await expect(typeOf(gone)).resolves.toBe('c4');
+    const kept = deleteObject(nested, 'c4', await object(nested, 'b1'), { keepContents: true });
+    expect(kept).toBe(
+      'C4Context\n  Person(a, "Alice")\n  Enterprise_Boundary(e1, "会社") {\n    System(s, "Web")\n    System(m, "Mail")\n  }\n  Rel(a, s, "uses")'
+    );
+    await expect(typeOf(kept)).resolves.toBe('c4');
+  });
 });
 
 describe('mindmap, kanban and timeline', () => {
@@ -588,6 +677,181 @@ describe('mindmap, kanban and timeline', () => {
     expect(deleteObject(timeline, 'timeline', await object(timeline, 'L2E0'))).toContain(
       '  2020 : grow\n'
     );
+  });
+});
+
+describe('gantt charts', () => {
+  const code = `gantt
+  dateFormat YYYY-MM-DD
+  section Plan
+    Spec : a1, 2024-01-01, 3d
+    Review : 2d
+  section Build
+    Code : done, b1, after a1, 5d
+    Test : after b1, 2d`;
+
+  it('lists sections and the tasks under them', async () => {
+    const items = (await editableObjects(code))?.items ?? [];
+    expect(items.map(({ id, label, group }) => [id, label, group ?? false])).toEqual([
+      ['L2', 'Plan', true],
+      ['L3', '  Spec', false],
+      ['L4', '  Review', false],
+      ['L5', 'Build', true],
+      ['L6', '  Code', false],
+      ['L7', '  Test', false]
+    ]);
+    expect(items[3].members).toEqual(['L6', 'L7']);
+  });
+
+  it('renames a section and a task', async () => {
+    expect(renameObject(code, 'gantt', await object(code, 'L5'), '開発: 本番')).toContain(
+      '  section 開発 本番\n'
+    );
+    expect(renameObject(code, 'gantt', await object(code, 'L6'), 'Coding #1')).toContain(
+      '    Coding 1 : done, b1, after a1, 5d\n'
+    );
+  });
+
+  it('deletes a task, handing its start on to the tasks that followed it', async () => {
+    const spec = deleteObject(code, 'gantt', await object(code, 'L3'));
+    // Review started straight after Spec; Code started after a1.
+    expect(spec.split('\n').slice(3)).toEqual([
+      '    Review : 2024-01-01, 2d',
+      '  section Build',
+      '    Code : done, b1, 2024-01-01, 5d',
+      '    Test : after b1, 2d'
+    ]);
+    await expect(typeOf(spec)).resolves.toBe('gantt');
+    const coding = deleteObject(code, 'gantt', await object(code, 'L6'));
+    expect(coding.split('\n').slice(5)).toEqual(['  section Build', '    Test : after a1, 2d']);
+  });
+
+  it('deletes a section with its tasks, or keeps them in the section before', async () => {
+    const plan = await object(code, 'L2');
+    const gone = deleteObject(code, 'gantt', plan);
+    expect(gone).toBe(
+      'gantt\n  dateFormat YYYY-MM-DD\n  section Build\n    Code : done, b1, 2024-01-01, 5d\n    Test : after b1, 2d'
+    );
+    await expect(typeOf(gone)).resolves.toBe('gantt');
+    const build = await object(code, 'L5');
+    expect(deleteObject(code, 'gantt', build, { keepContents: true })).toBe(
+      code.replace('  section Build\n', '')
+    );
+  });
+});
+
+describe('pie charts', () => {
+  const code = 'pie showData\n  title Pets\n  "Dogs" : 3\n  "Cats" : 2.5';
+  it('lists, renames and deletes slices', async () => {
+    expect((await editableObjects(code))?.items.map(({ id, label }) => [id, label])).toEqual([
+      ['L2', 'Dogs'],
+      ['L3', 'Cats']
+    ]);
+    const renamed = renameObject(code, 'pie', await object(code, 'L3'), '猫 "ねこ"');
+    expect(renamed).toBe(code.replace('"Cats"', `"猫 'ねこ'"`));
+    await expect(typeOf(renamed ?? '')).resolves.toBe('pie');
+    expect(deleteObject(code, 'pie', await object(code, 'L2'))).toBe(
+      'pie showData\n  title Pets\n  "Cats" : 2.5'
+    );
+  });
+});
+
+describe('requirement diagrams', () => {
+  const code = `requirementDiagram
+  requirement login {
+    id: 1
+    text: "Log in"
+  }
+  functionalRequirement "二段階 認証" {
+    id: 2
+  }
+  element web {
+    type: system
+  }
+  web - satisfies -> login
+  "二段階 認証" <- refines - login
+  style login fill:#fde2e1`;
+
+  it('lists requirements and elements by name, Japanese ones too', async () => {
+    expect((await editableObjects(code))?.items.map(({ id }) => id)).toEqual([
+      'login',
+      '二段階 認証',
+      'web'
+    ]);
+  });
+
+  it('renames one everywhere it is named', async () => {
+    const renamed = renameObject(code, 'requirement', await object(code, 'login'), 'サインイン');
+    expect(renamed).toBe(code.replaceAll('login', '"サインイン"'));
+    await expect(typeOf(renamed ?? '')).resolves.toBe('requirement');
+    const plain = renameObject(code, 'requirement', await object(code, '二段階 認証'), 'mfa');
+    expect(plain).toContain('  functionalRequirement mfa {\n');
+    expect(plain).toContain('  mfa <- refines - login\n');
+  });
+
+  it('deletes one with its relationships and style', async () => {
+    const result = deleteObject(code, 'requirement', await object(code, 'login'));
+    expect(result).toBe(
+      'requirementDiagram\n  functionalRequirement "二段階 認証" {\n    id: 2\n  }\n  element web {\n    type: system\n  }'
+    );
+    await expect(typeOf(result)).resolves.toBe('requirement');
+  });
+});
+
+describe('block diagrams', () => {
+  const code = `block-beta
+columns 1
+  db(("DB"))
+  arrow<["&nbsp;"]>(down)
+  block:ID
+    A
+    B["Wide"]:2 C
+  end
+  space
+  D
+  ID --> D
+  C --> D
+  style B fill:#969`;
+
+  it('lists blocks, a block holding others as a group', async () => {
+    const items = (await editableObjects(code))?.items ?? [];
+    expect(items.find(({ id }) => id === 'ID')).toMatchObject({
+      group: true,
+      members: ['A', 'B', 'C'],
+      noRename: true
+    });
+  });
+
+  it('renames a block whatever its shape, keeping its width', async () => {
+    const rename = async (id: string, label: string) =>
+      renameObject(code, 'block', await object(code, id), label) ?? '';
+    expect(await rename('db', 'Store')).toContain('  db(("Store"))\n');
+    expect(await rename('B', 'Narrow "x"')).toContain(`    B["Narrow 'x'"]:2 C\n`);
+    expect(await rename('C', 'See')).toContain('    B["Wide"]:2 C["See"]\n');
+    expect(await rename('arrow', 'Down')).toContain('  arrow<["Down"]>(down)\n');
+    for (const id of ['db', 'B', 'C', 'arrow', 'D']) {
+      await expect(typeOf(await rename(id, 'New'))).resolves.toBe('block');
+    }
+  });
+
+  it('deletes a block from its line, with its arrows and style', async () => {
+    const b = deleteObject(code, 'block', await object(code, 'B'));
+    expect(b).toContain('\n    A\n    C\n  end\n');
+    expect(b).not.toContain('style B');
+    const d = deleteObject(code, 'block', await object(code, 'D'));
+    expect(d).not.toMatch(/^\s*D$|--> D/m);
+    for (const result of [b, d]) await expect(typeOf(result)).resolves.toBe('block');
+  });
+
+  it('deletes a block holding others, with them or keeping them', async () => {
+    const group = await object(code, 'ID');
+    const gone = deleteObject(code, 'block', group);
+    expect(gone).not.toMatch(/\bID\b|\bA\b|Wide|C --> D/);
+    await expect(typeOf(gone)).resolves.toBe('block');
+    const kept = deleteObject(code, 'block', group, { keepContents: true });
+    expect(kept).toContain('\n  A\n  B["Wide"]:2 C\n  space\n');
+    expect(kept).not.toContain('ID --> D');
+    await expect(typeOf(kept)).resolves.toBe('block');
   });
 });
 

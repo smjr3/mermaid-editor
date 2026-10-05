@@ -338,11 +338,203 @@ test.describe('Edit card', () => {
   });
 
   test('explains when a diagram cannot be edited from here', async ({ editPage, page }) => {
-    await editPage.start(urlFor('pie\n  "Dogs" : 3\n  "Cats" : 2'));
-    await editPage.checkTextInView('Dogs');
+    await editPage.start(
+      urlFor(
+        'quadrantChart\n  title Reach\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]'
+      )
+    );
+    await editPage.checkTextInView('Reach');
     await page.getByTestId(TID.editCard).click();
     await expect(page.getByText(t('edit.unsupported'))).toBeVisible();
     await expect(page.getByTestId(TID.editObjectSelect)).toHaveCount(0);
+  });
+
+  test('changes and deletes a class member', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor(
+        'classDiagram\n  class Order {\n    +int id\n    -total: Money\n  }\n  Order : +pay() bool'
+      )
+    );
+    await editPage.checkTextInView('total');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('Order');
+    const options = await page.getByTestId(TID.editMemberSelect).locator('option').allInnerTexts();
+    expect(options).toEqual(['+int id', '-total: Money', '+pay() bool']);
+    await page.getByTestId(TID.editMemberSelect).selectOption('L3');
+    await expect(page.getByTestId(`${TID.editMember}-name`)).toHaveValue('total');
+    await page.getByTestId(`${TID.editMember}-name`).fill('合計');
+    await page.getByTestId(`${TID.editMember}-visibility`).selectOption('protected');
+    await page.getByTestId(TID.editMemberButton).click();
+    await expect.poll(() => stored(page)).toContain('    #合計: Money\n');
+    await editPage.checkTextInView('合計');
+
+    await page.getByTestId(TID.editMemberSelect).selectOption('L5');
+    await page.getByTestId(TID.editMemberDelete).click();
+    await expect.poll(() => stored(page)).not.toContain('pay()');
+    await editPage.checkTextNotInView('pay()');
+  });
+
+  test('changes and deletes an ER attribute', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor('erDiagram\n  ORDER {\n    int id PK\n    string note\n  }\n  ORDER ||--o{ LINE : has')
+    );
+    await editPage.checkTextInView('note');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('ORDER');
+    await page.getByTestId(TID.editMemberSelect).selectOption('L3');
+    await page.getByTestId(`${TID.editMember}-name`).fill('備考');
+    await page.getByTestId(`${TID.editMember}-key`).selectOption('UK');
+    await page.getByTestId(`${TID.editMember}-comment`).fill('自由記入');
+    await page.getByTestId(TID.editMemberButton).click();
+    await expect.poll(() => stored(page)).toContain('    string 備考 UK "自由記入"\n');
+    await editPage.checkTextInView('自由記入');
+    await page.getByTestId(TID.editMemberSelect).selectOption('L2');
+    await page.getByTestId(TID.editMemberDelete).click();
+    await expect.poll(() => stored(page)).not.toContain('int id PK');
+  });
+
+  test('changes a gantt task’s length and status, renames a section, deletes a task', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor(
+        'gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n    Spec : a1, 2024-01-01, 3d\n    Review : 2d\n  section Build\n    Code : after a1, 5d'
+      )
+    );
+    await editPage.checkTextInView('Review');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('L4');
+    await expect(page.getByTestId(`${TID.editProp}-days`)).toHaveValue('2');
+    await page.getByTestId(`${TID.editProp}-days`).fill('4');
+    await page.getByTestId(`${TID.editProp}-status`).selectOption('done');
+    await page.getByTestId(TID.editPropsButton).click();
+    await expect.poll(() => stored(page)).toContain('    Review : done, 4d\n');
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('L5');
+    await page.getByTestId(TID.editRenameInput).fill('開発');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain('  section 開発\n');
+    await editPage.checkTextInView('開発');
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('L3');
+    await page.getByTestId(TID.editDeleteButton).click();
+    // The tasks that followed it start where it started.
+    await expect
+      .poll(() => stored(page))
+      .toBe(
+        'gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n    Review : done, 2024-01-01, 4d\n  section 開発\n    Code : 2024-01-01, 5d'
+      );
+    await editPage.checkTextNotInView('Spec');
+  });
+
+  test('edits a composite state and the arrows inside it', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor(
+        'stateDiagram-v2\n  [*] --> Paid\n  Paid --> Fulfilment\n  state Fulfilment {\n    [*] --> Packing\n    Packing --> Shipped\n  }\n  Fulfilment --> Done'
+      )
+    );
+    await editPage.checkTextInView('Packing');
+    await page.getByTestId(TID.editCard).click();
+    // Arrows are editable even with a composite state in the diagram.
+    await expect(page.getByTestId(TID.editEdgeSelect).locator('option')).toHaveCount(5);
+    await page.getByTestId(TID.editEdgeSelect).selectOption('3');
+    await page.getByTestId(TID.editEdgeLabel).fill('梱包済み');
+    await page.getByTestId(TID.editEdgeLabelButton).click();
+    await expect.poll(() => stored(page)).toContain('    Packing --> Shipped : 梱包済み\n');
+    await editPage.checkTextInView('梱包済み');
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('Fulfilment');
+    await page.getByTestId(TID.editRenameInput).fill('出荷');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain('  state "出荷" as Fulfilment {\n');
+    await editPage.checkTextInView('出荷');
+
+    await page.getByTestId(TID.editDeleteKeepButton).click();
+    await expect.poll(() => stored(page)).not.toContain('Fulfilment');
+    expect(await stored(page)).toContain('\n  [*] --> Packing\n  Packing --> Shipped : 梱包済み');
+    await editPage.checkTextInView('Shipped');
+  });
+
+  test('renames a C4 boundary and deletes it, keeping what is inside', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor(
+        'C4Context\n  Person(a, "Alice")\n  System_Boundary(b1, "Shop") {\n    System(s, "Web")\n  }\n  Rel(a, s, "uses")'
+      )
+    );
+    await editPage.checkTextInView('Shop');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('b1');
+    await page.getByTestId(TID.editRenameInput).fill('店舗');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain('  System_Boundary(b1, "店舗") {\n');
+    await editPage.checkTextInView('店舗');
+    await page.getByTestId(TID.editDeleteKeepButton).click();
+    await expect
+      .poll(() => stored(page))
+      .toBe('C4Context\n  Person(a, "Alice")\n  System(s, "Web")\n  Rel(a, s, "uses")');
+    await editPage.checkTextNotInView('店舗');
+    await editPage.checkTextInView('Web');
+  });
+
+  test('changes a pie slice’s value, renames and deletes one', async ({ editPage, page }) => {
+    await editPage.start(urlFor('pie showData\n  "Dogs" : 3\n  "Cats" : 2'));
+    await editPage.checkTextInView('Dogs');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('L1');
+    await expect(page.getByTestId(`${TID.editProp}-value`)).toHaveValue('3');
+    await page.getByTestId(`${TID.editProp}-value`).fill('12');
+    await page.getByTestId(TID.editPropsButton).click();
+    await expect.poll(() => stored(page)).toContain('  "Dogs" : 12\n');
+    await editPage.checkTextInView('[12]');
+    await page.getByTestId(TID.editRenameInput).fill('犬');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain('  "犬" : 12\n');
+    await page.getByTestId(TID.editObjectSelect).selectOption('L2');
+    await page.getByTestId(TID.editDeleteButton).click();
+    await expect.poll(() => stored(page)).toBe('pie showData\n  "犬" : 12');
+    await editPage.checkTextNotInView('Cats');
+  });
+
+  test('renames and deletes a requirement', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor(
+        'requirementDiagram\n  requirement login {\n    id: 1\n  }\n  element web {\n  }\n  web - satisfies -> login'
+      )
+    );
+    await editPage.checkTextInView('login');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('login');
+    await page.getByTestId(TID.editRenameInput).fill('ログイン');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain('  web - satisfies -> "ログイン"');
+    await editPage.checkTextInView('ログイン');
+    await page.getByTestId(TID.editObjectSelect).selectOption('web');
+    await page.getByTestId(TID.editDeleteButton).click();
+    await expect
+      .poll(() => stored(page))
+      .toBe('requirementDiagram\n  requirement "ログイン" {\n    id: 1\n  }');
+    await editPage.checkTextNotInView('satisfies');
+  });
+
+  test('renames and deletes a block', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor('block-beta\n  columns 2\n  blk1["ブロック1"] blk2["ブロック2"]\n  blk1 --> blk2')
+    );
+    await editPage.checkTextInView('ブロック1');
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('blk1');
+    await page.getByTestId(TID.editRenameInput).fill('受付');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain('  blk1["受付"] blk2["ブロック2"]');
+    await editPage.checkTextInView('受付');
+    await page.getByTestId(TID.editObjectSelect).selectOption('blk2');
+    await page.getByTestId(TID.editDeleteButton).click();
+    await expect.poll(() => stored(page)).toBe('block-beta\n  columns 2\n  blk1["受付"]');
+    await editPage.checkTextNotInView('ブロック2');
   });
 
   test('renames a kanban card with metadata and keeps its id and attributes', async ({

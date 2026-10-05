@@ -2,6 +2,13 @@ import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
 import { initialValues, specFor } from './addActions';
+import {
+  deleteMember,
+  objectFields,
+  objectMembers,
+  setMember,
+  setObjectFields
+} from './diagramDetails';
 import { colorAll, colorAllGroups, listGroups, setEdgeColor } from './colors';
 import {
   addArchEdge,
@@ -158,11 +165,73 @@ describe.each(samples)('$name', ({ code }) => {
         if (field.kind === 'text') values[field.key] = 'Added: "x" [1]';
         if (field.kind === 'date') values[field.key] = '2025-01-02';
       }
-      const result = action.apply(code, values);
-      if ('error' in result) continue;
-      await expect(typeOf(result.code), `${spec.kind} ${action.id}`).resolves.toBe(type);
+      // Then each other option of each choice, one at a time.
+      const variants = [
+        values,
+        ...action.fields.flatMap((field) =>
+          (field.options ?? [])
+            .filter((option) => option !== values[field.key])
+            .map((option) => ({ ...values, [field.key]: option }))
+        )
+      ];
+      for (const variant of variants) {
+        const result = action.apply(code, variant);
+        if ('error' in result) continue;
+        await expect(
+          typeOf(result.code),
+          `${spec.kind} ${action.id} ${JSON.stringify(variant)}`
+        ).resolves.toBe(type);
+      }
     }
-  });
+  }, 120_000);
+
+  it('keeps parsing, as the same type, after changing and after deleting each member and property of its Edit card', async () => {
+    const objects = await editableObjects(code);
+    if (!objects) return;
+    const type = await typeOf(code);
+    for (const object of objects.items) {
+      const members = objectMembers(code, objects.kind, object.id) ?? [];
+      for (const member of members) {
+        const why = `${object.id} ${member.label}`;
+        // Every text field typed into adversarially, every choice at its last option.
+        const values = Object.fromEntries(
+          member.fields.map((field) => [
+            field.key,
+            field.kind === 'choice' ? (field.options?.at(-1) ?? '') : 'Edited: "x" {1} (y)'
+          ])
+        );
+        const changed = setMember(code, objects.kind, object.id, member, values);
+        expect(changed, why).toBeDefined();
+        await expect(typeOf(changed ?? ''), `change ${why}`).resolves.toBe(type);
+        const deleted = deleteMember(code, objects.kind, object.id, member);
+        expect(deleted, why).toBeDefined();
+        await expect(typeOf(deleted ?? ''), `delete ${why}`).resolves.toBe(type);
+      }
+      const fields = objectFields(code, objects.kind, object);
+      if (!fields) continue;
+      const variants = [
+        Object.fromEntries(fields.map(({ key, value }) => [key, value])),
+        ...fields.flatMap((field) => {
+          const base = Object.fromEntries(fields.map(({ key, value }) => [key, value]));
+          if (field.kind === 'choice')
+            return (field.options ?? []).map((option) => ({ ...base, [field.key]: option }));
+          if (field.kind === 'item')
+            return (field.choices ?? []).map(({ id }) => ({ ...base, [field.key]: id }));
+          if (field.kind === 'number') return [{ ...base, [field.key]: '7' }];
+          if (field.kind === 'date') return [{ ...base, [field.key]: '2025-03-04' }];
+          return [{ ...base, [field.key]: 'Edited: "x" {1} (y)' }];
+        })
+      ];
+      for (const variant of variants) {
+        const changed = setObjectFields(code, objects.kind, object, variant);
+        if (changed === undefined) continue;
+        await expect(
+          typeOf(changed),
+          `fields ${object.id} ${JSON.stringify(variant)}`
+        ).resolves.toBe(type);
+      }
+    }
+  }, 120_000);
 
   it('keeps parsing, as the same type, after renaming and after deleting each object of its Edit card', async () => {
     const objects = await editableObjects(code);

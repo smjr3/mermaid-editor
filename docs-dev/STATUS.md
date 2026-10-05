@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **229**.
+  every locally changed path — currently **232**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -174,6 +174,24 @@ or, for indentation-based types, from the lines past front matter. The all-diagr
 every action on every matching sample; it found front matter being read as the header (kanban,
 mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
 Quadrant, XY and the other chart types have no add forms.
+**What is inside objects (unreleased, after 0.2.2)** (`src/lib/util/diagramDetails.ts`). The Add card
+also fills objects in: a class attribute or method with visibility (+ - # ~ or none), type or
+return type and parameters, written last in the class body (`-total: Money`, `+pay(x) bool`) or, for
+a class without a body, as an `X : +Type name` statement (mermaid rejects a second colon there); an
+ER attribute (type, name, PK/FK/UK/PK+FK, comment) last in the entity's `{ }` block, opening one on
+its `id["label"]` line or adding one; a composite state (`state "Name" as g1 { }`, empty or around a
+chosen state, placed right after that state's first mention so a state inside another composite
+stays nested) and a new state inside a chosen composite; a C4 boundary (system, container,
+enterprise or plain) drawn around a chosen element where it stands (mermaid rejects an empty
+boundary, so the element is required); gantt tasks with a status (not started, done, in progress),
+critical and milestone marks and "after task", which gives the chosen task an id (and the one it
+follows, when it has no start of its own) because `after` needs one; requirements of each kind with
+text, risk and verification, elements and the seven relationships (names that are not a plain word
+are quoted, so Japanese names work); the pie's `showData`; and, on an empty `mindmap`, which mermaid
+does not parse, "最初の話題を追加" for the root (an action's `when` hides the actions that do not
+apply). The first task of an empty gantt chart is dated today: mermaid crashes on a first task with
+nothing to follow. The Add card now applies a result only if mermaid parses it as the same type
+(`checkAdd`; code that did not parse may become a diagram of the type its header names).
 **Review of the 0.2.0 additions.** A pass over every feature above with adversarial names
 (`A: B "q" #1 [x] (y) {z} | & ; <b>`) in every diagram type found and fixed: a `;` splitting a
 state or sequence statement (now a comma), `#` + digits in a sequence name or message read by
@@ -200,10 +218,31 @@ have no text), sequence participants (an undeclared one is declared in its place
 stays), mindmap topics (not the centre), kanban columns and cards, timeline periods and events.
 Arrows: flowchart/swimlane in full; state (label, reverse, delete), class (plus solid/dotted and
 arrowhead), ER (plus solid/dotted), sequence (plus solid/dotted; `+`/`-` activations stay paired),
-architecture (reverse, arrowhead, delete). Requirement, block, gantt, pie, git and the chart types
+architecture (reverse, arrowhead, delete). Git, journey and the chart types other than pie
 have no edit forms. Every edit is applied only if mermaid still parses the result as the same
 diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
 every sample. Ids in Japanese (申請者, 営業) are listed and edited like any other in flowcharts, swimlanes, ER and C4 diagrams, and the Colours and Add cards accept them too; mermaid's state, class, requirement and block grammars reject a non-ASCII id in a `style` statement, so those cards leave such ids out (`unicodeIds` in `mermaid.ts`).
+
+**Edit card: inside objects and more types (unreleased, after 0.2.2).** Choosing a class lists its
+attributes and methods (from its bodies and `X : …` statements), choosing an ER entity its
+attributes; each can be changed (visibility, name, type, parameters; type, name, key, comment) or
+deleted, and an attribute keeps how it was written (`Type name` or `name: Type`). Composite states
+are groups (rename; delete with what is inside, or keep the states, moved out one level, dropping a
+concurrency divider that only means something inside); arrows are editable on diagrams with
+composite states — the refusal the audit saw was the counting check, which compared the statements
+with `getRelations()`, top-level only, and now counts `getData().edges` without the note links. C4
+boundaries are groups (rename through the same pattern as elements; delete with the elements and
+their relationships, or keeping them). Gantt: sections (rename, delete with or keeping their tasks)
+and tasks (rename, delete; and start date, "after task", days, status, critical, milestone through
+the fields under the name, changing only what was changed and keeping other tags such as `vert`); a
+deleted task hands its start to the task that followed it and to tasks that started `after` it, so
+no first task is left without a start (which mermaid cannot draw). Pie slices: rename, value,
+delete. Requirements and elements: rename everywhere the name is used (definition, relationships,
+style), delete with relationships and style. Blocks: rename whatever the shape (`(("x"))`,
+`<["x"]>(down)`, keeping a `:2` width), delete from a line placing several, with arrows and style; a
+`block:id … end` is a group (no text of its own; delete with or keeping its blocks; an emptied one
+goes, since mermaid rejects it). The all-diagram check changes and deletes every member, runs every
+property field through each option, and runs every Add action with each choice option.
 
 **From zero, UI only.** For someone who cannot write mermaid. "New diagram…" at the top of the
 Samples card (open by default, so the first thing in the tool stack) offers 14 types — flowchart,
@@ -427,7 +466,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **597 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **701 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

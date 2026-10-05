@@ -23,6 +23,17 @@ import {
   oneLine,
   sequenceText
 } from './addActions';
+import {
+  ensureTaskId,
+  ganttName,
+  ganttSection,
+  ganttTasks,
+  parseGanttTask,
+  pieSlice,
+  renderGanttTask,
+  type GanttTask
+} from './diagramDetails';
+import { requirementName } from './codeText';
 import { headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
 import { memoByCode } from './memo';
 import {
@@ -44,7 +55,11 @@ export type EditKind =
   | 'sequence'
   | 'mindmap'
   | 'kanban'
-  | 'timeline';
+  | 'timeline'
+  | 'gantt'
+  | 'pie'
+  | 'requirement'
+  | 'block';
 
 export interface EditObject {
   id: string;
@@ -107,7 +122,11 @@ const kinds: [EditKind, RegExp][] = [
   ['sequence', /^\s*sequenceDiagram\b/],
   ['mindmap', /^\s*mindmap\b/],
   ['kanban', /^\s*kanban\b/],
-  ['timeline', /^\s*timeline\b/]
+  ['timeline', /^\s*timeline\b/],
+  ['gantt', /^\s*gantt\b/],
+  ['pie', /^\s*pie\b/],
+  ['requirement', /^\s*requirementDiagram\b/],
+  ['block', /^\s*block(?:-beta)?\b/]
 ];
 
 /** The kind of diagram the Edit card handles, or undefined for the others. */
@@ -674,7 +693,12 @@ interface EdgeSyntax {
 
 const stateSyntax: EdgeSyntax = {
   can: { head: false, label: true, reverse: true, styles: [] },
-  count: (db) => list(read(db, 'getRelations')).length,
+  // Every transition, inside composite states too (getRelations has only the top level),
+  // but not the lines that tie a note to its state.
+  count: (db) =>
+    list((read(db, 'getData') as Db | undefined)?.edges).filter(
+      ({ start, end }) => !`${String(start)} ${String(end)}`.includes('----')
+    ).length,
   head: () => true,
   label: (text) => oneLine(text).replaceAll(':', '：'),
   parse: ([, indent, from, to, label = '']) => ({ from, indent, label, parts: {}, to }),
@@ -881,7 +905,18 @@ const stateDeclaration = (id: string) =>
   new RegExp(`^(\\s*)state\\s+"([^"]*)"\\s+as\\s+${escape(id)}\\s*$`);
 const stateDescription = (id: string) => new RegExp(`^(\\s*)${escape(id)}\\s*:\\s*(.*?)\\s*$`);
 
+const compositeLine = (id: string) =>
+  new RegExp(`^(\\s*)state\\s+(?:"[^"]*"\\s+as\\s+)?${escape(id)}\\s*\\{\\s*$`);
+
 const renameState = (lines: string[], id: string, label: string) => {
+  const composite = lines.findIndex((line) => compositeLine(id).test(line));
+  if (composite !== -1) {
+    lines[composite] = lines[composite].replace(
+      compositeLine(id),
+      (_, indent: string) => `${indent}state "${label}" as ${id} {`
+    );
+    return lines;
+  }
   const declared = lines.findIndex((line) => stateDeclaration(id).test(line));
   if (declared !== -1) {
     lines[declared] = lines[declared].replace(
@@ -923,6 +958,53 @@ const deleteState = (lines: string[], id: string) => {
     (indent, rest, cls) => `${indent}class ${rest.join(',')} ${cls}`
   );
   return lines;
+};
+
+/** How deep line `index` of these lines is inside `{ }` blocks that open among them. */
+const depthAt = (lines: string[], index: number) =>
+  lines
+    .slice(0, index)
+    .reduce(
+      (depth, line) => depth + (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0),
+      0
+    );
+
+/**
+ * The code without a composite state: with what is inside it, or keeping its
+ * states, moved out one level (a concurrency divider `--` goes, since it only
+ * means something inside the composite). Transitions to and from it go too.
+ */
+const deleteComposite = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const start = lines.findIndex((line) => compositeLine(object.id).test(line));
+  if (start === -1) return deleteState(lines, object.id);
+  let depth = 0;
+  let end = start;
+  for (let index = start; index < lines.length; index++) {
+    const line = lines[index].replaceAll(/"[^"]*"/g, '""');
+    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
+    if (depth <= 0) {
+      end = index;
+      break;
+    }
+  }
+  if (keepContents) {
+    const inner = lines.slice(start + 1, end);
+    const shift = Math.max(
+      0,
+      Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[start])
+    );
+    lines.splice(
+      start,
+      end - start + 1,
+      ...inner
+        .filter((l, i) => !/^\s*--\s*$/.test(l) || depthAt(inner, i) > 0)
+        .map((l) => (isBlank(l) ? l : l.slice(Math.min(shift, indentOf(l)))))
+    );
+  } else {
+    lines.splice(start, end - start + 1);
+    for (const member of object.members ?? []) deleteState(lines, member);
+  }
+  return deleteState(lines, object.id);
 };
 
 const classStatement = (id: string) =>
@@ -1049,6 +1131,48 @@ const renameC4 = (lines: string[], id: string, label: string) => {
   const index = lines.findIndex((line) => c4Element(id).test(line));
   if (index !== -1)
     lines[index] = lines[index].replace(c4Element(id), (_, start: string) => `${start}"${label}"`);
+  return lines;
+};
+
+const c4BoundaryLine = (id: string) =>
+  new RegExp(`^\\s*(?:\\w*Boundary|Deployment_Node\\w*)\\(\\s*${escape(id)}\\s*,.*\\{\\s*$`);
+
+/**
+ * The code without a C4 boundary: with the elements inside it (and their
+ * relationships), or keeping them, moved out one level.
+ */
+const deleteC4Boundary = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const start = lines.findIndex((line) => c4BoundaryLine(object.id).test(line));
+  if (start === -1) return lines;
+  let depth = 0;
+  let end = start;
+  for (let index = start; index < lines.length; index++) {
+    const line = lines[index].replaceAll(/"[^"]*"/g, '""');
+    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
+    if (depth <= 0) {
+      end = index;
+      break;
+    }
+  }
+  if (keepContents) {
+    const inner = lines.slice(start + 1, end);
+    const shift = Math.max(
+      0,
+      Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[start])
+    );
+    lines.splice(
+      start,
+      end - start + 1,
+      ...inner.map((l) => (isBlank(l) ? l : l.slice(Math.min(shift, indentOf(l)))))
+    );
+  } else {
+    lines.splice(start, end - start + 1);
+    for (const member of object.members ?? []) deleteC4(lines, member);
+  }
+  // Its style statement.
+  removeWhere(lines, (line) =>
+    new RegExp(`^\\s*Update\\w*Style\\(\\s*${escape(object.id)}\\s*[,)]`).test(line)
+  );
   return lines;
 };
 
@@ -1312,6 +1436,309 @@ const deleteTimeline = (lines: string[], object: EditObject) => {
   return lines;
 };
 
+// Gantt: `section …` lines and the tasks under them.
+const ganttObjects = (lines: string[]): EditObject[] => {
+  const tasks = ganttTasks(lines);
+  const sections = lines.flatMap((line, index) => {
+    const match = index > headerIndex(lines) ? ganttSection.exec(line) : null;
+    return match ? [{ index, name: match[2] }] : [];
+  });
+  const sectionOf = (line: number) => sections.findLast(({ index }) => index < line);
+  return [
+    ...sections.map(({ index, name }): EditObject => {
+      const next = sections.find((other) => other.index > index)?.index ?? lines.length;
+      return {
+        group: true,
+        id: `L${index}`,
+        label: name,
+        line: index,
+        members: tasks
+          .filter(({ line }) => line > index && line < next)
+          .map(({ line }) => `L${line}`)
+      };
+    }),
+    ...tasks.map(({ line, name }): EditObject => ({
+      id: `L${line}`,
+      label: `${sectionOf(line) ? '  ' : ''}${name}`,
+      line
+    }))
+  ].sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
+};
+
+const renameGantt = (lines: string[], line: number, label: string) => {
+  const section = ganttSection.exec(lines[line] ?? '');
+  if (section) {
+    lines[line] = `${section[1]}section ${ganttName(label, 'Section')}`;
+    return lines;
+  }
+  const task = parseGanttTask(lines[line] ?? '', line);
+  if (task) lines[line] = renderGanttTask({ ...task, name: ganttName(label, 'Task') });
+  return lines;
+};
+
+/**
+ * The code without one task. A task that started straight after it starts where
+ * it started; one that started after it (`after id`) starts where it started.
+ */
+const deleteGanttTask = (lines: string[], task: GanttTask) => {
+  const tasks = ganttTasks(lines);
+  const next = tasks.find(({ line }) => line > task.line);
+  if (next && !next.start && task.start)
+    lines[next.line] = renderGanttTask({ ...next, start: task.start });
+  if (task.id) {
+    for (const other of ganttTasks(lines)) {
+      const after = /^after\s+(.+)$/.exec(other.start);
+      if (!after) continue;
+      const ids = after[1].split(/\s+/);
+      if (!ids.includes(task.id)) continue;
+      const rest = ids.filter((id) => id !== task.id);
+      let start = rest.length > 0 ? `after ${rest.join(' ')}` : task.start;
+      if (!start && other.id) {
+        // An id needs a start of its own: after the task before the deleted one.
+        const previous = tasks.filter(({ line }) => line < task.line).at(-1);
+        const id = previous ? ensureTaskId(lines, previous.line) : undefined;
+        start = id ? `after ${id}` : other.start;
+      }
+      lines[other.line] = renderGanttTask({ ...other, start });
+    }
+  }
+  lines.splice(task.line, 1);
+};
+
+const deleteGantt = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const line = object.line ?? -1;
+  if (!object.group) {
+    const task = parseGanttTask(lines[line] ?? '', line);
+    if (task) deleteGanttTask(lines, task);
+    return lines;
+  }
+  if (!keepContents) {
+    for (const id of [...(object.members ?? [])].reverse()) {
+      const at = Number(id.slice(1));
+      const task = parseGanttTask(lines[at] ?? '', at);
+      if (task) deleteGanttTask(lines, task);
+    }
+  }
+  lines.splice(line, 1);
+  return lines;
+};
+
+const renamePie = (lines: string[], line: number, label: string) => {
+  const match = pieSlice.exec(lines[line] ?? '');
+  if (match) lines[line] = `${match[1]}"${label.replaceAll('"', "'")}" : ${match[3]}`;
+  return lines;
+};
+
+// Requirement diagrams: a requirement or element is named once, by its name,
+// in its `kind name { … }` block, its relationships and its style statements.
+const requirementKinds =
+  'requirement|functionalRequirement|interfaceRequirement|performanceRequirement|physicalRequirement|designConstraint|element';
+const nameToken = (name: string) => `(?:${escape(name)}(?![\\w-])|"${escape(name)}")`;
+const requirementBlock = (name: string) =>
+  new RegExp(`^(\\s*)(${requirementKinds})\\s+${nameToken(name)}\\s*\\{\\s*$`);
+const relationship = /^(\s*)("[^"]*"|[\w-]+)\s*(-\s*\w+\s*->|<-\s*\w+\s*-)\s*("[^"]*"|[\w-]+)\s*$/;
+const unquote = (token: string) => token.replace(/^"(.*)"$/, '$1');
+
+const renameRequirement = (lines: string[], id: string, label: string) => {
+  const name = requirementName(label.replaceAll('"', "'"));
+  lines.forEach((line, index) => {
+    const block = requirementBlock(id).exec(line);
+    if (block) {
+      lines[index] = `${block[1]}${block[2]} ${name} {`;
+      return;
+    }
+    const match = relationship.exec(line);
+    if (match && (unquote(match[2]) === id || unquote(match[4]) === id)) {
+      const end = (token: string) => (unquote(token) === id ? name : token);
+      lines[index] = `${match[1]}${end(match[2])} ${match[3]} ${end(match[4])}`;
+      return;
+    }
+    const styled = new RegExp(`^(\\s*(?:style|class)\\s+)${nameToken(id)}(.*)$`).exec(line);
+    if (styled) lines[index] = `${styled[1]}${name}${styled[2]}`;
+  });
+  return lines;
+};
+
+const deleteRequirement = (lines: string[], id: string) => {
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (requirementBlock(id).test(lines[index])) removeBlock(lines, index);
+  }
+  removeWhere(lines, (line) => {
+    const match = relationship.exec(line);
+    if (match) return unquote(match[2]) === id || unquote(match[4]) === id;
+    return new RegExp(`^\\s*style\\s+${nameToken(id)}`).test(line);
+  });
+  dropFromList(
+    lines,
+    /^(\s*)class\s+([\w\s,-]+?)\s+([\w-]+)\s*$/,
+    id,
+    (indent, rest, cls) => `${indent}class ${rest.join(',')} ${cls}`
+  );
+  return lines;
+};
+
+// Block diagrams: a line places blocks side by side (`a["A"] b:2`), an arrow
+// line joins them, and `block:id … end` is a block holding others.
+const blockKeyword = /^\s*(?:block-beta|block|columns|space|end|style|class|classDef)\b/;
+const blockOpener = /^\s*block:([\w-]+)(?::\d+)?\s*$/;
+
+interface BlockToken {
+  id: string;
+  start: number;
+  end: number;
+}
+
+/** The blocks a placement line names, or undefined for any other line. */
+const blockTokens = (line: string): BlockToken[] | undefined => {
+  if (blockKeyword.test(line) && !/^\s*space\s*\S/.test(line)) return undefined;
+  if (/-->|---|==>|-\.-/.test(line.replaceAll(/"[^"]*"/g, '""')) || line.includes('%%'))
+    return undefined;
+  const tokens: BlockToken[] = [];
+  let i = 0;
+  while (i < line.length) {
+    while (i < line.length && /\s/.test(line[i])) i++;
+    if (i >= line.length) break;
+    const id = /^[\p{L}\p{N}_-]+/u.exec(line.slice(i))?.[0];
+    if (!id) return undefined;
+    const start = i;
+    i += id.length;
+    // Shape brackets (`["x"]`, `(("x"))`, `<["x"]>(down)`), then a width (`:2`).
+    while (i < line.length && '[({<'.includes(line[i])) {
+      let depth = 0;
+      for (; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          const close = line.indexOf('"', i + 1);
+          if (close === -1) return undefined;
+          i = close;
+        } else if ('[({<'.includes(char)) depth++;
+        else if ('])}>'.includes(char) && --depth === 0) {
+          i++;
+          break;
+        }
+      }
+      if (depth !== 0) return undefined;
+    }
+    const width = /^:\d+/.exec(line.slice(i));
+    if (width) i += width[0].length;
+    if (i < line.length && !/\s/.test(line[i])) return undefined;
+    if (id !== 'space') tokens.push({ end: i, id, start });
+  }
+  return tokens;
+};
+
+/** The index of the `end` closing the `block:` line at `start`. */
+const blockGroupEnd = (lines: string[], start: number) => {
+  let depth = 0;
+  for (let index = start; index < lines.length; index++) {
+    if (blockOpener.test(lines[index]) || /^\s*block\s*$/.test(lines[index])) depth++;
+    else if (/^\s*end\s*$/.test(lines[index]) && --depth === 0) return index;
+  }
+  return lines.length - 1;
+};
+
+const relabelBlock = (text: string, id: string, label: string) => {
+  const quotedLabel = `"${label.replaceAll('"', "'")}"`;
+  const rest = text.slice(id.length);
+  const width = /:\d+$/.exec(rest)?.[0] ?? '';
+  const shape = rest.slice(0, rest.length - width.length);
+  if (!shape) return `${id}[${quotedLabel}]${width}`;
+  if (shape.includes('"')) return `${id}${shape.replace(/"[^"]*"/, () => quotedLabel)}${width}`;
+  const open = /^[[({<]+/.exec(shape)?.[0] ?? '';
+  const close = /[\])}>]+(?:\([a-z, ]*\))?$/.exec(shape)?.[0] ?? '';
+  return `${id}${open}${quotedLabel}${close}${width}`;
+};
+
+const renameBlock = (lines: string[], id: string, label: string) => {
+  const opener = lines.findIndex((line) => blockOpener.exec(line)?.[1] === id);
+  if (opener !== -1) return undefined;
+  // The first line that places it, else the first arrow line naming it.
+  for (const [index, line] of lines.entries()) {
+    if (index <= headerIndex(lines)) continue;
+    const token = blockTokens(line)?.find((t) => t.id === id);
+    if (token) {
+      lines[index] =
+        line.slice(0, token.start) +
+        relabelBlock(line.slice(token.start, token.end), id, label) +
+        line.slice(token.end);
+      return lines;
+    }
+  }
+  for (const [index, line] of lines.entries()) {
+    const chains = index > headerIndex(lines) ? parseChains(line) : undefined;
+    const node = chains?.flatMap((chain) => chain.groups.flat()).find((n) => n.id === id);
+    if (!node) continue;
+    const at = line.indexOf(node.text);
+    lines[index] =
+      line.slice(0, at) + relabelBlock(node.text, id, label) + line.slice(at + node.text.length);
+    return lines;
+  }
+  return undefined;
+};
+
+/** Removes `block:… end` groups left with nothing inside: mermaid rejects them. */
+const dropEmptyBlockGroups = (lines: string[]) => {
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (!blockOpener.test(lines[index])) continue;
+    let end = index + 1;
+    while (end < lines.length && isBlank(lines[end])) end++;
+    if (/^\s*end\s*$/.test(lines[end] ?? '')) lines.splice(index, end - index + 1);
+  }
+};
+
+const deleteBlock = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const ids = new Set([
+    object.id,
+    ...(object.group && !keepContents ? (object.members ?? []) : [])
+  ]);
+  const opener = lines.findIndex((line) => blockOpener.exec(line)?.[1] === object.id);
+  if (opener !== -1) {
+    const end = blockGroupEnd(lines, opener);
+    if (keepContents) {
+      const inner = lines.slice(opener + 1, end);
+      const shift = Math.max(
+        0,
+        Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[opener])
+      );
+      lines.splice(
+        opener,
+        end - opener + 1,
+        ...inner.map((l) => (isBlank(l) ? l : l.slice(Math.min(shift, indentOf(l)))))
+      );
+    } else {
+      lines.splice(opener, end - opener + 1);
+    }
+  }
+  for (let index = lines.length - 1; index > headerIndex(lines); index--) {
+    const line = lines[index];
+    const tokens = blockTokens(line);
+    if (tokens?.some((t) => ids.has(t.id))) {
+      const kept = tokens.filter((t) => !ids.has(t.id));
+      if (kept.length === 0) lines.splice(index, 1);
+      else
+        lines[index] =
+          (/^\s*/.exec(line)?.[0] ?? '') + kept.map((t) => line.slice(t.start, t.end)).join(' ');
+      continue;
+    }
+    const chains = tokens ? undefined : parseChains(line);
+    if (chains?.some((chain) => chain.groups.flat().some((n) => ids.has(n.id)))) {
+      lines.splice(index, 1);
+      continue;
+    }
+    if ([...ids].some((id) => new RegExp(`^\\s*style\\s+${escape(id)}${idEnd}`).test(line)))
+      lines.splice(index, 1);
+  }
+  for (const id of ids)
+    dropFromList(
+      lines,
+      /^(\s*)class\s+([\w\s,-]+?)\s+([\w-]+)\s*$/,
+      id,
+      (indent, rest, cls) => `${indent}class ${rest.join(',')} ${cls}`
+    );
+  dropEmptyBlockGroups(lines);
+  return lines;
+};
+
 // ---- The lists ----
 
 const sequenceOrder = memoByCode(async (code: string): Promise<DiagramObject[]> => {
@@ -1365,6 +1792,107 @@ export const editableObjects = memoByCode(
         });
         return { items, kind };
       }
+      case 'gantt':
+        return { items: ganttObjects(lines), kind };
+      case 'block': {
+        const objects = await diagramObjects(code);
+        if (!objects) return undefined;
+        // A `block:id … end` holds the blocks placed inside it.
+        const members = (id: string): string[] | undefined => {
+          const opener = lines.findIndex((line) => blockOpener.exec(line)?.[1] === id);
+          if (opener === -1) return undefined;
+          return lines
+            .slice(opener + 1, blockGroupEnd(lines, opener))
+            .flatMap((line) => [
+              ...(blockOpener.exec(line)?.[1] ? [blockOpener.exec(line)?.[1] ?? ''] : []),
+              ...(blockTokens(line) ?? []).map((t) => t.id)
+            ]);
+        };
+        return {
+          items: objects.items.map((item) => {
+            const inside = members(item.id);
+            return inside ? { ...item, group: true, members: inside, noRename: true } : item;
+          }),
+          kind
+        };
+      }
+      case 'requirement': {
+        const db = await parseDb(code);
+        if (!db) return undefined;
+        const names = (name: string) => {
+          const found = read(db, name);
+          return found instanceof Map ? [...(found as Map<string, unknown>).keys()] : [];
+        };
+        return {
+          items: [...names('getRequirements'), ...names('getElements')].map((name) => ({
+            id: name,
+            label: decodeEntities(name)
+          })),
+          kind
+        };
+      }
+      case 'c4': {
+        const [objects, db] = await Promise.all([diagramObjects(code), parseDb(code)]);
+        if (!objects || !db) return undefined;
+        // Boundaries hold elements and other boundaries: groups.
+        const boundaries = list(read(db, 'getBoundaries')).filter(
+          ({ alias }) => typeof alias === 'string' && alias !== 'global'
+        );
+        const shapes = list(read(db, 'getC4ShapeArray'));
+        const inside = (id: string): string[] => [
+          ...shapes
+            .filter((shape) => shape.parentBoundary === id)
+            .map(({ alias }) => String(alias)),
+          ...boundaries
+            .filter((boundary) => boundary.parentBoundary === id)
+            .flatMap(({ alias }) => [String(alias), ...inside(String(alias))])
+        ];
+        const groups = boundaries.map(({ alias, label }): EditObject => ({
+          group: true,
+          id: String(alias),
+          label:
+            decodeEntities(String((label as { text?: unknown } | undefined)?.text ?? '')) ||
+            String(alias),
+          members: inside(String(alias))
+        }));
+        return { items: [...objects.items, ...groups], kind };
+      }
+      case 'state': {
+        const [objects, db] = await Promise.all([diagramObjects(code), parseDb(code)]);
+        if (!objects || !db) return undefined;
+        // Composite states, which hold other states, are groups.
+        const nodes = list((read(db, 'getData') as Db | undefined)?.nodes);
+        const children = (id: string): string[] =>
+          nodes
+            .filter(({ parentId }) => parentId === id)
+            .flatMap(({ id: child, shape }) => {
+              const name = String(child);
+              const below = children(name);
+              return shape === 'stateStart' || shape === 'stateEnd' || shape === 'divider'
+                ? below
+                : [name, ...below];
+            });
+        const composites = nodes
+          .filter(
+            ({ id, shape }) =>
+              shape === 'roundedWithTitle' && typeof id === 'string' && /^[\w-]+$/.test(id)
+          )
+          .map(({ id, label }): EditObject => ({
+            group: true,
+            id: String(id),
+            label: decodeEntities(typeof label === 'string' ? label : '') || String(id),
+            members: children(String(id)).filter((child) => /^[\w-]+$/.test(child))
+          }));
+        return { items: [...objects.items, ...composites], kind };
+      }
+      case 'pie':
+        return {
+          items: lines.flatMap((line, index) => {
+            const match = index > headerIndex(lines) ? pieSlice.exec(line) : null;
+            return match ? [{ id: `L${index}`, label: match[2], line: index }] : [];
+          }),
+          kind
+        };
       case 'sequence': {
         const order = await sequenceOrder(code);
         return {
@@ -1515,12 +2043,16 @@ export const renameObject = (
   const { eol, lines } = splitLines(code);
   const edited: Record<EditKind, () => string[] | undefined> = {
     architecture: () => renameArch(lines, object.id, text),
+    block: () => renameBlock(lines, object.id, text),
     c4: () => renameC4(lines, object.id, text.replaceAll('"', "'")),
     class: () => renameClass(lines, object.id, text),
     er: () => renameEntity(lines, object.id, text),
     flowchart: () => renameFlowObject(lines, object, text),
+    gantt: () => renameGantt(lines, object.line ?? -1, text),
     kanban: () => renameLine(lines, object.line ?? -1, text),
     mindmap: () => renameLine(lines, object.line ?? -1, text),
+    pie: () => renamePie(lines, object.line ?? -1, text),
+    requirement: () => renameRequirement(lines, object.id, text),
     sequence: () =>
       object.line === undefined
         ? renameParticipant(lines, object, text)
@@ -1545,17 +2077,26 @@ export const deleteObject = (
   const { eol, lines } = splitLines(code);
   const edited: Record<EditKind, () => string[]> = {
     architecture: () => deleteArch(lines, object, keepContents),
-    c4: () => deleteC4(lines, object.id),
+    block: () => deleteBlock(lines, object, keepContents),
+    c4: () =>
+      object.group ? deleteC4Boundary(lines, object, keepContents) : deleteC4(lines, object.id),
     class: () => deleteClass(lines, object.id),
     er: () => deleteEntity(lines, object.id),
     flowchart: () => deleteFlowObject(lines, object, keepContents),
+    gantt: () => deleteGantt(lines, object, keepContents),
     kanban: () => deleteLines(lines, object.line ?? -1, false),
     mindmap: () => deleteLines(lines, object.line ?? -1, keepContents),
+    pie: () => {
+      lines.splice(object.line ?? -1, 1);
+      return lines;
+    },
+    requirement: () => deleteRequirement(lines, object.id),
     sequence: () =>
       object.line === undefined
         ? deleteParticipant(lines, object.id)
         : deleteSequenceExtra(lines, object.line),
-    state: () => deleteState(lines, object.id),
+    state: () =>
+      object.group ? deleteComposite(lines, object, keepContents) : deleteState(lines, object.id),
     timeline: () => deleteTimeline(lines, object)
   };
   return edited[kind]().join(eol);

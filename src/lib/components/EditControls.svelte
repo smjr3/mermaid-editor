@@ -5,8 +5,16 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import type { MessageKey } from '$/i18n/messages';
+  import { messages, type MessageKey } from '$/i18n/messages';
   import { pickedEdge, pickedObject } from '$/util/colors';
+  import {
+    deleteMember,
+    objectFields,
+    objectMembers,
+    setMember,
+    setObjectFields,
+    type DetailField
+  } from '$/util/diagramDetails';
   import { headerLine } from '$/util/diagramEdit';
   import {
     checkEdit,
@@ -94,6 +102,21 @@
   const groups = $derived(items.filter((item) => item.group && item.id !== selected));
   let moveTo = $derived(node?.lane ?? service?.group ?? '');
 
+  // What is inside the object (class members, entity attributes) and its other
+  // properties (a gantt task's dates and status, a pie slice's value): diagramDetails.ts.
+  const fieldValues = (fields: DetailField[] | undefined) =>
+    Object.fromEntries((fields ?? []).map(({ key, value }) => [key, value]));
+  const props = $derived(
+    kind && selectedItem ? objectFields(inputState.code, kind, selectedItem) : undefined
+  );
+  let propValues = $derived<Record<string, string>>(fieldValues(props));
+  const members = $derived(
+    kind && selectedItem ? objectMembers(inputState.code, kind, selectedItem.id) : undefined
+  );
+  let selectedMember = $state('');
+  const member = $derived(members?.find(({ id }) => id === selectedMember) ?? members?.[0]);
+  let memberValues = $derived<Record<string, string>>(fieldValues(member?.fields));
+
   // A click in the diagram picks the object or arrow under it (see pickedObject, pickedEdge).
   $effect(() => {
     const pick = (event: MouseEvent) => {
@@ -176,6 +199,24 @@
       : setNodeIcon(inputState.code, selectedItem.id, icon);
     void apply(next, t('edit.changed', { name: selectedItem.label.trim() }));
   };
+  const onProps = () => {
+    if (!kind || !selectedItem) return;
+    void apply(
+      setObjectFields(inputState.code, kind, selectedItem, propValues),
+      t('edit.changed', { name: selectedItem.label.trim() })
+    );
+  };
+  const onMember = (remove: boolean) => {
+    if (!kind || !selectedItem || !member) return;
+    const next = remove
+      ? deleteMember(inputState.code, kind, selectedItem.id, member)
+      : setMember(inputState.code, kind, selectedItem.id, member, memberValues);
+    void apply(next, t(remove ? 'edit.deleted' : 'edit.changed', { name: member.label.trim() }));
+  };
+  const optionText = (label: MessageKey, option: string) => {
+    const key = `${label}.${option}`;
+    return key in messages.en ? t(key as MessageKey) : option;
+  };
   const onEdge = (change: (kind: EditKind, edge: EditEdge) => string) => {
     if (!kind || !edge) return;
     void apply(change(kind, edge), t('edit.updated'));
@@ -189,6 +230,48 @@
     return text === id || text === '' ? id : `${label} (${id})`;
   };
 </script>
+
+{#snippet detailField(
+  field: DetailField,
+  value: string,
+  set: (value: string) => void,
+  testID: string,
+  submit: () => void
+)}
+  <label class="flex items-center gap-1">
+    <span class="w-20 shrink-0 text-xs text-muted-foreground">{t(field.label)}</span>
+    {#if field.kind === 'choice'}
+      <select
+        class={selectClass}
+        {value}
+        data-testid={testID}
+        onchange={(event) => set(event.currentTarget.value)}>
+        {#each field.options ?? [] as option (option)}
+          <option value={option}>{optionText(field.label, option)}</option>
+        {/each}
+      </select>
+    {:else if field.kind === 'item'}
+      <select
+        class={selectClass}
+        {value}
+        data-testid={testID}
+        onchange={(event) => set(event.currentTarget.value)}>
+        <option value="">{t('add.none')}</option>
+        {#each field.choices ?? [] as choice (choice.id)}
+          <option value={choice.id}>{shown(choice.label, choice.id)}</option>
+        {/each}
+      </select>
+    {:else}
+      <Input
+        class="h-9"
+        type={field.kind === 'text' ? 'text' : field.kind}
+        {value}
+        data-testid={testID}
+        oninput={(event) => set(event.currentTarget.value)}
+        onkeydown={(event) => event.key === 'Enter' && submit()} />
+    {/if}
+  </label>
+{/snippet}
 
 <Card title={t('edit.title')} testID={TID.editCard} isStackable icon={{ component: EditIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
@@ -226,6 +309,23 @@
                   onkeydown={(event) => event.key === 'Enter' && onRename()} />
                 <Button size="sm" class="h-9" data-testid={TID.editRenameButton} onclick={onRename}
                   >{t('edit.rename')}</Button>
+              </div>
+            {/if}
+            {#if props && props.length > 0}
+              <div class="flex flex-col gap-1">
+                {#each props as field (field.key)}
+                  {@render detailField(
+                    field,
+                    propValues[field.key] ?? '',
+                    (value) => (propValues = { ...propValues, [field.key]: value }),
+                    `${TID.editProp}-${field.key}`,
+                    onProps
+                  )}
+                {/each}
+                <div>
+                  <Button size="sm" data-testid={TID.editPropsButton} onclick={onProps}
+                    >{t('edit.propsApply')}</Button>
+                </div>
               </div>
             {/if}
             {#if node && node.shape !== undefined && !node.icon}
@@ -304,6 +404,47 @@
                     variant="outline"
                     data-testid={TID.editDeleteKeepButton}
                     onclick={() => onDelete(true)}>{t('edit.deleteKeep')}</Button>
+                {/if}
+              </div>
+            {/if}
+            {#if members}
+              <div class="mt-1 flex flex-col gap-1">
+                <span class="font-semibold">{t(`edit.members.${kind}` as MessageKey)}</span>
+                {#if members.length === 0}
+                  <p class="text-xs text-muted-foreground">{t('edit.membersNone')}</p>
+                {:else}
+                  <select
+                    value={member?.id ?? ''}
+                    aria-label={t(`edit.members.${kind}` as MessageKey)}
+                    data-testid={TID.editMemberSelect}
+                    class={selectClass}
+                    onchange={(event) => (selectedMember = event.currentTarget.value)}>
+                    {#each members as option (option.id)}
+                      <option value={option.id}>{option.label}</option>
+                    {/each}
+                  </select>
+                  {#if member}
+                    {#each member.fields as field (field.key)}
+                      {@render detailField(
+                        field,
+                        memberValues[field.key] ?? '',
+                        (value) => (memberValues = { ...memberValues, [field.key]: value }),
+                        `${TID.editMember}-${field.key}`,
+                        () => onMember(false)
+                      )}
+                    {/each}
+                    <div class="flex flex-wrap gap-1">
+                      <Button
+                        size="sm"
+                        data-testid={TID.editMemberButton}
+                        onclick={() => onMember(false)}>{t('edit.memberApply')}</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        data-testid={TID.editMemberDelete}
+                        onclick={() => onMember(true)}>{t('edit.memberDelete')}</Button>
+                    </div>
+                  {/if}
                 {/if}
               </div>
             {/if}

@@ -187,7 +187,7 @@ arrowhead), ER (plus solid/dotted), sequence (plus solid/dotted; `+`/`-` activat
 architecture (reverse, arrowhead, delete). Requirement, block, gantt, pie, git and the chart types
 have no edit forms. Every edit is applied only if mermaid still parses the result as the same
 diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
-every sample.
+every sample. Ids in Japanese (申請者, 営業) are listed and edited like any other in flowcharts, swimlanes, ER and C4 diagrams, and the Colours and Add cards accept them too; mermaid's state, class, requirement and block grammars reject a non-ASCII id in a `style` statement, so those cards leave such ids out (`unicodeIds` in `mermaid.ts`).
 
 The lists behind the Add and Colours cards come from mermaid's parse on every change; results
 are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It

@@ -171,6 +171,8 @@ extractors['flowchart-v2'] = extractors.flowchart;
 extractors['flowchart-elk'] = extractors.flowchart;
 extractors.swimlane = extractors.flowchart;
 
+const unicodeIds = new Set<DiagramObjects['kind']>(['flowchart', 'er', 'c4']);
+
 /**
  * Local: the objects of a diagram that the Colours card can colour (nodes,
  * states, classes, entities, requirements, blocks, C4 elements), from mermaid's
@@ -185,8 +187,11 @@ export const diagramObjects = memoByCode(
       const found = extractors[diagram.type]?.(diagram.db as Db);
       if (!found) return undefined;
       const seen = new Set<string>();
+      // Flowchart, ER and C4 style statements take any letters (申請者); state,
+      // class, requirement and block grammars reject a non-ASCII id there.
+      const idRule = unicodeIds.has(found.kind) ? /^[\p{L}\p{N}_-]+$/u : /^[\w-]+$/;
       const items = found.items.filter(({ id }) => {
-        if (!/^[\w-]+$/.test(id) || seen.has(id)) return false;
+        if (!idRule.test(id) || seen.has(id)) return false;
         seen.add(id);
         return true;
       });

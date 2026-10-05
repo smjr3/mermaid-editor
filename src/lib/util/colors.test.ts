@@ -102,6 +102,12 @@ describe('listGroups', () => {
   it('skips groups whose title has no id a style statement could name', () => {
     expect(listGroups('flowchart TD\n  subgraph "Two words"\n    a\n  end')).toEqual([]);
   });
+
+  it('lists lanes with Japanese ids, which style statements accept', () => {
+    const code = 'swimlane-beta LR\n  subgraph 営業[営業部]\n    申請[申請する]\n  end';
+    expect(listGroups(code)).toEqual([{ id: '営業', label: '営業部' }]);
+    expect(setStyleColor(code, '営業', swatches[0])).toContain('style 営業 fill:');
+  });
 });
 
 describe('getStyleColor / setStyleColor', () => {

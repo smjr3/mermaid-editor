@@ -60,6 +60,13 @@ describe('addLane', () => {
 });
 
 describe('addNode', () => {
+  it('adds a node inside a lane with a Japanese id', async () => {
+    const jp = 'swimlane-beta LR\n  subgraph 営業\n    A[申請]\n  end';
+    const { code } = addNode(jp, { label: '確認', lane: '営業' });
+    expect(code).toBe('swimlane-beta LR\n  subgraph 営業\n    A[申請]\n    n1["確認"]\n  end');
+    await expect(typeOf(code)).resolves.toBe('swimlane');
+  });
+
   it('adds a node inside a lane, before its end', async () => {
     const { code, id } = addNode(lanes, { label: 'Pack', lane: 'Shop' });
     expect(id).toBe('n1');

@@ -120,7 +120,7 @@ const splitLines = (code: string) => ({
 
 const groupHeader = /^\s*(?:flowchart-elk|flowchart|graph|swimlane-beta)\b/;
 // `subgraph id`, `subgraph id [Title]` or `subgraph id["Title"]`; a quoted title alone has no id.
-const subgraphPattern = /^\s*subgraph\s+([\w-]+)\s*(?:\[\s*"?([^"\]]*)"?\s*\])?\s*$/;
+const subgraphPattern = /^\s*subgraph\s+([\p{L}\p{N}_-]+)\s*(?:\[\s*"?([^"\]]*)"?\s*\])?\s*$/u;
 
 export interface Group {
   id: string;

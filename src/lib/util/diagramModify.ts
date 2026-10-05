@@ -126,6 +126,9 @@ const parseDb = async (code: string): Promise<Db | undefined> => {
 };
 
 const escape = (id: string) => id.replaceAll(/[$()*+.?[\\\]^{|}-]/g, String.raw`\$&`);
+// `\b` after an id fails when the id ends in a non-ASCII letter (申請者): a word
+// boundary needs a \w on one side. This is "no more id characters" instead.
+const idEnd = String.raw`(?![\w\u00A0-\uFFFF-])`;
 /** A label in double quotes; a quote inside becomes mermaid's entity. */
 const quoted = (text: string) => `"${text.replaceAll('"', '#quot;')}"`;
 const isBlank = (line: string) => line.trim() === '' || line.trim().startsWith('%%');
@@ -426,7 +429,9 @@ const removeFromFlow = (lines: string[], ids: Set<string>, range?: [number, numb
   }
   dropRedundantBare(lines, writeChains(lines, replacements));
   for (const id of ids) {
-    removeWhere(lines, (line) => new RegExp(`^\\s*(?:style|click)\\s+${escape(id)}\\b`).test(line));
+    removeWhere(lines, (line) =>
+      new RegExp(`^\\s*(?:style|click)\\s+${escape(id)}${idEnd}`).test(line)
+    );
     dropFromList(
       lines,
       /^(\s*)class\s+([\w\s,-]+?)\s+([\w-]+)\s*;?\s*$/,
@@ -437,7 +442,7 @@ const removeFromFlow = (lines: string[], ids: Set<string>, range?: [number, numb
   renumberLinkStyles(lines, afterRemoving(removedEdges));
 };
 
-const subgraphPattern = (id: string) => new RegExp(`^(\\s*)subgraph\\s+${escape(id)}\\b`);
+const subgraphPattern = (id: string) => new RegExp(`^(\\s*)subgraph\\s+${escape(id)}${idEnd}`);
 
 const deleteFlowObject = (lines: string[], object: EditObject, keepContents: boolean): string[] => {
   const start = lines.findIndex((line) => subgraphPattern(object.id).test(line));
@@ -509,7 +514,7 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
     const index = lines.findIndex((line) => subgraphPattern(object.id).test(line));
     if (index === -1) return lines;
     lines[index] = lines[index].replace(
-      new RegExp(`^(\\s*subgraph\\s+${escape(object.id)})\\b.*$`),
+      new RegExp(`^(\\s*subgraph\\s+${escape(object.id)})${idEnd}.*$`),
       (_, start: string) => `${start} [${quoted(label)}]`
     );
     return lines;
@@ -666,7 +671,7 @@ const stateSyntax: EdgeSyntax = {
   head: () => true,
   label: (text) => oneLine(text).replaceAll(':', '：'),
   parse: ([, indent, from, to, label = '']) => ({ from, indent, label, parts: {}, to }),
-  pattern: /^(\s*)(\[\*\]|[\w-]+)\s*-->\s*(\[\*\]|[\w-]+)\s*(?::\s*(.*?))?\s*$/,
+  pattern: /^(\s*)(\[\*\]|[\p{L}\p{N}_-]+)\s*-->\s*(\[\*\]|[\p{L}\p{N}_-]+)\s*(?::\s*(.*?))?\s*$/u,
   render: ({ from, indent, label, to }) =>
     `${indent}${from} --> ${to}${label ? ` : ${label}` : ''}`,
   reverse: (s) => ({ ...s, from: s.to, to: s.from }),
@@ -697,7 +702,7 @@ const classSyntax: EdgeSyntax = {
     to
   }),
   pattern:
-    /^(\s*)([\w.~-]+)\s*(?:"([^"]*)"\s*)?(<\||[<*o]|\(\))?(--|\.\.)(\|>|[>*o]|\(\))?\s*(?:"([^"]*)"\s*)?([\w.~-]+)\s*(?::\s*(.*?))?\s*$/,
+    /^(\s*)([\p{L}\p{N}_.~-]+)\s*(?:"([^"]*)"\s*)?(<\||[<*o]|\(\))?(--|\.\.)(\|>|[>*o]|\(\))?\s*(?:"([^"]*)"\s*)?([\p{L}\p{N}_.~-]+)\s*(?::\s*(.*?))?\s*$/u,
   render: ({ from, indent, label, parts, to }) =>
     `${indent}${from} ${parts.cardA ? `"${parts.cardA}" ` : ''}${parts.tail}${parts.line}${parts.head} ${parts.cardB ? `"${parts.cardB}" ` : ''}${to}${label ? ` : ${label}` : ''}`,
   reverse: (s) => ({
@@ -730,7 +735,8 @@ const erSyntax: EdgeSyntax = {
     parts: { cardA, cardB, line },
     to
   }),
-  pattern: /^(\s*)([\w-]+)\s+([|}][o|])(--|\.\.)([o|][|{])\s+([\w-]+)\s*:\s*(.*?)\s*$/,
+  pattern:
+    /^(\s*)([\p{L}\p{N}_-]+)\s+([|}][o|])(--|\.\.)([o|][|{])\s+([\p{L}\p{N}_-]+)\s*:\s*(.*?)\s*$/u,
   render: ({ from, indent, label, parts, to }) =>
     `${indent}${from} ${parts.cardA}${parts.line}${parts.cardB} ${to} : "${label}"`,
   reverse: (s) => ({ ...s, from: s.to, to: s.from }),
@@ -893,7 +899,7 @@ const renameState = (lines: string[], id: string, label: string) => {
 const deleteState = (lines: string[], id: string) => {
   const name = escape(id);
   const touches = new RegExp(
-    `^\\s*(?:(?:\\[\\*\\]|[\\w-]+)\\s*-->\\s*${name}\\b|${name}\\s*-->|state\\s+"[^"]*"\\s+as\\s+${name}\\s*$|state\\s+${name}\\s*(?:<<\\w+>>)?\\s*$|${name}\\s*:|note\\s+(?:left|right)\\s+of\\s+${name}\\s*:|style\\s+${name}\\b)`
+    `^\\s*(?:(?:\\[\\*\\]|\\S+)\\s*-->\\s*${name}${idEnd}|${name}\\s*-->|state\\s+"[^"]*"\\s+as\\s+${name}\\s*$|state\\s+${name}\\s*(?:<<\\w+>>)?\\s*$|${name}\\s*:|note\\s+(?:left|right)\\s+of\\s+${name}\\s*:|style\\s+${name}${idEnd})`
   );
   // A multi-line note: `note right of id` … `end note`.
   const noteStart = new RegExp(`^\\s*note\\s+(?:left|right)\\s+of\\s+${name}\\s*$`);
@@ -945,12 +951,12 @@ const removeBlock = (lines: string[], start: number) => {
 const deleteClass = (lines: string[], id: string) => {
   const name = escape(id);
   for (let index = lines.length - 1; index >= 0; index--) {
-    if (new RegExp(`^\\s*class\\s+${name}\\b.*\\{\\s*$`).test(lines[index]))
+    if (new RegExp(`^\\s*class\\s+${name}${idEnd}.*\\{\\s*$`).test(lines[index]))
       removeBlock(lines, index);
   }
   // A note whose quoted text runs over several lines.
   for (let index = lines.length - 1; index >= 0; index--) {
-    if (!new RegExp(`^\\s*note\\s+for\\s+${name}\\b`).test(lines[index])) continue;
+    if (!new RegExp(`^\\s*note\\s+for\\s+${name}${idEnd}`).test(lines[index])) continue;
     let end = index;
     let quotes = (lines[end].match(/"/g)?.length ?? 0) % 2;
     while (quotes === 1 && end + 1 < lines.length) {
@@ -964,7 +970,7 @@ const deleteClass = (lines: string[], id: string) => {
     const match = relation.exec(line);
     if (match && (match[2] === id || match[8] === id)) return true;
     return new RegExp(
-      `^\\s*(?:class\\s+${name}\\b|${name}\\s*:|<<[^>]*>>\\s+${name}\\s*$|note\\s+for\\s+${name}\\b|style\\s+${name}\\b|(?:click|link|callback)\\s+${name}\\b|${name}\\s*:::)`
+      `^\\s*(?:class\\s+${name}${idEnd}|${name}\\s*:|<<[^>]*>>\\s+${name}\\s*$|note\\s+for\\s+${name}${idEnd}|style\\s+${name}${idEnd}|(?:click|link|callback)\\s+${name}${idEnd}|${name}\\s*:::)`
     ).test(line);
   });
   dropFromList(
@@ -1017,7 +1023,7 @@ const deleteEntity = (lines: string[], id: string) => {
     const match = erSyntax.pattern.exec(line);
     if (match && (match[2] === id || match[6] === id)) return true;
     return new RegExp(
-      `^\\s*(?:${name}\\s*\\[|${name}\\s*$|${name}\\s*:::|style\\s+${name}\\b)`
+      `^\\s*(?:${name}\\s*\\[|${name}\\s*$|${name}\\s*:::|style\\s+${name}${idEnd})`
     ).test(line);
   });
   dropFromList(
@@ -1092,7 +1098,7 @@ const deleteArch = (lines: string[], object: EditObject, keepContents: boolean) 
     removeWhere(lines, (line) => {
       const match = architectureSyntax.pattern.exec(line);
       if (match && (match[2] === id || match[8] === id)) return true;
-      return new RegExp(`^\\s*(?:service|group|junction)\\s+${name}\\b`).test(line);
+      return new RegExp(`^\\s*(?:service|group|junction)\\s+${name}${idEnd}`).test(line);
     });
   }
   return lines;
@@ -1138,11 +1144,11 @@ const deleteParticipant = (lines: string[], id: string) => {
     const match = sequenceSyntax.pattern.exec(line);
     if (match && (match[2] === id || match[6] === id)) return true;
     return new RegExp(
-      `^\\s*(?:(?:create\\s+)?(?:participant|actor)\\s+${name}\\b|destroy\\s+${name}\\s*$|(?:de)?activate\\s+${name}\\s*$|Note\\s+(?:left|right)\\s+of\\s+${name}\\s*:|(?:links?|properties|details)\\s+${name}\\s*:)`,
+      `^\\s*(?:(?:create\\s+)?(?:participant|actor)\\s+${name}${idEnd}|destroy\\s+${name}\\s*$|(?:de)?activate\\s+${name}\\s*$|Note\\s+(?:left|right)\\s+of\\s+${name}\\s*:|(?:links?|properties|details)\\s+${name}\\s*:)`,
       'i'
     ).test(line);
   });
-  const over = /^(\s*Note\s+over\s+)([\w\s,-]+?)(\s*:.*)$/i;
+  const over = /^(\s*Note\s+over\s+)([^:]+?)(\s*:.*)$/i;
   for (let index = lines.length - 1; index >= 0; index--) {
     const match = over.exec(lines[index]);
     if (!match) continue;
@@ -1164,7 +1170,7 @@ const deleteParticipant = (lines: string[], id: string) => {
 
 // Mindmap and kanban lines: `id[Text]`, `id((Text))`, `root)Text(` or plain text.
 const shapedLine =
-  /^(\s*)([\w-]*)(\[|\(\(\(|\(\(|\(|\)\)|\)|\{\{)(.*?)(\]|\)\)\)|\)\)|\)|\(\(|\(|\}\})\s*$/;
+  /^(\s*)([\p{L}\p{N}_-]*)(\[|\(\(\(|\(\(|\(|\)\)|\)|\{\{)(.*?)(\]|\)\)\)|\)\)|\)|\(\(|\(|\}\})\s*$/u;
 const plainText = (text: string) =>
   oneLine(text)
     .replaceAll(/[()[\]{}]/g, '')
@@ -1332,7 +1338,7 @@ export const editableObjects = memoByCode(
             subgraphs.some((s) => s.id === node) ? [node, ...members(node)] : [node]
           ) ?? [];
         const groups = subgraphs
-          .filter(({ id }) => typeof id === 'string' && /^[\w-]+$/.test(id))
+          .filter(({ id }) => typeof id === 'string' && /^[\p{L}\p{N}_-]+$/u.test(id))
           .map(({ id, title }): EditObject => ({
             group: true,
             id: String(id),

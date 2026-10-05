@@ -568,3 +568,52 @@ describe('checkEdit', () => {
     await expect(checkEdit(lanes, 'sequenceDiagram\n  A->>B: hi')).resolves.toBe(false);
   });
 });
+
+describe('non-ASCII ids', () => {
+  it('deletes a Japanese participant with its declaration, messages and notes', async () => {
+    const code = `sequenceDiagram
+  participant 各部門
+  participant 経理
+  各部門->>経理: 締め
+  経理-->>各部門: 回答
+  Note over 各部門,経理: 月次
+  経理->>経理: 確認`;
+    const result = deleteObject(code, 'sequence', await object(code, '各部門'));
+    expect(result).toBe(`sequenceDiagram
+  participant 経理
+  Note over 経理: 月次
+  経理->>経理: 確認`);
+    await expect(typeOf(result)).resolves.toBe('sequence');
+    expect((await editableObjects(result))?.items.map(({ id }) => id)).toEqual(['経理']);
+  });
+
+  it('deletes Japanese flowchart nodes, lanes and states', async () => {
+    const flow = `flowchart LR
+  subgraph 営業
+    申請[申請する] --> 承認{承認?}
+  end
+  承認 -->|yes| 完了[完了]
+  style 承認 fill:#fde2e1
+  click 承認 href "https://example.com"`;
+    const gone = deleteObject(flow, 'flowchart', await object(flow, '承認'));
+    expect(gone).not.toMatch(/承認/);
+    await expect(typeOf(gone)).resolves.toBe('flowchart-v2');
+    const noLane = deleteObject(flow, 'flowchart', await object(flow, '営業'));
+    expect(noLane).not.toMatch(/営業|申請/);
+    await expect(typeOf(noLane)).resolves.toBe('flowchart-v2');
+  });
+
+  it('edits relationships between Japanese ER entities', async () => {
+    const code = `erDiagram
+  顧客 ||--o{ 注文 : 発注
+  注文 ||--|{ 明細 : 含む`;
+    const edges = await editableEdges(code);
+    expect(edges?.items.map(({ from, to }) => `${from}>${to}`)).toEqual(['顧客>注文', '注文>明細']);
+    const reversed = reverseEdge(code, 'er', await edge(code, 0));
+    expect(reversed).toContain('注文 ||--o{ 顧客 : "発注"');
+    await expect(typeOf(reversed)).resolves.toBe('er');
+    const gone = deleteEdge(code, 'er', await edge(code, 1));
+    expect(gone).not.toMatch(/明細/);
+    await expect(typeOf(gone)).resolves.toBe('er');
+  });
+});

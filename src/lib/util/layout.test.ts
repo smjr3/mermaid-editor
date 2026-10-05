@@ -86,17 +86,17 @@ describe('viewBoxSize', () => {
 });
 
 describe('getLayoutOptions / setLayoutOptions', () => {
-  it('defaults to the standard engine and spacing', () => {
-    expect(getLayoutOptions('{}')).toEqual({ engine: 'dagre', spacing: 'normal' });
+  it("defaults to ELK, which is mermaid 12's own default, and normal spacing", () => {
+    expect(getLayoutOptions('{}')).toEqual({ engine: 'elk', spacing: 'normal' });
   });
 
-  it('switches the engine to ELK and back, keeping the rest of the config', () => {
-    const elk = setLayoutOptions('{"theme":"dark"}', { engine: 'elk', spacing: 'normal' });
-    expect(JSON.parse(elk)).toEqual({ layout: 'elk', theme: 'dark' });
-    expect(getLayoutOptions(elk).engine).toBe('elk');
-    expect(JSON.parse(setLayoutOptions(elk, { engine: 'dagre', spacing: 'normal' }))).toEqual({
-      theme: 'dark'
-    });
+  it('asks for the standard engine by name and ELK by leaving the key out', () => {
+    const dagre = setLayoutOptions('{"theme":"dark"}', { engine: 'dagre', spacing: 'normal' });
+    expect(JSON.parse(dagre)).toEqual({ layout: 'dagre', theme: 'dark' });
+    expect(getLayoutOptions(dagre).engine).toBe('dagre');
+    const elk = JSON.parse(setLayoutOptions(dagre, { engine: 'elk', spacing: 'normal' }));
+    expect(elk).toEqual({ theme: 'dark' });
+    expect(getLayoutOptions('{"layout":"elk"}').engine).toBe('elk');
   });
 
   it('sets node and rank spacing for the diagrams that use them', () => {
@@ -109,11 +109,11 @@ describe('getLayoutOptions / setLayoutOptions', () => {
     expect(parsed.state).toEqual({ nodeSpacing: 25, rankSpacing: 30 });
     expect(getLayoutOptions(compact).spacing).toBe('compact');
     const normal = JSON.parse(setLayoutOptions(compact, { engine: 'dagre', spacing: 'normal' }));
-    expect(normal).toEqual({ flowchart: { curve: 'basis' } });
+    expect(normal).toEqual({ flowchart: { curve: 'basis' }, layout: 'dagre' });
   });
 
   it('leaves an unparsable config alone', () => {
     expect(setLayoutOptions('{oops', { engine: 'elk', spacing: 'wide' })).toBe('{oops');
-    expect(getLayoutOptions('{oops')).toEqual({ engine: 'dagre', spacing: 'normal' });
+    expect(getLayoutOptions('{oops')).toEqual({ engine: 'elk', spacing: 'normal' });
   });
 });

@@ -138,6 +138,9 @@
             onclick={() => applyOptions({ spacing })}>{t(`layout.spacing.${spacing}`)}</Button>
         {/each}
       </div>
+      {#if options.engine === 'elk'}
+        <p class="text-muted-foreground">{t('layout.spacingElkNote')}</p>
+      {/if}
     </div>
 
     {#if message}

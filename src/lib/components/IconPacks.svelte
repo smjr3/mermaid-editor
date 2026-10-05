@@ -1,6 +1,8 @@
 <script lang="ts">
+  import AiIconPrompt from '$/components/AiIconPrompt.svelte';
   import Card from '$/components/Card/Card.svelte';
   import IconPicker from '$/components/IconPicker.svelte';
+  import UnknownIcons from '$/components/UnknownIcons.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
@@ -105,6 +107,8 @@
         target="_blank"
         rel="noopener noreferrer">{t('icons.browse')}</a>
     </p>
+    <UnknownIcons />
+    <AiIconPrompt />
 
     <div class="flex flex-col gap-1">
       <span class="font-semibold">{t('icons.imported')}</span>

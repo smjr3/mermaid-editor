@@ -74,7 +74,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'Icons: search by name and click an icon to insert its name at the cursor.',
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
         'Architecture diagrams use them as service(icon)[Name].',
-        'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.'
+        'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.',
+        'Asking an AI: "Copy a briefing for an AI" gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are listed under "Unknown icons" with a one-click replacement.'
       ],
       title: 'Icons'
     },
@@ -170,7 +171,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '「アイコン」で名前を検索し、クリックするとカーソル位置にアイコン名が入ります。',
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
         'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
-        'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。'
+        'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。',
+        'AI に描かせるときは「AI用の説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は「コード内の不明なアイコン」に出て、1 クリックで置き換えられます。'
       ],
       title: 'アイコン'
     },

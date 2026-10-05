@@ -11,6 +11,7 @@
   import * as Dialog from '$/components/ui/dialog';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
+  import { aiCollection } from '$/util/aiCollection.svelte';
   import { iconLicense } from '$/util/iconLicenses';
   import { t } from '$/i18n';
   import { remoteIconPacks } from '$/util/customIcons';
@@ -50,6 +51,8 @@
     onchosen?: () => void;
   } = $props();
   let isLargeOpen = $state(false);
+  // Collect mode: a click adds the icon to the AI briefing list (AiIconPrompt.svelte).
+  let collect = $state(false);
   const loaders: AsyncIconLoader[] = [...iconPacks, ...remoteIconPacks(env.iconPacks)];
   let imported = $state<SearchablePack[]>([]);
   // mermaid's built-in icons first: they are the only ones every renderer knows.
@@ -129,6 +132,11 @@
 
   const choose = async (choice: string) => {
     const id = iconReference(choice);
+    if (collect) {
+      aiCollection.add(choice);
+      message = t('icons.aiCollected', { id });
+      return;
+    }
     // Standard icons render everywhere, but only architecture diagrams know them.
     const note = !isStandardIcon(choice)
       ? ` ${t('icons.pickExtendedNote')}`
@@ -191,6 +199,12 @@
       </Button>
     {/if}
   </div>
+  {#if !large}
+    <label class="flex items-center gap-1 text-xs text-muted-foreground">
+      <input type="checkbox" bind:checked={collect} data-testid={TID.iconPickerCollect} />
+      {t('icons.aiCollect')}
+    </label>
+  {/if}
   <p class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
     <span class="flex items-center gap-1"
       ><span class="size-2 rounded-full bg-emerald-500"></span>{t(

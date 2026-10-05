@@ -32,7 +32,12 @@ export const TID = {
   addNodeLane: 'add-node-lane',
   addNodeName: 'add-node-name',
   addNodeShape: 'add-node-shape',
+  aiClearButton: 'ai-clear-button',
+  aiCollected: 'ai-collected',
+  aiCopyButton: 'ai-copy-button',
   aiHelpText: 'ai-help-text',
+  aiMessage: 'ai-message',
+  aiPrompt: 'ai-prompt',
   aiRepairButton: 'ai-repair-button',
   colorsCard: 'colors-card',
   colorsEdge: 'colors-edge',
@@ -100,6 +105,7 @@ export const TID = {
   iconPackList: 'icon-pack-list',
   iconPackPrefix: 'icon-pack-prefix',
   iconPacksCard: 'icon-packs-card',
+  iconPickerCollect: 'icon-picker-collect',
   iconPickerEnlarge: 'icon-picker-enlarge',
   iconPickerLargePack: 'icon-picker-large-pack',
   iconPickerLargeResults: 'icon-picker-large-results',
@@ -121,7 +127,10 @@ export const TID = {
   resetConfigButton: 'reset-config-button',
   sampleDiagramsCard: 'sample-diagrams-card',
   themeToggleButton: 'theme-toggle-button',
-  undoButton: 'undo-button'
+  undoButton: 'undo-button',
+  unknownIconChoice: 'unknown-icon-choice',
+  unknownIconReplace: 'unknown-icon-replace',
+  unknownIcons: 'unknown-icons'
 } as const;
 
 export const C = {

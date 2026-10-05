@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **191**.
+  every locally changed path — currently **199**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -233,6 +233,19 @@ hosted and imported packs follow their own terms. Deliberately out of the cards'
 tooltip in the picker names its set and licence, logos and brand icons carry a ™ mark, and that is
 all a user sees unless they look. The facts repeat `NOTICE` and `THIRD-PARTY-LICENSES.md`; keep the
 three in step.
+
+**AI briefing and unknown icons (0.2.2)** (`src/lib/util/aiPrompt.ts`, `iconCatalog.ts`). An AI
+asked for an architecture diagram invents icon names, because it cannot see the packs. The Icons
+card has two helpers for that. "Copy a briefing for an AI" puts on the clipboard the syntax (an
+example and the rules an AI gets wrong: ASCII ids, no id starting with R/L/T/B, edge sides, no
+Font Awesome), the packs this site offers, a curated list of about sixty icons for the usual parts
+of a system (`curatedIcons`, each checked against the packs by the unit test) and the icons the
+user collected in the picker (a "collect" checkbox makes a click add to that list instead of
+inserting; `aiCollection.svelte.ts`, kept per browser). "Unknown icons in the code" lists the
+`prefix:name` references no pack provides (`checkIcons`: architecture `service/group/junction`
+icons and flowchart `@{ icon: … }` nodes), each with suggestions found by searching every pack for
+the name and its words, and a button that replaces the reference everywhere in the code
+(`replaceIconRef`). `loadPack` is the one shared loader of the packs for the picker and the check.
 
 **HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,

@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-10-03**, including the 0.2.0 work: the upstream merge of `a70ed76`,
+Accurate as of **2026-10-05**, including the 0.2.0 and 0.2.1 work: the upstream merge of `a70ed76`,
 mermaid 12.1.0, and the editor, layout and icon features below.
 
 ## What this is
@@ -65,7 +65,7 @@ nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge fro
 gains a local `Swimlane` entry (`src/lib/util/localSamples.ts`) with two examples; a `@smoke`
 e2e test renders it in Chromium and Firefox. See `UPSTREAM.md`.
 
-**Business templates.** The same file adds a "業務テンプレート" group, listed first in the
+**Business templates (0.2.1).** The same file adds a "業務テンプレート" group, listed first in the
 card: nine Japanese-language samples of what a Japanese office draws — a swimlane expense
 flow with a 承認/差戻し loop, a 稟議 approval flowchart, a support swimlane (顧客/サポート/開発),
 a hiring timeline, an on-premises + cloud architecture with tabler icons, a gantt 工程表
@@ -169,7 +169,7 @@ though a `style` statement colours nothing on them, a C4 Deployment element not 
 is left as mermaid's own behaviour: `<`/`>` in a flowchart, class or ER label render as HTML
 (`x < 10` is fine), and `linkStyle` numbers shift when arrows are added above by hand.
 
-**Edit card (0.2.0)** (`src/lib/util/diagramModify.ts`, `EditControls.svelte`). Choose an object
+**Edit card (0.2.1)** (`src/lib/util/diagramModify.ts`, `EditControls.svelte`). Choose an object
 from a list or by clicking it in the diagram, then change the text it shows or delete it with every
 arrow, relationship, note and `style` line that refers to it; a lane, architecture group or mindmap
 topic can go with what is inside or leave it, moved out one level. Choose an arrow the same way,
@@ -201,7 +201,7 @@ header opens a short guide: the basics, starting a diagram, adding shapes, chang
 export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the
 languages' sections and points in step. Update it when a tool changes.
 
-**Undo / redo** (`src/lib/util/undoStack.svelte.ts`). Two arrow buttons in the editor header step
+**Undo / redo (0.2.1)** (`src/lib/util/undoStack.svelte.ts`). Two arrow buttons in the editor header step
 back and forward through the diagram code, for the user who does not know Ctrl+Z or whose change
 came from the Add, Colours or Layout card rather than the editor. The history records each distinct
 code value as it passes through the input state (typing settles into one entry after a 500 ms pause,

@@ -38,4 +38,23 @@ test.describe('Offline build', () => {
     await page.waitForTimeout(1000);
     expect([...external]).toEqual([]);
   });
+
+  test('refuses a ?code= URL on another site, and still loads a data: one', async ({
+    editPage,
+    page
+  }) => {
+    const external = new Set<string>();
+    page.on('request', (request) => {
+      const host = new URL(request.url()).host;
+      if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) external.add(request.url());
+    });
+    await editPage.start('/edit?code=https://example.invalid/diagram.mmd');
+    await expect(editPage.view.locator('svg').first()).toBeVisible({ timeout: 15_000 });
+    expect([...external]).toEqual([]);
+
+    const data = `data:application/vnd.mermaid,${encodeURIComponent('flowchart TD\n  Hello-->World')}`;
+    await editPage.start(`/edit?code=${encodeURIComponent(data)}`);
+    await editPage.checkTextInView('Hello');
+    expect([...external]).toEqual([]);
+  });
 });

@@ -26,10 +26,7 @@ export const syncDiagram = (): void => {
 export const initHandler = async (): Promise<void> => {
   applyMigrations();
   loadStateFromURL();
-  // Local: an offline build loads no diagram from a gist or URL (MERMAID_OFFLINE).
-  if (!env.isOffline) {
-    await initLoading('Loading Gist...', loadDataFromUrl().catch(console.error));
-  }
+  await initLoading('Loading Gist...', loadDataFromUrl().catch(console.error));
   syncDiagram();
   initURLSubscription();
   await initAnalytics();
@@ -88,11 +85,25 @@ export const errorDebug = (limit = 1000) => {
 };
 
 export const formatJSON = (data: unknown): string => JSON.stringify(data, undefined, 2);
+/**
+ * Local: with MERMAID_OFFLINE, only `data:`/`blob:` URLs and this site's own
+ * files may be fetched (the `?code=` and `?config=` loaders, gists); anything
+ * else is refused before a request is made.
+ */
+export const assertFetchAllowed = (url: string): void => {
+  if (!env.isOffline) return;
+  const target = new URL(url, document.baseURI);
+  if (target.protocol === 'data:' || target.protocol === 'blob:') return;
+  if (target.origin === location.origin) return;
+  throw new Error(`Loading from ${target.origin} is disabled on this site (MERMAID_OFFLINE)`);
+};
 export const fetchJSON = async <T>(url: string): Promise<T> => {
+  assertFetchAllowed(url);
   const res = await fetch(url);
   return res.json() as T;
 };
 export const fetchText = async (url: string): Promise<string> => {
+  assertFetchAllowed(url);
   const res = await fetch(url);
   return res.text();
 };

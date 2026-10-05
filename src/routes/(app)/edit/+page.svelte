@@ -104,7 +104,7 @@
   const toolsSide = $derived(codeLeft ? 'right' : 'left');
   // The tools get about a third of a wide window, where its forms go two columns.
   const toolsSize = $derived(width >= 1280 ? 32 : 25);
-  const codeSize = $derived(isMobile ? 50 : width >= 1280 ? 22 : 25);
+  const codeSize = $derived(isMobile ? 50 : width >= 1280 ? 27 : 25);
   // The tool cards are an accordion only in the desktop tools pane.
   $effect.pre(() => {
     toolsAccordion.enabled = !isMobile;

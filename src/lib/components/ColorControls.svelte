@@ -10,22 +10,29 @@
     getEdgeColor,
     getLineColor,
     getObjectColor,
+    getTextColor,
+    getTextStyle,
     getTheme,
     lineColors,
     listGroups,
     parsePresets,
     pickedEdge,
     pickedObject,
+    resetTextStyle,
     setEdgeColor,
     setLineColor,
     setObjectColor,
+    setTextColor,
+    setTextStyle,
     setTheme,
     swatches,
+    textSizeChoices,
     themeChoices,
     tint,
     type ColorSyntax,
     type Swatch,
     type SwatchName,
+    type TextSize,
     type ThemeChoice
   } from '$/util/colors';
   import { env } from '$/util/env';
@@ -313,7 +320,8 @@
     {/if}
 
     {#if objects && items.length > 0}
-      {@const syntax = objects.syntax}
+      <!-- Class diagrams need a property without a hyphen first in a style statement (colors.ts). -->
+      {@const syntax = objects.kind === 'class' ? 'class' : objects.syntax}
       <div class="flex flex-col gap-1">
         <span class="font-semibold">{t(`colors.objects.${objects.kind}`)}</span>
         <select
@@ -346,6 +354,69 @@
             onclick={() => applyCode(colorAll(inputState.code, ids, syntax, true))}
             >{t('colors.groupsClear')}</Button>
         </div>
+
+        <!-- Text of the chosen object: bold and size (font-weight, font-size in the same
+             style statement; not a thing in C4's UpdateElementStyle) and its colour. -->
+        {#if selectedItem}
+          {@const textStyle = getTextStyle(inputState.code, selectedItem.id, syntax)}
+          <div class="mt-1 flex flex-col gap-1 border-t pt-2" data-testid={TID.colorsText}>
+            <span class="font-semibold">{t('colors.text')}</span>
+            {#if syntax === 'c4'}
+              <p class="text-xs text-muted-foreground">{t('colors.textC4')}</p>
+            {:else}
+              <div class="flex flex-wrap items-center gap-1">
+                <Button
+                  size="sm"
+                  variant={choice(textStyle.bold)}
+                  aria-pressed={textStyle.bold}
+                  data-testid={TID.colorsTextBold}
+                  onclick={() =>
+                    applyCode(
+                      setTextStyle(
+                        inputState.code,
+                        selectedItem.id,
+                        { bold: !textStyle.bold },
+                        syntax
+                      )
+                    )}>{t('colors.textBold')}</Button>
+                <select
+                  value={textStyle.size}
+                  aria-label={t('colors.textSize')}
+                  data-testid={TID.colorsTextSize}
+                  class="h-8 rounded-md border border-input bg-background px-1 text-sm text-foreground"
+                  onchange={(event) =>
+                    applyCode(
+                      setTextStyle(
+                        inputState.code,
+                        selectedItem.id,
+                        { size: event.currentTarget.value as TextSize },
+                        syntax
+                      )
+                    )}>
+                  {#each textSizeChoices as size (size)}
+                    <option value={size}>{t(`colors.textSize.${size}`)}</option>
+                  {/each}
+                </select>
+              </div>
+            {/if}
+            <span class="text-xs text-muted-foreground">{t('colors.textColor')}</span>
+            {@render strokes(
+              getTextColor(inputState.code, selectedItem.id, syntax),
+              t('colors.textColorDefault'),
+              t('colors.textColor'),
+              TID.colorsTextColor,
+              (color) => applyCode(setTextColor(inputState.code, selectedItem.id, color, syntax))
+            )}
+            <div>
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid={TID.colorsTextReset}
+                onclick={() => applyCode(resetTextStyle(inputState.code, selectedItem.id, syntax))}
+                >{t('colors.textReset')}</Button>
+            </div>
+          </div>
+        {/if}
       </div>
     {/if}
 

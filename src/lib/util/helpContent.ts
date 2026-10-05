@@ -26,6 +26,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'start',
       items: [
         '"New diagram…" at the top of Samples: choose a type (each has a one-line description), a title and a direction, and press Create for a small starter to grow with Add and change with Edit.',
+        '"From a template…" under it: pick one of the nine business templates (each with a preview), fill in its form — lanes, steps, tasks, people, … with rows to add or remove — and press Create; the diagram is drawn for you and the Add card opens to continue.',
         'Samples: pick a diagram type to load a ready-made example to edit; 業務テンプレート holds Japanese business templates (approval flow, swimlanes, gantt, org chart, …).',
         'Add: type a name and press a button to add a lane, node, participant, task, … without writing the syntax.',
         'The Docs tab opens the mermaid documentation for the kind of diagram you are writing.'
@@ -128,6 +129,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'start',
       items: [
         '「サンプル図」の上の「新しい図を作る…」で、図の種類（それぞれ一行の説明付き）・タイトル・向きを選んで「作成」を押すと、小さなひな形ができます。「追加」で要素を足し、「編集」で変えていきます。',
+        'その下の「テンプレートから作る…」では、9 つの業務テンプレート（プレビュー付き）から選び、レーン・手順・作業・参加者などの欄を書き換えたり行を足したりして「作成」を押すと、図ができあがり「追加」カードが開きます。',
         '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。「業務テンプレート」には稟議・承認フロー、スイムレーン、工程表、組織図などの日本語のひな形があります。',
         '「追加」で名前を入れてボタンを押すと、レーン・ノード・参加者・タスクなどを書き方を知らなくても足せます。',
         '「ドキュメント」タブで、今書いている図の書き方（Mermaid公式）を開けます。'

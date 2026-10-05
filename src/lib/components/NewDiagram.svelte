@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
+  import TemplateForms from '$/components/TemplateForms.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import type { Direction } from '$/util/layout';
@@ -52,6 +53,7 @@
     <NewIcon />
     {t('new.button')}
   </Button>
+  <TemplateForms {samples} />
   {#if open}
     <div class="flex flex-col gap-2 rounded-md border border-border p-2">
       <span class="font-semibold">{t('new.type')}</span>

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **213**.
+  every locally changed path — currently **218**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -202,6 +202,36 @@ two placeholders named in Japanese, ASCII ids) after a confirm, unless the code 
 an unchanged starter. Every starter parses as its type and gives the Add card actions (unit test);
 the all-diagram check runs every feature over the starters too.
 
+**From a template, by form (unreleased).** "From a template…" sits under "New diagram…" in the
+Samples card and opens a dialog listing the nine business templates, each with a one-line
+description and a preview (`TemplateForms.svelte`). The previews are each template's default
+diagram rendered by mermaid once per theme when the dialog first opens, one after another, and
+cached for the page (`templateThumbnails.ts`); they arrive within a second or two and the list is
+usable before then. Choosing one shows its form (`src/lib/util/templateForms.ts`: a schema per
+template of text boxes, choices and lists of rows to add or remove, labelled in Japanese and
+English, filled in with that template's content) and "Create" writes the diagram from it through
+the template's generator, sets its title, and opens the Add card so the user carries on there
+(by clicking its header, as the tools rail does — no page hook was needed). It asks first unless
+the code is empty, a sample, an unchanged starter or an unchanged template. The forms: the three
+flows (swimlane expense flow, approval flow, support flow) take lanes and steps, each step with
+its lane, a kind (step, decision, start/end) and where it goes next — a decision has a "yes" and a
+"no" target and label, which is how the 差戻し loops are written; hiring takes periods (stage,
+when, what happens separated by `/`); architecture takes groups (name, icon), services (name, an
+icon from a short tabler list, group) and connections (from, side, to); the gantt chart takes a
+project name, a start date and tasks (phase, name, start or "after the previous", days, status);
+the org chart takes units and whom each reports to; the monthly close takes participants and
+messages (from, to, text, request or reply arrow) — the sample's `alt` block is left out; the
+duty board takes columns and cards (work, column, assignee). Rows refer to other rows by a hidden
+id, so renaming a lane keeps its steps; a step whose lane was removed goes to the first lane,
+empty rows are dropped and a list emptied entirely still produces a diagram that parses. Ids are
+ASCII and never start with R/L/T/B (`n1`, `g1`, `grp1`, `svc1`, `o1`, `p1`, `col1`/`card1`);
+text is cleaned as the Add card cleans it (tags dropped, `;` → `,`, quotes as `#quot;` in
+flowchart labels, arrow labels quoted so brackets survive, `#` as `#35;` in sequence text, `[]`
+out of architecture labels, `:` out of gantt names). `templateForms.test.ts` parses every
+template's defaults, the result with every list emptied and with awkward Japanese text in every
+box; `tests/templateForms.spec.ts` adds a lane and a step to the expense flow and changes a gantt
+task, and checks the render.
+
 **Diagram title** (`src/lib/util/diagramTitle.ts`). The Layout card has a title field that sets,
 changes and removes the title. It is front matter (`---\ntitle: "…"\n---`, other keys kept) for
 flowchart, swimlane, sequence, state, class, ER, gantt and pie — checked in the real render
@@ -372,7 +402,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **550 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **561 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -460,7 +490,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 2,026 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 2,154 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

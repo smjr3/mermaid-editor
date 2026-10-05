@@ -151,13 +151,13 @@ half the time. If upstream fixes this themselves, take their version and drop ou
 
 ### Swimlane samples and business templates
 
-| Path                                | Local change                                                                                                                                          |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship; the Japanese "業務テンプレート" group                                            |
-| `src/lib/components/Preset.svelte`  | Spreads `localSamples` into the sample list after upstream's own; lists the business templates first; renders `<NewDiagram>` above the sample buttons |
-| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as its diagram type; none shadows an upstream sample; the templates are small and Japanese                                  |
-| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines                                                                                |
-| `tests/templates.spec.ts`           | Added. Each business template loads from the card and renders without an error                                                                        |
+| Path                                | Local change                                                                                                                                                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship; the Japanese "業務テンプレート" group                                                                                              |
+| `src/lib/components/Preset.svelte`  | Spreads `localSamples` into the sample list after upstream's own; lists the business templates first; renders `<NewDiagram>` above the sample buttons (which mounts `<TemplateForms>` under its button) |
+| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as its diagram type; none shadows an upstream sample; the templates are small and Japanese                                                                                    |
+| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines                                                                                                                                  |
+| `tests/templates.spec.ts`           | Added. Each business template loads from the card and renders without an error                                                                                                                          |
 
 If `@mermaid-js/examples` starts shipping a `Swimlane` entry, `localSamples.test.ts`
 fails on purpose: drop the local entry and take upstream's.
@@ -236,6 +236,7 @@ taking upstream's version and re-adding those lines.
 | `src/lib/components/AddControls.svelte`, `src/lib/util/diagramEdit.ts`                                                                  | Added. The "Add" card: a new lane, or a node in a lane joined by an arrow from another node, for flowcharts and swimlane diagrams; groups, services and connections for architecture diagrams (`ArchitectureAdd.svelte`); per-type forms for sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams (`AddActions.svelte`, `src/lib/util/addActions.ts`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `src/lib/components/EditControls.svelte`, `src/lib/util/diagramModify.ts`                                                               | Added. The "Edit" card: rename (the shown text) and delete objects — flowchart/swimlane nodes and lanes, states, classes, ER entities, C4 elements, architecture services and groups, sequence participants, mindmap, kanban and timeline items — and relabel, reverse, restyle and delete arrows (flowchart/swimlane in full; state, class, ER, sequence and architecture where their syntax allows), with `linkStyle` renumbered; a flowchart node's shape, lane and icon, an architecture service's icon and group, and sequence notes and blocks; every edit is checked with mermaid's parse first                                                                                                                                                                                                                                                                                                                                                  |
 | `src/lib/components/NewDiagram.svelte`, `src/lib/util/newDiagram.ts`                                                                    | Added. "New diagram" at the top of the Samples card: a type picker (14 types, a one-line description each), an optional title and a direction; replaces the code with a minimal starter with Japanese placeholders, asking first unless the code is a sample or an unchanged starter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/lib/components/TemplateForms.svelte`, `src/lib/util/templateForms.ts`, `src/lib/util/templateThumbnails.ts`                        | Added. "Create from a template" under "New diagram": a dialog listing the nine business templates with a rendered preview each; a form per template (text, choices, lists of rows) whose generator writes the diagram; mounted by one line in `NewDiagram.svelte`. Tests `templateForms.test.ts`, `tests/templateForms.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `src/lib/util/diagramTitle.ts`                                                                                                          | Added. Sets, changes and removes the diagram title — front matter `title:`, or the `title` statement of timeline and C4, which ignore front matter — from the Layout card's title field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `src/lib/components/IconChooser.svelte`, `src/lib/util/iconCatalog.ts`                                                                  | Added. A small icon search in the Edit card over every pack the editor knows (standard, bundled, build-time, hosted, imported), for a flowchart node's or an architecture service's icon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `src/lib/components/HelpButton.svelte`, `src/lib/util/helpContent.ts`                                                                   | Added. The "How to use" button in the header (Navbar) and its guide dialog; the guide text per language                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -508,18 +509,18 @@ modifications as if they were local customizations.
 | Added    | `scripts/check-local-delta.js`                         |
 | Added    | `scripts/copy-legal-files.js`                          |
 | Added    | `scripts/dev-force.js`                                 |
-| Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/fetch-icon-packs.d.ts`                        |
 | Added    | `scripts/fetch-icon-packs.js`                          |
+| Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/svg-to-iconify.d.ts`                          |
 | Added    | `scripts/svg-to-iconify.js`                            |
 | Added    | `scripts/update-upstream.sh`                           |
 | Modified | `src/app.css`                                          |
 | Modified | `src/app.html`                                         |
 | Modified | `src/lib/components/Actions.svelte`                    |
-| Added    | `src/lib/components/AiIconPrompt.svelte`               |
 | Added    | `src/lib/components/AddActions.svelte`                 |
 | Added    | `src/lib/components/AddControls.svelte`                |
+| Added    | `src/lib/components/AiIconPrompt.svelte`               |
 | Added    | `src/lib/components/ArchitectureAdd.svelte`            |
 | Modified | `src/lib/components/Card/Card.svelte`                  |
 | Added    | `src/lib/components/ColorControls.svelte`              |
@@ -528,21 +529,21 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/DesktopEditor.svelte`              |
 | Modified | `src/lib/components/DiagramDocumentationButton.svelte` |
 | Added    | `src/lib/components/DiagramToolbar.svelte`             |
-| Modified | `src/lib/components/Editor.svelte`                     |
 | Added    | `src/lib/components/EditControls.svelte`               |
+| Modified | `src/lib/components/Editor.svelte`                     |
 | Added    | `src/lib/components/EditorPaneToggle.svelte`           |
 | Added    | `src/lib/components/EditorRail.svelte`                 |
 | Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
 | Added    | `src/lib/components/HelpButton.svelte`                 |
 | Modified | `src/lib/components/History/History.svelte`            |
 | Added    | `src/lib/components/HtmlExport.svelte`                 |
+| Added    | `src/lib/components/IconChooser.svelte`                |
 | Added    | `src/lib/components/IconLicenseTable.svelte`           |
 | Added    | `src/lib/components/IconPacks.svelte`                  |
+| Added    | `src/lib/components/IconPicker.svelte`                 |
+| Added    | `src/lib/components/LayoutControls.svelte`             |
 | Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
-| Added    | `src/lib/components/IconPicker.svelte`                 |
-| Added    | `src/lib/components/IconChooser.svelte`                |
-| Added    | `src/lib/components/LayoutControls.svelte`             |
 | Modified | `src/lib/components/Navbar.svelte`                     |
 | Added    | `src/lib/components/NewDiagram.svelte`                 |
 | Modified | `src/lib/components/PanZoomToolbar.svelte`             |
@@ -551,9 +552,10 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/ResetConfigButton.svelte`          |
 | Modified | `src/lib/components/Share.svelte`                      |
 | Deleted  | `src/lib/components/SyncRoughToolbar.svelte`           |
+| Added    | `src/lib/components/TemplateForms.svelte`              |
 | Added    | `src/lib/components/ToolsBar.svelte`                   |
-| Added    | `src/lib/components/UnknownIcons.svelte`               |
 | Added    | `src/lib/components/UndoRedoButtons.svelte`            |
+| Added    | `src/lib/components/UnknownIcons.svelte`               |
 | Deleted  | `src/lib/components/VersionSecurityToolbar.svelte`     |
 | Modified | `src/lib/components/View.svelte`                       |
 | Modified | `src/lib/constants.ts`                                 |
@@ -561,11 +563,11 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
+| Added    | `src/lib/util/addActions.test.ts`                      |
+| Added    | `src/lib/util/addActions.ts`                           |
 | Added    | `src/lib/util/aiCollection.svelte.ts`                  |
 | Added    | `src/lib/util/aiPrompt.test.ts`                        |
 | Added    | `src/lib/util/aiPrompt.ts`                             |
-| Added    | `src/lib/util/addActions.test.ts`                      |
-| Added    | `src/lib/util/addActions.ts`                           |
 | Added    | `src/lib/util/allDiagrams.test.ts`                     |
 | Added    | `src/lib/util/architectureLabels.test.ts`              |
 | Added    | `src/lib/util/architectureLabels.ts`                   |
@@ -591,6 +593,13 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/helpContent.ts`                          |
 | Added    | `src/lib/util/htmlExport.test.ts`                      |
 | Added    | `src/lib/util/htmlExport.ts`                           |
+| Added    | `src/lib/util/iconCatalog.test.ts`                     |
+| Added    | `src/lib/util/iconCatalog.ts`                          |
+| Added    | `src/lib/util/iconCatalog.ts`                          |
+| Added    | `src/lib/util/iconCategories.test.ts`                  |
+| Added    | `src/lib/util/iconCategories.ts`                       |
+| Added    | `src/lib/util/iconLicenses.test.ts`                    |
+| Added    | `src/lib/util/iconLicenses.ts`                         |
 | Added    | `src/lib/util/iconPacks.test.ts`                       |
 | Added    | `src/lib/util/iconPacks.ts`                            |
 | Added    | `src/lib/util/iconSearch.test.ts`                      |
@@ -599,32 +608,28 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/layout.ts`                               |
 | Added    | `src/lib/util/localSamples.test.ts`                    |
 | Added    | `src/lib/util/localSamples.ts`                         |
-| Modified | `src/lib/util/mermaid.test.ts`                         |
-| Modified | `src/lib/util/mermaid.ts`                              |
 | Added    | `src/lib/util/memo.test.ts`                            |
 | Added    | `src/lib/util/memo.ts`                                 |
+| Modified | `src/lib/util/mermaid.test.ts`                         |
+| Modified | `src/lib/util/mermaid.ts`                              |
 | Added    | `src/lib/util/mermaidRename.test.ts`                   |
 | Added    | `src/lib/util/mermaidRename.ts`                        |
 | Added    | `src/lib/util/monacoInsert.ts`                         |
 | Added    | `src/lib/util/newDiagram.test.ts`                      |
 | Added    | `src/lib/util/newDiagram.ts`                           |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
-| Added    | `src/lib/util/iconCategories.test.ts`                  |
-| Added    | `src/lib/util/iconCategories.ts`                       |
-| Added    | `src/lib/util/iconCatalog.test.ts`                     |
-| Added    | `src/lib/util/iconCatalog.ts`                          |
-| Added    | `src/lib/util/iconLicenses.test.ts`                    |
-| Added    | `src/lib/util/iconLicenses.ts`                         |
-| Added    | `src/lib/util/iconCatalog.ts`                          |
 | Added    | `src/lib/util/standardIcons.test.ts`                   |
 | Added    | `src/lib/util/standardIcons.ts`                        |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
-| Added    | `src/lib/util/util.test.ts`                            |
-| Modified | `src/lib/util/util.ts`                                 |
 | Added    | `src/lib/util/svgToIconify.test.ts`                    |
+| Added    | `src/lib/util/templateForms.test.ts`                   |
+| Added    | `src/lib/util/templateForms.ts`                        |
+| Added    | `src/lib/util/templateThumbnails.ts`                   |
 | Added    | `src/lib/util/undoStack.svelte.ts`                     |
 | Added    | `src/lib/util/undoStack.test.ts`                       |
+| Added    | `src/lib/util/util.test.ts`                            |
+| Modified | `src/lib/util/util.ts`                                 |
 | Modified | `src/routes/(app)/edit/+page.svelte`                   |
 | Modified | `src/routes/+error.svelte`                             |
 | Modified | `src/routes/embed/+page.svelte`                        |
@@ -659,10 +664,11 @@ modifications as if they were local customizations.
 | Modified | `tests/loadSite.spec.ts`                               |
 | Added    | `tests/locale.spec.ts`                                 |
 | Added    | `tests/newDiagram.spec.ts`                             |
+| Added    | `tests/offline.spec.ts`                                |
 | Added    | `tests/releaseAudit.spec.ts`                           |
 | Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/swimlane.spec.ts`                               |
-| Added    | `tests/offline.spec.ts`                                |
+| Added    | `tests/templateForms.spec.ts`                          |
 | Added    | `tests/templates.spec.ts`                              |
 | Modified | `tests/test.ts`                                        |
 | Added    | `tests/textStyle.spec.ts`                              |

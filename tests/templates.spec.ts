@@ -34,10 +34,11 @@ test.describe('Business templates', () => {
 
   test('lead the sample list', async ({ page }) => {
     const card = page.getByTestId(TID.sampleDiagramsCard).locator('..');
-    // The first sample button; "New diagram" sits above the samples.
-    await expect(
-      card.locator(`button:not([data-testid="${TID.newDiagramToggle}"])`).first()
-    ).toHaveText(businessTemplatesName);
+    // The first sample button; "New diagram" and "From a template" sit above the samples.
+    const above = [TID.newDiagramToggle, TID.templateFormsButton]
+      .map((id) => `:not([data-testid="${id}"])`)
+      .join('');
+    await expect(card.locator(`button${above}`).first()).toHaveText(businessTemplatesName);
   });
 
   for (const [index, { title, isDefault }] of templates.entries()) {

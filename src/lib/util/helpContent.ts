@@ -25,7 +25,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
-        'Samples: pick a diagram type to load a ready-made example to edit.',
+        'Samples: pick a diagram type to load a ready-made example to edit; 業務テンプレート holds Japanese business templates (approval flow, swimlanes, gantt, org chart, …).',
         'Add: type a name and press a button to add a lane, node, participant, task, … without writing the syntax.',
         'The Docs tab opens the mermaid documentation for the kind of diagram you are writing.'
       ],
@@ -41,6 +41,15 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       title: 'Adding shapes'
     },
     {
+      id: 'edit',
+      items: [
+        'Edit: choose a shape (or click it in the picture) to change its text or delete it with every arrow that touches it; a lane or topic can go with or without what is inside.',
+        'Choose an arrow (or click it) to change its label, turn it round, draw it solid, dotted or thick, with or without an arrowhead, or delete it.',
+        'A change that would break the diagram is not made; the card says so instead.'
+      ],
+      title: 'Changing and deleting'
+    },
+    {
       id: 'layout',
       items: [
         'Direction: top to bottom or left to right; "Fit to view" picks the one that shows larger.',
@@ -54,6 +63,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Theme and line colour for the whole diagram.',
         'Colours per lane, per shape (node, state, class, entity, …) and per arrow: choose from the list, or click it in the picture.',
+        'Text per shape: bold, font size and text colour; C4 elements take a text colour only.',
         '"Any colour" picks freely; colours you picked are offered again next time.'
       ],
       title: 'Colours'
@@ -63,7 +73,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Icons: search by name and click an icon to insert its name at the cursor.',
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
-        'Architecture diagrams use them as service(icon)[Name].'
+        'Architecture diagrams use them as service(icon)[Name].',
+        'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.'
       ],
       title: 'Icons'
     },
@@ -76,12 +87,23 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       title: 'Export and share'
     },
     {
+      id: 'licenses',
+      items: [
+        'The bundled icon sets and their licences are listed above; the links open each set and its licence text.',
+        'These licences cover the artwork. MIT, ISC and Apache-2.0 ask that the notice travels with a copy of the icons; this site carries it in NOTICE and THIRD-PARTY-LICENSES.md. CC0 asks nothing.',
+        'A logo or brand icon (™ in the picker) shows a trademark that belongs to its owner, whatever the artwork licence says. Naming a product in an architecture diagram is the use owners generally allow; marketing material needs their brand guidelines.',
+        'Icon sets added by your organisation (vendor packs such as AWS, Azure or Google Cloud, hosted packs) and packs you import follow their own terms, which this editor does not know.'
+      ],
+      title: 'Icon licences'
+    },
+    {
       id: 'tips',
       items: [
         'F2 on a name renames it everywhere in the diagram.',
         'The button at the top of the editor folds the left side to icons; "Hide the tools" gives the code more room.',
         'The sun / moon button switches dark mode; the Config tab holds the mermaid settings.',
-        'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.'
+        'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
+        'The undo / redo arrows above the code take back the last change, including what the Add, Colours and Layout cards wrote.'
       ],
       title: 'Tips'
     }
@@ -99,7 +121,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
-        '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。',
+        '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。「業務テンプレート」には稟議・承認フロー、スイムレーン、工程表、組織図などの日本語のひな形があります。',
         '「追加」で名前を入れてボタンを押すと、レーン・ノード・登場人物・タスクなどを書き方を知らなくても足せます。',
         '「ドキュメント」タブで、今書いている図の書き方（Mermaid公式）を開けます。'
       ],
@@ -115,6 +137,15 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       title: '要素の追加'
     },
     {
+      id: 'edit',
+      items: [
+        '「編集」で図形を選ぶ（図をクリックしても選べます）と、表示名を変えたり、つながる矢印ごと削除したりできます。レーンやトピックは中身ごと、または中身を残して削除できます。',
+        '矢印を選ぶ（クリックでも可）と、ラベルの変更、向きの反転、実線・点線・太線や矢じりの有無の切り替え、削除ができます。',
+        '図が壊れる変更は行われず、カードにその旨が表示されます。'
+      ],
+      title: '変更と削除'
+    },
+    {
       id: 'layout',
       items: [
         '向き：上→下 か 左→右。「画面に合わせる」で大きく表示できる向きを自動で選びます。',
@@ -128,6 +159,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'テーマと線の色で、図全体の見た目を変えられます。',
         'レーン・図形（ノード・状態・クラス・エンティティなど）・矢印ごとに色を付けられます。一覧から選ぶか、図をクリックして選びます。',
+        '図形ごとに文字を太字にしたり、文字サイズや文字の色を変えられます（C4 の要素は文字の色のみ）。',
         '「自由に選ぶ」で好きな色を選べ、選んだ色は次から色の丸に並びます。'
       ],
       title: '配色'
@@ -137,7 +169,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         '「アイコン」で名前を検索し、クリックするとカーソル位置にアイコン名が入ります。',
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
-        'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。'
+        'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
+        'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。'
       ],
       title: 'アイコン'
     },
@@ -150,12 +183,23 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       title: '書き出しと共有'
     },
     {
+      id: 'licenses',
+      items: [
+        '同梱アイコン集とそのライセンスは上の表のとおりです。リンクから各アイコン集とライセンス本文を開けます。',
+        'これらのライセンスは絵柄に対するものです。MIT・ISC・Apache-2.0 はアイコンの複製に表示文を添えることを求めており、このサイトでは NOTICE と THIRD-PARTY-LICENSES.md がその役目です。CC0 は何も求めません。',
+        'ロゴやブランドのアイコン（一覧で ™ 付き）は、絵柄のライセンスとは別に、その商標の権利が各社にあります。構成図で製品名を示す用途は一般に認められていますが、宣伝資料などに使う場合はブランドガイドラインに従ってください。',
+        '組織が追加したアイコン集（AWS・Azure・Google Cloud などのベンダー配布分や、サイトに置かれたもの）と、自分で取り込んだアイコン集は、それぞれの配布元の条件に従います。このエディタはその内容を把握していません。'
+      ],
+      title: 'アイコンの利用条件'
+    },
+    {
       id: 'tips',
       items: [
         '名前の上で F2 を押すと、図の中のその名前をまとめて変えられます。',
         'エディタ上部のボタンで左側をアイコンだけに、「ツールを隠す」でコードを広く使えます。',
         '太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
-        'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。'
+        'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
+        'コードの上にある「元に戻す」「やり直す」の矢印で、直前の変更を取り消せます。「追加」「色」「レイアウト」で書き込んだ内容も戻せます。'
       ],
       title: '便利な操作と困ったとき'
     }

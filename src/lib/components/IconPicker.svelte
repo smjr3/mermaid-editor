@@ -11,6 +11,7 @@
   import * as Dialog from '$/components/ui/dialog';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
+  import { iconLicense } from '$/util/iconLicenses';
   import { t } from '$/i18n';
   import { remoteIconPacks } from '$/util/customIcons';
   import { listIconPacks } from '$/util/customIconStore';
@@ -147,8 +148,16 @@
     }
   };
 
-  const label = (id: string) =>
-    `${iconReference(id)} — ${isStandardIcon(id) ? t('icons.pickStandard') : t('icons.pickExtended')}`;
+  // The tooltip carries the licence facts (iconLicenses.ts) so they are at hand
+  // without a visit to the licence dialog; unknown packs (vendor, imported) say nothing.
+  const label = (id: string) => {
+    const kind = isStandardIcon(id) ? t('icons.pickStandard') : t('icons.pickExtended');
+    const terms = iconLicense(id);
+    if (!terms) return `${iconReference(id)} — ${kind}`;
+    const mark = terms.trademark ? ` · ™ ${t('icons.licensesTrademarkShort')}` : '';
+    return `${iconReference(id)} — ${kind} · ${terms.title} (${terms.license})${mark}`;
+  };
+  const trademark = (id: string) => iconLicense(id)?.trademark ?? false;
 </script>
 
 <div class={['flex flex-col gap-2', large && 'min-h-0 flex-1']}>
@@ -225,7 +234,9 @@
           </span>
           {#if large}
             <span class="w-full truncate text-center text-xs"
-              >{result.id.slice(result.id.indexOf(':') + 1)}</span>
+              >{result.id.slice(result.id.indexOf(':') + 1)}{#if trademark(result.id)}<span
+                  class="text-muted-foreground">™</span
+                >{/if}</span>
             <span
               class={[
                 'w-full truncate text-center text-[10px]',

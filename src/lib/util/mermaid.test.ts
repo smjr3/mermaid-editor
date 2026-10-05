@@ -105,6 +105,23 @@ describe('diagramObjects', () => {
     expect(await items(styled)).toEqual([{ id: 'A', label: 'One' }]);
   });
 
+  it('keeps Japanese ids where a style statement can name them, and not elsewhere', async () => {
+    expect(await items('flowchart LR\n  申請[申請する] --> 承認{承認?}')).toEqual([
+      { id: '申請', label: '申請する' },
+      { id: '承認', label: '承認?' }
+    ]);
+    expect(await items('erDiagram\n  顧客 ||--o{ 注文 : places')).toEqual([
+      { id: '顧客', label: '顧客' },
+      { id: '注文', label: '注文' }
+    ]);
+    expect(await items('C4Context\n  Person(利用者, "利用者")')).toEqual([
+      { id: '利用者', label: '利用者' }
+    ]);
+    // mermaid's state and class grammars reject `style 処理中 …`, so nothing is offered.
+    expect(await items('stateDiagram-v2\n  [*] --> 受付\n  受付 --> 処理中')).toEqual([]);
+    expect(await items('classDiagram\n  class 顧客')).toEqual([]);
+  });
+
   it('lists the states of a state diagram, without start and end', async () => {
     const code =
       'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy\n  Busy --> [*]\n  state "Long name" as LN\n' +

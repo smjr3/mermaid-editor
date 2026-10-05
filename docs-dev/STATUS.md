@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **177**.
+  every locally changed path — currently **191**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -64,6 +64,16 @@ nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge fro
 **Swimlane samples.** `@mermaid-js/examples` ships none, so the "Sample Diagrams" card
 gains a local `Swimlane` entry (`src/lib/util/localSamples.ts`) with two examples; a `@smoke`
 e2e test renders it in Chromium and Firefox. See `UPSTREAM.md`.
+
+**Business templates.** The same file adds a "業務テンプレート" group, listed first in the
+card: nine Japanese-language samples of what a Japanese office draws — a swimlane expense
+flow with a 承認/差戻し loop, a 稟議 approval flowchart, a support swimlane (顧客/サポート/開発),
+a hiring timeline, an on-premises + cloud architecture with tabler icons, a gantt 工程表
+(要件定義 → リリース), an org chart, a monthly-close sequence diagram and a kanban 業務分担表.
+Ids are ASCII so the Add, Colours and F2 features apply; each stays around a dozen nodes.
+The group name is the sample key (the card does not translate group names), so it is
+Japanese in both UI languages. `tests/templates.spec.ts` loads each from the card and
+checks it renders; the all-diagram checks cover them too.
 
 **Editor and layout (0.2.0).** F2 renames a node, participant or service id everywhere it is
 used, leaving labels and messages alone (`mermaidRename.ts`). The config tab has a "Reset
@@ -114,6 +124,18 @@ arrow's order in the code, so adding or removing arrows above it shifts the numb
 limitation). The colour buttons are the deployment's palette (`MERMAID_COLOR_PRESETS`) or the
 built-in eight, followed by the colours this browser picked freely ("any colour", kept in
 `localStorage` as `colorRecent`, latest eight).
+The chosen object's text can be made bold, given a size (small 12px, normal, large 18px, extra
+large 24px) and a colour of its own (`getTextStyle`/`setTextStyle`, `setTextColor`): `font-weight:bold`,
+`font-size:18px` and `color:…` go into the same `style <id>` statement as the fill, so there is
+never a second one, and "Reset text" removes just those three. Verified in the rendered SVG that
+mermaid honours both properties for flowchart, swimlane, state, class, ER, requirement and block
+diagrams (`tests/textStyle.spec.ts` checks the computed `font-weight`/`font-size` of the label).
+Two mermaid quirks are worked around: a class-diagram `style` statement may not start with a
+hyphenated property (`style A font-size:18px` fails with "got 'MINUS'"), so a harmless `opacity:1`
+leads when no colour does and is dropped again once one does; and a text colour the user chose is
+kept when the fill changes (the dark default is written only when none is set). C4 gets the text
+colour only (`$fontColor`), and the card says bold and size are unavailable there; the types with
+no `style` statement show the existing "nothing to colour" note.
 
 **Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
 lane, or a node (box, rounded box, decision diamond, circle or stadium) into a lane, optionally
@@ -147,6 +169,26 @@ though a `style` statement colours nothing on them, a C4 Deployment element not 
 is left as mermaid's own behaviour: `<`/`>` in a flowchart, class or ER label render as HTML
 (`x < 10` is fine), and `linkStyle` numbers shift when arrows are added above by hand.
 
+**Edit card (0.2.0)** (`src/lib/util/diagramModify.ts`, `EditControls.svelte`). Choose an object
+from a list or by clicking it in the diagram, then change the text it shows or delete it with every
+arrow, relationship, note and `style` line that refers to it; a lane, architecture group or mindmap
+topic can go with what is inside or leave it, moved out one level. Choose an arrow the same way,
+then change its label, turn it round (the two ends swap, the arrow text stays), draw it solid, dotted
+or thick, with or without an arrowhead, or delete it. Flowchart and swimlane statements go through a
+small tokenizer (`A[x] & B --> C -->|yes| D`): a node is taken out of its chain, one arrow of a chain
+is edited by splitting the chain in place, and `linkStyle N` statements are renumbered the way
+mermaid numbers arrows; the tokenizer's arrows are matched against mermaid's own list and the card
+refuses to edit arrows it cannot match. Objects: flowchart/swimlane nodes and lanes, states,
+classes, ER entities (through an alias), C4 elements, architecture services and groups (junctions
+have no text), sequence participants (an undeclared one is declared in its place so the order
+stays), mindmap topics (not the centre), kanban columns and cards, timeline periods and events.
+Arrows: flowchart/swimlane in full; state (label, reverse, delete), class (plus solid/dotted and
+arrowhead), ER (plus solid/dotted), sequence (plus solid/dotted; `+`/`-` activations stay paired),
+architecture (reverse, arrowhead, delete). Requirement, block, gantt, pie, git and the chart types
+have no edit forms. Every edit is applied only if mermaid still parses the result as the same
+diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
+every sample. Ids in Japanese (申請者, 営業) are listed and edited like any other in flowcharts, swimlanes, ER and C4 diagrams, and the Colours and Add cards accept them too; mermaid's state, class, requirement and block grammars reject a non-ASCII id in a `style` statement, so those cards leave such ids out (`unicodeIds` in `mermaid.ts`).
+
 The lists behind the Add and Colours cards come from mermaid's parse on every change; results
 are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It
 cut the heaviest sample's all-diagram e2e from about 15 s to 9 s locally (it had begun timing out
@@ -155,12 +197,22 @@ Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a qu
 has no id a `style` statement could name.
 
 **How to use (0.2.0)** (`src/lib/util/helpContent.ts`). A "How to use" button in the editor's
-header opens a short guide: the basics, starting a diagram, adding shapes, layout, colours, icons,
+header opens a short guide: the basics, starting a diagram, adding shapes, changing and deleting, layout, colours, icons,
 export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the
 languages' sections and points in step. Update it when a tool changes.
 
+**Undo / redo** (`src/lib/util/undoStack.svelte.ts`). Two arrow buttons in the editor header step
+back and forward through the diagram code, for the user who does not know Ctrl+Z or whose change
+came from the Add, Colours or Layout card rather than the editor. The history records each distinct
+code value as it passes through the input state (typing settles into one entry after a 500 ms pause,
+100 entries kept), so it is the same for Monaco, CodeMirror and the cards and does not depend on
+either editor's own stack; an undo is applied through `updateCode` and is not itself recorded.
+The buttons are disabled when there is nothing to undo or redo, and the history starts afresh once
+the diagram is loaded, so opening a shared link offers no step back to what the browser held before.
+Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
+
 **Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
-column to a slim icon rail; each rail icon (code, config, layout, add, colours, icons, samples, actions)
+column to a slim icon rail; each rail icon (code, config, layout, add, edit, colours, icons, samples, actions)
 expands the column and opens that section. The bar above the tool cards hides them so the
 editor fills the column (remembered per browser); the cards are stacked — layout, icons,
 samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
@@ -173,6 +225,14 @@ cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no edito
 (mobile, config tab) the name is copied instead. "Enlarge" opens a large dialog with names under
 the icons. mermaid's five built-in icons are listed first and marked standard (they render in
 GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
+
+**Icon licences (0.2.1)** (`src/lib/util/iconLicenses.ts`). The "How to use" guide has an "Icon
+licences" section: a table of every bundled set with its licence, copyright holder and links
+(`IconLicenseTable.svelte`), then the artwork-versus-trademark distinction and a note that vendor,
+hosted and imported packs follow their own terms. Deliberately out of the cards' way: each icon's
+tooltip in the picker names its set and licence, logos and brand icons carry a ™ mark, and that is
+all a user sees unless they look. The facts repeat `NOTICE` and `THIRD-PARTY-LICENSES.md`; keep the
+three in step.
 
 **HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,
@@ -208,7 +268,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **130 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **402 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

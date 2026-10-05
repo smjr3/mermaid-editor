@@ -51,9 +51,14 @@ export const addLane = (code: string, label: string): { code: string; id: string
   return { code: lines.join(eol), id };
 };
 
+const escapeId = (id: string) => id.replaceAll(/[$()*+.?[\\\]^{|}-]/g, String.raw`\$&`);
+
 /** The index of the `end` that closes the subgraph `id`, or -1. */
-const laneEnd = (lines: string[], id: string) => {
-  const start = lines.findIndex((line) => new RegExp(`^\\s*subgraph\\s+${id}\\b`).test(line));
+export const laneEnd = (lines: string[], id: string) => {
+  // Not `\b`: a Japanese id (営業) has no word boundary after it.
+  const start = lines.findIndex((line) =>
+    new RegExp(`^\\s*subgraph\\s+${escapeId(id)}(?![\\w\\u00A0-\\uFFFF-])`).test(line)
+  );
   if (start === -1) return -1;
   let depth = 0;
   for (let index = start; index < lines.length; index++) {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import IconLicenseTable from '$/components/IconLicenseTable.svelte';
   import { Button } from '$/components/ui/button';
   import * as Dialog from '$/components/ui/dialog';
   import { TID } from '$/constants';
@@ -44,6 +45,9 @@
       </nav>
       <section class="min-h-0 flex-1 overflow-y-auto" data-testid={TID.helpContent}>
         <h3 class="mb-2 font-semibold">{section.title}</h3>
+        {#if section.id === 'licenses'}
+          <IconLicenseTable />
+        {/if}
         <ul class="flex list-disc flex-col gap-2 pl-5 text-sm">
           {#each section.items as point (point)}
             <li>{point}</li>

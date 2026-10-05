@@ -18,10 +18,12 @@ describe('helpContent', () => {
       'basics',
       'start',
       'add',
+      'edit',
       'layout',
       'colours',
       'icons',
       'export',
+      'licenses',
       'tips'
     ]);
   });

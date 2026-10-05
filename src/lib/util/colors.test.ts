@@ -7,7 +7,10 @@ import {
   getStyleColor,
   getEdgeColor,
   getLineColor,
+  getTextColor,
+  getTextStyle,
   pickedEdge,
+  resetTextStyle,
   setEdgeColor,
   getTheme,
   laneText,
@@ -17,6 +20,8 @@ import {
   setObjectColor,
   setStyleColor,
   setLineColor,
+  setTextColor,
+  setTextStyle,
   setTheme,
   swatches,
   tint
@@ -96,6 +101,12 @@ describe('listGroups', () => {
 
   it('skips groups whose title has no id a style statement could name', () => {
     expect(listGroups('flowchart TD\n  subgraph "Two words"\n    a\n  end')).toEqual([]);
+  });
+
+  it('lists lanes with Japanese ids, which style statements accept', () => {
+    const code = 'swimlane-beta LR\n  subgraph 営業[営業部]\n    申請[申請する]\n  end';
+    expect(listGroups(code)).toEqual([{ id: '営業', label: '営業部' }]);
+    expect(setStyleColor(code, '営業', swatches[0])).toContain('style 営業 fill:');
   });
 });
 
@@ -333,5 +344,106 @@ describe('listGroups with front matter', () => {
     expect(listGroups('---\ntitle: T\n---\nswimlane-beta LR\n  subgraph L\n    a\n  end')).toEqual([
       { id: 'L', label: 'L' }
     ]);
+  });
+});
+
+const boxes = 'flowchart TD\n  A[Alpha] --> B[Beta]';
+
+describe('getTextStyle / setTextStyle', () => {
+  const blue = swatches[0];
+
+  it('adds bold and a size to one style statement, and reads them back', () => {
+    const bold = setTextStyle(boxes, 'A', { bold: true }, 'style');
+    expect(bold).toBe(`${boxes}\n  style A font-weight:bold`);
+    const sized = setTextStyle(bold, 'A', { size: 'large' }, 'style');
+    expect(sized).toBe(`${boxes}\n  style A font-weight:bold,font-size:18px`);
+    expect(getTextStyle(sized, 'A', 'style')).toEqual({ bold: true, size: 'large' });
+    expect(getTextStyle(sized, 'B', 'style')).toEqual({ bold: false, size: 'normal' });
+    expect(sized.match(/style A/g)).toHaveLength(1);
+  });
+
+  it('shares the statement with the colours, and removes the properties on normal', () => {
+    const colored = setStyleColor(boxes, 'A', blue);
+    const styled = setTextStyle(colored, 'A', { bold: true, size: 'xlarge' }, 'style');
+    expect(styled).toBe(
+      `${boxes}\n  style A fill:${blue.fill},stroke:${blue.stroke},color:${laneText},font-weight:bold,font-size:24px`
+    );
+    expect(setTextStyle(styled, 'A', { bold: false, size: 'normal' }, 'style')).toBe(colored);
+    const plain = setTextStyle(boxes, 'A', { bold: true }, 'style');
+    expect(setTextStyle(plain, 'A', { bold: false }, 'style')).toBe(boxes);
+  });
+
+  it('replaces a size written by hand, and reads a numeric weight as bold', () => {
+    const code = `${boxes}\n  style A font-size:30px,font-weight:700`;
+    expect(getTextStyle(code, 'A', 'style')).toEqual({ bold: true, size: 'normal' });
+    expect(setTextStyle(code, 'A', { size: 'small' }, 'style')).toBe(
+      `${boxes}\n  style A font-weight:bold,font-size:12px`
+    );
+  });
+
+  it('leads with a harmless property in class diagrams, whose grammar rejects a leading font-size', () => {
+    const cls = 'classDiagram\n  class Animal';
+    const bold = setTextStyle(cls, 'Animal', { bold: true }, 'class');
+    expect(bold).toBe(`${cls}\n  style Animal opacity:1,font-weight:bold`);
+    expect(getTextStyle(bold, 'Animal', 'class')).toEqual({ bold: true, size: 'normal' });
+    // A colour in front makes it unnecessary; clearing the colour brings it back.
+    const colored = setObjectColor(bold, 'Animal', blue, 'class');
+    expect(colored).toBe(
+      `${cls}\n  style Animal fill:${blue.fill},stroke:${blue.stroke},color:${laneText},font-weight:bold`
+    );
+    expect(setObjectColor(colored, 'Animal', undefined, 'class')).toBe(bold);
+    expect(setTextStyle(bold, 'Animal', { bold: false }, 'class')).toBe(cls);
+  });
+
+  it('leaves C4 alone: UpdateElementStyle has no font weight or size', () => {
+    expect(setTextStyle(c4, 'a', { bold: true, size: 'large' }, 'c4')).toBe(c4);
+    expect(getTextStyle(c4, 'a', 'c4')).toEqual({ bold: false, size: 'normal' });
+  });
+});
+
+describe('getTextColor / setTextColor / resetTextStyle', () => {
+  const blue = swatches[0];
+
+  it('sets the text colour after the fill and border, and clears it', () => {
+    const red = setTextColor(boxes, 'A', '#d64545', 'style');
+    expect(red).toBe(`${boxes}\n  style A color:#d64545`);
+    expect(getTextColor(red, 'A', 'style')).toBe('#d64545');
+    expect(getTextColor(red, 'B', 'style')).toBeUndefined();
+    expect(setTextColor(red, 'A', undefined, 'style')).toBe(boxes);
+    expect(setTextColor(setStyleColor(boxes, 'A', blue), 'A', '#d64545', 'style')).toBe(
+      `${boxes}\n  style A fill:${blue.fill},stroke:${blue.stroke},color:#d64545`
+    );
+  });
+
+  it('keeps a chosen text colour when the fill changes', () => {
+    const red = setTextColor(boxes, 'A', '#d64545', 'style');
+    expect(setStyleColor(red, 'A', blue)).toBe(
+      `${boxes}\n  style A fill:${blue.fill},stroke:${blue.stroke},color:#d64545`
+    );
+  });
+
+  it('uses $fontColor for C4, and keeps it when the fill changes', () => {
+    const red = setTextColor(c4, 'a', '#d64545', 'c4');
+    expect(red).toBe(`${c4}\n  UpdateElementStyle(a, $fontColor="#d64545")`);
+    expect(getTextColor(red, 'a', 'c4')).toBe('#d64545');
+    expect(setObjectColor(red, 'a', blue, 'c4')).toBe(
+      `${c4}\n  UpdateElementStyle(a, $bgColor="${blue.fill}", $borderColor="${blue.stroke}", $fontColor="#d64545")`
+    );
+    expect(setTextColor(red, 'a', undefined, 'c4')).toBe(c4);
+  });
+
+  it('refuses a value that is not a colour', () => {
+    expect(setTextColor(boxes, 'A', 'red;}', 'style')).toBe(boxes);
+    expect(setTextColor(c4, 'a', 'red"', 'c4')).toBe(c4);
+  });
+
+  it('resets bold, size and text colour, leaving the fill and other properties', () => {
+    const code = `${boxes}\n  style A fill:#fff,stroke:#000,color:#d64545,font-weight:bold,font-size:18px,stroke-width:3px`;
+    expect(resetTextStyle(code, 'A', 'style')).toBe(
+      `${boxes}\n  style A fill:#fff,stroke:#000,stroke-width:3px`
+    );
+    expect(resetTextStyle(`${boxes}\n  style A font-weight:bold`, 'A', 'style')).toBe(boxes);
+    expect(resetTextStyle(boxes, 'A', 'style')).toBe(boxes);
+    expect(resetTextStyle(setTextColor(c4, 'a', '#d64545', 'c4'), 'a', 'c4')).toBe(c4);
   });
 });

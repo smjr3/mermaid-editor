@@ -110,4 +110,21 @@ test.describe('Layout card', () => {
     await expect(page.getByText(t('layout.directionUnsupported'))).toBeVisible();
     await expect(page.getByTestId(TID.layoutDirectionLR)).toHaveCount(0);
   });
+
+  test('gives each diagram type its own reason, not the architecture one', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('pie title Pets\n  "Dogs": 3\n  "Cats": 2'));
+    await editPage.checkTextInView('Dogs');
+    await page.getByTestId(TID.layoutCard).click();
+    await expect(page.getByText(t('layout.directionUnsupported.pie'))).toBeVisible();
+    await expect(page.getByText(t('layout.directionUnsupported.architecture'))).toHaveCount(0);
+
+    await editPage.start(urlFor('kanban\n  todo[Todo]\n    t1[Write]\n  done[Done]'));
+    await editPage.checkTextInView('Write');
+    await page.getByTestId(TID.layoutCard).click();
+    await expect(page.getByText(t('layout.directionUnsupported.kanban'))).toBeVisible();
+    await expect(page.getByText(t('layout.directionUnsupported.pie'))).toHaveCount(0);
+  });
 });

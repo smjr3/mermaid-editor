@@ -7,6 +7,8 @@
  * result is ordinary mermaid that a shared link or mermaid.live renders the same.
  */
 
+import type { MessageKey } from '$/i18n/messages';
+
 export type Direction = 'TB' | 'LR';
 export type Engine = 'dagre' | 'elk';
 export type Spacing = 'compact' | 'normal' | 'wide';
@@ -181,4 +183,28 @@ export const setLayoutOptions = (config: string, { engine, spacing }: LayoutOpti
     )
   );
   return JSON.stringify(result, undefined, 2);
+};
+
+// Diagram types without a direction that have their own reason for it.
+const unsupportedReasons: [string, RegExp][] = [
+  ['architecture', /^\s*architecture-beta\b/],
+  ['gantt', /^\s*gantt\b/],
+  ['kanban', /^\s*kanban\b/],
+  ['mindmap', /^\s*mindmap\b/],
+  ['pie', /^\s*pie\b/],
+  ['sequence', /^\s*sequenceDiagram\b/],
+  ['timeline', /^\s*timeline\b/]
+];
+
+/**
+ * The i18n key explaining why a diagram's direction cannot be set: one per diagram
+ * type that has a reason of its own, a general one for the rest.
+ */
+export const directionUnsupportedKey = (code: string): MessageKey => {
+  const { lines } = splitLines(code);
+  const line = lines[headerIndex(lines)] ?? '';
+  const found = unsupportedReasons.find(([, pattern]) => pattern.test(line));
+  return found
+    ? (`layout.directionUnsupported.${found[0]}` as MessageKey)
+    : 'layout.directionUnsupported';
 };

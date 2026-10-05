@@ -18,6 +18,7 @@ import {
   headerIndex,
   indentOf,
   nodeLabel,
+  splitMeta,
   nodeLines,
   oneLine,
   sequenceText
@@ -1177,10 +1178,12 @@ const plainText = (text: string) =>
     .trim();
 
 const renameLine = (lines: string[], line: number, label: string) => {
-  const match = shapedLine.exec(lines[line]);
+  // A kanban card's `@{ … }` metadata stays as it is.
+  const [head, meta] = splitMeta(lines[line]);
+  const match = shapedLine.exec(head);
   const text = plainText(label);
   lines[line] = match
-    ? `${match[1]}${match[2]}${match[3]}${text}${match[5]}`
+    ? `${match[1]}${match[2]}${match[3]}${text}${match[5]}${meta}`
     : `${/^\s*/.exec(lines[line])?.[0] ?? ''}${text}`;
   return lines;
 };

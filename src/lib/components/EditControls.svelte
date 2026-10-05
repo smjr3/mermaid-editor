@@ -4,7 +4,9 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import type { MessageKey } from '$/i18n/messages';
   import { pickedEdge, pickedObject } from '$/util/colors';
+  import { headerLine } from '$/util/diagramEdit';
   import {
     checkEdit,
     deleteEdge,
@@ -30,6 +32,12 @@
   // arrows, without writing the syntax (diagramModify.ts). Every edit is checked
   // with mermaid's parse before it is applied.
   const kind = $derived(editKind(inputState.code));
+  // A swimlane diagram's containers are lanes, a flowchart's are groups.
+  const objectsKey = $derived(
+    kind === 'flowchart' && /^\s*swimlane-beta\b/.test(headerLine(inputState.code))
+      ? 'edit.objects.swimlane'
+      : (`edit.objects.${kind}` as MessageKey)
+  );
 
   // Objects and arrows come from the last valid code.
   let objects = $state<EditObjects | undefined>();
@@ -144,13 +152,13 @@
       <p class="text-muted-foreground">{t('edit.unsupported')}</p>
     {:else}
       <div class="flex flex-col gap-1">
-        <span class="font-semibold">{t(`edit.objects.${kind}`)}</span>
+        <span class="font-semibold">{t(objectsKey)}</span>
         {#if items.length === 0}
           <p class="text-muted-foreground">{t('edit.objectsNone')}</p>
         {:else}
           <select
             bind:value={selected}
-            aria-label={t(`edit.objects.${kind}`)}
+            aria-label={t(objectsKey)}
             data-testid={TID.editObjectSelect}
             class={selectClass}>
             {#each items as object (object.id)}

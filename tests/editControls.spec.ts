@@ -186,4 +186,23 @@ test.describe('Edit card', () => {
     await expect(page.getByText(t('edit.unsupported'))).toBeVisible();
     await expect(page.getByTestId(TID.editObjectSelect)).toHaveCount(0);
   });
+
+  test('renames a kanban card with metadata and keeps its id and attributes', async ({
+    editPage,
+    page
+  }) => {
+    const meta = "@{ priority: 'Low', assigned: 'x' }";
+    await editPage.start(urlFor(`kanban\n  todo[To do]\n    t1[Write blog]${meta}\n    t2[Test]`));
+    await editPage.checkTextInView('Write blog');
+    await page.getByTestId(TID.editCard).click();
+    // The list shows the card's text only, not the brackets or the metadata.
+    const options = await page.getByTestId(TID.editObjectSelect).locator('option').allInnerTexts();
+    expect(options.map((option) => option.replaceAll(/\s+/g, ' ').trim())).toContain('Write blog');
+    expect(options.join('')).not.toContain('@{');
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('L2');
+    await page.getByTestId(TID.editRenameInput).fill('Draft post');
+    await page.getByTestId(TID.editRenameButton).click();
+    await expect.poll(() => stored(page)).toContain(`    t1[Draft post]${meta}\n`);
+  });
 });

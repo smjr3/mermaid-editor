@@ -11,8 +11,10 @@
     | 'samples'
     | 'actions';
 
-  /** Which side pane a rail stands in for: the code pane (left) or the tools pane (right). */
+  /** Which side of the window a rail sits on. */
   export type RailSide = 'left' | 'right';
+  /** Which pane a rail stands in for. */
+  export type RailKind = 'code' | 'tools';
 </script>
 
 <script lang="ts">
@@ -33,10 +35,14 @@
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
 
   // Local: what stays of a side pane while it is collapsed — one icon per section;
-  // each expands the pane and opens that section. The left rail stands in for the
-  // code pane (code, config), the right one for the tools pane (the tool cards).
-  let { onopen, side = 'left' }: { onopen: (target: RailTarget) => void; side?: RailSide } =
-    $props();
+  // each expands the pane and opens that section. A code rail stands in for the code
+  // pane (code, config), a tools rail for the tools pane (the tool cards). Each sits on
+  // its pane's side, which the "swap panes" setting changes (toolsPane.svelte.ts).
+  let {
+    kind,
+    onopen,
+    side
+  }: { kind: RailKind; onopen: (target: RailTarget) => void; side: RailSide } = $props();
 
   interface Item {
     target: RailTarget;
@@ -59,9 +65,10 @@
   ];
 
   const left = $derived(side === 'left');
-  const items = $derived(left ? codeItems : toolItems);
-  const testId = $derived(left ? TID.editorRail : TID.toolsRail);
-  const expandLabel = $derived(left ? t('editor.showPane') : t('tools.showPane'));
+  const code = $derived(kind === 'code');
+  const items = $derived(code ? codeItems : toolItems);
+  const testId = $derived(code ? TID.editorRail : TID.toolsRail);
+  const expandLabel = $derived(code ? t('editor.showPane') : t('tools.showPane'));
   const OpenIcon = $derived(left ? LeftOpenIcon : RightOpenIcon);
 </script>
 
@@ -70,14 +77,15 @@
     'flex w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border-t bg-card py-2',
     left ? 'border-r' : 'border-l'
   ]}
-  aria-label={left ? t('editor.rail') : t('tools.rail')}
+  aria-label={code ? t('editor.rail') : t('tools.rail')}
+  data-side={side}
   data-testid={testId}>
   <Button
     variant="ghost"
     size="icon"
     title={expandLabel}
     aria-label={expandLabel}
-    data-testid={left ? TID.editorRailExpand : TID.toolsRailExpand}
+    data-testid={code ? TID.editorRailExpand : TID.toolsRailExpand}
     onclick={() => onopen('expand')}>
     <OpenIcon />
   </Button>

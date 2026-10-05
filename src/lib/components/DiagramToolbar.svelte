@@ -14,7 +14,9 @@
   import { mode, setMode } from 'mode-watcher';
   import RoughIcon from '~icons/material-symbols/draw-outline-rounded';
   import BackgroundIcon from '~icons/material-symbols/grid-4x4-rounded';
-  import ExpandIcon from '~icons/material-symbols/open-in-full-rounded';
+  // Local: "open in new" rather than open-in-full, whose diagonal arrows read as
+  // "fit to screen" next to the reset-view button.
+  import ExpandIcon from '~icons/material-symbols/open-in-new-rounded';
   import ArrowsToCircleIcon from '~icons/material-symbols/screenshot-frame-2';
   import MagnifyingGlassPlusIcon from '~icons/material-symbols/zoom-in';
   import MagnifyingGlassMinusIcon from '~icons/material-symbols/zoom-out';

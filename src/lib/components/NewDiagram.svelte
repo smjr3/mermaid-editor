@@ -60,7 +60,7 @@
       <div
         role="radiogroup"
         aria-label={t('new.type')}
-        class="grid max-h-64 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
+        class="grid max-h-64 grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-1 overflow-y-auto sm:max-h-none sm:overflow-visible">
         {#each starterKinds as option (option.id)}
           <button
             type="button"

@@ -178,6 +178,7 @@ export const TID = {
   roughToggle: 'rough-toggle',
   sampleDiagramsCard: 'sample-diagrams-card',
   shareButton: 'share-button',
+  swapPanesButton: 'swap-panes-button',
   templateFormsAddRow: 'template-forms-add-row',
   templateFormsBack: 'template-forms-back',
   templateFormsButton: 'template-forms-button',

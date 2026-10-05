@@ -46,15 +46,16 @@ test.describe('Code pane', () => {
     await page.getByTestId(TID.editorPaneToggle).click();
     await expect(page.getByTestId(TID.editorRail)).toBeVisible();
     // paneforge stores the sizes after a short debounce; reload once the collapse is saved.
+    // The default order is tools | diagram | code, so the code is the last pane.
     await expect
       .poll(() =>
         page.evaluate(() =>
           Object.values(
-            JSON.parse(localStorage.getItem('paneforge:liveEditor') ?? '{}') as Record<
+            JSON.parse(localStorage.getItem('paneforge:liveEditorToolsLeft') ?? '{}') as Record<
               string,
               { layout: number[] }
             >
-          ).some(({ layout }) => layout.length === 3 && layout[0] === 0)
+          ).some(({ layout }) => layout.length === 3 && layout[2] === 0)
         )
       )
       .toBe(true);

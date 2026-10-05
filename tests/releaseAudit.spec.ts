@@ -51,7 +51,9 @@ test.describe('Editor column', () => {
       .poll(() =>
         page.evaluate(() =>
           Object.entries(localStorage).some(
-            ([key, value]) => key.startsWith('paneforge:') && value.includes('"layout":[0,')
+            // The code pane is last by default (tools | diagram | code), first after a swap.
+            ([key, value]) =>
+              key.startsWith('paneforge:') && /"layout":\[(0,|[^\]]*,0\])/.test(value)
           )
         )
       )

@@ -355,7 +355,7 @@
       <div
         class={large
           ? 'grid min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 overflow-y-auto'
-          : 'grid max-h-56 grid-cols-6 gap-1 overflow-y-auto'}
+          : 'grid max-h-56 grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-1 overflow-y-auto sm:max-h-none sm:overflow-visible'}
         data-testid={large ? TID.iconPickerLargeResults : TID.iconPickerResults}>
         {#each results as result (result.id)}
           {@render tile(result)}
@@ -397,9 +397,12 @@
           'grid gap-1 overflow-y-auto',
           large
             ? 'min-h-0 flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2'
-            : isCategory
-              ? 'max-h-72 grid-cols-4'
-              : 'max-h-56 grid-cols-6',
+            : [
+                'sm:max-h-none sm:overflow-visible',
+                isCategory
+                  ? 'max-h-72 grid-cols-[repeat(auto-fill,minmax(5rem,1fr))]'
+                  : 'max-h-56 grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))]'
+              ],
           browsing && 'opacity-50'
         ]}
         data-testid={large ? TID.iconBrowseLargeGrid : TID.iconBrowseGrid}>

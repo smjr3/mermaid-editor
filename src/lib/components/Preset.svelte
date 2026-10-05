@@ -99,13 +99,20 @@
   isStackable
   icon={{ component: ShapesIcon }}>
   <NewDiagram samples={sampleCodes} />
-  <div class="flex h-fit max-h-52 flex-wrap gap-2 overflow-y-auto p-2">
+  <!-- Local: a grid that fits the width (no sideways scroll); on desktop the open card
+       is the only scroll, so the list is not boxed in. -->
+  <div
+    class="grid h-fit max-h-52 grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-2 overflow-y-auto p-2 sm:max-h-none sm:overflow-visible">
     {#each diagramOrder as sample (sample)}
       {@const examples = samples[sample]}
-      <div class="flex min-w-20 flex-grow">
+      <div class="flex min-w-0">
         <Button
           size="sm"
-          class={cn('flex-grow normal-case', examples.length > 1 && 'rounded-r-none')}
+          title={shownName(sample)}
+          class={cn(
+            'block min-w-0 flex-grow truncate normal-case',
+            examples.length > 1 && 'rounded-r-none'
+          )}
           onclick={() => loadSampleDiagram(sample, examples[0])}>
           {shownName(sample)}
         </Button>

@@ -38,8 +38,9 @@
   import { inputState, validatedState, updateCodeStore, urls } from '$/util/state.svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
   import { logEvent, logMermaidChartClick } from '$/util/stats';
+  import { paneOrder, toolsAccordion } from '$/util/toolsPane.svelte';
   import { getContactSalesUrl, initHandler } from '$/util/util';
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import CodeIcon from '~icons/custom/code';
   import HistoryIcon from '~icons/material-symbols/history';
   import GearIcon from '~icons/material-symbols/settings-outline-rounded';
@@ -86,12 +87,24 @@
 
   let isHistoryOpen = $state(false);
 
-  // Local: three desktop panes — code (left), diagram (centre), tools (right). Each side
-  // pane collapses to an icon rail (EditorRail) whose icons reopen it on that section.
-  let editorPane: Resizable.Pane | undefined;
+  // Local: three desktop panes — by default tools (left), diagram (centre), code (right);
+  // the "swap panes" setting (toolsPane.svelte.ts) puts the code on the left as on
+  // mermaid.live. Each side pane collapses to an icon rail (EditorRail) on its own side
+  // whose icons reopen it on that section. A phone keeps upstream's code | diagram.
+  let editorPane: Resizable.Pane | undefined = $state();
   let toolsPane: Resizable.Pane | undefined = $state();
   let isEditorCollapsed = $state(false);
   let isToolsCollapsed = $state(false);
+  const codeLeft = $derived(isMobile || paneOrder.value === 'code-left');
+  const codeSide = $derived(codeLeft ? 'left' : 'right');
+  const toolsSide = $derived(codeLeft ? 'right' : 'left');
+  // The tools get about a third of a wide window, where its forms go two columns.
+  const toolsSize = $derived(width >= 1280 ? 32 : 25);
+  const codeSize = $derived(isMobile ? 50 : width >= 1280 ? 22 : 25);
+  // The tool cards are an accordion only in the desktop tools pane.
+  $effect.pre(() => {
+    toolsAccordion.enabled = !isMobile;
+  });
   const railCards: Partial<Record<RailTarget, string>> = {
     actions: TID.actionsCard,
     add: TID.addCard,
@@ -107,14 +120,10 @@
       updateCodeStore({ editorMode: target });
     }
   };
-  const openToolsFromRail = async (target: RailTarget) => {
+  const openToolsFromRail = (target: RailTarget) => {
     toolsPane?.expand();
     const card = railCards[target];
-    if (!card) return;
-    await tick();
-    const header = document.querySelector<HTMLElement>(`[data-testid="${card}"]`);
-    if (header && !header.closest('.card')?.classList.contains('isOpen')) header.click();
-    header?.scrollIntoView({ block: 'nearest' });
+    if (card) toolsAccordion.open = card;
   };
   $effect(() => {
     if (isMobile) {
@@ -188,21 +197,12 @@
         <Preset />
         <Actions />
       {/snippet}
-      {#if isEditorCollapsed && !isMobile}
-        <EditorRail side="left" onopen={openCodeFromRail} />
-      {/if}
-      <!-- Local: on desktop the code, the diagram and the tools are fixed panes split by
-           visible dividers, with flat sections instead of floating cards. On mobile the
-           tools stay under the editor, swiped against the diagram. -->
-      <Resizable.PaneGroup
-        direction="horizontal"
-        autoSaveId="liveEditor"
-        class="min-w-0 flex-1 gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
+      {#snippet codePane(order: number)}
         <Resizable.Pane
           bind:this={editorPane}
           id="pane-code"
-          order={1}
-          defaultSize={isMobile ? 50 : 25}
+          {order}
+          defaultSize={codeSize}
           minSize={15}
           collapsible={!isMobile}
           collapsedSize={0}
@@ -211,7 +211,8 @@
             class={[
               'flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border',
               !isMobile && 'code-pane'
-            ]}>
+            ]}
+            data-side={codeSide}>
             <Card
               onselect={tabSelectHandler}
               isOpen
@@ -223,7 +224,10 @@
                 <ResetConfigButton />
                 <DiagramDocButton />
                 {#if !isMobile}
-                  <EditorPaneToggle collapsed={false} ontoggle={() => editorPane?.collapse()} />
+                  <EditorPaneToggle
+                    collapsed={false}
+                    side={codeSide}
+                    ontoggle={() => editorPane?.collapse()} />
                 {/if}
               {/snippet}
               <Editor {isMobile} />
@@ -236,56 +240,90 @@
             {/if}
           </div>
         </Resizable.Pane>
-        <Resizable.Handle withHandle class="hidden sm:flex" />
+      {/snippet}
+      {#snippet toolsColumn(order: number)}
         <Resizable.Pane
-          id="pane-view"
-          order={2}
+          bind:this={toolsPane}
+          id="pane-tools"
+          {order}
+          defaultSize={toolsSize}
           minSize={15}
-          class="flex h-full flex-1 flex-col overflow-hidden">
-          <DiagramToolbar {panZoomState} fullScreenHref={urls.current.view} />
-          <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
-            {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
-                <EnhancedEditsButton />
-              </div>{/if}
+          collapsible
+          collapsedSize={0}
+          onResize={(size) => (isToolsCollapsed = size === 0)}>
+          <div
+            class="tools-pane flex h-full flex-col bg-card [&_.card]:rounded-none [&_.card]:border-0 [&_.card]:border-b [&_.card]:border-border"
+            data-side={toolsSide}
+            data-testid={TID.toolsPane}>
+            <ToolsBar side={toolsSide} oncollapse={() => toolsPane?.collapse()} />
+            <!-- One card open at a time (Card's accordion); it takes the rest of the pane
+                 and is the only thing that scrolls. -->
+            <div class="@container flex min-h-0 flex-1 flex-col overflow-hidden">
+              {@render tools()}
+            </div>
           </div>
         </Resizable.Pane>
-        {#if isHistoryOpen}
-          <Resizable.Handle withHandle class="hidden sm:flex" />
+      {/snippet}
+      {#if !isMobile && (codeLeft ? isEditorCollapsed : isToolsCollapsed)}
+        <EditorRail
+          kind={codeLeft ? 'code' : 'tools'}
+          side="left"
+          onopen={codeLeft ? openCodeFromRail : openToolsFromRail} />
+      {/if}
+      <!-- Local: on desktop the tools, the diagram and the code are fixed panes split by
+           visible dividers, with flat sections instead of floating cards. On mobile the
+           tools stay under the editor, swiped against the diagram. Each order saves its
+           own sizes, so swapping never applies one order's widths to the other. -->
+      {#key codeLeft}
+        <Resizable.PaneGroup
+          direction="horizontal"
+          autoSaveId={codeLeft ? 'liveEditor' : 'liveEditorToolsLeft'}
+          class="min-w-0 flex-1 gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
+          {#if codeLeft}
+            {@render codePane(1)}
+            <Resizable.Handle withHandle class="hidden sm:flex" />
+          {:else}
+            {@render toolsColumn(1)}
+            <Resizable.Handle withHandle />
+          {/if}
           <Resizable.Pane
-            id="pane-history"
-            order={3}
+            id="pane-view"
+            order={2}
             minSize={15}
-            defaultSize={30}
-            class="hidden h-full grow flex-col sm:flex sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0">
-            <History />
-          </Resizable.Pane>
-        {/if}
-        {#if !isMobile}
-          <Resizable.Handle withHandle />
-          <Resizable.Pane
-            bind:this={toolsPane}
-            id="pane-tools"
-            order={4}
-            defaultSize={25}
-            minSize={15}
-            collapsible
-            collapsedSize={0}
-            onResize={(size) => (isToolsCollapsed = size === 0)}>
-            <div
-              class="flex h-full flex-col bg-card [&_.card]:rounded-none [&_.card]:border-0 [&_.card]:border-b [&_.card]:border-border"
-              data-testid={TID.toolsPane}>
-              <ToolsBar oncollapse={() => toolsPane?.collapse()} />
-              <!-- The cards scroll in their own column, independent of the code. -->
-              <div class="group flex min-h-0 flex-1 flex-col overflow-y-auto">
-                {@render tools()}
-              </div>
+            class="flex h-full flex-1 flex-col overflow-hidden">
+            <DiagramToolbar {panZoomState} fullScreenHref={urls.current.view} />
+            <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
+              {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
+                  <EnhancedEditsButton />
+                </div>{/if}
             </div>
           </Resizable.Pane>
-        {/if}
-      </Resizable.PaneGroup>
-      {#if isToolsCollapsed && !isMobile}
-        <EditorRail side="right" onopen={openToolsFromRail} />
+          {#if isHistoryOpen}
+            <Resizable.Handle withHandle class="hidden sm:flex" />
+            <Resizable.Pane
+              id="pane-history"
+              order={3}
+              minSize={15}
+              defaultSize={30}
+              class="hidden h-full grow flex-col sm:flex sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0">
+              <History />
+            </Resizable.Pane>
+          {/if}
+          {#if !codeLeft}
+            <Resizable.Handle withHandle />
+            {@render codePane(4)}
+          {:else if !isMobile}
+            <Resizable.Handle withHandle />
+            {@render toolsColumn(4)}
+          {/if}
+        </Resizable.PaneGroup>
+      {/key}
+      {#if !isMobile && (codeLeft ? isToolsCollapsed : isEditorCollapsed)}
+        <EditorRail
+          kind={codeLeft ? 'tools' : 'code'}
+          side="right"
+          onopen={codeLeft ? openToolsFromRail : openCodeFromRail} />
       {/if}
     </div>
   </div>
@@ -312,6 +350,86 @@
     }
     .code-pane :global(.card > [role='toolbar'] :is(div, ul)) {
       gap: 0.125rem;
+    }
+  }
+  /* Local: the tool cards' forms in the desktop tools pane. Written against the cards'
+     existing markup, so the cards themselves (also stacked under the editor on a phone)
+     keep their own classes: controls at one height (h-9), a gap of 0.5rem in a section,
+     a little more space above each section title. */
+  .tools-pane :global(.card .min-w-fit) {
+    min-width: 0;
+  }
+  .tools-pane :global(.card :is(button, a, select).h-8) {
+    height: 2.25rem;
+  }
+  .tools-pane :global(.card .flex-col:has(> span.font-semibold:first-child)),
+  .tools-pane :global(.card .flex.items-center.gap-1) {
+    gap: 0.5rem;
+  }
+  .tools-pane :global(.card .flex-col:has(> span.font-semibold:first-child):not(:first-child)) {
+    margin-top: 0.375rem;
+  }
+  /* A wide pane (about a third of a 1280px window) puts the label-and-control rows of a
+     section side by side, two to a row, each label above its control. */
+  @container (min-width: 25rem) {
+    .tools-pane
+      :global(
+        .card
+          .flex-col:has(
+            > :is(label, div).items-center
+              > span.shrink-0:first-child
+              + :is(select, input):last-child
+          )
+      ) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .tools-pane
+      :global(
+        .card
+          .flex-col:has(
+            > :is(label, div).items-center
+              > span.shrink-0:first-child
+              + :is(select, input):last-child
+          )
+          > *
+      ) {
+      grid-column: 1 / -1;
+    }
+    .tools-pane
+      :global(
+        .card
+          .flex-col
+          > :is(label, div).items-center:has(
+            > span.shrink-0:first-child + :is(select, input):last-child
+          )
+      ) {
+      grid-column: auto;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.125rem;
+    }
+    .tools-pane
+      :global(
+        .card
+          .flex-col
+          > :is(label, div).items-center:has(
+            > span.shrink-0:first-child + :is(select, input):last-child
+          )
+          > :is(select, input)
+      ) {
+      flex: none;
+    }
+    .tools-pane
+      :global(
+        .card
+          .flex-col
+          > :is(label, div).items-center:has(
+            > span.shrink-0:first-child + :is(select, input):last-child
+          )
+          > span.shrink-0
+      ) {
+      width: auto;
     }
   }
 </style>

@@ -16,7 +16,12 @@ export class PanZoomState {
 
   constructor() {
     this.isPanEnabled = true;
-    this.resizeObserver = new ResizeObserver(() => {
+    this.resizeObserver = new ResizeObserver((entries) => {
+      // Local: a diagram that was just removed (the panes swapped, which remounts the
+      // view) reports a zero size; zooming it throws "matrix is not invertible".
+      if (entries.every(({ contentRect }) => contentRect.width === 0 && contentRect.height === 0)) {
+        return;
+      }
       this.resize();
       if (!this.isDirty) {
         this.reset();

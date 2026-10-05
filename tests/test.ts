@@ -147,7 +147,22 @@ export class EditorPage {
   }
 }
 
-export const test = base.extend<{ editPage: EditorPage }>({
+export const test = base.extend<{ editPage: EditorPage; guideSeen: boolean }>({
+  // The first-visit guide floats over the page, so every spec starts with it already seen;
+  // onboarding.spec.ts opts out with `test.use({ guideSeen: false })`.
+  context: async ({ context, guideSeen }, use) => {
+    if (guideSeen) {
+      await context.addInitScript((key) => {
+        try {
+          window.localStorage.setItem(key, 'true');
+        } catch {
+          // about:blank and opaque origins have no storage.
+        }
+      }, C.guideDoneKey);
+    }
+    await use(context);
+  },
+  guideSeen: [true, { option: true }],
   editPage: async ({ page }, use) => {
     // Dismiss the editor chooser modal so it doesn't block interactions
     await page.addInitScript((key) => {

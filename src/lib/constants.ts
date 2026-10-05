@@ -59,6 +59,10 @@ export const TID = {
   colorsTextReset: 'colors-text-reset',
   colorsTextSize: 'colors-text-size',
   colorsTheme: 'colors-theme',
+  commandButton: 'command-button',
+  commandInput: 'command-input',
+  commandItem: 'command-item',
+  commandPalette: 'command-palette',
   copyMarkdown: 'copy-markdown',
   diagramDocumentationButton: 'diagram-documentation-button',
   diagramToolbar: 'diagram-toolbar',
@@ -107,6 +111,10 @@ export const TID = {
   exportScale: 'export-scale',
   fullScreenButton: 'full-screen-button',
   gridToggle: 'grid-toggle',
+  guideClose: 'guide-close',
+  guideNext: 'guide-next',
+  guidePopover: 'guide-popover',
+  guideRestart: 'guide-restart',
   helpButton: 'help-button',
   helpContent: 'help-content',
   helpDialog: 'help-dialog',
@@ -163,6 +171,7 @@ export const TID = {
   resetViewButton: 'reset-view-button',
   roughToggle: 'rough-toggle',
   sampleDiagramsCard: 'sample-diagrams-card',
+  shareButton: 'share-button',
   themeToggleButton: 'theme-toggle-button',
   toolsPane: 'tools-pane',
   toolsPaneToggle: 'tools-pane-toggle',
@@ -179,6 +188,7 @@ export const TID = {
 export const C = {
   aiLiveEditor: 'ai_live_editor',
   editorChooserDismissedKey: 'mermaid-editor-chooser-dismissed',
+  guideDoneKey: 'mermaid-editor-guide-done',
   utmSource: 'mermaid_live_editor'
 } as const;
 

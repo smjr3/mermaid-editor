@@ -10,6 +10,8 @@
 
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import CommandPalette from '$/components/CommandPalette.svelte';
+  import GuideTour from '$/components/GuideTour.svelte';
   import HelpButton from '$/components/HelpButton.svelte';
   import MainMenu from '$/components/MainMenu.svelte';
   import { Button } from '$/components/ui/button';
@@ -91,7 +93,9 @@
   </div>
   <!-- Local: the guide to the editor, on every page and screen size. -->
   <div class="flex items-center">
+    <CommandPalette />
     <HelpButton />
+    <GuideTour />
   </div>
   <div
     id="menu"

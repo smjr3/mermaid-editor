@@ -53,7 +53,8 @@
 </script>
 
 <Dialog.Root>
-  <Dialog.Trigger class={buttonVariants({ size: 'sm' })}>{t('share.title')}</Dialog.Trigger>
+  <Dialog.Trigger class={buttonVariants({ size: 'sm' })} data-testid={TID.shareButton}
+    >{t('share.title')}</Dialog.Trigger>
   <Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-xl">
     <Dialog.Header>
       <Dialog.Title class="flex items-center gap-2 text-xl">

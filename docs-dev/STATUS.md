@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **216**.
+  every locally changed path — currently **224**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -98,6 +98,18 @@ packs (`MERMAID_ICON_PACKS`) and a user can import SVG files or an Iconify JSON 
 mermaid inserts it. A "System Architecture" sample entry shows a web system, an office network,
 a generic cloud and an AWS example with logos. The packs add about 39 MB to the built site (17 MB
 of it the logo sets, 2.8 MB the three 0.2.2 packs); a page loads only the ones its diagram names.
+
+**Command palette and first-visit guide.** Ctrl+K (⌘K) or the search button in the header opens
+a palette of twenty actions in Japanese with English keywords (`src/lib/util/commands.ts`, a
+registry plus a small scorer; arrow keys, Enter, Escape; Enter that confirms an IME conversion
+is ignored). An entry opens the right tools card and focuses or presses a control by
+`data-testid` (`uiBus.ts` drives the card header click and the tools rail's expand button, so
+`+page.svelte` needed no change), or runs undo/redo, theme, language, help, share or history.
+The first visit shows a three-step popover guide (tools pane, diagram, the help button and
+sharing) from `GuideTour.svelte`; closing it or pressing Escape stores `guideDoneKey` and it
+never opens by itself again; "最初の案内をもう一度見る" in the How to use dialog restarts it.
+`tests/test.ts` sets that flag in every spec's browser context (`guideSeen: false` opts out,
+as `tests/onboarding.spec.ts` does).
 
 **Layout card (0.2.0)** (`src/lib/util/layout.ts`). mermaid has no aspect-ratio setting, so the
 "Layout" card adjusts what shapes a diagram instead: its direction (top-to-bottom, left-to-right,

@@ -88,12 +88,34 @@ describe('sequence notes and blocks', () => {
     expect(await run(code, 'note', { text: 'x' })).toEqual({ error: 'add.seq.noteChoose' });
   });
   it('adds an empty alt or loop block after a chosen message, or at the end', async () => {
-    const alt = await run(code, 'block', { after: '3', kind: 'alt', text: '在庫あり' });
+    const alt = await run(code, 'block', {
+      after: '3',
+      kind: 'alt',
+      text: '在庫あり',
+      wrap: 'after'
+    });
     if ('error' in alt) throw new Error();
     expect(alt.code.split('\n').slice(3, 6)).toEqual(['  A->>B: hi', '  alt 在庫あり', '  end']);
-    const loop = await run(alt.code, 'block', { kind: 'loop', text: '' });
+    const loop = await run(alt.code, 'block', { kind: 'loop', text: '', wrap: 'after' });
     if ('error' in loop) throw new Error();
     expect(loop.code.split('\n').slice(-2)).toEqual(['  loop 繰り返し', '  end']);
+  });
+  it('wraps the last message when no message is chosen, so the frame is never drawn empty', async () => {
+    const spec = specFor(code)?.actions.find(({ id }) => id === 'block');
+    expect(spec && initialValues(spec).wrap).toBe('around');
+    const result = await run(code, 'block', { kind: 'alt', text: '' });
+    if ('error' in result) throw new Error();
+    expect(result.code.split('\n').slice(3)).toEqual([
+      '  A->>B: hi',
+      '  alt 条件',
+      '    B-->>A: hello',
+      '  end'
+    ]);
+    // With no message at all there is nothing to wrap: an empty frame is all that can be written.
+    const bare = 'sequenceDiagram\n  participant A\n  participant B';
+    const empty = await run(bare, 'block', { kind: 'loop', text: '' });
+    if ('error' in empty) throw new Error();
+    expect(empty.code.split('\n').slice(-2)).toEqual(['  loop 繰り返し', '  end']);
   });
   it('wraps a block around a chosen message, and puts a message first inside a block', async () => {
     const around = await run(code, 'block', {
@@ -471,6 +493,22 @@ describe('gantt', () => {
   });
 });
 
+describe('gantt tasks next to ids that mermaid also hands out', () => {
+  it('gives a new task an id of its own when a chart already has task1, task2…', async () => {
+    const chart =
+      'gantt\n  dateFormat YYYY-MM-DD\n  section A\n    a :task1, 2024-01-01, 3d\n    b :task2, after task1, 2d';
+    const result = await run(chart, 'task', { days: '4', name: 'c' });
+    if ('error' in result) throw new Error();
+    // mermaid would call an id-less task "task1" too, and the two collide (NaN in the picture).
+    expect(added(chart, result.code)).toEqual(['    c : t1, after task2, 4d']);
+    // A chart without such ids is left as it was: no id, no start.
+    const plain = 'gantt\n  dateFormat YYYY-MM-DD\n  section A\n    a :t1, 2024-01-01, 3d';
+    const other = await run(plain, 'task', { days: '4', name: 'c' });
+    if ('error' in other) throw new Error();
+    expect(added(plain, other.code)).toEqual(['    c : 4d']);
+  });
+});
+
 describe('pie', () => {
   const code = 'pie title Pets\n  "Dogs" : 386';
   it('adds a slice, and refuses a value that is not a number', async () => {
@@ -491,6 +529,21 @@ describe('pie', () => {
     const hidden = await run(shown.code, 'display', { showData: 'off' });
     if ('error' in hidden) throw new Error();
     expect(hidden.code).toBe(code);
+    // The card words the result itself, not with the keyword (`showData`).
+    expect(shown).toMatchObject({ done: 'add.pie.shownDone' });
+    expect(hidden).toMatchObject({ done: 'add.pie.hiddenDone' });
+  });
+  it('names an unnamed slice, task and section in Japanese, not English', async () => {
+    const slice = await run(code, 'slice', { name: '', value: '5' });
+    if ('error' in slice) throw new Error();
+    expect(added(code, slice.code)).toEqual(['    "項目" : 5']);
+    const plan = 'gantt\n  dateFormat YYYY-MM-DD\n  section A\n    X : 2024-01-01, 3d';
+    const task = await run(plan, 'task', { name: '' });
+    if ('error' in task) throw new Error();
+    expect(task.name).toBe('作業');
+    const section = await run(plan, 'section', { name: '' });
+    if ('error' in section) throw new Error();
+    expect(section.name).toBe('セクション');
   });
 });
 

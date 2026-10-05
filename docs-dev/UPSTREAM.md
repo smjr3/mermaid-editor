@@ -713,6 +713,7 @@ modifications as if they were local customizations.
 | Added    | `tests/newDiagram.spec.ts`                             |
 | Added    | `tests/offline.spec.ts`                                |
 | Added    | `tests/onboarding.spec.ts`                             |
+| Added    | `tests/qaFindings.spec.ts`                             |
 | Added    | `tests/releaseAudit.spec.ts`                           |
 | Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/selection.spec.ts`                              |

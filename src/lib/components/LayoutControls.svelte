@@ -152,38 +152,45 @@
       {/if}
     </div>
 
-    <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('layout.engine')}</span>
-      <div class="flex flex-wrap gap-1">
-        <Button
-          size="sm"
-          variant={choice(options.engine === 'dagre')}
-          data-testid={TID.layoutEngineDagre}
-          onclick={() => applyOptions({ engine: 'dagre' })}>{t('layout.engineDagre')}</Button>
-        <Button
-          size="sm"
-          variant={choice(options.engine === 'elk')}
-          title={t('layout.engineElkHint')}
-          data-testid={TID.layoutEngineElk}
-          onclick={() => applyOptions({ engine: 'elk' })}>{t('layout.engineElk')}</Button>
-      </div>
-    </div>
-
-    <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('layout.spacing')}</span>
-      <div class="flex flex-wrap gap-1">
-        {#each ['compact', 'normal', 'wide'] as const as spacing (spacing)}
+    <!-- Only diagrams laid out by dagre/ELK (the ones with a direction) react to these. -->
+    {#if direction}
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('layout.engine')}</span>
+        <div class="flex flex-wrap gap-1">
           <Button
             size="sm"
-            variant={choice(options.spacing === spacing)}
-            data-testid={`${TID.layoutSpacing}-${spacing}`}
-            onclick={() => applyOptions({ spacing })}>{t(`layout.spacing.${spacing}`)}</Button>
-        {/each}
+            variant={choice(options.engine === 'dagre')}
+            data-testid={TID.layoutEngineDagre}
+            onclick={() => applyOptions({ engine: 'dagre' })}>{t('layout.engineDagre')}</Button>
+          <Button
+            size="sm"
+            variant={choice(options.engine === 'elk')}
+            title={t('layout.engineElkHint')}
+            data-testid={TID.layoutEngineElk}
+            onclick={() => applyOptions({ engine: 'elk' })}>{t('layout.engineElk')}</Button>
+        </div>
       </div>
-      {#if options.engine === 'elk'}
-        <p class="text-muted-foreground">{t('layout.spacingElkNote')}</p>
-      {/if}
-    </div>
+
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('layout.spacing')}</span>
+        <div class="flex flex-wrap gap-1">
+          {#each ['compact', 'normal', 'wide'] as const as spacing (spacing)}
+            <Button
+              size="sm"
+              variant={choice(options.spacing === spacing)}
+              data-testid={`${TID.layoutSpacing}-${spacing}`}
+              onclick={() => applyOptions({ spacing })}>{t(`layout.spacing.${spacing}`)}</Button>
+          {/each}
+        </div>
+        {#if options.engine === 'elk'}
+          <p class="text-muted-foreground">{t('layout.spacingElkNote')}</p>
+        {/if}
+      </div>
+    {:else}
+      <p class="text-muted-foreground" data-testid={TID.layoutNoEngine}>
+        {t('layout.noEngine')}
+      </p>
+    {/if}
 
     {#if message}
       <p role="status" class="text-muted-foreground" data-testid={TID.layoutMessage}>{message}</p>

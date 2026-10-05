@@ -3,9 +3,11 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import type { MessageKey } from '$/i18n/messages';
   import { addArchEdge, addArchGroup, addArchService, type Placement } from '$/util/diagramEdit';
   import { architectureParts, type DiagramObject } from '$/util/mermaid';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { applyToolEdit, type ToolEditResult } from '$/util/codeHealth.svelte';
+  import { inputState, validatedState } from '$/util/state.svelte';
 
   // Local: the Add card for architecture diagrams — groups, services joined on a
   // chosen side, and edges between services (diagramEdit.ts).
@@ -44,22 +46,29 @@
   let edgePlace = $state<Placement>('right');
   let message = $state('');
 
-  const apply = (code: string, name: string) => {
-    updateCode(code, { updateDiagram: true });
-    message = t('add.done', { name });
+  // Local: checked and refused while the code has an error (codeHealth.svelte.ts).
+  const said: Record<Exclude<ToolEditResult, 'applied'>, MessageKey> = {
+    blocked: 'recover.blocked',
+    refused: 'add.breaks',
+    unchanged: 'add.breaks'
   };
-  const onAddGroup = () => {
+  const apply = async (code: string, name: string): Promise<boolean> => {
+    const result = await applyToolEdit(code);
+    message = result === 'applied' ? t('add.done', { name }) : t(said[result]);
+    return result === 'applied';
+  };
+  const onAddGroup = async () => {
     const name = groupName.trim() || t('add.arch.groupDefault');
     const { code, id } = addArchGroup(inputState.code, {
       icon: groupIcon,
       label: name,
       parent: groups.some((item) => item.id === parent) ? parent : undefined
     });
-    apply(code, name);
+    if (!(await apply(code, name))) return;
     groupName = '';
     group = id;
   };
-  const onAddService = () => {
+  const onAddService = async () => {
     const name = serviceName.trim() || t('add.arch.serviceDefault');
     const icon = serviceIcon === 'other' ? otherIcon.trim() : serviceIcon;
     // A group or service deleted in the code may still be chosen here.
@@ -71,24 +80,21 @@
       label: name,
       place
     });
-    apply(code, name);
+    if (!(await apply(code, name))) return;
     serviceName = '';
     // The next service most likely follows this one.
     from = id;
   };
-  const onAddEdge = () => {
+  const onAddEdge = async () => {
     const known = (id: string) => services.some((service) => service.id === id);
     if (!known(edgeFrom) || !known(edgeTo) || edgeFrom === edgeTo) {
       message = t('add.arch.edgeChoose');
       return;
     }
-    updateCode(
-      addArchEdge(inputState.code, { arrow, from: edgeFrom, place: edgePlace, to: edgeTo }),
-      {
-        updateDiagram: true
-      }
+    const result = await applyToolEdit(
+      addArchEdge(inputState.code, { arrow, from: edgeFrom, place: edgePlace, to: edgeTo })
     );
-    message = t('add.arch.edgeDone');
+    message = result === 'applied' ? t('add.arch.edgeDone') : t(said[result]);
   };
 
   const selectClass =

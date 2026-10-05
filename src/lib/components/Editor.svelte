@@ -6,6 +6,7 @@
   import MobileEditor from '$/components/MobileEditor.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
+  import { codeHealth, describe } from '$/util/codeHealth.svelte';
   import { env } from '$/util/env';
   import { updateCode, updateConfig, urls, validatedState } from '$lib/util/state.svelte';
   import { logMermaidChartClick } from '$lib/util/stats';
@@ -54,6 +55,12 @@
           <ExclamationCircleIcon class="size-6 text-destructive" aria-hidden="true" />
           <div class="flex flex-col">
             <p>{t('editor.syntaxError')}</p>
+            <!-- Local: the same plain description as the notice by the diagram. -->
+            {#if codeHealth.description}
+              <p class="text-xs text-white/80">{describe(codeHealth.description)}</p>
+            {:else if codeHealth.configBroken}
+              <p class="text-xs text-white/80">{t('recover.config')}</p>
+            {/if}
             {#if env.isEnabledMermaidChartLinks && validatedState.current.editorMode === 'code'}
               <p class="text-xs text-white/60" data-testid={TID.aiHelpText}>
                 Create a free account to repair with AI

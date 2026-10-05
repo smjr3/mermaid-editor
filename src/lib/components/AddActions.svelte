@@ -12,6 +12,7 @@
     type Values
   } from '$/util/addActions';
   import type { DiagramObject } from '$/util/mermaid';
+  import { codeHealth } from '$/util/codeHealth.svelte';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
 
   // Local: the Add card for the diagram types listed in addActions.ts — one form
@@ -64,7 +65,9 @@
     }
     // Written only if mermaid still reads it as the same type of diagram.
     if (!(await checkAdd(before, result.code)) || inputState.code !== before) {
-      message = t('add.breaks');
+      // Local: broken code is only added to when that makes it parse (the first topic
+      // of an empty mindmap); otherwise say why (codeHealth.svelte.ts).
+      message = codeHealth.broken ? t('recover.blocked') : t('add.breaks');
       return;
     }
     updateCode(result.code, { updateDiagram: true });

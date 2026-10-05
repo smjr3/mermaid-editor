@@ -41,6 +41,8 @@ export interface ValidatedState extends State {
   editorMode: EditorMode;
   diagramType?: string;
   error?: Error;
+  /** Local: whether `error` is the diagram code's or the config's (see codeHealth.svelte.ts). */
+  errorKind?: 'code' | 'config';
   errorMarkers: MarkerData[];
   serialized: string;
 }

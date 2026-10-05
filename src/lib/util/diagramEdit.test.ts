@@ -187,6 +187,36 @@ describe('addEdge and node shapes', () => {
     );
   });
 
+  // Local (error recovery): the Add card wrote these straight into the code, which then
+  // no longer parsed — "]" or "(" in an arrow label, an empty name, a name of only brackets.
+  it.each([']', '(', '{', '@{ shape: x }', '[*]', 'a ) b ] c', '<b>x</b>', 'end'])(
+    'quotes an arrow label like %j so the diagram still parses',
+    async (label) => {
+      await expect(typeOf(addEdge(lanes, { from: 'C', label, to: 'A' }))).resolves.toBe('swimlane');
+    }
+  );
+
+  it.each(['', '   '])('writes a node or lane named %j that still parses', async (label) => {
+    for (const shape of ['rect', 'rounded', 'diamond', 'circle', 'stadium'] as const) {
+      await expect(typeOf(addNode(lanes, { from: 'A', label, shape }).code)).resolves.toBe(
+        'swimlane'
+      );
+    }
+    await expect(typeOf(addLane(lanes, label).code)).resolves.toBe('swimlane');
+  });
+
+  it.each(['', ']', '[ ]', '"'])(
+    'writes an architecture group or service named %j that still parses',
+    async (label) => {
+      await expect(typeOf(addArchGroup(arch, { icon: 'cloud', label }).code)).resolves.toBe(
+        'architecture'
+      );
+      await expect(
+        typeOf(addArchService(arch, { from: 'web', icon: 'server', label }).code)
+      ).resolves.toBe('architecture');
+    }
+  );
+
   it.each([
     ['rect', 'n1["Check"]'],
     ['rounded', 'n1("Check")'],

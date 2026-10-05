@@ -43,7 +43,9 @@
     type DiagramObjects
   } from '$/util/mermaid';
   import { persisted } from '$/util/persist.svelte';
-  import { inputState, updateCode, updateConfig, validatedState } from '$/util/state.svelte';
+  import { applyToolEdit } from '$/util/codeHealth.svelte';
+  import { notify } from '$/util/notify';
+  import { inputState, updateConfig, validatedState } from '$/util/state.svelte';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
 
   // Local: the theme, the line colour, and lane, object and edge colours
@@ -70,7 +72,11 @@
   const applyTheme = (next: ThemeChoice) => updateConfig(setTheme(inputState.mermaid, next));
   const applyLine = (next: string | undefined) =>
     updateConfig(setLineColor(inputState.mermaid, next));
-  const applyCode = (code: string) => updateCode(code, { updateDiagram: true });
+  // Local: checked, and refused while the code has an error (codeHealth.svelte.ts).
+  const applyCode = (code: string) =>
+    void applyToolEdit(code).then((result) => {
+      if (result === 'refused') notify(t('edit.breaks'));
+    });
   const applyColor = (id: string, swatch: Swatch | undefined, syntax: ColorSyntax = 'style') =>
     applyCode(setObjectColor(inputState.code, id, swatch, syntax));
 

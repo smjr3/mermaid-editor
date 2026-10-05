@@ -715,6 +715,22 @@ export const messages = {
     'privacy.selfHostHide': 'to hide this button.',
     'privacy.selfHostIntro': 'If you are self-hosting the Mermaid Live Editor, set the',
     'privacy.selfHostTo': 'to',
+    'recover.atLine': 'There is a mistake on line {line} of the code.',
+    'recover.blocked':
+      'The code has a mistake, so this cannot be done yet. Fix the code, or press "Revert to the last valid state".',
+    'recover.config': 'The config (JSON) has a mistake, so the diagram cannot be updated.',
+    'recover.empty': 'The code is empty.',
+    'recover.noType': 'Line {line} does not start with a diagram type (such as flowchart).',
+    'recover.render': 'The diagram could not be drawn. Check what was changed last.',
+    'recover.revert': 'Revert to the last valid state',
+    'recover.reverted': 'Reverted to the last valid state. Undo brings back the code from before.',
+    'recover.selfNested':
+      'Line {line} uses the state "{name}" inside itself, which cannot be drawn. Use another name inside it.',
+    'recover.showingLast': 'The diagram shows the last valid state.',
+    'recover.startOver': 'Start from the example',
+    'recover.unfinished':
+      'Line {line} stops part-way (is an arrow target or a closing bracket missing?).',
+    'recover.unknown': 'The code has a mistake.',
     'security.unsafeConfigConfirm':
       'Removing {paths} from the config for safety.\nClick Cancel if you trust the source of this Diagram.',
     'sel.addAfter': 'Add after this',
@@ -812,6 +828,7 @@ export const messages = {
     'table.updated': 'Updated.',
     'template.addRow': 'Add a row',
     'template.back': 'Back to the templates',
+    'template.breaks': 'The diagram could not be made from this input. Check what was typed.',
     'template.button': 'From a template…',
     'template.confirm':
       'Replace the current diagram with this template? Your changes to it will be lost (History can bring them back).',
@@ -1542,6 +1559,22 @@ export const messages = {
     'privacy.selfHostHide': 'にしてこのボタンを非表示にしてください。',
     'privacy.selfHostIntro': 'Mermaid Live Editor をセルフホストしている場合は、ビルド時に環境変数',
     'privacy.selfHostTo': 'を',
+    'recover.atLine': 'コードの {line} 行目の書き方に誤りがあります。',
+    'recover.blocked':
+      'コードに誤りがあるため、この操作はまだできません。コードを直すか、「直前の正しい状態に戻す」を押してください。',
+    'recover.config': '設定（JSON）に誤りがあるため、図を更新できません。',
+    'recover.empty': 'コードが空です。',
+    'recover.noType': '{line} 行目が図の種類（flowchart など）で始まっていません。',
+    'recover.render': '図を描けませんでした。最後に変えたところを確認してください。',
+    'recover.revert': '直前の正しい状態に戻す',
+    'recover.reverted': '直前の正しい状態に戻しました。「元に戻す」で戻す前のコードに戻れます。',
+    'recover.selfNested':
+      '{line} 行目で、状態「{name}」をそれ自身の中で使っているため描けません。中では別の名前を使ってください。',
+    'recover.showingLast': '図は直前の正しい状態のまま表示しています。',
+    'recover.startOver': '見本の図から始める',
+    'recover.unfinished':
+      '{line} 行目が途中で終わっています（矢印の先や閉じかっこが抜けていませんか）。',
+    'recover.unknown': 'コードの書き方に誤りがあります。',
     'security.unsafeConfigConfirm':
       '安全のため、設定から {paths} を削除します。\nこの図の提供元を信頼できる場合は「キャンセル」を押してください。',
     'sel.addAfter': 'この後に追加',
@@ -1640,6 +1673,7 @@ export const messages = {
     'table.updated': '反映しました。',
     'template.addRow': '行を追加',
     'template.back': 'テンプレート一覧に戻る',
+    'template.breaks': 'この内容では図を作れませんでした。入力した文字を見直してください。',
     'template.button': 'テンプレートから作る…',
     'template.confirm':
       '今の図をこのテンプレートで置き換えますか？今の図への変更は失われます（履歴から戻せます）。',

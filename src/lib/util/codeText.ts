@@ -19,6 +19,12 @@ const stripTags = (text: string) => {
 };
 export const oneLine = (text: string) =>
   stripTags(text.replaceAll(/[\r\n]+/g, ' ').replaceAll(';', ',')).trim();
+// Local (error recovery): a gantt line starting with one of the grammar's words is
+// read as that statement (`click …` does not parse, `section …` starts a section),
+// so a task or section name that does is put in 「」.
+const ganttKeyword =
+  /^(?:click|section|title|dateformat|axisformat|tickinterval|excludes|includes|todaymarker|weekday|weekend|inclusiveenddates|topaxis|acctitle|accdescr|displaymode)\b/i;
+export const ganttSafe = (name: string) => (ganttKeyword.test(name) ? `「${name}」` : name);
 export const indentOf = (line: string) => /^\s*/.exec(line)?.[0].length ?? 0;
 export const isContent = (line: string) => line.trim() !== '' && !line.trim().startsWith('%%');
 

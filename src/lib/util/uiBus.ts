@@ -25,8 +25,21 @@ const waitFor = async <T>(find: () => T | null | undefined, timeout = 2000): Pro
   }
 };
 
+/**
+ * On a phone the page shows either the diagram or the code and tools, chosen by the
+ * 編集/表示 switch (`#editorMode`, checked while the diagram shows). Shows the tools
+ * side; true when it had to switch. A no-op on the desktop, which has no such switch.
+ */
+export const showToolsSide = (): boolean => {
+  const mode = document.querySelector<HTMLElement>('#editorMode');
+  if (mode?.getAttribute('aria-checked') !== 'true') return false;
+  mode.click();
+  return true;
+};
+
 /** Opens the card whose header has this test id (expanding the tools pane if collapsed). */
 export const openCard = async (id: string): Promise<HTMLElement | null> => {
+  showToolsSide();
   byTestId(TID.toolsRailExpand)?.click();
   const header = await waitFor(() => byTestId(id));
   if (!header) return null;
@@ -37,6 +50,7 @@ export const openCard = async (id: string): Promise<HTMLElement | null> => {
 
 /** Moves keyboard focus to the control with this test id. */
 export const focus = async (id: string): Promise<boolean> => {
+  showToolsSide();
   const element = await waitFor(() => byTestId(id));
   if (!element) return false;
   element.scrollIntoView({ block: 'nearest' });

@@ -101,7 +101,11 @@ test.describe('Icon picker', () => {
     );
     await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
     await page.getByTestId(TID.iconPickerSearch).fill('server');
+    // The cursor on a line of its own: a name written mid-line would break the diagram,
+    // and the picker takes such an insertion back (qaFindings.spec.ts).
     await editPage.editor.getByText('A --> B').click();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
     await page.getByTestId(TID.iconPickerResults).getByRole('button').first().click();
     await expect(page.getByTestId(TID.iconPickerMessage)).toContainText(
       t('icons.pickStandardArchitectureOnly')

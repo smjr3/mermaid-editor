@@ -522,7 +522,7 @@ export const renderGanttTask = ({ end, id, indent, name, start, tags }: GanttTas
 export const ganttName = (text: string, fallback: string) =>
   oneLine(text).replaceAll(/[:#;]/g, ' ').replaceAll(/\s+/g, ' ').trim() || fallback;
 
-const freshTaskId = (lines: string[]) => {
+export const freshTaskId = (lines: string[]) => {
   const used = new Set(ganttTasks(lines).map(({ id }) => id));
   let n = 1;
   while (used.has(`t${n}`)) n++;

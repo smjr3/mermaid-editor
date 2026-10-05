@@ -110,7 +110,8 @@
         </div>
       {/if}
 
-      <div>
+      <!-- Sticky: the type list makes this form taller than the pane, and 作成 must not hide below it. -->
+      <div class="sticky bottom-0 -mx-2 -mb-2 rounded-b-md border-t bg-card px-2 py-2">
         <Button size="sm" data-testid={TID.newDiagramCreate} onclick={create}
           >{t('new.create')}</Button>
       </div>

@@ -90,7 +90,7 @@ test.describe('Create from a template', () => {
     await page.getByTestId(TID.templateFormsCreate).click();
     await editPage.checkTextInView('キックオフ会議');
     await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
-    expect(await stored(page)).toContain('キックオフ会議 :done, task1, 2026-06-01, 3d');
+    expect(await stored(page)).toContain('キックオフ会議 :done, t1, 2026-06-01, 3d');
     expect(asked).toBe(1);
 
     await openTemplates(page);

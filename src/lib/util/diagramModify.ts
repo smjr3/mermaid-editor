@@ -1591,8 +1591,10 @@ interface BlockToken {
 /** The blocks a placement line names, or undefined for any other line. */
 const blockTokens = (line: string): BlockToken[] | undefined => {
   if (blockKeyword.test(line) && !/^\s*space\s*\S/.test(line)) return undefined;
-  if (/-->|---|==>|-\.-/.test(line.replaceAll(/"[^"]*"/g, '""')) || line.includes('%%'))
-    return undefined;
+  // A line with an arrow is a connection, not a placement (quoted labels aside).
+  const bare = line.replaceAll(/"[^"]*"/g, '""');
+  const arrows = ['-->', '---', '==>', '-.-'];
+  if (arrows.some((arrow) => bare.includes(arrow)) || line.includes('%%')) return undefined;
   const tokens: BlockToken[] = [];
   let i = 0;
   while (i < line.length) {

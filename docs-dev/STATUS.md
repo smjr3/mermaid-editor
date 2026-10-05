@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **234**.
+  every locally changed path — currently **238**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -305,6 +305,33 @@ mentions it, which is how the card reads the current lane. For an architecture s
 icon (mermaid's standard ones are offered first and written without a prefix) or move it to another
 group. A node with an icon keeps the icon's shape, so the shape list is hidden for it.
 
+**Table editor (unreleased)** (`src/lib/util/tableEdit.ts`, `TableEditor.svelte`). Business users
+think of the list-like types as tables, so the Edit card ends with "表で編集": gantt tasks (section,
+task, start, days, status — not started, done, in progress, critical, milestone, or the combination
+a task already has — and "after task"), kanban cards (column, card, assignee, priority), timeline
+periods (period, events separated by `/`), pie slices (label, value) and, for an ER entity chosen in
+the table's own list, its attributes (type, name, key, comment). Cells are inputs and selects; a
+change applies on blur or Enter, rows can be added, deleted and moved up or down (the code order
+changes: the two rows' lines swap, re-indented to each other's place), and choosing another column
+or section moves a card or task to the end of it. Writes go through the Add and Edit cards'
+functions where they exist (`renameObject`, `setObjectFields`, `setEntityAttribute`, the gantt,
+kanban and pie Add actions, …); the section and column moves, kanban `@{ assigned, priority }`
+metadata (other keys such as `ticket` kept; a card written as bare text gets an id so it can carry
+metadata), a period's events and the reorders are rewritten in `tableEdit.ts`. A reorder or move that
+would leave the first gantt task without a start gives it the start the first task had (mermaid
+cannot draw a first task without one), and a task that followed the moved one straight on keeps its
+date. Each change is applied only if `checkEdit` passes, else the message says so and the cell shows
+the code again. The rows come from the code's lines, read only when mermaid parses the code; the ER
+entities (including ones named only in relationships) and the kanban assignees and priorities come
+from mermaid's database, so the table follows edits made in the code editor or the Add card. Pasting
+tab-separated rows (copied from Excel, quoted cells included) into the table appends them in column
+order; a header row is skipped, choices are matched by value or by their Japanese or English label,
+sections and columns by name (a new name creates one), "after task" by task name, dates written
+`2024/6/3` are accepted, `1,234` is a number. The per-row forms above it are unchanged. Unit tests
+`tableEdit.test.ts` (read model per type, every write, reorder, paste, Japanese text with `:` `;` `,`
+`#` `"` and brackets); the all-diagram check compares the rows with mermaid's own count on every
+gantt, kanban, timeline, pie and ER sample and deletes and moves every row; `tests/tableEditor.spec.ts`.
+
 **Sequence notes and blocks.** The Add card adds a note (over one or two participants, or right or
 left of one) and an `alt`/`loop`/`opt` block, at the end or after a chosen message; a block can be
 empty (header + `end`, as asked) or wrap the chosen message. A new message, note or block can also go
@@ -495,7 +522,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **702 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **732 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Card from '$/components/Card/Card.svelte';
   import IconChooser from '$/components/IconChooser.svelte';
+  import TableEditor from '$/components/TableEditor.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
@@ -552,4 +553,5 @@
       {/if}
     {/if}
   </div>
+  <TableEditor />
 </Card>

@@ -60,7 +60,8 @@ describe('checkIcons', () => {
   it('suggests by the name part even when the pack is unknown', { timeout: 60_000 }, async () => {
     const [bad] = await checkIcons('architecture-beta\n  service a(whatever:firewall)[x]');
     expect(bad.ref).toBe('whatever:firewall');
-    expect(bad.candidates[0]).toBe('mdi:firewall');
+    // tabler has firewall-check & co., enough for the first pass; mdi is not loaded for it.
+    expect(bad.candidates[0]).toMatch(/firewall/);
   });
 
   it('accepts a diagram whose icons all exist', { timeout: 60_000 }, async () => {

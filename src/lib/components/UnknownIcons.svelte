@@ -10,18 +10,23 @@
   let unknown = $state<UnknownIcon[]>([]);
   let choice = $state<Record<string, string>>({});
 
+  // A pause before checking: typing changes the code many times a second, and
+  // the first check loads icon packs, which must not get in the way of rendering.
   $effect(() => {
     const { code } = validatedState.current;
     let stale = false;
-    void checkIcons(code).then((found) => {
-      if (stale) return;
-      unknown = found;
-      const next: Record<string, string> = {};
-      for (const item of found) next[item.ref] = choice[item.ref] ?? item.candidates[0] ?? '';
-      choice = next;
-    });
+    const timer = setTimeout(() => {
+      void checkIcons(code).then((found) => {
+        if (stale) return;
+        unknown = found;
+        const next: Record<string, string> = {};
+        for (const item of found) next[item.ref] = choice[item.ref] ?? item.candidates[0] ?? '';
+        choice = next;
+      });
+    }, 800);
     return () => {
       stale = true;
+      clearTimeout(timer);
     };
   });
 

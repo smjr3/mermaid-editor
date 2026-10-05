@@ -31,19 +31,29 @@ export const importedPacks = async (): Promise<SearchablePack[]> => {
 /** A pack by name, loaded once; undefined for a name nothing provides or a pack that fails to load. */
 export const loadPack = (name: string): Promise<SearchablePack | undefined> => {
   if (name === standardPrefix) return Promise.resolve(standardIconPack as SearchablePack);
+  const loader = loaders.find((candidate) => candidate.name === name);
+  // Imported packs come and go while the page is open, so a miss is never cached.
+  if (!loader) return importedPacks().then((packs) => packs.find((pack) => pack.prefix === name));
   let pending = cache.get(name);
   if (!pending) {
-    const loader = loaders.find((candidate) => candidate.name === name);
-    pending = loader
-      ? loader.loader().then(
-          (json) => ({ ...json, prefix: name }) as SearchablePack,
-          () => undefined
-        )
-      : importedPacks().then((packs) => packs.find((pack) => pack.prefix === name));
+    pending = loader.loader().then(
+      (json) => ({ ...json, prefix: name }) as SearchablePack,
+      () => undefined
+    );
     cache.set(name, pending);
   }
   return pending;
 };
+
+// Small, general packs searched first for suggestions; the large ones (mdi, simple-icons,
+// …) take seconds to load and parse, so they are brought in one at a time, between idle
+// moments, and only when the first pass found little.
+const firstPassPacks = [standardPrefix, 'tabler', 'lucide', 'logos'];
+const idle = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve());
+    else setTimeout(resolve, 0);
+  });
 
 const hasIcon = (pack: SearchablePack, name: string): boolean =>
   name in pack.icons || name in (pack.aliases ?? {});
@@ -74,11 +84,6 @@ const nameOf = (ref: string): string => ref.slice(ref.indexOf(':') + 1);
 
 /** Suggestions for a reference: icons named like it, across every pack. */
 export const suggestIcons = async (ref: string, limit = 8): Promise<string[]> => {
-  const packs = (
-    await Promise.all([...packNames().map(loadPack), importedPacks().then((packs) => packs)])
-  )
-    .flat()
-    .filter((pack): pack is SearchablePack => pack !== undefined);
   const name = nameOf(ref);
   const colon = ref.indexOf(':');
   const prefix = colon === -1 ? '' : ref.slice(0, colon);
@@ -93,17 +98,32 @@ export const suggestIcons = async (ref: string, limit = 8): Promise<string[]> =>
     name,
     ...words.map((_, i) => words.slice(0, words.length - i).join(' '))
   ];
-  for (const query of queries) {
-    for (const match of searchIcons(packs, query, limit)) {
-      const id = match.id.startsWith(`${standardPrefix}:`)
-        ? match.id.slice(standardPrefix.length + 1)
-        : match.id;
-      if (!seen.has(id)) {
-        seen.add(id);
-        found.push(id);
+  const search = (packs: SearchablePack[]) => {
+    for (const query of queries) {
+      for (const match of searchIcons(packs, query, limit)) {
+        const id = match.id.startsWith(`${standardPrefix}:`)
+          ? match.id.slice(standardPrefix.length + 1)
+          : match.id;
+        if (!seen.has(id)) {
+          seen.add(id);
+          found.push(id);
+        }
+        if (found.length >= limit) return;
       }
-      if (found.length >= limit) return found;
     }
+  };
+  const known = packNames();
+  const first = [
+    ...new Set([...firstPassPacks, ...(known.includes(prefix) ? [prefix] : [])])
+  ].filter((pack) => known.includes(pack));
+  const firstPacks = [...(await Promise.all(first.map(loadPack))), ...(await importedPacks())];
+  search(firstPacks.filter((pack): pack is SearchablePack => pack !== undefined));
+  if (found.length >= 3) return found;
+  for (const pack of known.filter((candidate) => !first.includes(candidate))) {
+    await idle();
+    const loaded = await loadPack(pack);
+    if (loaded) search([loaded]);
+    if (found.length >= limit) break;
   }
   return found;
 };

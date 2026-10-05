@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **210**.
+  every locally changed path — currently **213**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -82,10 +82,12 @@ editor no longer shows the AI gutter button, which used to open an empty zone th
 closed. On desktop the code, the diagram and the tools are three fixed panes with visible dividers
 instead of floating cards (see "Three panes and one toolbar" below). Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
 
-**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from nine bundled OSS
-Iconify sets, loaded lazily from the site, never a CDN: six generic ones (`tabler`, `lucide`,
-`carbon`, `fluent`, `flat-color-icons`, `mdi`) and three logo sets (`logos`, `simple-icons`,
-`devicon`). They are npm dependencies, so the repository and the npm package carry no icon data.
+**Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from twelve bundled OSS
+Iconify sets, loaded lazily from the site, never a CDN: nine generic ones (`tabler`, `lucide`,
+`carbon`, `fluent`, `flat-color-icons`, `mdi`, and since 0.2.2 `clarity` for network and
+data-centre gear, `eos-icons` for DNS/proxy/Kubernetes concepts and `fluent-color` for the
+Microsoft 365 look — all MIT, chosen against about twenty candidates; `ICONS.md` → "Choosing the
+packs") and three logo sets (`logos`, `simple-icons`, `devicon`). They are npm dependencies, so the repository and the npm package carry no icon data.
 `MERMAID_BUNDLE_LOGOS=false` builds without the logo sets and strips the brand icons from the
 generic ones, for sites that may not host trademarks. Vendor architecture icon sets (AWS, Azure,
 Google Cloud) are not OSS, so they are imported from the vendor at build time
@@ -94,8 +96,8 @@ the npm package); verified with Google Cloud's archive (216 icons). A deployment
 packs (`MERMAID_ICON_PACKS`) and a user can import SVG files or an Iconify JSON file from the
 "Icons" card (kept in IndexedDB). Every non-bundled icon is sanitised with DOMPurify before
 mermaid inserts it. A "System Architecture" sample entry shows a web system, an office network,
-a generic cloud and an AWS example with logos. The packs add about 36 MB to the built site (17 MB
-of it the logo sets); a page loads only the ones its diagram names.
+a generic cloud and an AWS example with logos. The packs add about 39 MB to the built site (17 MB
+of it the logo sets, 2.8 MB the three 0.2.2 packs); a page loads only the ones its diagram names.
 
 **Layout card (0.2.0)** (`src/lib/util/layout.ts`). mermaid has no aspect-ratio setting, so the
 "Layout" card adjusts what shapes a diagram instead: its direction (top-to-bottom, left-to-right,
@@ -296,6 +298,18 @@ cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no edito
 the icons. mermaid's five built-in icons are listed first and marked standard (they render in
 GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
 
+**Browsing icons (0.2.2)** (`src/lib/util/iconCategories.ts`). Searching needs a name, so the
+picker also has "一覧から選ぶ / Browse": twelve hand-written categories (standard icons, servers
+and storage, network equipment, security, cloud and SaaS, Microsoft 365, AWS / Azure / Google
+Cloud, databases, devices, people, documents and business, development and operations), 15–40
+icons each across the packs with a short Japanese and English label (the standard group has its
+five), or a whole pack, alphabetical, 200 icons a page with previous/next and a count
+(`iconPage`). A click inserts or collects exactly as a search result does; the licence tooltip
+and ™ marks stay. Packs load through `loadPack` with a loading state; icons a build lacks are
+skipped, and a category left with no pack (the cloud vendors, logos off) is not offered. The
+large dialog shares the mode, list and page. A unit test checks every category id against the
+packs; `tests/iconBrowse.spec.ts` covers the grid, insertion, paging and the new packs.
+
 **Icon licences (0.2.1)** (`src/lib/util/iconLicenses.ts`). The "How to use" guide has an "Icon
 licences" section: a table of every bundled set with its licence, copyright holder and links
 (`IconLicenseTable.svelte`), then the artwork-versus-trademark distinction and a note that vendor,
@@ -308,7 +322,7 @@ three in step.
 asked for an architecture diagram invents icon names, because it cannot see the packs. The Icons
 card has two helpers for that. "Copy a briefing for an AI" puts on the clipboard the syntax (an
 example and the rules an AI gets wrong: ASCII ids, no id starting with R/L/T/B, edge sides, no
-Font Awesome), the packs this site offers, a curated list of about sixty icons for the usual parts
+Font Awesome), the packs this site offers, a curated list of about eighty icons for the usual parts
 of a system (`curatedIcons`, each checked against the packs by the unit test) and the icons the
 user collected in the picker (a "collect" checkbox makes a click add to that list instead of
 inserting; `aiCollection.svelte.ts`, kept per browser). "Unknown icons in the code" lists the
@@ -358,7 +372,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **540 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **550 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

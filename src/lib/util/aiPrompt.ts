@@ -56,6 +56,43 @@ export const curatedIcons: CuratedIcon[] = [
   { en: 'git / repository', id: 'tabler:git-branch', ja: 'リポジトリ' },
   { en: 'settings', id: 'tabler:settings', ja: '設定' },
   { en: 'robot / AI', id: 'tabler:robot', ja: 'AI・ロボット' },
+  // Network and data-centre gear (clarity, eos-icons)
+  { en: 'router', id: 'clarity:router-line', ja: 'ルーター' },
+  { en: 'network switch', id: 'clarity:network-switch-line', ja: 'ネットワークスイッチ' },
+  { en: 'firewall appliance', id: 'clarity:firewall-line', ja: 'ファイアウォール機器' },
+  { en: 'rack server', id: 'clarity:rack-server-line', ja: 'ラックサーバー' },
+  { en: 'storage array', id: 'clarity:storage-line', ja: 'ストレージ装置' },
+  { en: 'tape backup', id: 'clarity:tape-drive-line', ja: 'テープバックアップ' },
+  { en: 'virtual machine', id: 'clarity:vm-line', ja: '仮想マシン' },
+  { en: 'thin client / VDI', id: 'clarity:thin-client-line', ja: 'シンクライアント・VDI' },
+  { en: 'DNS', id: 'eos-icons:dns', ja: 'DNS' },
+  { en: 'proxy', id: 'eos-icons:proxy', ja: 'プロキシ' },
+  { en: 'ingress / reverse proxy', id: 'eos-icons:ingress', ja: 'イングレス・リバースプロキシ' },
+  // Microsoft 365 look (fluent-color: Microsoft's colour Fluent icons)
+  { en: 'team (Teams)', id: 'fluent-color:people-team-48', ja: 'チーム（Teams）' },
+  { en: 'chat', id: 'fluent-color:chat-multiple-24', ja: 'チャット' },
+  {
+    en: 'mail (Outlook / Exchange)',
+    id: 'fluent-color:mail-48',
+    ja: 'メール（Outlook・Exchange）'
+  },
+  { en: 'calendar', id: 'fluent-color:calendar-48', ja: '予定表' },
+  {
+    en: 'document library (SharePoint)',
+    id: 'fluent-color:document-folder-24',
+    ja: '文書ライブラリ（SharePoint）'
+  },
+  {
+    en: 'approvals (Power Automate)',
+    id: 'fluent-color:approvals-app-32',
+    ja: '承認（Power Automate）'
+  },
+  { en: 'sign-in (Entra ID)', id: 'fluent-color:person-key-32', ja: 'サインイン（Entra ID）' },
+  {
+    en: 'managed devices (Intune)',
+    id: 'fluent-color:phone-laptop-32',
+    ja: '管理デバイス（Intune）'
+  },
   // Logos (only in builds that bundle them)
   { en: 'AWS', id: 'logos:aws', ja: 'AWS' },
   { en: 'AWS EC2', id: 'logos:aws-ec2', ja: 'AWS EC2' },
@@ -77,6 +114,8 @@ export const curatedIcons: CuratedIcon[] = [
   { en: 'GitLab', id: 'logos:gitlab', ja: 'GitLab' },
   { en: 'Slack', id: 'logos:slack-icon', ja: 'Slack' },
   { en: 'Microsoft Teams', id: 'logos:microsoft-teams', ja: 'Microsoft Teams' },
+  { en: 'SharePoint', id: 'simple-icons:microsoftsharepoint', ja: 'SharePoint' },
+  { en: 'OneDrive', id: 'logos:microsoft-onedrive', ja: 'OneDrive' },
   { en: 'Salesforce', id: 'logos:salesforce', ja: 'Salesforce' },
   { en: 'Windows', id: 'logos:microsoft-windows-icon', ja: 'Windows' },
   { en: 'Linux', id: 'logos:linux-tux', ja: 'Linux' }

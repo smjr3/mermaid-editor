@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { iconSvg, searchIcons } from './iconSearch';
+import { iconMatch, iconPage, iconSvg, searchIcons } from './iconSearch';
 import { insertIntoEditor, registerEditorInserter } from './iconSearch';
 
 const tabler = {
@@ -71,5 +71,58 @@ describe('insertIntoEditor', () => {
     expect(inserted).toEqual(['logos:aws-s3']);
     unregister();
     expect(insertIntoEditor('logos:aws-s3')).toBe(false);
+  });
+});
+
+describe('iconMatch', () => {
+  it('resolves an icon or an alias with the pack size', () => {
+    expect(iconMatch(tabler, 'server')).toMatchObject({
+      icon: { body: '<path d="M3 3"/>', height: 24, width: 24 },
+      id: 'tabler:server'
+    });
+    expect(iconMatch(tabler, 'db-alias')?.icon.body).toBe('<path d="M1 1"/>');
+    expect(iconMatch(logos, 'aws-lambda')?.icon).toMatchObject({ height: 256, width: 200 });
+    expect(iconMatch(logos, 'aws-s3')?.icon).toMatchObject({ height: 16, width: 16 });
+    expect(iconMatch(tabler, 'nothing')).toBeUndefined();
+  });
+});
+
+describe('iconPage', () => {
+  const big = {
+    icons: Object.fromEntries(
+      Array.from({ length: 450 }, (_, i) => [
+        `icon-${String(449 - i).padStart(3, '0')}`,
+        { body: '<g/>' }
+      ])
+    ),
+    prefix: 'big'
+  };
+
+  it('lists a pack alphabetically, a page at a time', () => {
+    const first = iconPage(big, 0);
+    expect(first).toMatchObject({ page: 0, pages: 3, total: 450 });
+    expect(first.icons).toHaveLength(200);
+    expect(first.icons[0].id).toBe('big:icon-000');
+    expect(first.icons[199].id).toBe('big:icon-199');
+    const last = iconPage(big, 2);
+    expect(last.icons).toHaveLength(50);
+    expect(last.icons.at(-1)?.id).toBe('big:icon-449');
+  });
+
+  it('keeps the page in range and leaves out aliases and hidden icons', () => {
+    expect(iconPage(big, 9).page).toBe(2);
+    expect(iconPage(big, -1).page).toBe(0);
+    const pack = {
+      aliases: { alias: { parent: 'a' } },
+      icons: { a: { body: '<g/>' }, b: { body: '<g/>', hidden: true }, c: { body: '<g/>' } },
+      prefix: 'p'
+    };
+    expect(iconPage(pack, 0, 1)).toMatchObject({ pages: 2, total: 2 });
+    expect(iconPage(pack, 0).icons.map(({ id }) => id)).toEqual(['p:a', 'p:c']);
+    expect(iconPage({ icons: {}, prefix: 'empty' }, 0)).toMatchObject({
+      icons: [],
+      pages: 1,
+      total: 0
+    });
   });
 });

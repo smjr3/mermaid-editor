@@ -86,6 +86,33 @@ export const packLicenses: PackLicense[] = [
     url: 'https://pictogrammers.com/library/mdi/'
   },
   {
+    holder: 'VMware, Inc.',
+    license: 'MIT',
+    licenseUrl: 'https://github.com/vmware/clarity-assets/blob/master/LICENSE',
+    logos: false,
+    prefix: 'clarity',
+    title: 'Clarity Icons',
+    url: 'https://github.com/vmware/clarity'
+  },
+  {
+    holder: 'SUSE Software Solutions Germany GmbH',
+    license: 'MIT',
+    licenseUrl: 'https://gitlab.com/SUSE-UIUX/eos-icons/-/blob/master/LICENSE',
+    logos: false,
+    prefix: 'eos-icons',
+    title: 'EOS Icons',
+    url: 'https://eos-icons.com/'
+  },
+  {
+    holder: 'Microsoft Corporation',
+    license: 'MIT',
+    licenseUrl: 'https://github.com/microsoft/fluentui-system-icons/blob/main/LICENSE',
+    logos: false,
+    prefix: 'fluent-color',
+    title: 'Fluent UI System Color Icons',
+    url: 'https://github.com/microsoft/fluentui-system-icons'
+  },
+  {
     holder: 'Gil Barbara and contributors',
     license: 'CC0-1.0',
     licenseUrl: 'https://github.com/gilbarbara/logos/blob/main/LICENSE.txt',

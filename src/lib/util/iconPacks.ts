@@ -12,6 +12,12 @@ type IconifyJSON = Awaited<ReturnType<AsyncIconLoader['loader']>>;
  * - `tabler` (MIT), `lucide` (ISC): servers, network gear, firewalls, devices.
  * - `carbon` (Apache-2.0, IBM): network and cloud infrastructure.
  * - `fluent` (MIT, Microsoft), `flat-color-icons` (MIT), `mdi` (Apache-2.0).
+ * - `clarity` (MIT, VMware): data-centre and network gear — routers, switches,
+ *   firewalls, rack servers, storage, tape, VMs, hosts and clusters.
+ * - `eos-icons` (MIT, SUSE): Kubernetes and infrastructure concepts — DNS, proxy,
+ *   IP, ingress, network policy, pods, pipelines.
+ * - `fluent-color` (MIT, Microsoft): Fluent 2 colour icons, the look of
+ *   Microsoft 365 — people, teams, chat, mail, calendar, documents, approvals.
  *
  * Logo sets (bundled unless MERMAID_BUNDLE_LOGOS=false):
  * - `logos`, `simple-icons` (CC0): cloud services, products, vendors.
@@ -78,6 +84,7 @@ const trademarkWords = new Set([
   'twitch',
   'twitter',
   'ubuntu',
+  'vmw',
   'vmware',
   'whatsapp',
   'windows',
@@ -122,7 +129,10 @@ const genericPacks = (stripBrands: boolean): AsyncIconLoader[] => [
   pack('carbon', () => import('@iconify-json/carbon/icons.json'), stripBrands),
   pack('fluent', () => import('@iconify-json/fluent/icons.json'), stripBrands),
   pack('flat-color-icons', () => import('@iconify-json/flat-color-icons/icons.json'), stripBrands),
-  pack('mdi', () => import('@iconify-json/mdi/icons.json'), stripBrands)
+  pack('mdi', () => import('@iconify-json/mdi/icons.json'), stripBrands),
+  pack('clarity', () => import('@iconify-json/clarity/icons.json'), stripBrands),
+  pack('eos-icons', () => import('@iconify-json/eos-icons/icons.json'), stripBrands),
+  pack('fluent-color', () => import('@iconify-json/fluent-color/icons.json'), stripBrands)
 ];
 
 const logoPacks = (): AsyncIconLoader[] => [
@@ -156,6 +166,9 @@ export const iconPacks: AsyncIconLoader[] = [
       'fluent',
       'flat-color-icons',
       'mdi',
+      'clarity',
+      'eos-icons',
+      'fluent-color',
       'logos',
       'simple-icons',
       'devicon'

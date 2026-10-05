@@ -109,6 +109,18 @@ and their code is included in the built static site.
       Copyright Pictogrammers
       License: Apache-2.0
 
+  Clarity Icons (@iconify-json/clarity)
+      Copyright (c) 2018 VMware, Inc.
+      License: MIT
+
+  EOS Icons (@iconify-json/eos-icons)
+      Copyright (c) 2020 SUSE Software Solutions Germany GmbH
+      License: MIT
+
+  Fluent UI System Color Icons (@iconify-json/fluent-color)
+      Copyright (c) 2020 Microsoft Corporation
+      License: MIT
+
   Devicon (@iconify-json/devicon)
       Copyright konpa and Devicon contributors
       License: MIT

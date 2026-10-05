@@ -12,6 +12,9 @@ describe('selectIconPacks', () => {
       'fluent',
       'flat-color-icons',
       'mdi',
+      'clarity',
+      'eos-icons',
+      'fluent-color',
       'logos',
       'simple-icons',
       'devicon'
@@ -25,7 +28,10 @@ describe('selectIconPacks', () => {
       'carbon',
       'fluent',
       'flat-color-icons',
-      'mdi'
+      'mdi',
+      'clarity',
+      'eos-icons',
+      'fluent-color'
     ]);
   });
 
@@ -33,6 +39,9 @@ describe('selectIconPacks', () => {
     ['tabler', ['server', 'router', 'firewall-check', 'load-balancer']],
     ['lucide', ['server', 'brick-wall-fire', 'hard-drive']],
     ['carbon', ['firewall', 'switch-layer-3', 'load-balancer-network', 'vpn']],
+    ['clarity', ['router-line', 'firewall-line', 'rack-server-line', 'network-switch-line']],
+    ['eos-icons', ['dns', 'proxy', 'ingress', 'pod']],
+    ['fluent-color', ['people-team-48', 'mail-48', 'shield-checkmark-48']],
     ['logos', ['aws-lambda', 'microsoft-azure', 'google-cloud']],
     ['simple-icons', ['microsoftazure', 'googlecloud']],
     ['devicon', ['azure', 'microsoftsqlserver']]
@@ -50,7 +59,7 @@ describe('selectIconPacks', () => {
     30_000
   );
 
-  it.each(['tabler', 'mdi', 'carbon'])(
+  it.each(['tabler', 'mdi', 'carbon', 'clarity', 'fluent-color'])(
     'strips the brand icons mixed into %s when logos are off',
     async (name) => {
       const pack = selectIconPacks(false).find((candidate) => candidate.name === name);
@@ -72,6 +81,7 @@ describe('isBrandIcon', () => {
     expect(isBrandIcon('logo-vmware')).toBe(true);
     expect(isBrandIcon('github')).toBe(true);
     expect(isBrandIcon('ibm-cloud-hpc')).toBe(true);
+    expect(isBrandIcon('vmw-app-line')).toBe(true);
     expect(isBrandIcon('server')).toBe(false);
     expect(isBrandIcon('pocket-knife')).toBe(false);
   });

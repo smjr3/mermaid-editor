@@ -76,6 +76,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'icons',
       items: [
         'Icons: search by name and click an icon to insert its name at the cursor.',
+        'Don’t know the name? "Browse" shows icons by category (servers, network equipment, security, Microsoft 365, AWS / Azure / Google Cloud, …) or a whole pack 200 at a time; click one to insert it.',
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
         'Architecture diagrams use them as service(icon)[Name].',
         'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.',
@@ -177,6 +178,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'icons',
       items: [
         '「アイコン」で名前を検索し、クリックするとカーソル位置にアイコン名が入ります。',
+        '名前が分からないときは「一覧から選ぶ」で、分類（サーバー・ネットワーク機器・セキュリティ・Microsoft 365・AWS / Azure / Google Cloud など）ごと、またはアイコン集をまるごと 200 個ずつ見て、クリックで入れられます。',
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
         'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
         'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。',

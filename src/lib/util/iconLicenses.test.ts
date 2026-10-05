@@ -27,6 +27,16 @@ describe('icon licences', () => {
     });
   });
 
+  it('describes the networking and Microsoft-style packs', () => {
+    expect(iconLicense('clarity:router-line')).toMatchObject({ license: 'MIT', trademark: false });
+    expect(iconLicense('eos-icons:dns')).toMatchObject({ license: 'MIT', trademark: false });
+    expect(iconLicense('fluent-color:mail-48')).toMatchObject({
+      holder: 'Microsoft Corporation',
+      license: 'MIT',
+      trademark: false
+    });
+  });
+
   it('marks logos and brand icons as trademarks', () => {
     expect(iconLicense('logos:aws-lambda')?.trademark).toBe(true);
     expect(iconLicense('simple-icons:github')?.trademark).toBe(true);

@@ -10,6 +10,7 @@ interface IconData {
   height?: number;
   left?: number;
   top?: number;
+  hidden?: boolean;
 }
 
 export interface SearchablePack {
@@ -25,6 +26,55 @@ export interface IconMatch {
   icon: Required<Pick<IconData, 'body' | 'width' | 'height'>> & Pick<IconData, 'left' | 'top'>;
 }
 
+/** One icon (or alias) of a pack, ready to preview; undefined when the pack lacks it. */
+export const iconMatch = (pack: SearchablePack, name: string): IconMatch | undefined => {
+  const data = pack.icons[name] ?? pack.icons[pack.aliases?.[name]?.parent ?? ''];
+  if (!data) return undefined;
+  return {
+    icon: {
+      ...data,
+      height: data.height ?? pack.height ?? 16,
+      width: data.width ?? pack.width ?? 16
+    },
+    id: `${pack.prefix}:${name}`
+  };
+};
+
+export interface IconPage {
+  icons: IconMatch[];
+  /** The page shown, from 0, kept within range. */
+  page: number;
+  pages: number;
+  total: number;
+}
+
+const sortedNames = new WeakMap<SearchablePack, string[]>();
+
+/**
+ * One page of a whole pack, alphabetical (the picker's "browse a pack" mode).
+ * Aliases and hidden icons are left out: they repeat or retire other icons.
+ */
+export const iconPage = (pack: SearchablePack, page: number, size = 200): IconPage => {
+  let names = sortedNames.get(pack);
+  if (!names) {
+    names = Object.keys(pack.icons)
+      .filter((name) => !pack.icons[name].hidden)
+      .sort();
+    sortedNames.set(pack, names);
+  }
+  const pages = Math.max(1, Math.ceil(names.length / size));
+  const shown = Math.min(Math.max(0, Math.trunc(page)), pages - 1);
+  return {
+    icons: names
+      .slice(shown * size, (shown + 1) * size)
+      .map((name) => iconMatch(pack, name))
+      .filter((match) => match !== undefined),
+    page: shown,
+    pages,
+    total: names.length
+  };
+};
+
 /** Icons whose names contain every word of the query; exact, then prefix matches first. */
 export const searchIcons = (packs: SearchablePack[], query: string, limit = 60): IconMatch[] => {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -34,20 +84,10 @@ export const searchIcons = (packs: SearchablePack[], query: string, limit = 60):
     const names = [...Object.keys(pack.icons), ...Object.keys(pack.aliases ?? {})];
     for (const name of names) {
       if (!words.every((word) => name.includes(word))) continue;
-      const data = pack.icons[name] ?? pack.icons[pack.aliases?.[name]?.parent ?? ''];
-      if (!data) continue;
+      const match = iconMatch(pack, name);
+      if (!match) continue;
       const score = name === words[0] ? 0 : name.startsWith(words[0]) ? 1 : 2;
-      scored.push({
-        match: {
-          icon: {
-            ...data,
-            height: data.height ?? pack.height ?? 16,
-            width: data.width ?? pack.width ?? 16
-          },
-          id: `${pack.prefix}:${name}`
-        },
-        score
-      });
+      scored.push({ match, score });
     }
   }
   return scored

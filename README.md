@@ -34,7 +34,8 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   （`docs-dev/FEATURE-FLAGS.md`）。PNG / SVG の書き出しはブラウザ内で描画するので使えます
 - **システム構成図のアイコン**。サーバー・データベース・ルーター・スイッチ・ファイアウォール・
   ロードバランサー・端末などのアイコンを `prefix:name` の形で図に使えます（例: `service fw(tabler:firewall-check)[FW]`）。
-  OSS のアイコン集 9 種（tabler、lucide、carbon、fluent、flat-color-icons、mdi と、ロゴ集の logos、
+  OSS のアイコン集 12 種（tabler、lucide、carbon、fluent、flat-color-icons、mdi、ネットワーク・データセンター機器の
+  clarity、Kubernetes・DNS・プロキシなどの eos-icons、Microsoft 365 風カラーの fluent-color と、ロゴ集の logos、
   simple-icons、devicon）をサイトに同梱し、外部からは取得しません（例: `logos:aws-lambda`）。
   ロゴを置けない環境では `MERMAID_BUNDLE_LOGOS=false` でロゴを外してビルドできます。
   AWS・Azure・Google Cloud の公式アイコンは、ビルド時に各社のサイトから取り込めます
@@ -56,7 +57,9 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   コードの上部とツールの上部のボタンで、それぞれをアイコンだけの細い列にたためます。アイコンを押すとその項目を開いて戻ります。
   コードを書かない人はコードを、コードだけ書く人はツールをたたむと広く使えます
 - **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
-  `logos:aws-lambda` のような名前が入ります。「大きく表示」で広い画面から名前付きで選ぶこともできます。
+  `logos:aws-lambda` のような名前が入ります。名前が分からなくても「一覧から選ぶ」で、分類（サーバー・ストレージ、
+  ネットワーク機器、セキュリティ、Microsoft 365、AWS / Azure / Google Cloud など 12 種）ごと、または
+  アイコン集をまるごと 200 個ずつ見て選べます。「大きく表示」で広い画面から名前付きで選ぶこともできます。
   緑の印は Mermaid 標準のアイコン（GitLab などでも表示）、橙の印は拡張アイコン（このエディタだけで表示）です
 - **HTML で書き出し**。「操作」の「HTML」で、図を入れた HTML ファイルを保存できます（ネットなしで開け、元のコードも入ります）。
   「HTMLタグをコピー」は、Wiki やメールなどに貼れる `<img>` タグ1つを作ります。どちらもアイコンごと図に入っています
@@ -194,7 +197,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 
 - Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.1.0` —
   including swimlane diagrams (`swimlane-beta`), with swimlane examples in the sample panel.
-- Nine bundled OSS icon packs for system diagrams, logo sets included (e.g.
+- Twelve bundled OSS icon packs for system diagrams — network and data-centre gear (`clarity`),
+  Kubernetes and DNS/proxy concepts (`eos-icons`) and Microsoft's colour Fluent icons
+  (`fluent-color`) among them — logo sets included (e.g.
   `service fw(tabler:firewall-check)[FW]`, `logos:aws-lambda`), loaded from the site, never a
   CDN; `MERMAID_BUNDLE_LOGOS=false` leaves the logos out. Vendor architecture icon sets (AWS,
   Azure, Google Cloud) are imported from the vendor at build time
@@ -213,7 +218,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   their own forms (participants and messages, tasks, topics, …).
 - A "How to use" button in the header opens a short guide to the tools.
 - The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
-  searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
+  searches the packs, or lets you browse twelve hand-picked categories (servers, network
+  equipment, security, Microsoft 365, AWS / Azure / Google Cloud, …) or a whole pack 200 icons a
+  page, and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.
 - HTML export: a standalone page (works offline, keeps the source) or one self-contained `<img>`
   tag to paste anywhere, icons included. "Export for GitLab" saves an SVG and copies Markdown that

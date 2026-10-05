@@ -9,7 +9,7 @@ import type { MessageKey } from '$/i18n/messages';
 import mermaid from 'mermaid';
 import { freshId, splitLines } from './diagramEdit';
 import { memoByCode } from './memo';
-import { decodeEntities, diagramObjects, type DiagramObject } from './mermaid';
+import { decodeEntities, diagramFromText, diagramObjects, type DiagramObject } from './mermaid';
 
 export type FieldKind = 'text' | 'number' | 'date' | 'choice' | 'item';
 
@@ -151,26 +151,78 @@ const addChild = (code: string, parent: number, text: string) => {
 
 const objects = async (code: string) => (await diagramObjects(code))?.items ?? [];
 
+// A message statement, `A->>+B: text`, and the header of a block (`alt …`, `else …`):
+// a new message, note or block can go after a message, or first inside a block.
+const messageLine =
+  /^\s*([\p{L}\p{N}_]+)\s*(?:<<)?(?:-->>|->>|-->|->|--x|-x|--\)|-\))\s*[+-]?\s*([\p{L}\p{N}_]+)\s*:\s*(.*?)\s*$/u;
+const blockHeader = /^\s*(?:alt|loop|opt|par|critical|break|else|and|option)\b/;
+
+/** The messages and block headers past the header, by line; a block reads `alt … ⋯` (inside it). */
+const sequenceAnchors = (code: string): DiagramObject[] => {
+  const { lines } = splitLines(code);
+  const header = headerIndex(lines);
+  return lines.flatMap((line, index) => {
+    if (index <= header) return [];
+    const match = messageLine.exec(line);
+    if (match) return [item(String(index), `${match[1]} → ${match[2]}: ${match[3]}`)];
+    return blockHeader.test(line) ? [item(String(index), `${line.trim()} ⋯`)] : [];
+  });
+};
+
 const sequenceParts = memoByCode(async (code: string) => {
   try {
     await mermaid.parse(code);
-    const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as {
+    const db = (await diagramFromText(code)).db as {
       getActors?: () => Map<string, { name: string; description?: string }>;
     };
     return {
+      messages: sequenceAnchors(code),
       participants: [...(db.getActors?.().values() ?? [])].map(({ description, name }) =>
         item(name, description ?? name)
       )
     };
   } catch {
-    return { participants: [] };
+    return { messages: [], participants: [] };
   }
 });
+
+/**
+ * The code with lines after the message on line `after` (indented like it), first
+ * inside the block whose header is on that line, or else at the end.
+ */
+const insertAfterAnchor = (code: string, added: string[], after: string | undefined) => {
+  const { lines } = splitLines(code);
+  const at = after ? Number(after) : Number.NaN;
+  const line = Number.isInteger(at) ? (lines[at] ?? '') : '';
+  const inside = blockHeader.test(line);
+  if (!messageLine.test(line) && !inside) {
+    return insert(
+      code,
+      added.map((text) => `  ${text}`)
+    );
+  }
+  const indent = ' '.repeat(indentOf(line) + (inside ? 2 : 0));
+  return insert(
+    code,
+    added.map((text) => `${indent}${text}`),
+    at + 1
+  );
+};
+
+/** The code with a block around the message on line `at`, which moves inside it. */
+const wrapMessage = (code: string, at: number, header: string) => {
+  const { eol, lines } = splitLines(code);
+  const indent = ' '.repeat(indentOf(lines[at]));
+  lines.splice(at, 1, `${indent}${header}`, `  ${lines[at]}`, `${indent}end`);
+  return lines.join(eol);
+};
+
+const blockDefaults: Record<string, string> = { alt: '条件', loop: '繰り返し', opt: '任意' };
 
 const c4Parts = memoByCode(async (code: string) => {
   try {
     await mermaid.parse(code);
-    const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as {
+    const db = (await diagramFromText(code)).db as {
       getBoundaries?: () => { alias: string; label?: { text?: string } }[];
     };
     return {
@@ -218,9 +270,11 @@ const sequence: AddSpec = {
         const arrows: Record<string, string> = { async: '-)', reply: '-->>', sync: '->>' };
         const text = sequenceText(values.text);
         return {
-          code: insert(code, [
-            `  ${values.from}${arrows[values.kind] ?? '->>'}${values.to}: ${text}`
-          ]),
+          code: insertAfterAnchor(
+            code,
+            [`${values.from}${arrows[values.kind] ?? '->>'}${values.to}: ${text}`],
+            values.after
+          ),
           name: text || `${values.from} → ${values.to}`
         };
       },
@@ -235,10 +289,87 @@ const sequence: AddSpec = {
           kind: 'choice',
           label: 'add.seq.arrow',
           options: ['sync', 'reply', 'async']
-        }
+        },
+        { key: 'after', kind: 'item', label: 'add.f.after', optional: true, source: 'messages' }
       ],
       id: 'message',
       title: 'add.seq.message'
+    },
+    {
+      apply: (code, values) => {
+        if (!values.at) return { error: 'add.seq.noteChoose' };
+        const text = sequenceText(values.text) || 'メモ';
+        const place = values.place === 'right' || values.place === 'left' ? values.place : 'over';
+        const who =
+          place === 'over'
+            ? values.to && values.to !== values.at
+              ? `over ${values.at},${values.to}`
+              : `over ${values.at}`
+            : `${place} of ${values.at}`;
+        return {
+          code: insertAfterAnchor(code, [`Note ${who}: ${text}`], values.after),
+          name: text
+        };
+      },
+      button: 'add.seq.noteButton',
+      fields: [
+        { key: 'at', kind: 'item', label: 'add.seq.noteAt', source: 'participants' },
+        {
+          initial: 'over',
+          key: 'place',
+          kind: 'choice',
+          label: 'add.seq.notePlace',
+          options: ['over', 'right', 'left']
+        },
+        {
+          key: 'to',
+          kind: 'item',
+          label: 'add.seq.noteTo',
+          optional: true,
+          source: 'participants'
+        },
+        { key: 'text', kind: 'text', label: 'add.f.text' },
+        { key: 'after', kind: 'item', label: 'add.f.after', optional: true, source: 'messages' }
+      ],
+      id: 'note',
+      title: 'add.seq.note'
+    },
+    {
+      apply: (code, values) => {
+        const kind = values.kind in blockDefaults ? values.kind : 'alt';
+        const text = sequenceText(values.text) || blockDefaults[kind];
+        const at = values.after ? Number(values.after) : Number.NaN;
+        const message = Number.isInteger(at) && messageLine.test(splitLines(code).lines[at] ?? '');
+        // Around the chosen message; or empty, after it (or first inside a chosen block).
+        return {
+          code:
+            values.wrap === 'around' && message
+              ? wrapMessage(code, at, `${kind} ${text}`)
+              : insertAfterAnchor(code, [`${kind} ${text}`, 'end'], values.after),
+          name: text
+        };
+      },
+      button: 'add.seq.blockButton',
+      fields: [
+        {
+          initial: 'alt',
+          key: 'kind',
+          kind: 'choice',
+          label: 'add.seq.blockKind',
+          options: ['alt', 'loop', 'opt']
+        },
+        { key: 'text', kind: 'text', label: 'add.seq.blockText', optional: true },
+        { key: 'after', kind: 'item', label: 'add.f.after', optional: true, source: 'messages' },
+        {
+          initial: 'after',
+          key: 'wrap',
+          kind: 'choice',
+          label: 'add.seq.blockWrap',
+          options: ['after', 'around']
+        }
+      ],
+      id: 'block',
+      title: 'add.seq.block'
     }
   ],
   header: /^\s*sequenceDiagram\b/,

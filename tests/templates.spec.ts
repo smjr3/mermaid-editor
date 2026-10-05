@@ -34,7 +34,10 @@ test.describe('Business templates', () => {
 
   test('lead the sample list', async ({ page }) => {
     const card = page.getByTestId(TID.sampleDiagramsCard).locator('..');
-    await expect(card.getByRole('button').first()).toHaveText(businessTemplatesName);
+    // The first sample button; "New diagram" sits above the samples.
+    await expect(
+      card.locator(`button:not([data-testid="${TID.newDiagramToggle}"])`).first()
+    ).toHaveText(businessTemplatesName);
   });
 
   for (const [index, { title, isDefault }] of templates.entries()) {

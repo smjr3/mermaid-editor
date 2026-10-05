@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **202**.
+  every locally changed path — currently **209**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -191,6 +191,46 @@ have no edit forms. Every edit is applied only if mermaid still parses the resul
 diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
 every sample. Ids in Japanese (申請者, 営業) are listed and edited like any other in flowcharts, swimlanes, ER and C4 diagrams, and the Colours and Add cards accept them too; mermaid's state, class, requirement and block grammars reject a non-ASCII id in a `style` statement, so those cards leave such ids out (`unicodeIds` in `mermaid.ts`).
 
+**From zero, UI only.** For someone who cannot write mermaid. "New diagram…" at the top of the
+Samples card (open by default, so the first thing in the tool stack) offers 14 types — flowchart,
+swimlane, architecture, sequence, state, class, ER, gantt, mindmap, kanban, timeline, pie, C4, block
+— each with a one-line description, plus an optional title and, where the type has one, a direction;
+"Create" replaces the code with a minimal starter (`src/lib/util/newDiagram.ts`: a header and one or
+two placeholders named in Japanese, ASCII ids) after a confirm, unless the code is empty, a sample or
+an unchanged starter. Every starter parses as its type and gives the Add card actions (unit test);
+the all-diagram check runs every feature over the starters too.
+
+**Diagram title** (`src/lib/util/diagramTitle.ts`). The Layout card has a title field that sets,
+changes and removes the title. It is front matter (`---\ntitle: "…"\n---`, other keys kept) for
+flowchart, swimlane, sequence, state, class, ER, gantt and pie — checked in the real render
+(`tests/newDiagram.spec.ts`). Timeline and C4 ignore a front-matter title, so theirs is their own
+`title …` statement. Mindmap, kanban, architecture and block diagrams draw no title at all; the card
+and the new-diagram form say so. Getting the title to show exposed a race: mermaid keeps the title in
+one store shared by every diagram and each parse clears it; `mermaid.parse` and `mermaid.render`
+share mermaid's queue but `getDiagramFromText` (the cards' reads) does not, so a card reading the new
+code while the view rendered it dropped the title from the picture. Renders and those reads now take
+turns (`diagramFromText` in `mermaid.ts`).
+
+**Edit card additions.** For a flowchart or swimlane node: change its shape (the Add card's five;
+a node written as `@{ shape: … }` too), move it to another lane or subgraph or out of every lane, and
+set or remove an icon (`id@{ icon: "prefix:name", label: … }`) found with a small search box
+(`IconChooser.svelte` over `src/lib/util/iconCatalog.ts`, every pack the editor knows). A move takes
+the node's definition with it; an arrow statement inside the old lane moves out to just after that
+lane (the other nodes it named stay as definitions), so every arrow stays, and `linkStyle` numbers
+follow the arrows if their order changed. mermaid gives a node to the first subgraph to close that
+mentions it, which is how the card reads the current lane. For an architecture service: change its
+icon (mermaid's standard ones are offered first and written without a prefix) or move it to another
+group. A node with an icon keeps the icon's shape, so the shape list is hidden for it.
+
+**Sequence notes and blocks.** The Add card adds a note (over one or two participants, or right or
+left of one) and an `alt`/`loop`/`opt` block, at the end or after a chosen message; a block can be
+empty (header + `end`, as asked) or wrap the chosen message. A new message, note or block can also go
+first inside a block. An empty block renders its condition broken into hyphenated characters
+(`[-承-認-]`), since mermaid sizes the label to the block's (empty) width; it reads normally once a
+message is inside. The Edit card lists notes and blocks after the participants: change a note's text
+or a block's condition, delete a note, or delete a block keeping the messages inside (its
+`else`/`and` lines go with it).
+
 The lists behind the Add and Colours cards come from mermaid's parse on every change; results
 are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It
 cut the heaviest sample's all-diagram e2e from about 15 s to 9 s locally (it had begun timing out
@@ -301,7 +341,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **402 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **499 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -389,7 +429,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 230 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 2,026 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

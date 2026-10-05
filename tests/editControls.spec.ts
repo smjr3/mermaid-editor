@@ -179,6 +179,164 @@ test.describe('Edit card', () => {
     await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
   });
 
+  test('changes a node’s shape and moves it to another lane, keeping its arrows', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor(lanes));
+    await editPage.checkTextInView('In stock?');
+    await page.getByTestId(TID.editCard).click();
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('D');
+    await expect(page.getByTestId(TID.editShapeSelect)).toHaveValue('diamond');
+    await page.getByTestId(TID.editShapeSelect).selectOption('stadium');
+    await expect.poll(() => stored(page)).toContain('    D([In stock?])\n');
+    await expect(page.getByTestId(TID.editMessage)).toHaveText(
+      t('edit.changed', { name: 'In stock?' })
+    );
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('C');
+    await expect(page.getByTestId(TID.editMoveSelect)).toHaveValue('Shop');
+    await page.getByTestId(TID.editMoveSelect).selectOption('Customer');
+    await page.getByTestId(TID.editMoveButton).click();
+    await expect
+      .poll(() => stored(page))
+      .toContain(
+        '  subgraph Customer\n    A[Place order] --> B[Receive goods]\n    C[Accept order]\n  end\n  subgraph Shop\n    D([In stock?])\n  end'
+      );
+    // Drawn inside the Customer lane now, with every arrow still there.
+    const inside = async () => {
+      const lane = await page.locator('#view .cluster', { hasText: 'Customer' }).boundingBox();
+      const box = await page.locator('#view .node', { hasText: 'Accept order' }).boundingBox();
+      return (
+        !!lane &&
+        !!box &&
+        box.x >= lane.x &&
+        box.y >= lane.y &&
+        box.x + box.width <= lane.x + lane.width &&
+        box.y + box.height <= lane.y + lane.height
+      );
+    };
+    await expect.poll(inside).toBe(true);
+    await expect(page.locator('#view .flowchart-link')).toHaveCount(5);
+
+    // And out of every lane.
+    await page.getByTestId(TID.editMoveSelect).selectOption('');
+    await page.getByTestId(TID.editMoveButton).click();
+    await expect.poll(() => stored(page)).toContain('  D ==> B\n  C[Accept order]\n  linkStyle 1');
+    await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
+  });
+
+  test('gives a node an icon found by search, and takes it away again', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor(lanes));
+    await editPage.checkTextInView('Accept order');
+    await page.getByTestId(TID.editCard).click();
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('C');
+    await expect(page.getByTestId(TID.editIconCurrent)).toHaveText(t('edit.iconNone'));
+    await page.getByTestId(TID.editIconSearch).fill('user-circle');
+    const result = page.locator(
+      `[data-testid="${TID.editIconResult}"][data-icon="tabler:user-circle"]`
+    );
+    await result.click({ timeout: 30_000 });
+    await expect
+      .poll(() => stored(page))
+      .toContain('    C@{ icon: "tabler:user-circle", label: "Accept order" }\n');
+    await editPage.checkTextInView('Accept order');
+    // mermaid draws an icon node with its own shape.
+    await expect(page.locator('#view .icon-shape', { hasText: 'Accept order' })).toHaveCount(1);
+    await expect(page.getByTestId(TID.editIconCurrent)).toHaveText(
+      t('edit.iconCurrent', { icon: 'tabler:user-circle' })
+    );
+    await expect(page.getByText(t('edit.shapeIcon'))).toBeVisible();
+
+    await page.getByTestId(TID.editIconClear).click();
+    await expect.poll(() => stored(page)).toContain('    C["Accept order"]\n');
+    await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
+  });
+
+  test('changes a service’s icon and moves it into another group', async ({ editPage, page }) => {
+    const arch = `architecture-beta
+  group api(cloud)[API]
+  service db(database)[Database] in api
+  service dns(internet)[DNS]
+  db:R --> L:dns`;
+    await editPage.start(urlFor(arch));
+    await editPage.checkTextInView('DNS');
+    await page.getByTestId(TID.editCard).click();
+
+    await page.getByTestId(TID.editObjectSelect).selectOption('dns');
+    await expect(page.getByTestId(TID.editMoveSelect)).toHaveValue('');
+    await page.getByTestId(TID.editMoveSelect).selectOption('api');
+    await page.getByTestId(TID.editMoveButton).click();
+    await expect.poll(() => stored(page)).toContain('  service dns(internet)[DNS] in api\n');
+
+    await page.getByTestId(TID.editIconSearch).fill('server');
+    // mermaid's standard icons come first and are written without a prefix.
+    await page
+      .locator(`[data-testid="${TID.editIconResult}"][data-icon="mermaid:server"]`)
+      .click({ timeout: 30_000 });
+    await expect.poll(() => stored(page)).toContain('  service dns(server)[DNS] in api\n');
+    await editPage.checkTextInView('DNS');
+    await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
+  });
+
+  test('adds a note and an empty alt block to a sequence, then deletes the block', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor(
+        'sequenceDiagram\n  participant A as 申請者\n  participant B as 上長\n  A->>B: 申請\n  B-->>A: 回答'
+      )
+    );
+    await editPage.checkTextInView('回答');
+    await page.getByTestId(TID.addCard).click();
+
+    const field = (action: string, key: string) =>
+      page.getByTestId(`${TID.addAction}-${action}-${key}`);
+    await field('note', 'at').selectOption('A');
+    await field('note', 'to').selectOption('B');
+    await field('note', 'text').fill('書類を確認');
+    await field('note', 'button').click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('\n  B-->>A: 回答\n  Note over A,B: 書類を確認');
+    await editPage.checkTextInView('書類を確認');
+
+    await field('block', 'kind').selectOption('alt');
+    await field('block', 'text').fill('承認する');
+    await field('block', 'after').selectOption({ label: 'A → B: 申請' });
+    await field('block', 'button').click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('\n  A->>B: 申請\n  alt 承認する\n  end\n  B-->>A: 回答');
+
+    // A message chosen to go "first inside" the block fills it.
+    await field('message', 'from').selectOption('B');
+    await field('message', 'to').selectOption('A');
+    await field('message', 'text').fill('差戻し');
+    await field('message', 'kind').selectOption('reply');
+    await field('message', 'after').selectOption({ label: 'alt 承認する ⋯' });
+    await field('message', 'button').click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('\n  alt 承認する\n    B-->>A: 差戻し\n  end\n');
+    await editPage.checkTextInView('[承認する]');
+
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(TID.editCard).click();
+    await page.getByTestId(TID.editObjectSelect).selectOption('line:4');
+    await page.getByTestId(TID.editDeleteButton).click();
+    await expect.poll(() => stored(page)).not.toContain('alt');
+    expect(await stored(page)).toContain('\n  A->>B: 申請\n  B-->>A: 差戻し\n  B-->>A: 回答');
+    await editPage.checkTextNotInView('[承認する]');
+    await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
+  });
+
   test('explains when a diagram cannot be edited from here', async ({ editPage, page }) => {
     await editPage.start(urlFor('pie\n  "Dogs" : 3\n  "Cats" : 2'));
     await editPage.checkTextInView('Dogs');

@@ -23,9 +23,15 @@ import {
   oneLine,
   sequenceText
 } from './addActions';
-import { headerLine, laneEnd, splitLines } from './diagramEdit';
+import { headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
 import { memoByCode } from './memo';
-import { decodeEntities, diagramEdges, diagramObjects, type DiagramObject } from './mermaid';
+import {
+  decodeEntities,
+  diagramEdges,
+  diagramFromText,
+  diagramObjects,
+  type DiagramObject
+} from './mermaid';
 import { findOccurrences } from './mermaidRename';
 
 export type EditKind =
@@ -120,7 +126,7 @@ const list = (value: unknown): Record<string, unknown>[] =>
 const parseDb = async (code: string): Promise<Db | undefined> => {
   try {
     await mermaid.parse(code);
-    return (await mermaid.mermaidAPI.getDiagramFromText(code)).db as Db;
+    return (await diagramFromText(code)).db as Db;
   } catch {
     return undefined;
   }
@@ -1169,6 +1175,64 @@ const deleteParticipant = (lines: string[], id: string) => {
   return lines;
 };
 
+// Sequence notes and blocks, listed by line after the participants: a note's text or a
+// block's condition can change, and a block goes without what is inside it.
+const seqNote = /^(\s*Note\s+(?:over|left\s+of|right\s+of)\s+[^:]+?\s*:\s*)(.*)$/i;
+const seqBlock = /^(\s*)(alt|loop|opt|par|critical|break)\b\s*(.*)$/;
+const seqOpener = /^\s*(?:alt|loop|opt|par|critical|break|rect|box)\b/;
+const seqDivider = /^\s*(?:else|and|option)\b/;
+
+const sequenceExtras = (lines: string[]): EditObject[] => {
+  const header = headerIndex(lines);
+  return lines.flatMap((line, index) =>
+    index > header && (seqNote.test(line) || seqBlock.test(line))
+      ? [{ id: `line:${index}`, label: line.trim(), line: index }]
+      : []
+  );
+};
+
+const renameSequenceExtra = (lines: string[], line: number, label: string) => {
+  const text = sequenceText(label);
+  const note = seqNote.exec(lines[line] ?? '');
+  const block = seqBlock.exec(lines[line] ?? '');
+  if (note) lines[line] = `${note[1]}${text}`;
+  else if (block) lines[line] = `${block[1]}${block[2]} ${text}`;
+  return lines;
+};
+
+const deleteSequenceExtra = (lines: string[], line: number) => {
+  if (seqNote.test(lines[line] ?? '')) {
+    lines.splice(line, 1);
+    return lines;
+  }
+  if (!seqBlock.test(lines[line] ?? '')) return lines;
+  let depth = 0;
+  let end = -1;
+  const dividers: number[] = [];
+  for (let index = line; index < lines.length; index++) {
+    if (seqOpener.test(lines[index])) depth++;
+    else if (/^\s*end\s*$/.test(lines[index]) && --depth === 0) {
+      end = index;
+      break;
+    } else if (depth === 1 && seqDivider.test(lines[index])) dividers.push(index);
+  }
+  if (end === -1) return lines;
+  const inner = lines
+    .slice(line + 1, end)
+    .filter((_, offset) => !dividers.includes(line + 1 + offset));
+  const shift = Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[line]);
+  lines.splice(
+    line,
+    end - line + 1,
+    ...inner.map((l) =>
+      isBlank(l) || !Number.isFinite(shift) || shift <= 0
+        ? l
+        : l.slice(Math.min(shift, indentOf(l)))
+    )
+  );
+  return lines;
+};
+
 // Mindmap and kanban lines: `id[Text]`, `id((Text))`, `root)Text(` or plain text.
 const shapedLine =
   /^(\s*)([\p{L}\p{N}_-]*)(\[|\(\(\(|\(\(|\(|\)\)|\)|\{\{)(.*?)(\]|\)\)\)|\)\)|\)|\(\(|\(|\}\})\s*$/u;
@@ -1304,10 +1368,13 @@ export const editableObjects = memoByCode(
       case 'sequence': {
         const order = await sequenceOrder(code);
         return {
-          items: order.map((item, index) => ({
-            ...item,
-            after: order.slice(0, index).map((o) => o.id)
-          })),
+          items: [
+            ...order.map((item, index) => ({
+              ...item,
+              after: order.slice(0, index).map((o) => o.id)
+            })),
+            ...sequenceExtras(lines)
+          ],
           kind
         };
       }
@@ -1454,7 +1521,10 @@ export const renameObject = (
     flowchart: () => renameFlowObject(lines, object, text),
     kanban: () => renameLine(lines, object.line ?? -1, text),
     mindmap: () => renameLine(lines, object.line ?? -1, text),
-    sequence: () => renameParticipant(lines, object, text),
+    sequence: () =>
+      object.line === undefined
+        ? renameParticipant(lines, object, text)
+        : renameSequenceExtra(lines, object.line, text),
     state: () => renameState(lines, object.id, text.replaceAll('"', "'")),
     timeline: () => renameTimeline(lines, object, text)
   };
@@ -1481,7 +1551,10 @@ export const deleteObject = (
     flowchart: () => deleteFlowObject(lines, object, keepContents),
     kanban: () => deleteLines(lines, object.line ?? -1, false),
     mindmap: () => deleteLines(lines, object.line ?? -1, keepContents),
-    sequence: () => deleteParticipant(lines, object.id),
+    sequence: () =>
+      object.line === undefined
+        ? deleteParticipant(lines, object.id)
+        : deleteSequenceExtra(lines, object.line),
     state: () => deleteState(lines, object.id),
     timeline: () => deleteTimeline(lines, object)
   };
@@ -1582,3 +1655,404 @@ export const checkEdit = async (before: string, after: string): Promise<boolean>
     return false;
   }
 };
+
+// ---- Flowchart nodes: shape, lane and icon ----
+
+/** The node's parts as written: `A` + `["x"]` + `@{ … }` + `:::cls`. */
+const nodeParts = ({ id, text }: NodeRef) => {
+  let rest = text.slice(id.length);
+  let shape = '';
+  if (rest !== '' && '[({>'.includes(rest[0])) {
+    const end = closeBracket(rest, 0);
+    shape = rest.slice(0, end);
+    rest = rest.slice(end);
+  }
+  let data = '';
+  if (rest.startsWith('@{')) {
+    const end = closeBracket(rest, 1);
+    data = rest.slice(0, end);
+    rest = rest.slice(end);
+  }
+  return { data, rest, shape };
+};
+
+/** The opener of a bracket shape and the text inside it. */
+const bracketParts = (shape: string) => {
+  const open = shapeOpeners.find((opener) => shape.startsWith(opener)) ?? '[';
+  const close = shapeClosers[open] ?? shape.slice(-2);
+  return { inner: shape.slice(open.length, shape.length - close.length), open };
+};
+
+// `@{ key: value, key: "value" }` as ordered pairs; values keep their quotes.
+const dataPairs = (data: string): [string, string][] =>
+  [...data.slice(2, -1).matchAll(/([\w-]+)\s*:\s*("(?:[^"\\]|\\.)*"|[^,]*?)\s*(?:,|$)/g)].map(
+    ([, key, value]) => [key, value]
+  );
+const renderData = (pairs: [string, string][]) =>
+  `@{ ${pairs.map(([key, value]) => `${key}: ${value}`).join(', ')} }`;
+const dataValue = (data: string, key: string) =>
+  dataPairs(data)
+    .find(([name]) => name === key)?.[1]
+    .replace(/^"(.*)"$/, '$1') ?? '';
+
+const bracketShapes: Record<string, NodeShape> = {
+  '(': 'rounded',
+  '((': 'circle',
+  '([': 'stadium',
+  '[': 'rect',
+  '{': 'diamond'
+};
+const shapeBrackets: Record<NodeShape, [string, string]> = {
+  circle: ['((', '))'],
+  diamond: ['{', '}'],
+  rect: ['[', ']'],
+  rounded: ['(', ')'],
+  stadium: ['([', '])']
+};
+// mermaid's names in `@{ shape: … }`, and what the Edit card writes back.
+const dataShapes: Record<string, NodeShape> = {
+  circ: 'circle',
+  circle: 'circle',
+  decision: 'diamond',
+  diam: 'diamond',
+  diamond: 'diamond',
+  pill: 'stadium',
+  rect: 'rect',
+  rounded: 'rounded',
+  stadium: 'stadium',
+  terminal: 'stadium'
+};
+const dataShapeNames: Record<NodeShape, string> = {
+  circle: 'circle',
+  diamond: 'diam',
+  rect: 'rect',
+  rounded: 'rounded',
+  stadium: 'stadium'
+};
+
+/** Every mention of the node in the chain statements, with its line. */
+const nodeRefs = (flow: FlowLine[], id: string) =>
+  flow.flatMap(({ chains, index }) =>
+    chains.flatMap((chain) =>
+      chain.groups
+        .flat()
+        .filter((node) => node.id === id)
+        .map((node) => ({ index, node }))
+    )
+  );
+
+/** Where the node is defined: its first mention with a shape, else its first mention. */
+const nodeDefinition = (lines: string[], id: string) => {
+  const refs = nodeRefs(flowLines(lines), id);
+  return refs.find(({ node }) => hasShape(node)) ?? refs[0];
+};
+
+interface Range {
+  id?: string;
+  start: number;
+  end: number;
+}
+
+/** Every subgraph's `subgraph` and `end` lines, inner ones first (the order they close in). */
+const subgraphRanges = (lines: string[]): Range[] => {
+  const open: { id?: string; start: number }[] = [];
+  const ranges: Range[] = [];
+  lines.forEach((line, index) => {
+    const start = /^\s*subgraph(?:\s+([\p{L}\p{N}_-]+))?/u.exec(line);
+    if (start) open.push({ id: start[1], start: index });
+    else if (/^\s*end\s*$/.test(line) && open.length > 0) {
+      const top = open.pop();
+      if (top) ranges.push({ ...top, end: index });
+    }
+  });
+  return ranges.sort((a, b) => a.end - b.end);
+};
+
+/**
+ * The lane a node is drawn in: mermaid gives a node to the first subgraph to
+ * close that mentions it, so an inner lane wins over the one around it.
+ */
+const laneOfNode = (lines: string[], id: string): string => {
+  const mentions = nodeRefs(flowLines(lines), id).map(({ index }) => index);
+  const range = subgraphRanges(lines).find(({ end, start }) =>
+    mentions.some((index) => index > start && index < end)
+  );
+  return range?.id ?? '';
+};
+
+export interface NodeDetails {
+  /** One of the Add card's shapes, 'other' for any other, undefined for an icon or image. */
+  shape?: NodeShape | 'other';
+  /** `prefix:name`, or ''. */
+  icon: string;
+  /** The lane or subgraph it is drawn in, or ''. */
+  lane: string;
+}
+
+/** A flowchart node's shape, icon and lane, as the Edit card shows them. */
+export const flowNodeDetails = (code: string, id: string): NodeDetails => {
+  const { lines } = splitLines(code);
+  const lane = laneOfNode(lines, id);
+  const target = nodeDefinition(lines, id);
+  // A node written without a shape is drawn as a box.
+  if (!target || !hasShape(target.node)) return { icon: '', lane, shape: 'rect' };
+  const { data, shape } = nodeParts(target.node);
+  const icon = dataValue(data, 'icon');
+  if (shape) return { icon, lane, shape: bracketShapes[bracketParts(shape).open] ?? 'other' };
+  const named = dataValue(data, 'shape');
+  if (icon || dataValue(data, 'img')) return { icon, lane, shape: undefined };
+  return { icon, lane, shape: named ? (dataShapes[named] ?? 'other') : 'rect' };
+};
+
+/** A label for a bracket shape: kept as written unless its brackets would end the shape. */
+const shapeLabel = (inner: string) =>
+  /^\s*".*"\s*$/.test(inner) || !/[()[\]{}]/.test(inner) ? inner : quoted(inner);
+
+/** Rewrites the node where it is defined; undefined when `change` refuses. */
+const rewriteNode = (
+  code: string,
+  id: string,
+  change: (parts: ReturnType<typeof nodeParts>, bare: boolean) => string | undefined
+): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const target = nodeDefinition(lines, id);
+  const parts = target ? nodeParts(target.node) : { data: '', rest: '', shape: '' };
+  const next = change(parts, !target || !hasShape(target.node));
+  if (next === undefined) return undefined;
+  if (!target) append(lines, [`  ${id}${next}`]);
+  else lines[target.index] = lines[target.index].replace(target.node.text, () => `${id}${next}`);
+  return lines.join(eol);
+};
+
+/** The code with the node drawn in another of the Add card's shapes. */
+export const setNodeShape = (code: string, id: string, shape: NodeShape): string | undefined =>
+  rewriteNode(code, id, ({ data, rest, shape: current }) => {
+    const [open, close] = shapeBrackets[shape];
+    if (current) return `${open}${shapeLabel(bracketParts(current).inner)}${close}${data}${rest}`;
+    if (data) {
+      if (dataValue(data, 'icon') || dataValue(data, 'img')) return undefined;
+      const pairs = dataPairs(data);
+      const at = pairs.findIndex(([key]) => key === 'shape');
+      if (at === -1) pairs.unshift(['shape', dataShapeNames[shape]]);
+      else pairs[at] = ['shape', dataShapeNames[shape]];
+      return `${renderData(pairs)}${rest}`;
+    }
+    return `${open}${quoted(id)}${close}${rest}`;
+  });
+
+const iconPattern = /^[\w-]+:[\w-]+$/;
+const iconKeys = new Set(['icon', 'form', 'pos', 'h']);
+
+/** The code with the node showing an icon (`id@{ icon: "prefix:name", label: … }`); '' removes it. */
+export const setNodeIcon = (code: string, id: string, icon: string): string | undefined => {
+  const name = icon.trim();
+  if (name && !iconPattern.test(name)) return undefined;
+  return rewriteNode(code, id, ({ data, rest, shape }) => {
+    const pairs = dataPairs(data || '@{}');
+    if (!name) {
+      if (!data) return undefined;
+      const kept = pairs.filter(([key]) => !iconKeys.has(key));
+      if (shape) return `${shape}${kept.length > 0 ? renderData(kept) : ''}${rest}`;
+      if (kept.every(([key]) => key === 'label')) {
+        return `[${kept[0]?.[1] ?? quoted(id)}]${rest}`;
+      }
+      return `${renderData(kept)}${rest}`;
+    }
+    const at = pairs.findIndex(([key]) => key === 'icon');
+    if (at === -1) pairs.unshift(['icon', `"${name}"`]);
+    else pairs[at] = ['icon', `"${name}"`];
+    // The icon takes the place of a bracket shape; its text becomes the label.
+    if (!pairs.some(([key]) => key === 'label')) {
+      const inner = shape ? bracketParts(shape).inner.trim() : '';
+      const label = /^".*"$/.test(inner) ? inner : quoted(inner || id);
+      pairs.push(['label', label]);
+    }
+    return `${renderData(pairs.filter(([key]) => key !== 'shape'))}${rest}`;
+  });
+};
+
+/** `linkStyle` numbers carried over to the arrows' new order (matched by their ends). */
+const renumberAfterMove = (before: FlowEdge[], lines: string[]) => {
+  const after = flowEdges(flowLines(lines));
+  const key = (edge: FlowEdge) => `${edge.from.id}\u0000${edge.to.id}`;
+  const used = new Set<number>();
+  const map = new Map<number, number>();
+  for (const edge of before) {
+    const match = after.find(
+      (candidate) => !used.has(candidate.index) && key(candidate) === key(edge)
+    );
+    if (match) {
+      used.add(match.index);
+      map.set(edge.index, match.index);
+    }
+  }
+  if ([...map].every(([from, to]) => from === to)) return;
+  renumberLinkStyles(lines, (index) => map.get(index));
+};
+
+/**
+ * The code with the node in another lane (or, for '', in none). Its definition
+ * moves; an arrow statement inside its old lane moves out to just after that
+ * lane, leaving the other nodes it named behind, so every arrow stays and
+ * `linkStyle` follows the arrows.
+ */
+export const moveNodeToLane = (code: string, id: string, lane: string): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const ranges = subgraphRanges(lines);
+  const target = lane ? ranges.find((range) => range.id === lane) : undefined;
+  if (lane && !target) return undefined;
+  const flow = flowLines(lines);
+  const before = flowEdges(flow);
+  const replace = new Map<number, string[]>();
+  const after = new Map<number, string[]>();
+  const add = (map: Map<number, string[]>, index: number, added: string[]) =>
+    map.set(index, [...(map.get(index) ?? []), ...added]);
+  const lanesAt = (index: number) =>
+    ranges.filter(({ end, start }) => index > start && index < end);
+  let definition: string | undefined;
+  let fromLane = false;
+
+  // Out of every lane it is mentioned in.
+  for (const line of flow) {
+    const around = lanesAt(line.index);
+    const mentions = line.chains.some((chain) => chain.groups.flat().some((n) => n.id === id));
+    if (around.length === 0 || !mentions) continue;
+    const stay: Chain[] = [];
+    for (const chain of line.chains) {
+      const nodes = chain.groups.flat();
+      const own = nodes.filter((node) => node.id === id);
+      if (own.length === 0) {
+        stay.push(chain);
+        continue;
+      }
+      fromLane = true;
+      definition ??= own.find((node) => hasShape(node))?.text;
+      if (chain.links.length === 0) {
+        stay.push(...withoutNodes(chain, new Set([id])));
+        continue;
+      }
+      // The others stay where they were drawn; the arrows go after the outermost lane.
+      const seen = new Set<string>();
+      for (const node of nodes) {
+        if (node.id === id || seen.has(node.id)) continue;
+        seen.add(node.id);
+        stay.push({ groups: [[node]], links: [] });
+      }
+      const outer = around.reduce((a, b) => (a.start < b.start ? a : b));
+      const bare: Chain = {
+        groups: chain.groups.map((group) => group.map((node) => ({ id: node.id, text: node.id }))),
+        links: chain.links
+      };
+      add(after, outer.end, [renderChain(' '.repeat(indentOf(lines[outer.start])), bare)]);
+    }
+    replace.set(
+      line.index,
+      stay.map((chain) => renderChain(line.indent, chain))
+    );
+  }
+
+  // A definition outside the lanes moves into the new lane.
+  if (definition === undefined && target) {
+    const outside = nodeRefs(flow, id).find(
+      ({ index, node }) => hasShape(node) && lanesAt(index).length === 0
+    );
+    if (outside) {
+      definition = outside.node.text;
+      const line = flow.find(({ index }) => index === outside.index);
+      if (line) {
+        const chains = line.chains.flatMap((chain) =>
+          chain.links.length === 0 &&
+          chain.groups.flat().length === 1 &&
+          chain.groups[0][0].id === id
+            ? []
+            : [
+                {
+                  groups: chain.groups.map((group) =>
+                    group.map((node) => (node === outside.node ? { id, text: id } : node))
+                  ),
+                  links: chain.links
+                }
+              ]
+        );
+        replace.set(
+          line.index,
+          chains.map((chain) => renderChain(line.indent, chain))
+        );
+      }
+    }
+  }
+
+  const statement = definition ?? id;
+  if (target) {
+    add(replace, target.end, [
+      `${' '.repeat(indentOf(lines[target.end]) + 2)}${statement}`,
+      lines[target.end]
+    ]);
+  }
+
+  const out = lines.flatMap((line, index) => [
+    ...(replace.get(index) ?? [line]),
+    ...(after.get(index) ?? [])
+  ]);
+  if (!target) {
+    // Out of every lane: the definition (or a bare mention) goes after the last statement.
+    const rest = out.join('\n');
+    const needed = fromLane && (definition !== undefined || findOccurrences(rest, id).length === 0);
+    if (needed) {
+      let at = out.length;
+      while (
+        at > 1 &&
+        (!out[at - 1].trim() || /^\s*(?:style|linkStyle|classDef|class|click)\b/.test(out[at - 1]))
+      )
+        at--;
+      out.splice(at, 0, `  ${statement}`);
+    }
+  }
+  renumberAfterMove(before, out);
+  return out.join(eol);
+};
+
+// ---- Architecture services: icon and group ----
+
+const serviceLine = (id: string) =>
+  new RegExp(`^(\\s*)service\\s+${escape(id)}(?:\\(([^)]*)\\))?(\\s*\\[[^\\]]*\\])?(.*)$`);
+const inGroup = /\s+in\s+([\w-]+)\s*$/;
+
+/** An architecture service's icon and group, or undefined when `id` is not a service. */
+export const serviceDetails = (
+  code: string,
+  id: string
+): { icon: string; group: string } | undefined => {
+  const { lines } = splitLines(code);
+  const match = lines.map((line) => serviceLine(id).exec(line)).find(Boolean);
+  if (!match) return undefined;
+  return { group: inGroup.exec(match[4])?.[1] ?? '', icon: match[2] ?? '' };
+};
+
+const rewriteService = (
+  code: string,
+  id: string,
+  change: (icon: string, label: string, rest: string) => string
+): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const index = lines.findIndex((line) => serviceLine(id).test(line));
+  const match = index === -1 ? null : serviceLine(id).exec(lines[index]);
+  if (!match) return undefined;
+  lines[index] = `${match[1]}service ${id}${change(match[2] ?? '', match[3] ?? '', match[4])}`;
+  return lines.join(eol);
+};
+
+/** The code with the service showing another icon (a standard one or any `prefix:name`). */
+export const setServiceIcon = (code: string, id: string, icon: string): string | undefined =>
+  /^[\w-]+(?::[\w-]+)?$/.test(icon.trim())
+    ? rewriteService(code, id, (_, label, rest) => `(${icon.trim()})${label}${rest}`)
+    : undefined;
+
+/** The code with the service in another group (or, for '', in none). */
+export const moveService = (code: string, id: string, group: string): string | undefined =>
+  rewriteService(
+    code,
+    id,
+    (icon, label, rest) =>
+      `${icon ? `(${icon})` : ''}${label}${rest.replace(inGroup, '')}${group ? ` in ${group}` : ''}`
+  );

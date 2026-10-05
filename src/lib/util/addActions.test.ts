@@ -64,6 +64,72 @@ describe('sequence', () => {
   });
 });
 
+describe('sequence notes and blocks', () => {
+  const code =
+    'sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: hi\n  B-->>A: hello';
+  it('lists the messages to place things after', async () => {
+    expect((await specFor(code)?.parts(code))?.messages).toEqual([
+      { id: '3', label: 'A → B: hi' },
+      { id: '4', label: 'B → A: hello' }
+    ]);
+  });
+  it('adds a note over two participants at the end', async () => {
+    const result = await run(code, 'note', { at: 'A', place: 'over', text: '確認; 済み', to: 'B' });
+    if ('error' in result) throw new Error();
+    expect(result.code).toBe(`${code}\n  Note over A,B: 確認, 済み`);
+  });
+  it('adds a note beside one participant after a chosen message', async () => {
+    const result = await run(code, 'note', { after: '3', at: 'B', place: 'right', text: '#1' });
+    if ('error' in result) throw new Error();
+    expect(added(code, result.code)).toEqual(['  Note right of B: #35;1']);
+    expect(result.code.split('\n')[4]).toBe('  Note right of B: #35;1');
+  });
+  it('asks whom a note is about', async () => {
+    expect(await run(code, 'note', { text: 'x' })).toEqual({ error: 'add.seq.noteChoose' });
+  });
+  it('adds an empty alt or loop block after a chosen message, or at the end', async () => {
+    const alt = await run(code, 'block', { after: '3', kind: 'alt', text: '在庫あり' });
+    if ('error' in alt) throw new Error();
+    expect(alt.code.split('\n').slice(3, 6)).toEqual(['  A->>B: hi', '  alt 在庫あり', '  end']);
+    const loop = await run(alt.code, 'block', { kind: 'loop', text: '' });
+    if ('error' in loop) throw new Error();
+    expect(loop.code.split('\n').slice(-2)).toEqual(['  loop 繰り返し', '  end']);
+  });
+  it('wraps a block around a chosen message, and puts a message first inside a block', async () => {
+    const around = await run(code, 'block', {
+      after: '4',
+      kind: 'loop',
+      text: '毎日',
+      wrap: 'around'
+    });
+    if ('error' in around) throw new Error();
+    expect(around.code.split('\n').slice(3)).toEqual([
+      '  A->>B: hi',
+      '  loop 毎日',
+      '    B-->>A: hello',
+      '  end'
+    ]);
+    const parts = await specFor(around.code)?.parts(around.code);
+    expect(parts?.messages.map(({ label }) => label)).toEqual([
+      'A → B: hi',
+      'loop 毎日 ⋯',
+      'B → A: hello'
+    ]);
+    const inside = await run(around.code, 'message', {
+      after: '4',
+      from: 'A',
+      text: '確認',
+      to: 'B'
+    });
+    if ('error' in inside) throw new Error();
+    expect(inside.code.split('\n').slice(4, 7)).toEqual([
+      '  loop 毎日',
+      '    A->>B: 確認',
+      '    B-->>A: hello'
+    ]);
+  });
+});
+
 describe('state', () => {
   const code = 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy';
   it('lists states with the start and end point', async () => {

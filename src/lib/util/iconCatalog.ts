@@ -2,7 +2,7 @@ import { remoteIconPacks } from './customIcons';
 import { listIconPacks } from './customIconStore';
 import { env } from './env';
 import { iconPacks } from './iconPacks';
-import { searchIcons, type SearchablePack } from './iconSearch';
+import { searchIcons, type IconMatch, type SearchablePack } from './iconSearch';
 import { standardIconPack, standardPrefix } from './standardIcons';
 import type { AsyncIconLoader } from 'mermaid';
 
@@ -156,3 +156,31 @@ export const replaceIconRef = (code: string, from: string, to: string): string =
       new RegExp(String.raw`(@\{[^}]*\bicon\s*:\s*)(["'])${escape(from)}\2`, 'g'),
       `$1$2${to}$2`
     );
+
+/**
+ * Icons whose names match the query across every pack, standard ones first
+ * (the Edit card's icon chooser). mermaid's standard icons are known to
+ * architecture diagrams only, so a flowchart node's search leaves them out
+ * (`standard: false`).
+ */
+export const searchCatalog = async (
+  query: string,
+  { limit = 40, standard = true }: { limit?: number; standard?: boolean } = {}
+): Promise<IconMatch[]> => {
+  if (query.trim().length < 2) return [];
+  const names = packNames().filter((name) => standard || name !== standardPrefix);
+  const packs = [...(await Promise.all(names.map(loadPack))), ...(await importedPacks())].filter(
+    (pack): pack is SearchablePack => pack !== undefined
+  );
+  return [
+    ...searchIcons(
+      packs.filter(({ prefix }) => prefix === standardPrefix),
+      query
+    ),
+    ...searchIcons(
+      packs.filter(({ prefix }) => prefix !== standardPrefix),
+      query,
+      limit
+    )
+  ].slice(0, limit);
+};

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Card from '$/components/Card/Card.svelte';
   import { Button } from '$/components/ui/button';
+  import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import {
@@ -15,6 +16,7 @@
     type LayoutOptions,
     type Size
   } from '$/util/layout';
+  import { getTitle, setTitle, titleShown } from '$/util/diagramTitle';
   import { render } from '$/util/mermaid';
   import { inputState, updateCode, updateConfig } from '$/util/state.svelte';
   import type { MermaidConfig } from 'mermaid';
@@ -24,12 +26,21 @@
   // and the config, so a shared link keeps the layout.
   const direction = $derived(getDirection(inputState.code));
   const options = $derived(getLayoutOptions(inputState.mermaid));
+  // Local: the front-matter title (diagramTitle.ts); the field starts from what is there.
+  const title = $derived(getTitle(inputState.code));
+  const showsTitle = $derived(titleShown(inputState.code));
+  let titleText = $derived(title);
   let message = $state('');
   let busy = $state(false);
 
   const applyDirection = (next: Direction) => {
     message = '';
     updateCode(setDirection(inputState.code, next), { resetPanZoom: true, updateDiagram: true });
+  };
+
+  const applyTitle = (next: string) => {
+    updateCode(setTitle(inputState.code, next), { updateDiagram: true });
+    message = t(next.trim() ? 'layout.titleDone' : 'layout.titleRemoved');
   };
 
   const applyOptions = (next: Partial<LayoutOptions>) => {
@@ -84,6 +95,36 @@
   isStackable
   icon={{ component: LayoutIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
+    <div class="flex flex-col gap-1">
+      <span class="font-semibold">{t('layout.diagramTitle')}</span>
+      {#if showsTitle}
+        <div class="flex gap-1">
+          <Input
+            bind:value={titleText}
+            class="h-9"
+            placeholder={t('layout.titlePlaceholder')}
+            aria-label={t('layout.diagramTitle')}
+            data-testid={TID.layoutTitleInput}
+            onkeydown={(event) => event.key === 'Enter' && applyTitle(titleText)} />
+          <Button
+            size="sm"
+            class="h-9"
+            data-testid={TID.layoutTitleSet}
+            onclick={() => applyTitle(titleText)}>{t('layout.titleSet')}</Button>
+          {#if title}
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-9"
+              data-testid={TID.layoutTitleRemove}
+              onclick={() => applyTitle('')}>{t('layout.titleRemove')}</Button>
+          {/if}
+        </div>
+      {:else}
+        <p class="text-muted-foreground">{t('layout.titleUnsupported')}</p>
+      {/if}
+    </div>
+
     <div class="flex flex-col gap-1">
       <span class="font-semibold">{t('layout.direction')}</span>
       {#if direction}

@@ -25,7 +25,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
-        'Samples: pick a diagram type to load a ready-made example to edit.',
+        'Samples: pick a diagram type to load a ready-made example to edit; 業務テンプレート holds Japanese business templates (approval flow, swimlanes, gantt, org chart, …).',
         'Add: type a name and press a button to add a lane, node, participant, task, … without writing the syntax.',
         'The Docs tab opens the mermaid documentation for the kind of diagram you are writing.'
       ],
@@ -99,7 +99,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
-        '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。',
+        '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。「業務テンプレート」には稟議・承認フロー、スイムレーン、工程表、組織図などの日本語のひな形があります。',
         '「追加」で名前を入れてボタンを押すと、レーン・ノード・登場人物・タスクなどを書き方を知らなくても足せます。',
         '「ドキュメント」タブで、今書いている図の書き方（Mermaid公式）を開けます。'
       ],

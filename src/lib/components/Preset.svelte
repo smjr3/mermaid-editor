@@ -4,7 +4,7 @@
   import Card from '$/components/Card/Card.svelte';
   import { Button, buttonVariants } from '$/components/ui/button';
   import * as Popover from '$/components/ui/popover';
-  import { localSamples } from '$/util/localSamples';
+  import { businessTemplatesName, localSamples } from '$/util/localSamples';
   import { getSampleDiagrams, type SampleExample } from '$/util/mermaid';
   import { updateCode } from '$lib/util/state.svelte';
   import { logEvent } from '$lib/util/stats';
@@ -56,6 +56,8 @@
   };
 
   const mainDiagrams = [
+    // Local: the Japanese business templates lead, for the users this fork serves.
+    businessTemplatesName,
     'Flowchart',
     'Class',
     'Sequence',

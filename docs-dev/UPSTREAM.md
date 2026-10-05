@@ -149,14 +149,15 @@ resolved it, so PNG export hung without downloading. mermaid 12 renders the ER s
 in about 150 ms, which made `actions.spec.ts` "should download png and svg" fail about
 half the time. If upstream fixes this themselves, take their version and drop ours.
 
-### Swimlane samples
+### Swimlane samples and business templates
 
-| Path                                | Local change                                                             |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship      |
-| `src/lib/components/Preset.svelte`  | Spreads `localSamples` into the sample list after upstream's own         |
-| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as `swimlane`; none shadows an upstream sample |
-| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines   |
+| Path                                | Local change                                                                                                         |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship; the Japanese "業務テンプレート" group           |
+| `src/lib/components/Preset.svelte`  | Spreads `localSamples` into the sample list after upstream's own; lists the business templates first                 |
+| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as its diagram type; none shadows an upstream sample; the templates are small and Japanese |
+| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines                                               |
+| `tests/templates.spec.ts`           | Added. Each business template loads from the card and renders without an error                                       |
 
 If `@mermaid-js/examples` starts shipping a `Swimlane` entry, `localSamples.test.ts`
 fails on purpose: drop the local entry and take upstream's.
@@ -614,6 +615,7 @@ modifications as if they were local customizations.
 | Added    | `tests/releaseAudit.spec.ts`                           |
 | Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/swimlane.spec.ts`                               |
+| Added    | `tests/templates.spec.ts`                              |
 | Modified | `tests/test.ts`                                        |
 | Modified | `vite.embed.config.js`                                 |
 

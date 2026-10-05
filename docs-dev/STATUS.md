@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **177**.
+  every locally changed path — currently **178**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -64,6 +64,16 @@ nothing loaded are deleted; `UPSTREAM.md` lists them and how to keep a merge fro
 **Swimlane samples.** `@mermaid-js/examples` ships none, so the "Sample Diagrams" card
 gains a local `Swimlane` entry (`src/lib/util/localSamples.ts`) with two examples; a `@smoke`
 e2e test renders it in Chromium and Firefox. See `UPSTREAM.md`.
+
+**Business templates.** The same file adds a "業務テンプレート" group, listed first in the
+card: nine Japanese-language samples of what a Japanese office draws — a swimlane expense
+flow with a 承認/差戻し loop, a 稟議 approval flowchart, a support swimlane (顧客/サポート/開発),
+a hiring timeline, an on-premises + cloud architecture with tabler icons, a gantt 工程表
+(要件定義 → リリース), an org chart, a monthly-close sequence diagram and a kanban 業務分担表.
+Ids are ASCII so the Add, Colours and F2 features apply; each stays around a dozen nodes.
+The group name is the sample key (the card does not translate group names), so it is
+Japanese in both UI languages. `tests/templates.spec.ts` loads each from the card and
+checks it renders; the all-diagram checks cover them too.
 
 **Editor and layout (0.2.0).** F2 renames a node, participant or service id everywhere it is
 used, leaving labels and messages alone (`mermaidRename.ts`). The config tab has a "Reset

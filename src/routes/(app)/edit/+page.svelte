@@ -216,7 +216,7 @@
           <div
             class={[
               'flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border',
-              !isMobile && 'code-pane'
+              isMobile ? 'overflow-y-auto [&>.card:first-child]:shrink-0' : 'code-pane'
             ]}
             data-side={codeSide}>
             <Card
@@ -236,7 +236,13 @@
                     ontoggle={() => editorPane?.collapse()} />
                 {/if}
               {/snippet}
-              <Editor {isMobile} />
+              {#if isMobile}
+                <!-- Local: on a phone the tool cards follow the editor in one scrolling
+                     column; the editor keeps a usable height however many cards there are. -->
+                <div class="h-full min-h-[40vh]"><Editor {isMobile} /></div>
+              {:else}
+                <Editor {isMobile} />
+              {/if}
             </Card>
 
             {#if isMobile}

@@ -335,3 +335,16 @@ test.describe('Mobile layout', () => {
     expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(391);
   });
 });
+
+test.describe('Code pane at the smallest desktop window', () => {
+  test.use({ viewport: { height: 720, width: 1280 } });
+
+  // Firefox's wider monospace font pushed `fa-car` past the window edge when the code pane
+  // was 22%; the default diagram's lines must stay inside the window with room to spare.
+  test('keeps the default diagram lines inside a 1280px window', async ({ editPage }) => {
+    await editPage.checkTextInView('Christmas');
+    const box = await editPage.editor.getByText('fa-car').boundingBox();
+    if (!box) throw new Error('fa-car not rendered');
+    expect(box.x + box.width).toBeLessThanOrEqual(1280 - 30);
+  });
+});

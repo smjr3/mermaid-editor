@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **238**.
+  every locally changed path — currently **239**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -381,7 +381,7 @@ people start from the left, and most of this fork's users build diagrams with th
 code comes last. The ⇄ button in the tools header ("パネルの並びを入れ替える") swaps to mermaid.live's
 code | diagram | tools; the choice is kept per browser (`localStorage` `paneOrder`,
 `src/lib/util/toolsPane.svelte.ts`). The tools take about 32% of a window 1280px or wider (25%
-below), the code about 22% (25%). Each divider drags, and the sizes are remembered per browser
+below), the code about 27% (25%; at 22% the default diagram's `fa-car` token ran past the right edge of a 1280px window and Firefox could not click it). Each divider drags, and the sizes are remembered per browser
 (paneforge `autoSaveId`), separately for each order (`liveEditorToolsLeft`, and `liveEditor` for
 code-left, which keeps the sizes saved before the swap existed), so one order's widths never
 apply to the other; each pane has an `id`/`order`, so the layout with the history column open is

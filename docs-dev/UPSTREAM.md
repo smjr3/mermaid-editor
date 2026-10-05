@@ -649,6 +649,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/tableEdit.ts`                            |
 | Added    | `src/lib/util/templateForms.test.ts`                   |
 | Added    | `src/lib/util/templateForms.ts`                        |
+| Added    | `src/lib/util/templateNotice.svelte.ts`                |
 | Added    | `src/lib/util/templateThumbnails.ts`                   |
 | Added    | `src/lib/util/undoStack.svelte.ts`                     |
 | Added    | `src/lib/util/undoStack.test.ts`                       |

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **213**.
+  every locally changed path — currently **216**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -357,6 +357,19 @@ search was cleared mid-load; HTML/GitLab exports of a broken diagram failed sile
 standard icon into a non-architecture diagram gave no warning; the AWS logo sample stayed in a
 logos-off build. Firefox is covered only by CI's `@smoke` run.
 
+**Export presets (unreleased)** (`src/lib/util/exportPresets.ts`). For pasting into PowerPoint, Word, Excel
+or e-mail, the Actions card has a preset (as is, PowerPoint 16:9 = 1920x1080, 4:3 = 1440x1080, A4 landscape
+1123x794, A4 portrait 794x1123, square 1080x1080, all at 1x), a background (white, transparent, the site
+theme colour) and a scale (1x to 3x, default 2x). The diagram is scaled to fit inside the canvas, centred, with
+a margin of 4% of the shorter side; `computeExportLayout` returns the canvas and the draw rectangle and is
+unit-tested (ratios, padding, tall in wide and wide in tall, scale). PNG and "Copy image" fill the canvas
+only for a non-transparent background, so a transparent PNG keeps its alpha; the SVG export wraps the diagram
+in an outer `<svg>` whose viewBox is the preset size (1x). The three choices are kept in `localStorage`
+(`exportPreset`, `exportBackground`, `exportScale`), and a line under the buttons says what the files will
+be. The old width/height PNG size applies to "as is" only. The default background is now white (it used to be
+the site colour). `tests/exportPresets.spec.ts` checks the PNG's IHDR size, a transparent corner pixel and the
+SVG viewBox.
+
 **All-diagram check.** Every sample diagram (all of `@mermaid-js/examples`, the local samples and
 ZenUML) runs through every feature: parse, layout direction, HTML/GitLab source round trip and F2
 rename (`src/lib/util/allDiagrams.test.ts`), plus light and dark rendering, the layout card, the
@@ -372,7 +385,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **550 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **570 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

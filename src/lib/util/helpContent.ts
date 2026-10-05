@@ -88,6 +88,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'export',
       items: [
         'Actions: download PNG or SVG, a standalone HTML page, an HTML tag, or a GitLab-ready SVG with Markdown.',
+        'Pasting into PowerPoint, Word or an e-mail: pick a preset (PowerPoint 16:9 or 4:3, A4, square) in Actions to get the image at that ratio with margins, choose a white, transparent or theme-colour background and a 1x to 3x scale; the line under the buttons shows the size. The choice is remembered in this browser.',
         'Share: the link holds the whole diagram, so whoever opens it sees the same thing.'
       ],
       title: 'Export and share'
@@ -190,6 +191,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'export',
       items: [
         '「操作」から PNG・SVG・HTMLページ・HTMLタグ・GitLab用（SVGとMarkdown）を保存できます。',
+        'PowerPoint・Word・メールに貼るときは、「操作」でプリセット（PowerPoint 16:9・4:3、A4 横・縦、正方形）を選ぶと、その比率に余白つきで収まった画像になります。背景（白・透過・テーマ色）と倍率（1x〜3x）も選べ、ボタンの下の一行で大きさを確認できます。選んだ内容はこのブラウザに記憶されます。',
         '「共有」のリンクには図がまるごと入っているので、開いた人も同じ図を見られます。'
       ],
       title: '書き出しと共有'

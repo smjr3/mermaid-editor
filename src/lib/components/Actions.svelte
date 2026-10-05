@@ -19,6 +19,23 @@
   import { version as FAVersion } from '@fortawesome/fontawesome-free/package.json';
   import dayjs from 'dayjs';
   import { toXmlSvg } from '$/util/htmlExport';
+  import {
+    backgroundFill,
+    computeExportLayout,
+    computeSvgLayout,
+    EXPORT_BACKGROUNDS,
+    EXPORT_PRESETS,
+    EXPORT_SCALES,
+    isExportBackground,
+    isExportPreset,
+    isExportScale,
+    PRESET_SIZES,
+    type ExportBackground,
+    type ExportPreset,
+    type ExportScale,
+    type Rect
+  } from '$/util/exportPresets';
+  import { persisted } from '$/util/persist.svelte';
   import { toBase64 } from 'js-base64';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
@@ -26,7 +43,52 @@
 
   const FONT_AWESOME_URL = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/${FAVersion}/css/all.min.css`;
 
-  type Exporter = (context: CanvasRenderingContext2D, image: HTMLImageElement) => () => void;
+  type Exporter = (
+    context: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    draw: Rect
+  ) => () => void;
+
+  // Local: office export presets, remembered per browser.
+  const presetStore = persisted<ExportPreset>('exportPreset', 'asis');
+  const backgroundStore = persisted<ExportBackground>('exportBackground', 'white');
+  const scaleStore = persisted<ExportScale>('exportScale', 2);
+  const preset = $derived(isExportPreset(presetStore.value) ? presetStore.value : 'asis');
+  const background = $derived(
+    isExportBackground(backgroundStore.value) ? backgroundStore.value : 'white'
+  );
+  const scale = $derived(isExportScale(scaleStore.value) ? scaleStore.value : 2);
+
+  const PRESET_LABELS = {
+    a4landscape: 'actions.presetA4Landscape',
+    a4portrait: 'actions.presetA4Portrait',
+    asis: 'actions.presetAsIs',
+    ppt169: 'actions.presetPpt169',
+    ppt43: 'actions.presetPpt43',
+    square: 'actions.presetSquare'
+  } as const;
+  const BACKGROUND_LABELS = {
+    theme: 'actions.backgroundTheme',
+    transparent: 'actions.backgroundTransparent',
+    white: 'actions.backgroundWhite'
+  } as const;
+  const NOTE_BACKGROUNDS = {
+    theme: 'actions.noteTheme',
+    transparent: 'actions.noteTransparent',
+    white: 'actions.noteWhite'
+  } as const;
+
+  const themeColour = () => window.getComputedStyle(document.body).getPropertyValue('--background');
+
+  /** Size of the rendered diagram: its viewBox, or its box (rough mode has width/height 100%). */
+  const getContentSize = (svg: Element) => {
+    const box = svg.getBoundingClientRect();
+    const viewBox = (svg as unknown as SVGSVGElement).viewBox?.baseVal;
+    return {
+      height: viewBox && viewBox.height > 0 ? viewBox.height : box.height,
+      width: viewBox && viewBox.width > 0 ? viewBox.width : box.width
+    };
+  };
 
   const getFileName = (extension: string) =>
     `mermaid-diagram-${dayjs().format('YYYY-MM-DD-HHmmss')}.${extension}`;
@@ -67,7 +129,18 @@
     return svgElement;
   };
 
-  const getBase64SVG = (svg?: HTMLElement, width?: number, height?: number): string => {
+  /**
+   * `fill`: the backdrop CSS colour, or null for none. `undefined` keeps the
+   * upstream behaviour (the site background). `wrap` puts the diagram in an
+   * outer SVG of the preset's size (the SVG export of a preset).
+   */
+  const getBase64SVG = (
+    svg?: HTMLElement,
+    width?: number,
+    height?: number,
+    fill?: null | string,
+    wrap?: { draw: Rect; height: number; width: number }
+  ): string => {
     if (svg) {
       // Prevents the SVG size of the interface from being changed
       svg = svg.cloneNode(true) as HTMLElement;
@@ -88,9 +161,38 @@
       fixForeignObjectClipping(svg);
     }
 
-    svg.style.backgroundColor = window
-      .getComputedStyle(document.body)
-      .getPropertyValue('--background');
+    const backdrop = fill === undefined ? themeColour() : fill;
+    if (wrap) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const outer = document.createElementNS(ns, 'svg');
+      outer.setAttribute('xmlns', ns);
+      outer.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      outer.setAttribute('viewBox', `0 0 ${wrap.width} ${wrap.height}`);
+      outer.setAttribute('width', `${wrap.width}`);
+      outer.setAttribute('height', `${wrap.height}`);
+      if (backdrop) {
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('width', `${wrap.width}`);
+        rect.setAttribute('height', `${wrap.height}`);
+        rect.setAttribute('fill', backdrop);
+        outer.append(rect);
+      }
+      if (!svg.getAttribute('viewBox')) {
+        svg.setAttribute('viewBox', `0 0 ${wrap.draw.width} ${wrap.draw.height}`);
+      }
+      svg.style.maxWidth = '';
+      svg.style.backgroundColor = '';
+      svg.setAttribute('x', `${wrap.draw.x}`);
+      svg.setAttribute('y', `${wrap.draw.y}`);
+      svg.setAttribute('width', `${wrap.draw.width}`);
+      svg.setAttribute('height', `${wrap.draw.height}`);
+      outer.append(svg);
+      svg = outer as unknown as HTMLElement;
+    } else if (backdrop) {
+      svg.style.backgroundColor = backdrop;
+    } else {
+      svg.style.backgroundColor = '';
+    }
 
     // Local: well-formed XML; `&nbsp;` or kanban's `xlink:href` made the image fail to load.
     const svgString = toXmlSvg(svg.outerHTML);
@@ -122,47 +224,41 @@ ${stylesheet}${svgString}`);
       throw new Error('svg not found');
     }
 
-    const box = svg.getBoundingClientRect();
+    const content = getContentSize(svg);
 
-    // In rough mode, SVG has width/height="100%" so getBoundingClientRect returns
-    // the container size, not the actual diagram size. Use viewBox dimensions instead.
-    const svgEl = svg as unknown as SVGSVGElement;
-    const viewBox = svgEl.viewBox?.baseVal;
-    const contentWidth = viewBox && viewBox.width > 0 ? viewBox.width : box.width;
-    const contentHeight = viewBox && viewBox.height > 0 ? viewBox.height : box.height;
-
-    if (imageSizeMode === 'width') {
-      const ratio = contentHeight / contentWidth;
-      canvas.width = imageSize;
-      canvas.height = imageSize * ratio;
-    } else if (imageSizeMode === 'height') {
-      const ratio = contentWidth / contentHeight;
-      canvas.width = imageSize * ratio;
-      canvas.height = imageSize;
-    } else {
-      const multiplier = 2;
-      canvas.width = contentWidth * multiplier;
-      canvas.height = contentHeight * multiplier;
+    let layout = computeExportLayout(content, preset, scale);
+    if (preset === 'asis' && imageSizeMode !== 'auto') {
+      const width =
+        imageSizeMode === 'width' ? imageSize : (imageSize * content.width) / content.height;
+      const height =
+        imageSizeMode === 'height' ? imageSize : (imageSize * content.height) / content.width;
+      layout = { draw: { height, width, x: 0, y: 0 }, height, width };
     }
+    canvas.width = layout.width;
+    canvas.height = layout.height;
 
     const context = canvas.getContext('2d');
     if (!context) {
       throw new Error('context not found');
     }
 
-    context.fillStyle = window.getComputedStyle(document.body).getPropertyValue('--background');
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    // Transparent: nothing is filled, so the PNG keeps its alpha channel.
+    const fill = backgroundFill(background, themeColour());
+    if (fill) {
+      context.fillStyle = fill;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     const image = new Image();
     image.addEventListener('load', () => {
-      exporter(context, image)();
+      exporter(context, image, layout.draw)();
       updateCodeStore({ panZoom: true });
     });
     image.addEventListener('error', () => {
       console.error('The diagram could not be drawn as an image');
       updateCodeStore({ panZoom: true });
     });
-    image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, canvas.width, canvas.height)}`;
+    image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, layout.draw.width, layout.draw.height, null)}`;
     // Fallback to set panZoom to true after 2 seconds
     // This is a workaround for the case when the image is not loaded
     setTimeout(() => {
@@ -174,10 +270,10 @@ ${stylesheet}${svgString}`);
     event.preventDefault();
   };
 
-  const downloadImage: Exporter = (context, image) => {
+  const downloadImage: Exporter = (context, image, draw) => {
     return () => {
       const { canvas } = context;
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
       simulateDownload(
         getFileName('png'),
         canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
@@ -189,10 +285,10 @@ ${stylesheet}${svgString}`);
     return Object.prototype.hasOwnProperty.call(window, 'ClipboardItem');
   };
 
-  const clipboardCopy: Exporter = (context, image) => {
+  const clipboardCopy: Exporter = (context, image, draw) => {
     return () => {
       const { canvas } = context;
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
       canvas.toBlob((blob) => {
         try {
           if (!blob) {
@@ -226,7 +322,18 @@ ${stylesheet}${svgString}`);
   };
 
   const onDownloadSVG = () => {
-    simulateDownload(getFileName('svg'), `data:image/svg+xml;base64,${getBase64SVG()}`);
+    const fill = backgroundFill(background, themeColour());
+    let wrap: Parameters<typeof getBase64SVG>[4];
+    if (preset !== 'asis') {
+      const svg = document.querySelector<HTMLElement>('#container svg');
+      if (svg) {
+        wrap = computeSvgLayout(getContentSize(svg), preset);
+      }
+    }
+    simulateDownload(
+      getFileName('svg'),
+      `data:image/svg+xml;base64,${getBase64SVG(undefined, undefined, undefined, fill, wrap)}`
+    );
     logEvent('download', {
       type: 'svg'
     });
@@ -257,6 +364,30 @@ ${stylesheet}${svgString}`);
   });
 
   let imageSize = $state(1080);
+
+  // The one-line note under the buttons: what the files will be.
+  const presetSizeText = (value: Exclude<ExportPreset, 'asis'>, factor = 1) =>
+    `${PRESET_SIZES[value].width * factor}×${PRESET_SIZES[value].height * factor}`;
+  const noteBackground = $derived(t(NOTE_BACKGROUNDS[background]));
+  const pngNote = $derived.by(() => {
+    let size: string;
+    if (preset !== 'asis') {
+      size = presetSizeText(preset, scale);
+    } else if (imageSizeMode === 'width') {
+      size = t('actions.noteWidth', { n: String(imageSize) });
+    } else if (imageSizeMode === 'height') {
+      size = t('actions.noteHeight', { n: String(imageSize) });
+    } else {
+      size = t('actions.noteAsIs');
+    }
+    return t('actions.note', { background: noteBackground, scale: String(scale), size });
+  });
+  const svgNote = $derived(
+    t('actions.noteSvg', {
+      background: noteBackground,
+      size: preset === 'asis' ? t('actions.noteAsIs') : presetSizeText(preset)
+    })
+  );
 
   const isNetlify = browser && window.location.host.includes('netlify');
 </script>
@@ -299,8 +430,53 @@ ${stylesheet}${svgString}`);
         type="number"
         min="3"
         max="10000"
-        disabled={imageSizeMode === 'auto'}
+        disabled={imageSizeMode === 'auto' || preset !== 'asis'}
         bind:value={imageSize} />
+    </div>
+    <div class="flex flex-col gap-1">
+      <span class="text-sm">{t('actions.preset')}</span>
+      <ToggleGroup.Root
+        type="single"
+        variant="outline"
+        class="flex-wrap justify-start"
+        value={preset}
+        onValueChange={(v) => v && (presetStore.value = v as ExportPreset)}>
+        {#each EXPORT_PRESETS as value (value)}
+          <ToggleGroup.Item {value} data-testid="{TID.exportPreset}-{value}">
+            {t(PRESET_LABELS[value])}
+          </ToggleGroup.Item>
+        {/each}
+      </ToggleGroup.Root>
+    </div>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 whitespace-nowrap">
+      <div class="flex items-center gap-2">
+        {t('actions.background')}
+        <ToggleGroup.Root
+          type="single"
+          variant="outline"
+          value={background}
+          onValueChange={(v) => v && (backgroundStore.value = v as ExportBackground)}>
+          {#each EXPORT_BACKGROUNDS as value (value)}
+            <ToggleGroup.Item {value} data-testid="{TID.exportBackground}-{value}">
+              {t(BACKGROUND_LABELS[value])}
+            </ToggleGroup.Item>
+          {/each}
+        </ToggleGroup.Root>
+      </div>
+      <div class="flex items-center gap-2">
+        {t('actions.scale')}
+        <ToggleGroup.Root
+          type="single"
+          variant="outline"
+          value={String(scale)}
+          onValueChange={(v) => v && (scaleStore.value = Number(v) as ExportScale)}>
+          {#each EXPORT_SCALES as value (value)}
+            <ToggleGroup.Item value={String(value)} data-testid="{TID.exportScale}-{value}">
+              {value}x
+            </ToggleGroup.Item>
+          {/each}
+        </ToggleGroup.Root>
+      </div>
     </div>
     <div class="flex gap-2">
       {@render dualActionButton('PNG', onDownloadPNG, urls.current.png)}
@@ -313,6 +489,9 @@ ${stylesheet}${svgString}`);
         </a>
       </ExternalLinkWrapper>
     </div>
+    <p class="text-xs text-muted-foreground" data-testid={TID.exportNote}>
+      {pngNote} / {svgNote}
+    </p>
     <!-- Local: HTML page / <img> tag export. -->
     <HtmlExport />
     <Separator />

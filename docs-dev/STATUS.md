@@ -348,7 +348,7 @@ the diagram is loaded, so opening a shared link offers no step back to what the 
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
 **Three panes and one toolbar (unreleased, after 0.2.1).** On desktop (640px and wider) the editor is three panes:
-by default the tools on the left (layout, add, edit, colours, icons, samples, actions), the diagram
+by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
 people start from the left, and most of this fork's users build diagrams with the tools, so the
 code comes last. The ⇄ button in the tools header ("パネルの並びを入れ替える") swaps to mermaid.live's
@@ -363,16 +363,30 @@ instance (`DesktopEditor.svelte`) and the pan/zoom observer ignores a removed di
 (`panZoom.ts`), which the remount would otherwise trip over. Both side panes collapse on their
 own to a slim rail on their own side: the button in the code header folds the code to a rail
 (code, config), the button in the tools header ("ツール") folds the tools to a rail with one icon
-per card; a rail icon expands its pane and opens that section. Someone who never writes code
+per section, grouped by tab; a rail icon expands its pane and opens that tab and section. Someone who never writes code
 folds the code away and works with the diagram and the tools; someone who only writes code folds
 the tools away. The old "Hide the tools" bar under the editor and its `editorFocus` setting are
 gone — the tools pane's own collapse replaces them.
 
-The tool cards in the desktop tools pane are an **accordion**: one card open at a time
-(`toolsAccordion` in `toolsPane.svelte.ts`, used by `Card.svelte` for the stackable cards that
-have a test id), the closed ones one-line headers, the open one filling the rest of the pane's
-height and the only thing that scrolls — the pane itself never shows a second scrollbar. Samples
-is open on a first visit, as upstream's card is. The boxed inner scroll areas (icon results and
+The desktop tools pane has **three tabs** (`ToolsTabs.svelte`), named for what the user is doing
+rather than for the old seven cards: **作る** (make) holds Samples — with "新しい図を作る…" and
+"テンプレートから作る…" at its top — and Add; **直す** (fix) starts with the "選択中" panel (see
+"Selection" below), then Edit, Colours, Layout and Icons; **出す** (out) holds Actions (export
+presets, HTML and GitLab export, copy and share links) and "AI・アイコン確認" (`AiTools.svelte`: the
+unknown-icon list and the AI briefing, moved out of the Icons card). Within a tab the sections are
+an **accordion**: one section open at a time in the whole pane (`toolsAccordion` in
+`toolsPane.svelte.ts`, used by `Card.svelte` for the stackable cards that have a test id), the
+closed ones one-line headers, the open one filling the rest of the pane's height and the only thing
+that scrolls — the pane itself never shows a second scrollbar. Samples (作る) is open on a first
+visit, as upstream's card is; a tab remembers its last open section, and showing it again reopens
+that one (or its first). Every section keeps its header test id (`TID.addCard`, `colorsCard`, …),
+and a click on a header opens the section **and shows its tab** (`toggleSection`), so the specs,
+the command palette (`uiBus.openCard`) and the template dialog, which all open a section by
+clicking its header, needed no change. That works because the three panels sit side by side in a
+strip that scrolls sideways with only the active one in view, rather than hiding the others: a
+header in another tab is still in the page, scrolling it into view (as Playwright does before a
+click) moves the strip, and focus moving into another panel shows its tab. The arrow keys move
+between the tabs. The boxed inner scroll areas (icon results and
 browse grids, the edit card's icon results, the New diagram type list, the sample buttons) keep
 their `max-h-*` on phones and drop it from `sm:` up, so on desktop they use the card's height; the
 sample types are a grid that fits the width (truncated names carry a tooltip), with "新しい図を作る…"
@@ -394,8 +408,53 @@ when the deployment shows it) and the mermaid version as plain text. There is no
 upstream removed it before this fork's base. It fits on one row at 1024px. On phones (under 640px)
 the layout is unchanged — the editor with the tool cards under it, swiped against the diagram —
 except that the same bar sits above the diagram, without the zoom buttons, as before.
-`tests/toolsPane.spec.ts` (order, swap and reload, rails, accordion), `tests/editorPanes.spec.ts`,
-`tests/fixedLayout.spec.ts`.
+`tests/toolsPane.spec.ts` (order, swap and reload, rails, accordion), `tests/toolsTabs.spec.ts`
+(the tabs, header test ids opening their section and tab, the rail mapping, the accordion),
+`tests/editorPanes.spec.ts`, `tests/fixedLayout.spec.ts`.
+
+**Selection: click the diagram, then change it (unreleased).** The diagram itself is now where
+editing starts. A click on a drawn object (node, lane, state, class, entity, participant, service,
+group, topic, kanban card, timeline item, gantt task, requirement, block, C4 element) or an arrow
+selects it — one selection (`selection.svelte.ts`); a dashed outline, drawn as an overlay rather
+than in the SVG so exports never see it, marks it; Escape or a click on the empty canvas clears it.
+Which object a click lands on comes from the ids mermaid 12 gives the drawn elements, per type
+(`diagramPick.ts`, which reuses the Colours card's `pickedObject`/`pickedEdge`): flowchart, state,
+class, ER, requirement, block and C4 nodes by id, architecture `service-`/`group-`, a sequence
+participant's `data-id`, mindmap and timeline nodes by position, kanban cards by their id, gantt
+bars by their task's name; arrows by mermaid's edge id (flowchart), by their two ends (class, ER,
+requirement, block, architecture), by position (state) or by a unique label (sequence messages).
+A PowerPoint-style **mini toolbar** floats just above the selection (`SelectionToolbar.svelte`):
+rename inline, the colour buttons (the Colours card's palette and "any colour",
+`ColorSwatches.svelte`), bold and text size, and for nodes the shape, an icon search,
+"この後に追加" (a new node joined after it, selected with its name open for typing),
+"ここから矢印" (then click the node to connect to) and delete; for arrows the label, reverse, line
+style, colour (flowchart) and delete; and a button that opens the 直す tab. The **"選択中" panel** at
+the top of 直す (`SelectionPanel.svelte`) has the same edits as full controls, plus lane or group
+moves, the text colour, class members and ER attributes, and gantt and pie properties; with nothing
+selected it says how to select, and its ? lists the keys. A double click renames; a **right click**
+opens a small menu (`DiagramContextMenu.svelte`: rename, colour, shape, line style, reverse,
+"この後に追加", "ここから矢印", delete; on the empty canvas "ノードを追加" and "画面に合わせる"). **Keys**
+on a selection, when focus is not in a field, the code editor, a dialog or a menu
+(`selectionKeys.ts`): Enter adds the next node (and opens its name, so Enter, a name, Enter, …
+builds a chain), Tab adds a branch from where the selected node comes from, Delete or Backspace
+deletes, F2 renames, the arrow keys move along the arrows, Escape clears; they are in the help's
+tips too. Nothing is written twice: every edit is one of the existing functions — the Edit card's
+(`diagramModify.ts`, `diagramDetails.ts`, checked with `checkEdit` before it is applied), the
+Colours card's (`colors.ts`, applied straight away as that card does) and the Add card's, which
+`selectionActions.ts` composes into "この後に追加" (flowchart and swimlane, in the same lane;
+architecture, in the same group; state; class and ER with a relation; C4; block; mindmap, as a child
+topic; sequence, a participant with a message), connections (every type with a connect action) and
+"ノードを追加"; `selectionModel.svelte.ts` holds the lists for the last valid code and the edits on
+the selection, shared by the toolbar, the panel, the menu and the keys. What a type has no edit for
+is hidden: gantt tasks, kanban cards and timeline items are selected and renamed, deleted and
+(gantt) given their properties, but get no "この後に追加"; pie slices are drawn without ids to tell
+them apart, so they stay in the Edit card's list; journey, git and the other chart types have no
+selection. The Edit and Colours cards keep their own lists and
+their own pick-by-click, unchanged (another change is adding table editors to the Edit card).
+`tests/selection.spec.ts` (select and the toolbar, inline rename, colour and bold, chained
+"この後に追加", Enter/Tab/Delete/arrows, the menu's delete, colour and "ノードを追加", an arrow's
+reverse and style, "ここから矢印", the panel, a state diagram) and the unit tests of the five
+selection files.
 
 **Dark mode (0.2.0).** In dark mode, the dark themes
 render with near-white lines unless the user set `lineColor`, and a diagram in a light theme

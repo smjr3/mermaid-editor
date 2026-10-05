@@ -70,8 +70,14 @@ export class EditorPage {
     return await downloadSVGPromise;
   }
 
+  // The Samples card shows a few catalogue keys under a translated name (Preset.svelte).
   async loadSampleDiagram(diagramName: string) {
-    await this.page.getByText(diagramName, { exact: true }).click();
+    const shown: Record<string, string> = {
+      'Entity Relationship': t('preset.name.er'),
+      Packet: t('preset.name.packet'),
+      XY: t('preset.name.xy')
+    };
+    await this.page.getByText(shown[diagramName] ?? diagramName, { exact: true }).click();
   }
 
   /**

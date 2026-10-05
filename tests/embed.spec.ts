@@ -75,13 +75,15 @@ base.describe('Embed page', () => {
     );
   });
 
-  base('should render inside the sandboxed iframe the snippets use', async ({ page }) => {
+  base('should render inside the sandboxed iframe the snippets use', async ({ page, baseURL }) => {
     failOnDialog(page);
     const embedSrc = `/embed#code:${encodeURIComponent('graph TD\n  A[Sandboxed]-->B')}`;
+    // The iframe needs the server's real origin, whatever port the run uses.
+    const origin = new URL(baseURL ?? 'http://localhost:3000').origin;
     await page.setContent(
       `<!doctype html><iframe id="embed" title="embed"
         sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-        src="http://localhost:3000${embedSrc}"
+        src="${origin}${embedSrc}"
         style="width:800px;height:500px;border:0"></iframe>`
     );
     const frame = page.frameLocator('#embed');

@@ -206,12 +206,13 @@ cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no edito
 the icons. mermaid's five built-in icons are listed first and marked standard (they render in
 GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
 
-**Icon licences (0.2.1)** (`src/lib/util/iconLicenses.ts`). "Icon licences and trademarks" in the
-Icons card opens a dialog listing every bundled set with its licence, copyright holder and links,
-the artwork-versus-trademark distinction, and a note that vendor, hosted and imported packs follow
-their own terms. Each icon's tooltip in the picker names its set and licence, and logos and brand
-icons carry a ™ mark. The facts repeat `NOTICE` and `THIRD-PARTY-LICENSES.md`; keep the three in
-step.
+**Icon licences (0.2.1)** (`src/lib/util/iconLicenses.ts`). The "How to use" guide has an "Icon
+licences" section: a table of every bundled set with its licence, copyright holder and links
+(`IconLicenseTable.svelte`), then the artwork-versus-trademark distinction and a note that vendor,
+hosted and imported packs follow their own terms. Deliberately out of the cards' way: each icon's
+tooltip in the picker names its set and licence, logos and brand icons carry a ™ mark, and that is
+all a user sees unless they look. The facts repeat `NOTICE` and `THIRD-PARTY-LICENSES.md`; keep the
+three in step.
 
 **HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,

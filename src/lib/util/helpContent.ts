@@ -65,7 +65,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'Icons: search by name and click an icon to insert its name at the cursor.',
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
         'Architecture diagrams use them as service(icon)[Name].',
-        '"Icon licences and trademarks" in the Icons card lists each set\'s licence; logos (™) stay their owners\' trademarks.'
+        'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.'
       ],
       title: 'Icons'
     },
@@ -76,6 +76,16 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'Share: the link holds the whole diagram, so whoever opens it sees the same thing.'
       ],
       title: 'Export and share'
+    },
+    {
+      id: 'licenses',
+      items: [
+        'The bundled icon sets and their licences are listed above; the links open each set and its licence text.',
+        'These licences cover the artwork. MIT, ISC and Apache-2.0 ask that the notice travels with a copy of the icons; this site carries it in NOTICE and THIRD-PARTY-LICENSES.md. CC0 asks nothing.',
+        'A logo or brand icon (™ in the picker) shows a trademark that belongs to its owner, whatever the artwork licence says. Naming a product in an architecture diagram is the use owners generally allow; marketing material needs their brand guidelines.',
+        'Icon sets added by your organisation (vendor packs such as AWS, Azure or Google Cloud, hosted packs) and packs you import follow their own terms, which this editor does not know.'
+      ],
+      title: 'Icon licences'
     },
     {
       id: 'tips',
@@ -142,7 +152,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '「アイコン」で名前を検索し、クリックするとカーソル位置にアイコン名が入ります。',
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
         'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
-        '「アイコンの利用条件」でアイコン集ごとのライセンスを確認できます。ロゴ（™）の商標は各社のものです。'
+        'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。'
       ],
       title: 'アイコン'
     },
@@ -153,6 +163,16 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '「共有」のリンクには図がまるごと入っているので、開いた人も同じ図を見られます。'
       ],
       title: '書き出しと共有'
+    },
+    {
+      id: 'licenses',
+      items: [
+        '同梱アイコン集とそのライセンスは上の表のとおりです。リンクから各アイコン集とライセンス本文を開けます。',
+        'これらのライセンスは絵柄に対するものです。MIT・ISC・Apache-2.0 はアイコンの複製に表示文を添えることを求めており、このサイトでは NOTICE と THIRD-PARTY-LICENSES.md がその役目です。CC0 は何も求めません。',
+        'ロゴやブランドのアイコン（一覧で ™ 付き）は、絵柄のライセンスとは別に、その商標の権利が各社にあります。構成図で製品名を示す用途は一般に認められていますが、宣伝資料などに使う場合はブランドガイドラインに従ってください。',
+        '組織が追加したアイコン集（AWS・Azure・Google Cloud などのベンダー配布分や、サイトに置かれたもの）と、自分で取り込んだアイコン集は、それぞれの配布元の条件に従います。このエディタはその内容を把握していません。'
+      ],
+      title: 'アイコンの利用条件'
     },
     {
       id: 'tips',

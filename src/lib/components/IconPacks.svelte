@@ -1,6 +1,5 @@
 <script lang="ts">
   import Card from '$/components/Card/Card.svelte';
-  import IconLicenses from '$/components/IconLicenses.svelte';
   import IconPicker from '$/components/IconPicker.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
@@ -106,7 +105,6 @@
         target="_blank"
         rel="noopener noreferrer">{t('icons.browse')}</a>
     </p>
-    <IconLicenses />
 
     <div class="flex flex-col gap-1">
       <span class="font-semibold">{t('icons.imported')}</span>

@@ -22,6 +22,7 @@ describe('helpContent', () => {
       'colours',
       'icons',
       'export',
+      'licenses',
       'tips'
     ]);
   });

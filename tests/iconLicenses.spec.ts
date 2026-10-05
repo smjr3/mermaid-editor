@@ -2,15 +2,15 @@ import { TID } from '$/constants';
 import { expect, test } from './test';
 
 test.describe('Icon licences', () => {
-  test('the Icons card opens a dialog listing every bundled set with its licence', async ({
+  test('the "How to use" guide has a licences section listing every bundled set', async ({
     editPage,
     page
   }) => {
     await editPage.start();
-    await page.getByTestId(TID.iconPacksCard).click();
-    await page.getByTestId(TID.iconLicensesButton).click();
+    await page.getByTestId(TID.helpButton).click();
+    await page.getByTestId(`${TID.helpSection}-licenses`).click();
 
-    const dialog = page.getByTestId(TID.iconLicensesDialog);
+    const dialog = page.getByTestId(TID.helpContent);
     await expect(dialog).toBeVisible();
     for (const text of ['Tabler Icons', 'MIT', 'Simple Icons', 'CC0-1.0', 'tabler', 'logos']) {
       await expect(dialog).toContainText(text);
@@ -22,7 +22,7 @@ test.describe('Icon licences', () => {
       '_blank'
     );
     await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId(TID.helpDialog)).toBeHidden();
   });
 
   test('icon tooltips name the licence and mark logos as trademarks', async ({

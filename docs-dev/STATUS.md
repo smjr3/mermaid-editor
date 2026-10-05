@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **186**.
+  every locally changed path — currently **187**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -124,6 +124,18 @@ arrow's order in the code, so adding or removing arrows above it shifts the numb
 limitation). The colour buttons are the deployment's palette (`MERMAID_COLOR_PRESETS`) or the
 built-in eight, followed by the colours this browser picked freely ("any colour", kept in
 `localStorage` as `colorRecent`, latest eight).
+The chosen object's text can be made bold, given a size (small 12px, normal, large 18px, extra
+large 24px) and a colour of its own (`getTextStyle`/`setTextStyle`, `setTextColor`): `font-weight:bold`,
+`font-size:18px` and `color:…` go into the same `style <id>` statement as the fill, so there is
+never a second one, and "Reset text" removes just those three. Verified in the rendered SVG that
+mermaid honours both properties for flowchart, swimlane, state, class, ER, requirement and block
+diagrams (`tests/textStyle.spec.ts` checks the computed `font-weight`/`font-size` of the label).
+Two mermaid quirks are worked around: a class-diagram `style` statement may not start with a
+hyphenated property (`style A font-size:18px` fails with "got 'MINUS'"), so a harmless `opacity:1`
+leads when no colour does and is dropped again once one does; and a text colour the user chose is
+kept when the fill changes (the dark default is written only when none is set). C4 gets the text
+colour only (`$fontColor`), and the card says bold and size are unavailable there; the types with
+no `style` statement show the existing "nothing to colour" note.
 
 **Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
 lane, or a node (box, rounded box, decision diamond, circle or stadium) into a lane, optionally

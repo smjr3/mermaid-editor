@@ -54,6 +54,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Theme and line colour for the whole diagram.',
         'Colours per lane, per shape (node, state, class, entity, …) and per arrow: choose from the list, or click it in the picture.',
+        'Text per shape: bold, font size and text colour; C4 elements take a text colour only.',
         '"Any colour" picks freely; colours you picked are offered again next time.'
       ],
       title: 'Colours'
@@ -130,6 +131,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'テーマと線の色で、図全体の見た目を変えられます。',
         'レーン・図形（ノード・状態・クラス・エンティティなど）・矢印ごとに色を付けられます。一覧から選ぶか、図をクリックして選びます。',
+        '図形ごとに文字を太字にしたり、文字サイズや文字の色を変えられます（C4 の要素は文字の色のみ）。',
         '「自由に選ぶ」で好きな色を選べ、選んだ色は次から色の丸に並びます。'
       ],
       title: '配色'

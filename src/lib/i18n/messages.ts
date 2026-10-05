@@ -272,7 +272,6 @@ export const messages = {
     'editor.configTab': 'Config',
     'editor.docsTab': 'Docs',
     'editor.docsTitle': 'View documentation for {type} diagram',
-    'editor.focus': 'Hide the tools',
     'editor.hidePane': 'Hide the editor',
     'editor.historyToggle': 'History',
     'editor.mobileEdit': 'Edit',
@@ -287,7 +286,6 @@ export const messages = {
     'editor.resetConfigConfirm': 'Reset the configuration to the default? The diagram is kept.',
     'editor.resetConfigShort': 'Reset',
     'editor.showPane': 'Show the editor',
-    'editor.showTools': 'Show the tools',
     'editor.syntaxError': 'Syntax error',
     'editor.textTab': 'Code',
     'editor.undo': 'Undo',
@@ -459,10 +457,16 @@ export const messages = {
     'share.width': 'Width',
     'toolbar.backgroundGrid': 'Background Grid',
     'toolbar.handDrawn': 'Hand-Drawn',
+    'toolbar.label': 'Diagram view',
+    'toolbar.mermaidVersion': 'mermaid version',
     'toolbar.privacySecurity': 'Privacy & Security',
     'toolbar.switchLocale': 'Switch to English',
     'toolbar.switchToDark': 'Switch to dark theme',
-    'toolbar.switchToLight': 'Switch to light theme'
+    'toolbar.switchToLight': 'Switch to light theme',
+    'tools.hidePane': 'Hide the tools',
+    'tools.rail': 'Tools',
+    'tools.showPane': 'Show the tools',
+    'tools.title': 'Tools'
   },
   ja: {
     'actions.copy': 'コピー',
@@ -722,7 +726,6 @@ export const messages = {
     'editor.configTab': '設定',
     'editor.docsTab': 'ドキュメント',
     'editor.docsTitle': '{type} 図のドキュメントを表示',
-    'editor.focus': 'ツールを隠す（コードに集中）',
     'editor.hidePane': 'エディタを隠す',
     'editor.historyToggle': '履歴',
     'editor.mobileEdit': '編集',
@@ -736,7 +739,6 @@ export const messages = {
     'editor.resetConfigConfirm': '設定を初期状態に戻しますか？図のコードはそのまま残ります。',
     'editor.resetConfigShort': 'リセット',
     'editor.showPane': 'エディタを表示',
-    'editor.showTools': 'ツールを表示',
     'editor.syntaxError': '構文エラー',
     'editor.textTab': 'コード',
     'editor.undo': '元に戻す',
@@ -907,10 +909,16 @@ export const messages = {
     'share.width': '幅',
     'toolbar.backgroundGrid': '背景グリッド',
     'toolbar.handDrawn': '手描き風',
+    'toolbar.label': '図の表示',
+    'toolbar.mermaidVersion': 'Mermaid のバージョン',
     'toolbar.privacySecurity': 'プライバシーとセキュリティ',
     'toolbar.switchLocale': '日本語に切り替え',
     'toolbar.switchToDark': 'ダークテーマに切り替え',
-    'toolbar.switchToLight': 'ライトテーマに切り替え'
+    'toolbar.switchToLight': 'ライトテーマに切り替え',
+    'tools.hidePane': 'ツールを隠す',
+    'tools.rail': 'ツール',
+    'tools.showPane': 'ツールを表示',
+    'tools.title': 'ツール'
   }
 } as const;
 

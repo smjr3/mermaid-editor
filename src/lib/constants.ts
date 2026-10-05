@@ -56,6 +56,7 @@ export const TID = {
   colorsTheme: 'colors-theme',
   copyMarkdown: 'copy-markdown',
   diagramDocumentationButton: 'diagram-documentation-button',
+  diagramToolbar: 'diagram-toolbar',
   downloadHTML: 'download-HTML',
   downloadPNG: 'download-PNG',
   downloadSVG: 'download-SVG',
@@ -73,7 +74,6 @@ export const TID = {
   editObjectSelect: 'edit-object-select',
   editRenameButton: 'edit-rename-button',
   editRenameInput: 'edit-rename-input',
-  editorFocusToggle: 'editor-focus-toggle',
   editorPaneToggle: 'editor-pane-toggle',
   editorRail: 'editor-rail',
   editorRailExpand: 'editor-rail-expand',
@@ -89,6 +89,8 @@ export const TID = {
   errorContainer: 'error-container',
   exportGitLab: 'export-gitlab',
   exportMessage: 'export-message',
+  fullScreenButton: 'full-screen-button',
+  gridToggle: 'grid-toggle',
   helpButton: 'help-button',
   helpContent: 'help-content',
   helpDialog: 'help-dialog',
@@ -117,11 +119,21 @@ export const TID = {
   layoutMessage: 'layout-message',
   layoutSpacing: 'layout-spacing',
   localeToggleButton: 'locale-toggle-button',
+  mermaidVersion: 'mermaid-version',
+  privacyButton: 'privacy-button',
   redoButton: 'redo-button',
   resetConfigButton: 'reset-config-button',
+  resetViewButton: 'reset-view-button',
+  roughToggle: 'rough-toggle',
   sampleDiagramsCard: 'sample-diagrams-card',
   themeToggleButton: 'theme-toggle-button',
-  undoButton: 'undo-button'
+  toolsPane: 'tools-pane',
+  toolsPaneToggle: 'tools-pane-toggle',
+  toolsRail: 'tools-rail',
+  toolsRailExpand: 'tools-rail-expand',
+  undoButton: 'undo-button',
+  zoomInButton: 'zoom-in-button',
+  zoomOutButton: 'zoom-out-button'
 } as const;
 
 export const C = {

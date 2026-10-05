@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **191**.
+  every locally changed path — currently **192**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -79,8 +79,8 @@ checks it renders; the all-diagram checks cover them too.
 used, leaving labels and messages alone (`mermaidRename.ts`). The config tab has a "Reset
 config" button for a config that leaves every render failing. With AI features off, the
 editor no longer shows the AI gutter button, which used to open an empty zone that could not be
-closed. On desktop the editor column and the view are fixed panes with a visible divider instead
-of floating cards. Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
+closed. On desktop the code, the diagram and the tools are three fixed panes with visible dividers
+instead of floating cards (see "Three panes and one toolbar" below). Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
 
 **Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from nine bundled OSS
 Iconify sets, loaded lazily from the site, never a CDN: six generic ones (`tabler`, `lucide`,
@@ -211,11 +211,28 @@ The buttons are disabled when there is nothing to undo or redo, and the history 
 the diagram is loaded, so opening a shared link offers no step back to what the browser held before.
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
-**Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
-column to a slim icon rail; each rail icon (code, config, layout, add, edit, colours, icons, samples, actions)
-expands the column and opens that section. The bar above the tool cards hides them so the
-editor fills the column (remembered per browser); the cards are stacked — layout, icons,
-samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
+**Three panes and one toolbar (unreleased, after 0.2.1).** On desktop (640px and wider) the editor is three panes:
+the code on the left (code and config tabs, undo/redo, reset config, docs), the diagram in the
+centre, and the tools on the right (layout, add, edit, colours, icons, samples, actions, in their
+own scrolling column), about 25% / 50% / 25% by default. Each divider drags, and the sizes are
+remembered per browser (paneforge `autoSaveId`; each pane has an `id`/`order`, so the layout with
+the history column open is remembered separately). Both side panes collapse on their own: the
+button in the code header folds the code to a slim left rail (code, config), the button in the
+tools header ("ツール") folds the tools to a slim right rail (one icon per card); a rail icon expands
+its pane and opens that section. Someone who never writes code folds the code away and works with
+the diagram and the tools; someone who only writes code folds the tools away. The old "Hide the
+tools" bar under the editor and its `editorFocus` setting are gone — the tools pane's own collapse
+replaces them. When the code pane is narrow (under 30rem) the buttons in its header show icons
+only, so the collapse button stays in view at 1024px. Upstream's three floating toolbars over the
+drawing are replaced by one bar across the top of the diagram pane (`DiagramToolbar.svelte`): zoom
+out, zoom in, reset, full screen; hand-drawn and grid; then, at the right end, light/dark, the
+language button, privacy (only when the deployment shows it) and the mermaid version as plain
+text. There is no auto-sync toggle: upstream removed it before this fork's base. It fits on one row
+at 1024px. On phones (under 640px) the layout is unchanged — the editor with the tool cards under
+it, swiped against the diagram — except that the same bar sits above the diagram, without the zoom
+buttons, as before. `tests/toolsPane.spec.ts`, `tests/editorPanes.spec.ts`, `tests/fixedLayout.spec.ts`.
+
+**Dark mode (0.2.0).** In dark mode, the dark themes
 render with near-white lines unless the user set `lineColor`, and a diagram in a light theme
 gets a light grey background so its dark lines stay visible (`src/lib/util/darkLines.ts`).
 
@@ -268,7 +285,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **402 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **424 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

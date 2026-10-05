@@ -3,6 +3,7 @@
   import Actions from '$/components/Actions.svelte';
   import AddControls from '$/components/AddControls.svelte';
   import Card from '$/components/Card/Card.svelte';
+  import DiagramToolbar from '$/components/DiagramToolbar.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
   import EditorPaneToggle from '$/components/EditorPaneToggle.svelte';
@@ -18,24 +19,20 @@
   import MermaidChartIcon from '$/components/MermaidChartIcon.svelte';
   import EditorChooserModal from '$/components/migration/EditorChooserModal.svelte';
   import Navbar from '$/components/Navbar.svelte';
-  import PanZoomToolbar from '$/components/PanZoomToolbar.svelte';
   import Preset from '$/components/Preset.svelte';
   import ResetConfigButton from '$/components/ResetConfigButton.svelte';
   import Share from '$/components/Share.svelte';
   import { TID } from '$/constants';
   import ToolsBar from '$/components/ToolsBar.svelte';
   import UndoRedoButtons from '$/components/UndoRedoButtons.svelte';
-  import SyncRoughToolbar from '$/components/SyncRoughToolbar.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
   import * as Resizable from '$/components/ui/resizable';
   import { Switch } from '$/components/ui/switch';
   import { Toggle } from '$/components/ui/toggle';
-  import VersionSecurityToolbar from '$/components/VersionSecurityToolbar.svelte';
   import View from '$/components/View.svelte';
   import type { EditorMode, Tab } from '$/types';
   import { shouldShowEditorChooser } from '$/util/migration/domainMigration';
-  import { editorFocus } from '$/util/editorFocus.svelte';
   import { PanZoomState } from '$/util/panZoom';
   import { env } from '$/util/env';
   import { inputState, validatedState, updateCodeStore, urls } from '$/util/state.svelte';
@@ -67,7 +64,9 @@
     }
   ];
 
-  let width = $state(0);
+  // Local: start from the window's width so the desktop panes are laid out on the first
+  // render instead of mounting the tools pane a frame later.
+  let width = $state(globalThis.window?.innerWidth ?? 0);
   let isMobile = $derived(width < 640);
   let isViewMode = $state(true);
   let showEditorChooser = $state(false);
@@ -87,9 +86,12 @@
 
   let isHistoryOpen = $state(false);
 
+  // Local: three desktop panes — code (left), diagram (centre), tools (right). Each side
+  // pane collapses to an icon rail (EditorRail) whose icons reopen it on that section.
   let editorPane: Resizable.Pane | undefined;
-  // Local: the editor column collapses to an icon rail (EditorPaneToggle, EditorRail).
+  let toolsPane: Resizable.Pane | undefined = $state();
   let isEditorCollapsed = $state(false);
+  let isToolsCollapsed = $state(false);
   const railCards: Partial<Record<RailTarget, string>> = {
     actions: TID.actionsCard,
     add: TID.addCard,
@@ -99,15 +101,16 @@
     layout: TID.layoutCard,
     samples: TID.sampleDiagramsCard
   };
-  const openFromRail = async (target: RailTarget) => {
+  const openCodeFromRail = (target: RailTarget) => {
     editorPane?.expand();
     if (target === 'code' || target === 'config') {
       updateCodeStore({ editorMode: target });
-      return;
     }
+  };
+  const openToolsFromRail = async (target: RailTarget) => {
+    toolsPane?.expand();
     const card = railCards[target];
     if (!card) return;
-    editorFocus.value = false;
     await tick();
     const header = document.querySelector<HTMLElement>(`[data-testid="${card}"]`);
     if (header && !header.closest('.card')?.classList.contains('isOpen')) header.click();
@@ -176,24 +179,39 @@
         'flex size-full',
         isMobile && ['w-[200%] duration-300', isViewMode && '-translate-x-1/2']
       ]}>
+      {#snippet tools()}
+        <LayoutControls />
+        <AddControls />
+        <EditControls />
+        <ColorControls />
+        <IconPacks />
+        <Preset />
+        <Actions />
+      {/snippet}
       {#if isEditorCollapsed && !isMobile}
-        <EditorRail onopen={openFromRail} />
+        <EditorRail side="left" onopen={openCodeFromRail} />
       {/if}
-      <!-- Local: on desktop the editor column and the view are fixed panes split by a
-           visible divider, with flat sections instead of floating cards. -->
+      <!-- Local: on desktop the code, the diagram and the tools are fixed panes split by
+           visible dividers, with flat sections instead of floating cards. On mobile the
+           tools stay under the editor, swiped against the diagram. -->
       <Resizable.PaneGroup
         direction="horizontal"
         autoSaveId="liveEditor"
         class="min-w-0 flex-1 gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
         <Resizable.Pane
           bind:this={editorPane}
-          defaultSize={30}
+          id="pane-code"
+          order={1}
+          defaultSize={isMobile ? 50 : 25}
           minSize={15}
           collapsible={!isMobile}
           collapsedSize={0}
           onResize={(size) => (isEditorCollapsed = !isMobile && size === 0)}>
           <div
-            class="flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border">
+            class={[
+              'flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border',
+              !isMobile && 'code-pane'
+            ]}>
             <Card
               onselect={tabSelectHandler}
               isOpen
@@ -211,47 +229,89 @@
               <Editor {isMobile} />
             </Card>
 
-            <ToolsBar />
-            <div
-              class={[
-                // The tools scroll rather than squeeze the editor away.
-                'group flex flex-wrap justify-between gap-4 sm:max-h-[55%] sm:shrink-0 sm:flex-col sm:flex-nowrap sm:gap-0 sm:overflow-y-auto',
-                editorFocus.value && 'hidden'
-              ]}>
-              <LayoutControls />
-              <AddControls />
-              <EditControls />
-              <ColorControls />
-              <IconPacks />
-              <Preset />
-              <Actions />
-            </div>
+            {#if isMobile}
+              <div class="group flex flex-wrap justify-between gap-4">
+                {@render tools()}
+              </div>
+            {/if}
           </div>
         </Resizable.Pane>
         <Resizable.Handle withHandle class="hidden sm:flex" />
-        <Resizable.Pane minSize={15} class="relative flex h-full flex-1 flex-col overflow-hidden">
-          <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
-          {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
-              <EnhancedEditsButton />
-            </div>{/if}
-          <div class="absolute top-0 right-0">
-            <PanZoomToolbar {panZoomState} fullScreenHref={urls.current.view} />
+        <Resizable.Pane
+          id="pane-view"
+          order={2}
+          minSize={15}
+          class="flex h-full flex-1 flex-col overflow-hidden">
+          <DiagramToolbar {panZoomState} fullScreenHref={urls.current.view} />
+          <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
+            {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
+                <EnhancedEditsButton />
+              </div>{/if}
           </div>
-          <div class="absolute right-0 bottom-0"><VersionSecurityToolbar /></div>
-          <div class="absolute bottom-0 left-0 sm:left-5"><SyncRoughToolbar /></div>
         </Resizable.Pane>
         {#if isHistoryOpen}
           <Resizable.Handle withHandle class="hidden sm:flex" />
           <Resizable.Pane
+            id="pane-history"
+            order={3}
             minSize={15}
             defaultSize={30}
             class="hidden h-full grow flex-col sm:flex sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0">
             <History />
           </Resizable.Pane>
         {/if}
+        {#if !isMobile}
+          <Resizable.Handle withHandle />
+          <Resizable.Pane
+            bind:this={toolsPane}
+            id="pane-tools"
+            order={4}
+            defaultSize={25}
+            minSize={15}
+            collapsible
+            collapsedSize={0}
+            onResize={(size) => (isToolsCollapsed = size === 0)}>
+            <div
+              class="flex h-full flex-col bg-card [&_.card]:rounded-none [&_.card]:border-0 [&_.card]:border-b [&_.card]:border-border"
+              data-testid={TID.toolsPane}>
+              <ToolsBar oncollapse={() => toolsPane?.collapse()} />
+              <!-- The cards scroll in their own column, independent of the code. -->
+              <div class="group flex min-h-0 flex-1 flex-col overflow-y-auto">
+                {@render tools()}
+              </div>
+            </div>
+          </Resizable.Pane>
+        {/if}
       </Resizable.PaneGroup>
+      {#if isToolsCollapsed && !isMobile}
+        <EditorRail side="right" onopen={openToolsFromRail} />
+      {/if}
     </div>
   </div>
 </div>
 
 <EditorChooserModal bind:open={showEditorChooser} />
+
+<style>
+  /* Local: a narrow code pane shows the editor header's buttons (tabs, undo/redo,
+     reset, docs) as icons only, so the collapse button at its end stays in view. */
+  .code-pane {
+    container: code-pane / inline-size;
+  }
+  @container code-pane (max-width: 30rem) {
+    .code-pane :global(.card > [role='toolbar'] :is(button, a)) {
+      font-size: 0;
+      gap: 0;
+      padding-inline: 0.5rem;
+    }
+  }
+  @container code-pane (max-width: 20rem) {
+    .code-pane :global(.card > [role='toolbar'] :is(button, a)) {
+      padding-inline: 0.25rem;
+    }
+    .code-pane :global(.card > [role='toolbar'] :is(div, ul)) {
+      gap: 0.125rem;
+    }
+  }
+</style>

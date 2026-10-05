@@ -1,5 +1,5 @@
 import { C } from '$/constants';
-import { MCBaseURL } from './env';
+import { env, MCBaseURL } from './env';
 import { loadDataFromUrl } from './fileLoaders/loader';
 import { initLoading } from './loading.svelte';
 import { isOnMermaidAI } from './migration/domainMigration';
@@ -26,7 +26,10 @@ export const syncDiagram = (): void => {
 export const initHandler = async (): Promise<void> => {
   applyMigrations();
   loadStateFromURL();
-  await initLoading('Loading Gist...', loadDataFromUrl().catch(console.error));
+  // Local: an offline build loads no diagram from a gist or URL (MERMAID_OFFLINE).
+  if (!env.isOffline) {
+    await initLoading('Loading Gist...', loadDataFromUrl().catch(console.error));
+  }
   syncDiagram();
   initURLSubscription();
   await initAnalytics();

@@ -188,15 +188,16 @@ Six source files carry small local guards that switch off upstream's promotional
 and community features, plus the two e2e specs that covered them. The full rationale
 and the variables are in `docs-dev/FEATURE-FLAGS.md`; what matters at merge time:
 
-| Path                                                  | Local change                                                                                                |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/env.ts`                                 | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks` |
-| `src/lib/components/DesktopEditor.svelte`             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`; also gates its gutter button and glyph margin   |
-| `src/routes/(app)/edit/+page.svelte`                  | Wraps `<EnhancedEditsButton>` in the same guard                                                             |
-| `src/lib/components/Navbar.svelte`                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                          |
-| `src/lib/components/MainMenu.svelte`                  | Spreads the Discord "Community" entry in conditionally                                                      |
-| `.env`                                                | Sets the organisational defaults                                                                            |
-| `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts` | Assert the configured behaviour rather than upstream's                                                      |
+| Path                                                                                                                                  | Local change                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/env.ts`                                                                                                                 | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks`                                                |
+| `src/lib/components/DesktopEditor.svelte`                                                                                             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`; also gates its gutter button and glyph margin                                                  |
+| `src/lib/util/util.ts`, `src/lib/components/DesktopEditor.svelte`, `src/lib/components/Actions.svelte`, `src/lib/util/env.ts`, `.env` | `MERMAID_OFFLINE`: skips gist/URL loading at start-up, the config-schema download and the Font Awesome stylesheet line in exported SVGs; hides "Load Gist" |
+| `src/routes/(app)/edit/+page.svelte`                                                                                                  | Wraps `<EnhancedEditsButton>` in the same guard                                                                                                            |
+| `src/lib/components/Navbar.svelte`                                                                                                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                                                                         |
+| `src/lib/components/MainMenu.svelte`                                                                                                  | Spreads the Discord "Community" entry in conditionally                                                                                                     |
+| `.env`                                                                                                                                | Sets the organisational defaults                                                                                                                           |
+| `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts`                                                                                 | Assert the configured behaviour rather than upstream's                                                                                                     |
 
 These are additive guards, not rewrites: the guarded markup is upstream's own. On a
 conflict, take upstream's version of the inner content and re-apply the surrounding
@@ -600,6 +601,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/standardIcons.ts`                        |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
+| Modified | `src/lib/util/util.ts`                                 |
 | Added    | `src/lib/util/svgToIconify.test.ts`                    |
 | Added    | `src/lib/util/undoStack.svelte.ts`                     |
 | Added    | `src/lib/util/undoStack.test.ts`                       |
@@ -638,6 +640,7 @@ modifications as if they were local customizations.
 | Added    | `tests/releaseAudit.spec.ts`                           |
 | Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/swimlane.spec.ts`                               |
+| Added    | `tests/offline.spec.ts`                                |
 | Added    | `tests/templates.spec.ts`                              |
 | Modified | `tests/test.ts`                                        |
 | Added    | `tests/textStyle.spec.ts`                              |

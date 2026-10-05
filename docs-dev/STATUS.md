@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **199**.
+  every locally changed path — currently **201**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -246,6 +246,13 @@ inserting; `aiCollection.svelte.ts`, kept per browser). "Unknown icons in the co
 icons and flowchart `@{ icon: … }` nodes), each with suggestions found by searching every pack for
 the name and its words, and a button that replaces the reference everywhere in the code
 (`replaceIconRef`). `loadPack` is the one shared loader of the packs for the picker and the check.
+
+**Offline switch (0.2.2)** (`MERMAID_OFFLINE`, on by default). The site makes no request outside
+itself: the config editor does not download mermaid's config schema (validation stays,
+completions go), exported SVGs carry no Font Awesome stylesheet reference, and the gist/URL
+loaders are off (the "Load Gist" field is hidden). Links that open another site on a click
+stay. `tests/offline.spec.ts` watches every request during a load, a render with Font Awesome
+and an icon pack, a config-tab visit and an SVG export, and expects none to leave localhost.
 
 **HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,

@@ -122,15 +122,19 @@
       throw new Error('divEl is undefined');
     }
 
+    // Local: the config schema is fetched from the docs site for completions; an
+    // offline build keeps validation without it (MERMAID_OFFLINE).
     monaco.json.jsonDefaults.setDiagnosticsOptions({
       validate: true,
-      enableSchemaRequest: true,
-      schemas: [
-        {
-          fileMatch: ['config.json'],
-          uri: `${env.docsUrl}/schemas/config.schema.json`
-        }
-      ]
+      enableSchemaRequest: !env.isOffline,
+      schemas: env.isOffline
+        ? []
+        : [
+            {
+              fileMatch: ['config.json'],
+              uri: `${env.docsUrl}/schemas/config.schema.json`
+            }
+          ]
     });
 
     initEditor(monaco);

@@ -113,13 +113,14 @@ npm run build
 ビルド時の環境変数（`MERMAID_` で始まるもの）で挙動を変えられます。既定値は `.env` にあり、
 ローカルでは `.env.local` にコピーして上書きします。
 
-| 変数                                                  | 既定    | 内容                                                                         |
-| ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------- |
-| `MERMAID_LOCALE`                                      | `ja`    | UI の標準言語（`ja` / `en`）。閲覧者が画面で選んだ言語はこれより優先されます |
-| `MERMAID_IS_ENABLED_*`                                | `false` | Mermaid Chart リンク、AI 機能、コミュニティリンクの有効化                    |
-| `MERMAID_RENDERER_URL` / `MERMAID_KROKI_RENDERER_URL` | 空      | 外部レンダラー（mermaid.ink / Kroki）の URL。空なら連携を無効化              |
-| `MERMAID_BUNDLE_LOGOS`                                | `true`  | `false` でロゴのアイコン集を同梱しない                                       |
-| `MERMAID_FETCH_ICON_PACKS`                            | 空      | ビルド時に取り込む各社アイコン（`gcp=<zip の URL>` など）                    |
+| 変数                                                  | 既定    | 内容                                                                                             |
+| ----------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `MERMAID_LOCALE`                                      | `ja`    | UI の標準言語（`ja` / `en`）。閲覧者が画面で選んだ言語はこれより優先されます                     |
+| `MERMAID_IS_ENABLED_*`                                | `false` | Mermaid Chart リンク、AI 機能、コミュニティリンクの有効化                                        |
+| `MERMAID_RENDERER_URL` / `MERMAID_KROKI_RENDERER_URL` | 空      | 外部レンダラー（mermaid.ink / Kroki）の URL。空なら連携を無効化                                  |
+| `MERMAID_BUNDLE_LOGOS`                                | `true`  | `false` でロゴのアイコン集を同梱しない                                                           |
+| `MERMAID_FETCH_ICON_PACKS`                            | 空      | ビルド時に取り込む各社アイコン（`gcp=<zip の URL>` など）                                        |
+| `MERMAID_OFFLINE`                                     | `true`  | サイトから外部へ通信しない（設定の補完用スキーマ取得、SVG 内の CDN 参照、Gist 読み込みを無効化） |
 
 全体は `docs-dev/FEATURE-FLAGS.md` を参照してください。
 

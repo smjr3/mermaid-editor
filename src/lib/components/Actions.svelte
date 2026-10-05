@@ -10,6 +10,7 @@
   import { Separator } from '$/components/ui/separator';
   import * as ToggleGroup from '$/components/ui/toggle-group';
   import { TID } from '$/constants';
+  import { env } from '$/util/env';
   import { getDomain } from '$/util/util';
   import { browser } from '$app/environment';
   import { waitForRender } from '$lib/util/autoSync';
@@ -94,9 +95,13 @@
     // Local: well-formed XML; `&nbsp;` or kanban's `xlink:href` made the image fail to load.
     const svgString = toXmlSvg(svg.outerHTML);
 
+    // Local: an offline build writes no stylesheet reference, so the file never
+    // asks a viewer to fetch from a CDN (Font Awesome icons then need the bundled CSS).
+    const stylesheet = env.isOffline
+      ? ''
+      : `<?xml-stylesheet href="${FONT_AWESOME_URL}" type="text/css"?>\n`;
     return toBase64(`<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet href="${FONT_AWESOME_URL}" type="text/css"?>
-${svgString}`);
+${stylesheet}${svgString}`);
   };
 
   const simulateDownload = (download: string, href: string): void => {
@@ -323,10 +328,12 @@ ${svgString}`);
         label={t('actions.copyMarkdown')}
         testID={TID.copyMarkdown} />
     </ExternalLinkWrapper>
-    <div class="flex w-full items-center gap-2">
-      <Input type="url" bind:value={gistURL} placeholder={t('actions.gistPlaceholder')} />
-      <Button onclick={loadGist}>{t('actions.loadGist')}</Button>
-    </div>
+    {#if !env.isOffline}
+      <div class="flex w-full items-center gap-2">
+        <Input type="url" bind:value={gistURL} placeholder={t('actions.gistPlaceholder')} />
+        <Button onclick={loadGist}>{t('actions.loadGist')}</Button>
+      </div>
+    {/if}
     {#if isNetlify}
       <div class="flex w-full items-center justify-center">
         <a class="link text-sm text-gray-500 underline" href="https://netlify.com">

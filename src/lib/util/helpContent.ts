@@ -41,6 +41,15 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       title: 'Adding shapes'
     },
     {
+      id: 'edit',
+      items: [
+        'Edit: choose a shape (or click it in the picture) to change its text or delete it with every arrow that touches it; a lane or topic can go with or without what is inside.',
+        'Choose an arrow (or click it) to change its label, turn it round, draw it solid, dotted or thick, with or without an arrowhead, or delete it.',
+        'A change that would break the diagram is not made; the card says so instead.'
+      ],
+      title: 'Changing and deleting'
+    },
+    {
       id: 'layout',
       items: [
         'Direction: top to bottom or left to right; "Fit to view" picks the one that shows larger.',
@@ -113,6 +122,15 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '追加した直後のものが次の「つなぐ元」になるので、流れを順に作れます。'
       ],
       title: '要素の追加'
+    },
+    {
+      id: 'edit',
+      items: [
+        '「編集」で図形を選ぶ（図をクリックしても選べます）と、表示名を変えたり、つながる矢印ごと削除したりできます。レーンやトピックは中身ごと、または中身を残して削除できます。',
+        '矢印を選ぶ（クリックでも可）と、ラベルの変更、向きの反転、実線・点線・太線や矢じりの有無の切り替え、削除ができます。',
+        '図が壊れる変更は行われず、カードにその旨が表示されます。'
+      ],
+      title: '変更と削除'
     },
     {
       id: 'layout',

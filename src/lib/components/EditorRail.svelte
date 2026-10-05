@@ -1,6 +1,15 @@
 <script lang="ts" module>
   export type RailTarget =
-    'expand' | 'code' | 'config' | 'layout' | 'add' | 'colors' | 'icons' | 'samples' | 'actions';
+    | 'expand'
+    | 'code'
+    | 'config'
+    | 'layout'
+    | 'add'
+    | 'edit'
+    | 'colors'
+    | 'icons'
+    | 'samples'
+    | 'actions';
 </script>
 
 <script lang="ts">
@@ -14,6 +23,7 @@
   import DownloadIcon from '~icons/material-symbols/download';
   import OpenIcon from '~icons/material-symbols/left-panel-open-outline-rounded';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
+  import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
   import GearIcon from '~icons/material-symbols/settings-outline-rounded';
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
@@ -27,6 +37,7 @@
     { icon: GearIcon, label: t('editor.configTab'), target: 'config' },
     { icon: LayoutIcon, label: t('layout.title'), target: 'layout' },
     { icon: AddIcon, label: t('add.title'), target: 'add' },
+    { icon: EditIcon, label: t('edit.title'), target: 'edit' },
     { icon: PaletteIcon, label: t('colors.title'), target: 'colors' },
     { icon: IconsIcon, label: t('icons.title'), target: 'icons' },
     { icon: SamplesIcon, label: t('preset.title'), target: 'samples' },

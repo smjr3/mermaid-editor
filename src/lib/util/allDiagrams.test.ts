@@ -12,6 +12,17 @@ import {
   canAdd,
   isArchitecture
 } from './diagramEdit';
+import {
+  deleteEdge,
+  deleteObject,
+  editableEdges,
+  editableObjects,
+  renameObject,
+  reverseEdge,
+  setEdgeHead,
+  setEdgeLabel,
+  setEdgeStyle
+} from './diagramModify';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
 import { localSamples } from './localSamples';
@@ -140,6 +151,71 @@ describe.each(samples)('$name', ({ code }) => {
       await expect(typeOf(result.code), `${spec.kind} ${action.id}`).resolves.toBe(type);
     }
   });
+
+  it('keeps parsing, as the same type, after renaming and after deleting each object of its Edit card', async () => {
+    const objects = await editableObjects(code);
+    if (!objects) return;
+    const type = await typeOf(code);
+    for (const object of objects.items) {
+      const renamed = renameObject(code, objects.kind, object, 'Renamed: "x" [1] (y)');
+      if (renamed !== undefined) {
+        expect(renamed, `rename ${object.id}`).not.toBe(code);
+        await expect(typeOf(renamed), `rename ${object.id}`).resolves.toBe(type);
+      }
+      if (object.noDelete) continue;
+      for (const keepContents of object.group ? [false, true] : [false]) {
+        const deleted = deleteObject(code, objects.kind, object, { keepContents });
+        expect(deleted, `delete ${object.id}`).not.toBe(code);
+        await expect(typeOf(deleted), `delete ${object.id} keep=${keepContents}`).resolves.toBe(
+          type
+        );
+        // The object is gone (line-based items shift, so only ids are checked).
+        if (object.line === undefined && !keepContents) {
+          const left = (await editableObjects(deleted))?.items.map(({ id }) => id) ?? [];
+          expect(left, `delete ${object.id}`).not.toContain(object.id);
+        }
+      }
+    }
+  }, 120_000);
+
+  it('keeps parsing, as the same type and with one arrow fewer or the same arrows, after each arrow edit of its Edit card', async () => {
+    const edges = await editableEdges(code);
+    if (!edges || edges.items.length === 0) return;
+    const type = await typeOf(code);
+    const ids = (text: string) =>
+      editableEdges(text).then((found) => found?.items.map(({ from, to }) => `${from}>${to}`));
+    for (const edge of edges.items) {
+      const edits: [string, string | undefined][] = [
+        ['delete', deleteEdge(code, edges.kind, edge)],
+        ['reverse', edges.can.reverse ? reverseEdge(code, edges.kind, edge) : undefined],
+        [
+          'label',
+          edges.can.label ? setEdgeLabel(code, edges.kind, edge, 'Edited: "x" | [1]') : undefined
+        ],
+        ['head', edges.can.head ? setEdgeHead(code, edges.kind, edge, !edge.head) : undefined],
+        ...edges.can.styles.map((style): [string, string] => [
+          style,
+          setEdgeStyle(code, edges.kind, edge, style)
+        ])
+      ];
+      for (const [name, edited] of edits) {
+        if (edited === undefined) continue;
+        const why = `${edges.kind} ${name} ${edge.index} ${edge.from}>${edge.to}`;
+        await expect(typeOf(edited), why).resolves.toBe(type);
+        const before = edges.items.map(({ from, to }) => `${from}>${to}`);
+        const after = await ids(edited);
+        if (name === 'delete') {
+          expect(after, why).toEqual(before.filter((_, i) => i !== edge.index));
+        } else if (name === 'reverse') {
+          expect(after, why).toEqual(
+            before.map((pair, i) => (i === edge.index ? `${edge.to}>${edge.from}` : pair))
+          );
+        } else {
+          expect(after, why).toEqual(before);
+        }
+      }
+    }
+  }, 120_000);
 
   it('exports to HTML, an img tag and GitLab Markdown with the source intact', () => {
     const html = toStandaloneHtml({ code, svg: '<svg></svg>', title: 't' });

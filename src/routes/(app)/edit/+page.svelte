@@ -11,6 +11,7 @@
   import History from '$/components/History/History.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
   import ColorControls from '$/components/ColorControls.svelte';
+  import EditControls from '$/components/EditControls.svelte';
   import LayoutControls from '$/components/LayoutControls.svelte';
   import { startAutoSave } from '$/components/History/historyState.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
@@ -89,6 +90,7 @@
     actions: TID.actionsCard,
     add: TID.addCard,
     colors: TID.colorsCard,
+    edit: TID.editCard,
     icons: TID.iconPacksCard,
     layout: TID.layoutCard,
     samples: TID.sampleDiagramsCard
@@ -213,6 +215,7 @@
               ]}>
               <LayoutControls />
               <AddControls />
+              <EditControls />
               <ColorControls />
               <IconPacks />
               <Preset />

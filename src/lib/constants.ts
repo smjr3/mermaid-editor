@@ -76,6 +76,8 @@ export const TID = {
   helpSection: 'help-section',
   historyCard: 'history-card',
   historyRevisionsTab: 'history-revisions-tab',
+  iconLicensesButton: 'icon-licenses-button',
+  iconLicensesDialog: 'icon-licenses-dialog',
   iconPackFiles: 'icon-pack-files',
   iconPackImport: 'icon-pack-import',
   iconPackList: 'icon-pack-list',

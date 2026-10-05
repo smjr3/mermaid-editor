@@ -300,6 +300,21 @@ export const messages = {
     'icons.files': 'SVG files, or an Iconify JSON file',
     'icons.import': 'Import',
     'icons.imported': 'Imported packs (this browser only)',
+    'icons.licenses': 'Icon licences and trademarks',
+    'icons.licensesArtwork':
+      'These licences cover the artwork. MIT, ISC and Apache-2.0 ask that the notice travels with a copy of the icons; this site carries it in NOTICE and THIRD-PARTY-LICENSES.md. CC0 asks nothing.',
+    'icons.licensesHolder': 'Copyright',
+    'icons.licensesIntro':
+      "Where the bundled icons come from and what their licences allow. Marked icons (™) are logos: check the brand owner's guidelines before using them in published material.",
+    'icons.licensesLicense': 'Licence',
+    'icons.licensesLogos': 'logos',
+    'icons.licensesOther':
+      'Icon sets added by your organisation (vendor packs such as AWS, Azure or Google Cloud, hosted packs) and packs you import follow their own terms, which this editor does not know.',
+    'icons.licensesPack': 'Icon set',
+    'icons.licensesTitle': 'Icon licences',
+    'icons.licensesTrademark':
+      'A logo or brand icon shows a trademark that belongs to its owner, whatever the artwork licence says. Naming a product in an architecture diagram is the use owners generally allow; marketing material needs their brand guidelines.',
+    'icons.licensesTrademarkShort': 'trademark of its owner',
     'icons.none': 'None yet.',
     'icons.pickAll': 'All packs',
     'icons.pickCopied': 'Copied {id}. Paste it into the code.',
@@ -693,6 +708,21 @@ export const messages = {
     'icons.files': 'SVG ファイル、または Iconify の JSON ファイル',
     'icons.import': '取り込む',
     'icons.imported': '取り込んだアイコン集（このブラウザだけ）',
+    'icons.licenses': 'アイコンの利用条件（ライセンス・商標）',
+    'icons.licensesArtwork':
+      'これらのライセンスは絵柄に対するものです。MIT・ISC・Apache-2.0 はアイコンの複製に表示文を添えることを求めており、このサイトでは NOTICE と THIRD-PARTY-LICENSES.md がその役目です。CC0 は何も求めません。',
+    'icons.licensesHolder': '著作権者',
+    'icons.licensesIntro':
+      '同梱アイコンの出どころと、ライセンスで許されている範囲です。™ 付きのアイコンはロゴです。公開資料に使う前に、そのブランドのガイドラインを確認してください。',
+    'icons.licensesLicense': 'ライセンス',
+    'icons.licensesLogos': 'ロゴ集',
+    'icons.licensesOther':
+      '組織が追加したアイコン集（AWS・Azure・Google Cloud などのベンダー配布分や、サイトに置かれたもの）と、自分で取り込んだアイコン集は、それぞれの配布元の条件に従います。このエディタはその内容を把握していません。',
+    'icons.licensesPack': 'アイコン集',
+    'icons.licensesTitle': 'アイコンの利用条件',
+    'icons.licensesTrademark':
+      'ロゴやブランドのアイコンは、絵柄のライセンスとは別に、その商標の権利が各社にあります。構成図で製品名を示す用途は一般に認められていますが、宣伝資料などに使う場合はブランドガイドラインに従ってください。',
+    'icons.licensesTrademarkShort': '商標は各社のもの',
     'icons.none': 'まだありません。',
     'icons.pickAll': 'すべて',
     'icons.pickCopied': '{id} をコピーしました。コードに貼り付けてください。',

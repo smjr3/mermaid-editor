@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **182**.
+  every locally changed path — currently **186**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -193,6 +193,13 @@ cursor in the code editor (`IconPicker.svelte`, `iconSearch.ts`); where no edito
 (mobile, config tab) the name is copied instead. "Enlarge" opens a large dialog with names under
 the icons. mermaid's five built-in icons are listed first and marked standard (they render in
 GitLab too); the rest are marked extended (`src/lib/util/standardIcons.ts`).
+
+**Icon licences (0.2.1)** (`src/lib/util/iconLicenses.ts`). "Icon licences and trademarks" in the
+Icons card opens a dialog listing every bundled set with its licence, copyright holder and links,
+the artwork-versus-trademark distinction, and a note that vendor, hosted and imported packs follow
+their own terms. Each icon's tooltip in the picker names its set and licence, and logos and brand
+icons carry a ™ mark. The facts repeat `NOTICE` and `THIRD-PARTY-LICENSES.md`; keep the three in
+step.
 
 **HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,

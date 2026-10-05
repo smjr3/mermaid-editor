@@ -239,6 +239,7 @@ taking upstream's version and re-adding those lines.
 | `src/lib/components/UndoRedoButtons.svelte`, `src/lib/util/undoStack.svelte.ts`                                            | Added. Undo / redo buttons in the editor header: a history of the diagram code as it passes through the input state (one entry per pause in typing, 100 kept), so one undo covers Monaco, CodeMirror and the Add / Colours / Layout cards; applying an entry goes through `updateCode`                                                                                                                                                                                                                                         |
 | `src/lib/components/IconPicker.svelte`, `src/lib/util/iconSearch.ts`, `src/lib/util/monacoInsert.ts`                       | Added. Search the icon packs in the "Icons" card and click an icon to insert its `prefix:name` at the cursor (or copy it when no editor can take it)                                                                                                                                                                                                                                                                                                                                                                           |
 | `src/lib/util/standardIcons.ts`                                                                                            | Added. mermaid's five built-in architecture icons (copied, MIT) so the picker can show and mark them as standard                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `src/lib/components/IconLicenses.svelte`, `src/lib/util/iconLicenses.ts`                                                   | Added. Licence, holder and trademark facts for every bundled icon set, shown in a dialog from the Icons card and in the picker's tooltips                                                                                                                                                                                                                                                                                                                                                                                      |
 | `src/lib/components/HtmlExport.svelte`, `src/lib/util/htmlExport.ts`                                                       | Added. HTML export (standalone page, self-contained `<img>` tag) and GitLab export (SVG file plus Markdown with an edit link and the source); a diagram with an error is reported, not exported                                                                                                                                                                                                                                                                                                                                |
 | `src/lib/components/Actions.svelte`                                                                                        | Renders `<HtmlExport>` under the PNG / SVG buttons; PNG / SVG serialise through `toXmlSvg` (upstream's `outerHTML` made `&nbsp;` or kanban links break the PNG silently)                                                                                                                                                                                                                                                                                                                                                       |
 | `src/routes/(app)/edit/+page.svelte`                                                                                       | Renders `<UndoRedoButtons>`, `<ResetConfigButton>` and `<EditorPaneToggle>` in the editor card (and resets the undo history once the diagram is loaded), `<EditorRail>` while the editor column is collapsed, `<ToolsBar>` above `<LayoutControls>`, `<ColorControls>`, `<IconPacks>`, the samples and actions (in that order, scrolling, hidden by the bar), and the fixed desktop layout: `sm:` classes on the pane group, a visible `withHandle` divider, flat sections stacked in the editor column and the history column |
@@ -519,6 +520,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/HelpButton.svelte`                 |
 | Modified | `src/lib/components/History/History.svelte`            |
 | Added    | `src/lib/components/HtmlExport.svelte`                 |
+| Added    | `src/lib/components/IconLicenses.svelte`               |
 | Added    | `src/lib/components/IconPacks.svelte`                  |
 | Added    | `src/lib/components/LocaleToggle.svelte`               |
 | Modified | `src/lib/components/MainMenu.svelte`                   |
@@ -580,6 +582,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/mermaidRename.ts`                        |
 | Added    | `src/lib/util/monacoInsert.ts`                         |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
+| Added    | `src/lib/util/iconLicenses.test.ts`                    |
+| Added    | `src/lib/util/iconLicenses.ts`                         |
 | Added    | `src/lib/util/standardIcons.test.ts`                   |
 | Added    | `src/lib/util/standardIcons.ts`                        |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
@@ -612,6 +616,7 @@ modifications as if they were local customizations.
 | Modified | `tests/history.spec.ts`                                |
 | Added    | `tests/htmlExport.spec.ts`                             |
 | Added    | `tests/iconImport.spec.ts`                             |
+| Added    | `tests/iconLicenses.spec.ts`                           |
 | Added    | `tests/iconPacks.spec.ts`                              |
 | Added    | `tests/layout.spec.ts`                                 |
 | Modified | `tests/loadSite.spec.ts`                               |

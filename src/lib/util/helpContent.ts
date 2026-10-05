@@ -63,7 +63,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Icons: search by name and click an icon to insert its name at the cursor.',
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
-        'Architecture diagrams use them as service(icon)[Name].'
+        'Architecture diagrams use them as service(icon)[Name].',
+        '"Icon licences and trademarks" in the Icons card lists each set\'s licence; logos (™) stay their owners\' trademarks.'
       ],
       title: 'Icons'
     },
@@ -138,7 +139,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         '「アイコン」で名前を検索し、クリックするとカーソル位置にアイコン名が入ります。',
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
-        'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。'
+        'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
+        '「アイコンの利用条件」でアイコン集ごとのライセンスを確認できます。ロゴ（™）の商標は各社のものです。'
       ],
       title: 'アイコン'
     },

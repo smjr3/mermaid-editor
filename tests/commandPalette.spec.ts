@@ -1,5 +1,5 @@
 import { TID } from '$/constants';
-import { expect, test } from './test';
+import { expect, t, test } from './test';
 import { cmd, verifyFileSizeGreaterThan } from './utils';
 
 test.describe('Command palette', () => {
@@ -57,7 +57,8 @@ test.describe('Command palette', () => {
     await page.keyboard.press(`${cmd}+KeyK`);
     await page.getByTestId(TID.commandInput).fill('share');
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('dialog')).toBeVisible();
+    // The palette is still closing (role=dialog, data-state="closed") when the share dialog opens.
+    await expect(page.getByRole('dialog', { name: t('share.title') })).toBeVisible();
     await expect(page.getByTestId(TID.commandPalette)).toBeHidden();
   });
 });

@@ -20,6 +20,7 @@
     type Row,
     type TemplateForm
   } from '$/util/templateForms';
+  import { templateNotice } from '$/util/templateNotice.svelte';
   import { thumbnail } from '$/util/templateThumbnails';
   import { tick } from 'svelte';
   import TemplateIcon from '~icons/material-symbols/dynamic-form-outline-rounded';
@@ -35,7 +36,6 @@
   let open = $state(false);
   let chosen = $state<TemplateForm | undefined>();
   let values = $state<FormValues>({});
-  let message = $state('');
   let thumbs = $state<Record<string, string>>({});
 
   const label = (value: { en: string; ja: string }) => labelOf(value, locale);
@@ -116,7 +116,7 @@
       resetPanZoom: true,
       updateDiagram: true
     });
-    message = t('template.done', { name: label(chosen.name) });
+    templateNotice.message = t('template.done', { name: label(chosen.name) });
     open = false;
     chosen = undefined;
     await tick();
@@ -131,16 +131,11 @@
   data-testid={TID.templateFormsButton}
   onclick={() => {
     open = true;
-    message = '';
+    templateNotice.message = '';
   }}>
   <TemplateIcon />
   {t('template.button')}
 </Button>
-{#if message}
-  <p role="status" class="text-muted-foreground" data-testid={TID.templateFormsMessage}>
-    {message}
-  </p>
-{/if}
 
 <Dialog.Root bind:open>
   <Dialog.Content

@@ -19,6 +19,7 @@
     type NodeShape
   } from '$/util/diagramEdit';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
+  import { templateNotice } from '$/util/templateNotice.svelte';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
 
@@ -98,6 +99,11 @@
 
 <Card title={t('add.title')} testID={TID.addCard} isStackable icon={{ component: AddIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
+    {#if templateNotice.message}
+      <p role="status" class="text-muted-foreground" data-testid={TID.templateFormsMessage}>
+        {templateNotice.message}
+      </p>
+    {/if}
     {#if architecture}
       <ArchitectureAdd />
     {:else if spec}

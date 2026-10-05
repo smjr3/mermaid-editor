@@ -203,7 +203,8 @@ test.describe('English UI', () => {
     await page.getByTestId(TID.localeToggleButton).click();
     await expect(page.getByTestId(TID.layoutCard)).toContainText('Layout');
     await expect(page.getByTestId(TID.iconPacksCard)).toContainText('Icons');
-    await expect(page.getByTestId(TID.editorFocusToggle)).toContainText('Hide the tools');
+    await expect(page.getByTestId(TID.toolsPane)).toContainText('Tools');
+    await expect(page.getByTestId(TID.toolsPaneToggle)).toHaveAttribute('title', 'Hide the tools');
     await page.getByTestId(TID.actionsCard).click();
     await expect(page.getByTestId(TID.exportGitLab)).toContainText('Export for GitLab');
   });

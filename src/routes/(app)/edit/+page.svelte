@@ -2,6 +2,7 @@
   import { t } from '$/i18n';
   import Actions from '$/components/Actions.svelte';
   import AddControls from '$/components/AddControls.svelte';
+  import AiTools from '$/components/AiTools.svelte';
   import Card from '$/components/Card/Card.svelte';
   import DiagramToolbar from '$/components/DiagramToolbar.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
@@ -21,9 +22,11 @@
   import Navbar from '$/components/Navbar.svelte';
   import Preset from '$/components/Preset.svelte';
   import ResetConfigButton from '$/components/ResetConfigButton.svelte';
+  import SelectionLayer from '$/components/SelectionLayer.svelte';
   import Share from '$/components/Share.svelte';
   import { TID } from '$/constants';
   import ToolsBar from '$/components/ToolsBar.svelte';
+  import ToolsTabs from '$/components/ToolsTabs.svelte';
   import UndoRedoButtons from '$/components/UndoRedoButtons.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -38,7 +41,7 @@
   import { inputState, validatedState, updateCodeStore, urls } from '$/util/state.svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
   import { logEvent, logMermaidChartClick } from '$/util/stats';
-  import { paneOrder, toolsAccordion } from '$/util/toolsPane.svelte';
+  import { openSection, paneOrder, toolsAccordion } from '$/util/toolsPane.svelte';
   import { getContactSalesUrl, initHandler } from '$/util/util';
   import { onMount } from 'svelte';
   import CodeIcon from '~icons/custom/code';
@@ -86,6 +89,7 @@
   onMount(() => startAutoSave());
 
   let isHistoryOpen = $state(false);
+  let viewHost: HTMLDivElement | undefined = $state();
 
   // Local: three desktop panes — by default tools (left), diagram (centre), code (right);
   // the "swap panes" setting (toolsPane.svelte.ts) puts the code on the left as on
@@ -108,6 +112,7 @@
   const railCards: Partial<Record<RailTarget, string>> = {
     actions: TID.actionsCard,
     add: TID.addCard,
+    ai: TID.aiCard,
     colors: TID.colorsCard,
     edit: TID.editCard,
     icons: TID.iconPacksCard,
@@ -123,7 +128,7 @@
   const openToolsFromRail = (target: RailTarget) => {
     toolsPane?.expand();
     const card = railCards[target];
-    if (card) toolsAccordion.open = card;
+    if (card) openSection(card);
   };
   $effect(() => {
     if (isMobile) {
@@ -196,6 +201,7 @@
         <IconPacks />
         <Preset />
         <Actions />
+        <AiTools />
       {/snippet}
       {#snippet codePane(order: number)}
         <Resizable.Pane
@@ -256,11 +262,9 @@
             data-side={toolsSide}
             data-testid={TID.toolsPane}>
             <ToolsBar side={toolsSide} oncollapse={() => toolsPane?.collapse()} />
-            <!-- One card open at a time (Card's accordion); it takes the rest of the pane
-                 and is the only thing that scrolls. -->
-            <div class="@container flex min-h-0 flex-1 flex-col overflow-hidden">
-              {@render tools()}
-            </div>
+            <!-- Three tabs (作る / 直す / 出す), each an accordion of sections: one open at
+                 a time, taking the rest of the pane and the only thing that scrolls. -->
+            <ToolsTabs />
           </div>
         </Resizable.Pane>
       {/snippet}
@@ -292,8 +296,10 @@
             minSize={15}
             class="flex h-full flex-1 flex-col overflow-hidden">
             <DiagramToolbar {panZoomState} fullScreenHref={urls.current.view} />
-            <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" bind:this={viewHost}>
               <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
+              <!-- Local: click the diagram to select, then change it (SelectionLayer). -->
+              <SelectionLayer host={viewHost} />
               {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
                   <EnhancedEditsButton />
                 </div>{/if}

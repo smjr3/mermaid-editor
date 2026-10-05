@@ -194,10 +194,11 @@ test.describe('Tools pane', () => {
     await expect(card(TID.colorsCard)).toHaveClass(/isOpen/);
     await expect(card(TID.addCard)).not.toHaveClass(/isOpen/);
 
-    // The open card takes the rest of the pane, so the closed headers after it sit at the
-    // bottom; only the open card scrolls, not the pane.
+    // The open card takes the rest of the pane, so the closed headers after it (in its tab,
+    // 直す, whose last section is Icons) sit at the bottom; only the open card scrolls, not
+    // the pane.
     const paneBox = await boxOf(page, TID.toolsPane);
-    const lastBox = await card(TID.actionsCard).boundingBox();
+    const lastBox = await card(TID.iconPacksCard).boundingBox();
     if (!lastBox) throw new Error('card missing');
     expect(lastBox.y + lastBox.height).toBeGreaterThan(paneBox.y + paneBox.height - 3);
     const paneScrolls = await pane.evaluate((element) =>

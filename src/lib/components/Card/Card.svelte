@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Tab } from '$/types';
-  import { toolsAccordion } from '$/util/toolsPane.svelte';
+  import { toggleSection, toolsAccordion } from '$/util/toolsPane.svelte';
   import type { Component, Snippet } from 'svelte';
   import { quintOut } from 'svelte/easing';
   import { slide } from 'svelte/transition';
@@ -40,14 +40,15 @@
   }: Props = $props();
 
   // Local: in the desktop tools pane the tool cards are an accordion (toolsPane.svelte.ts):
-  // one open at a time, the open one filling the pane and scrolling inside it.
+  // one open at a time, the open one filling the pane and scrolling inside it; a
+  // click on a header also shows the tab its section is in.
   const inAccordion = $derived(isStackable && !!testID && toolsAccordion.enabled);
   const shown = $derived(inAccordion ? toolsAccordion.open === testID : isOpen);
 
   const toggleCardOpen = () => {
     if (!isClosable) return;
     if (inAccordion) {
-      toolsAccordion.open = shown ? undefined : testID;
+      toggleSection(testID ?? '');
     } else {
       isOpen = !isOpen;
     }

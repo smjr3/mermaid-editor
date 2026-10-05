@@ -16,7 +16,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'basics',
       items: [
-        "The tools (Layout, Add, Edit, Colours, Icons, Samples, Actions) are on the left, the picture in the middle and the code on the right; the picture follows every change. Click a tool's title to open it — one opens at a time and gets the whole column.",
+        "The tools are on the left in three tabs — Make (new diagram, templates, samples; Add), Fix (the selection, Edit, Colours, Layout, Icons) and Export (Actions; AI and unknown icons) — the picture is in the middle and the code on the right; the picture follows every change. Click a section's title to open it: one opens at a time and gets the whole column.",
         'Drag the picture to move it, and use the wheel or the zoom buttons in the bar above it.',
         'Your work is kept in this browser; History (clock icon) brings back earlier versions.',
         'Press Ctrl+K (⌘K on a Mac) or the search button in the header to find any action by name, such as "colour", "PNG" or "undo".'
@@ -48,6 +48,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
+        'Click a shape or an arrow in the picture to select it: a small toolbar appears just above it (rename, colour, bold and size, shape, icon, "Add after this", "Arrow from here", delete; for an arrow: label, reverse, line, delete), and the Fix tab shows it under "Selected" with every control. Double-click to rename, right-click for a menu, Escape or a click on the empty canvas clears.',
         'Edit: choose a shape (or click it in the picture) to change its text or delete it with every arrow that touches it; a lane or topic can go with or without what is inside.',
         'Choose an arrow (or click it) to change its label, turn it round, draw it solid, dotted or thick, with or without an arrowhead, or delete it.',
         'Flowchart and swimlane nodes: change the shape, move the node to another lane (or out of every lane; its arrows stay), and give it an icon by searching for one or remove it. Architecture services: change the icon, or move the service to another group.',
@@ -84,7 +85,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
         'Architecture diagrams use them as service(icon)[Name].',
         'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.',
-        'Asking an AI: "Copy a briefing for an AI" gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are listed under "Unknown icons" with a one-click replacement.'
+        'Asking an AI: "Copy a briefing for an AI" (Export tab, "AI and unknown icons") gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are listed there under "Unknown icons" with a one-click replacement.'
       ],
       title: 'Icons'
     },
@@ -111,6 +112,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         'F2 on a name renames it everywhere in the diagram.',
+        'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it, Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears. The ? in the "Selected" panel lists them.',
         'The button at the top of the code or of the tools folds that side to a row of icons; click an icon to open it again. Fold the code away if you only use the tools, or the tools if you only write code. The ⇄ button above the tools swaps the sides (code on the left, as on mermaid.live); this browser remembers it.',
         'The sun / moon button in the bar above the picture switches dark mode; the Config tab holds the mermaid settings.',
         'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
@@ -123,7 +125,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'basics',
       items: [
-        '左にツール（レイアウト・追加・編集・色・アイコン・サンプル図・操作）、中央に図、右にコードがあります。どこを変えても図はすぐに変わります。ツールは見出しを押すと開き、一度に一つだけ開いて列の高さいっぱいに使えます。',
+        '左にツール、中央に図、右にコードがあります。ツールは「作る」（新しい図・テンプレート・サンプル図、追加）・「直す」（選択中・編集・配色・レイアウト・アイコン）・「出す」（操作、AI・アイコン確認）の 3 つのタブに分かれています。どこを変えても図はすぐに変わります。見出しを押すと開き、一度に一つだけ開いて列の高さいっぱいに使えます。',
         '図はドラッグで動かし、マウスホイールや図の上のバーのボタンで拡大・縮小できます。',
         '作業内容はこのブラウザに保存されます。時計のアイコン（履歴）で前の状態に戻せます。',
         'Ctrl+K（Mac は ⌘K）かヘッダーの検索ボタンで、「色」「PNG」「元に戻す」のように操作を名前で探して実行できます。'
@@ -155,6 +157,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
+        '図の中の図形や矢印をクリックすると選択され、そのすぐ上に小さなツールバーが出ます（名前・色・太字と文字の大きさ・形・アイコン・「この後に追加」・「ここから矢印」・削除。矢印ならラベル・向きの反転・線の種類・削除）。「直す」タブの「選択中」にも全部の操作が出ます。ダブルクリックで名前を変更、右クリックでメニュー、Esc か何もないところのクリックで選択を解除します。',
         '「編集」で図形を選ぶ（図をクリックしても選べます）と、表示名を変えたり、つながる矢印ごと削除したりできます。レーンやトピックは中身ごと、または中身を残して削除できます。',
         '矢印を選ぶ（クリックでも可）と、ラベルの変更、向きの反転、実線・点線・太線や矢じりの有無の切り替え、削除ができます。',
         'フローチャートとスイムレーンのノードは、形の変更、別のレーンへの移動（どのレーンにも入れないことも可。矢印はそのまま）、アイコンの検索・設定と取り外しができます。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
@@ -191,7 +194,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
         'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
         'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。',
-        'AI に描かせるときは「AI用の説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は「コード内の不明なアイコン」に出て、1 クリックで置き換えられます。'
+        'AI に描かせるときは「出す」タブの「AI・アイコン確認」にある「AI用の説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は同じ場所の「コード内の不明なアイコン」に出て、1 クリックで置き換えられます。'
       ],
       title: 'アイコン'
     },
@@ -218,6 +221,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         '名前の上で F2 を押すと、図の中のその名前をまとめて変えられます。',
+        '図形を選択中のキー操作（入力中でないとき）：Enter で次のノードを追加（名前を入れて Enter）、Tab で横に分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。「選択中」の ? にも一覧があります。',
         'コードやツールの上部のボタンで、その側をアイコンだけにたためます。アイコンを押すと元に戻ります。ツールだけ使うならコードを、コードだけ書くならツールをたたむと広く使えます。ツールの上の ⇄ ボタンで左右を入れ替えられます（mermaid.live と同じくコードを左に）。この設定はブラウザに記憶されます。',
         '図の上のバーにある太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
         'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',

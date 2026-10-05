@@ -172,6 +172,155 @@ test.describe('Add card', () => {
     await editPage.checkTextInView('Orders DB');
   });
 
+  test('adds an attribute and a method to a class', async ({ editPage, page }) => {
+    await editPage.start(urlFor('classDiagram\n  class Order {\n    +id: int\n  }\n  class Item'));
+    await editPage.checkTextInView('Order');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('member', 'class')).selectOption('Order');
+    await page.getByTestId(field('member', 'visibility')).selectOption('private');
+    await page.getByTestId(field('member', 'name')).fill('合計');
+    await page.getByTestId(field('member', 'type')).fill('Money');
+    await page.getByTestId(field('member', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('    +id: int\n    -合計: Money\n  }');
+    await editPage.checkTextInView('合計');
+
+    await page.getByTestId(field('member', 'class')).selectOption('Item');
+    await page.getByTestId(field('member', 'kind')).selectOption('method');
+    await page.getByTestId(field('member', 'visibility')).selectOption('public');
+    await page.getByTestId(field('member', 'name')).fill('price');
+    await page.getByTestId(field('member', 'type')).fill('int');
+    await page.getByTestId(field('member', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('  Item : +price() int');
+    await editPage.checkTextInView('price()');
+  });
+
+  test('adds an attribute with a key to an ER entity', async ({ editPage, page }) => {
+    await editPage.start(urlFor('erDiagram\n  e1["注文"]\n  e1 ||--o{ e2 : has'));
+    await editPage.checkTextInView('注文');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('attribute', 'entity')).selectOption('e1');
+    await page.getByTestId(field('attribute', 'type')).fill('int');
+    await page.getByTestId(field('attribute', 'name')).fill('注文番号');
+    await page.getByTestId(field('attribute', 'key')).selectOption('PK');
+    await page.getByTestId(field('attribute', 'comment')).fill('連番');
+    await page.getByTestId(field('attribute', 'button')).click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('  e1["注文"] {\n    int 注文番号 PK "連番"\n  }');
+    await editPage.checkTextInView('注文番号');
+  });
+
+  test('adds a gantt task that follows another, with a status and marks', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor('gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n    Spec : 2024-01-01, 3d')
+    );
+    await editPage.checkTextInView('Spec');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('task', 'name')).fill('Review');
+    await page.getByTestId(field('task', 'after')).selectOption('3');
+    await page.getByTestId(field('task', 'status')).selectOption('active');
+    await page.getByTestId(field('task', 'crit')).selectOption('yes');
+    await page.getByTestId(field('task', 'button')).click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('    Spec : t1, 2024-01-01, 3d\n    Review : active, crit, after t1, 3d');
+    await editPage.checkTextInView('Review');
+  });
+
+  test('starts an empty mindmap with its first topic, then adds under it', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('mindmap'));
+    await page.getByTestId(TID.addCard).click();
+    await expect(page.getByTestId(field('topic', 'button'))).toHaveCount(0);
+    await page.getByTestId(field('root', 'name')).fill('新しい計画');
+    await page.getByTestId(field('root', 'button')).click();
+    await expect.poll(() => stored(page)).toBe('mindmap\n  新しい計画');
+    await editPage.checkTextInView('新しい計画');
+    // Now there is a parent to choose.
+    await page.getByTestId(field('topic', 'parent')).selectOption('1');
+    await page.getByTestId(field('topic', 'name')).fill('目的');
+    await page.getByTestId(field('topic', 'button')).click();
+    await expect.poll(() => stored(page)).toBe('mindmap\n  新しい計画\n    目的');
+    await editPage.checkTextInView('目的');
+  });
+
+  test('adds a composite state around a state, and a state inside it', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('stateDiagram-v2\n  [*] --> Idle\n  Idle --> Done'));
+    await editPage.checkTextInView('Idle');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('composite', 'name')).fill('作業中');
+    await page.getByTestId(field('composite', 'inside')).selectOption('Done');
+    await page.getByTestId(field('composite', 'button')).click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('  Idle --> Done\n  state "作業中" as g1 {\n    Done\n  }');
+    await editPage.checkTextInView('作業中');
+    // The new composite state is chosen for the next state.
+    await expect(page.getByTestId(field('state', 'parent'))).toHaveValue('g1');
+    await page.getByTestId(field('state', 'name')).fill('Check');
+    await page.getByTestId(field('state', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('    Done\n    state "Check" as s1\n  }');
+    await editPage.checkTextInView('Check');
+  });
+
+  test('draws a C4 boundary around an element', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor('C4Context\n  Person(a, "Alice")\n  System(s, "Web")\n  Rel(a, s, "uses")')
+    );
+    await editPage.checkTextInView('Web');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('boundary', 'name')).fill('社内');
+    await page.getByTestId(field('boundary', 'kind')).selectOption('Enterprise_Boundary');
+    await page.getByTestId(field('boundary', 'element')).selectOption('s');
+    await page.getByTestId(field('boundary', 'button')).click();
+    await expect
+      .poll(() => stored(page))
+      .toContain('  Enterprise_Boundary(b1, "社内") {\n    System(s, "Web")\n  }');
+    await editPage.checkTextInView('社内');
+  });
+
+  test('shows the values of a pie chart in its legend', async ({ editPage, page }) => {
+    await editPage.start(urlFor('pie\n  "Dogs" : 386\n  "Cats" : 85'));
+    await editPage.checkTextInView('Dogs');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('display', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('pie showData\n');
+    await editPage.checkTextInView('[386]');
+  });
+
+  test('builds a requirement diagram: requirement, element, relationship', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('requirementDiagram\n  requirement login {\n    id: 1\n  }'));
+    await editPage.checkTextInView('login');
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(field('requirement', 'name')).fill('応答速度');
+    await page.getByTestId(field('requirement', 'kind')).selectOption('performanceRequirement');
+    await page.getByTestId(field('requirement', 'text')).fill('2秒以内');
+    await page.getByTestId(field('requirement', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('  performanceRequirement "応答速度" {');
+    await editPage.checkTextInView('応答速度');
+
+    await page.getByTestId(field('element', 'name')).fill('web_app');
+    await page.getByTestId(field('element', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('  element web_app {\n  }');
+    // The new element and requirement are chosen as the relationship's ends.
+    await expect(page.getByTestId(field('relationship', 'from'))).toHaveValue('web_app');
+    await expect(page.getByTestId(field('relationship', 'to'))).toHaveValue('応答速度');
+    await page.getByTestId(field('relationship', 'button')).click();
+    await expect.poll(() => stored(page)).toContain('  web_app - satisfies -> "応答速度"');
+    await editPage.checkTextInView('satisfies');
+  });
+
   test('explains when a diagram has nothing to add from here', async ({ editPage, page }) => {
     await editPage.start(
       urlFor(
@@ -188,7 +337,7 @@ test.describe('Add card', () => {
     page
   }) => {
     const cases: [string, string, string, string][] = [
-      ['mindmap', 'topic', '', 'add.chooseParent'],
+      ['mindmap\n  Centre', 'topic', 'Centre', 'add.chooseParent'],
       ['kanban', 'card', '', 'add.chooseColumn'],
       ['timeline\n  title History', 'event', 'History', 'add.choosePeriod']
     ];

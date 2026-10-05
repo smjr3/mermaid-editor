@@ -7,6 +7,21 @@
  */
 import type { MessageKey } from '$/i18n/messages';
 import mermaid from 'mermaid';
+import {
+  addClassMember,
+  addEntityAttribute,
+  attributeKeys,
+  closingBrace,
+  ganttDate,
+  ganttName,
+  ganttStatuses,
+  ganttTasks,
+  taskStart,
+  taskTags,
+  visibilities,
+  type Visibility
+} from './diagramDetails';
+import { headerIndex, indentOf, isContent, oneLine, requirementName } from './codeText';
 import { freshId, splitLines } from './diagramEdit';
 import { memoByCode } from './memo';
 import { decodeEntities, diagramFromText, diagramObjects, type DiagramObject } from './mermaid';
@@ -35,6 +50,8 @@ export interface Action {
   button: MessageKey;
   fields: Field[];
   apply: (code: string, values: Values) => ActionResult;
+  /** Shown only when this holds for the diagram's parts (default: always). */
+  when?: (parts: Record<string, DiagramObject[]>) => boolean;
 }
 
 export interface AddSpec {
@@ -60,26 +77,10 @@ const insert = (code: string, added: string[], index?: number) => {
   return lines.join(eol);
 };
 
-// One line; a `;` ends a statement in several grammars, and an HTML tag typed into
-// a form (an unclosed one blanks a kanban board) is never meant literally.
-const tagPattern = /<\/?[a-z][^<>]*>/gi;
-const stripTags = (text: string) => {
-  // Removing a tag can expose another (`<<b>b>`): repeat until nothing is left.
-  let previous;
-  do {
-    previous = text;
-    text = text.replaceAll(tagPattern, '');
-  } while (text !== previous);
-  return text;
-};
-export const oneLine = (text: string) =>
-  stripTags(text.replaceAll(/[\r\n]+/g, ' ').replaceAll(';', ',')).trim();
 // Sequence diagrams read `#…;` as an entity code and `#` + digits breaks the message.
 export const sequenceText = (text: string) => oneLine(text).replaceAll('#', '#35;');
 const noQuotes = (text: string) => oneLine(text).replaceAll('"', "'");
 const noBrackets = (text: string) => oneLine(text).replaceAll(/[()[\]{}]/g, '');
-export const indentOf = (line: string) => /^\s*/.exec(line)?.[0].length ?? 0;
-const isContent = (line: string) => line.trim() !== '' && !line.trim().startsWith('%%');
 
 const need = (values: Values, ...keys: string[]) => keys.every((key) => values[key]);
 
@@ -88,18 +89,10 @@ const item = (id: string, label: string): DiagramObject => ({
   label: decodeEntities(label) || id
 });
 
-// ---- Indentation-based diagrams (mindmap, kanban) ----
+// Shared with the Edit card and the title (kept in codeText.ts, which imports nothing).
+export { headerIndex, indentOf, oneLine };
 
-/** The index of the header line: the first content line past any front matter. */
-export const headerIndex = (lines: string[]) => {
-  let start = 0;
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-    start = end === -1 ? lines.length : end + 1;
-  }
-  const index = lines.findIndex((line, i) => i >= start && isContent(line));
-  return index === -1 ? lines.length : index;
-};
+// ---- Indentation-based diagrams (mindmap, kanban) ----
 
 /** The lines after the header that hold a node, with their indentation. */
 export const nodeLines = (lines: string[]) => {
@@ -380,19 +373,72 @@ const sequence: AddSpec = {
 const transition = (from: string, to: string, text: string) =>
   `  ${from} --> ${to}${oneLine(text) ? ` : ${oneLine(text)}` : ''}`;
 
+/** The `state … {` line that opens the composite state `id`, or -1. */
+export const compositeStart = (lines: string[], id: string) =>
+  lines.findIndex((line) =>
+    new RegExp(
+      `^\\s*state\\s+(?:"[^"]*"\\s+as\\s+)?${id.replaceAll(/[$()*+.?[\\\]^{|}-]/g, String.raw`\$&`)}\\s*\\{\\s*$`
+    ).test(line)
+  );
+
+/** The code with lines added last inside the composite state `id`, or at the end without one. */
+const intoComposite = (code: string, id: string | undefined, added: string[]) => {
+  const { eol, lines } = splitLines(code);
+  const start = id ? compositeStart(lines, id) : -1;
+  const end = start === -1 ? -1 : closingBrace(lines, start);
+  if (end === -1)
+    return insert(
+      code,
+      added.map((line) => `  ${line}`)
+    );
+  const indent = ' '.repeat(indentOf(lines[start]) + 2);
+  lines.splice(end, 0, ...added.map((line) => `${indent}${line}`));
+  return lines.join(eol);
+};
+
+const stateParts = memoByCode(async (code: string) => {
+  const plain = await objects(code);
+  let composites: DiagramObject[] = [];
+  try {
+    await mermaid.parse(code);
+    const db = (await diagramFromText(code)).db as {
+      getData?: () => { nodes?: { id?: unknown; label?: unknown; shape?: unknown }[] };
+    };
+    composites = (db.getData?.().nodes ?? [])
+      .filter(({ id, shape }) => shape === 'roundedWithTitle' && typeof id === 'string')
+      .map(({ id, label }) => item(String(id), typeof label === 'string' ? label : String(id)))
+      .filter(({ id }) => /^[\w-]+$/.test(id));
+  } catch {
+    // Not a diagram yet: nothing to choose.
+  }
+  // The start and end point too, for transitions from and to them.
+  return { composites, plain, states: [item('[*]', '[*]'), ...plain, ...composites] };
+});
+
 const state: AddSpec = {
   actions: [
     {
       apply: (code, values) => {
         const id = freshId(code, 's');
         const name = noQuotes(values.name) || id;
-        const lines = [`  state "${name}" as ${id}`];
-        if (values.from) lines.push(transition(values.from, id, values.text));
-        return { code: insert(code, lines), follow: { from: id }, name };
+        const declared = intoComposite(code, values.parent || undefined, [
+          `state "${name}" as ${id}`
+        ]);
+        const result = values.from
+          ? insert(declared, [transition(values.from, id, values.text)])
+          : declared;
+        return { code: result, follow: { from: id }, name };
       },
       button: 'add.state.stateButton',
       fields: [
         { key: 'name', kind: 'text', label: 'add.f.name' },
+        {
+          key: 'parent',
+          kind: 'item',
+          label: 'add.state.inComposite',
+          optional: true,
+          source: 'composites'
+        },
         { key: 'from', kind: 'item', label: 'add.f.arrowFrom', optional: true, source: 'states' },
         { key: 'text', kind: 'text', label: 'add.f.arrowText', optional: true }
       ],
@@ -415,14 +461,41 @@ const state: AddSpec = {
       ],
       id: 'transition',
       title: 'add.state.transition'
+    },
+    {
+      apply: (code, values) => {
+        const id = freshId(code, 'g');
+        const name = noQuotes(values.name) || id;
+        const inside = values.inside && values.inside !== '[*]' ? values.inside : '';
+        const block = (indent: string) => [
+          `${indent}state "${name}" as ${id} {`,
+          ...(inside ? [`${indent}  ${inside}`] : []),
+          `${indent}}`
+        ];
+        if (!inside) return { code: insert(code, block('  ')), follow: { parent: id }, name };
+        // Right after the state's first mention, so a state inside another composite stays in it.
+        const { eol, lines } = splitLines(code);
+        const word = new RegExp(`(?:^|[^\\p{L}\\p{N}_-])${inside}(?![\\p{L}\\p{N}_-])`, 'u');
+        const at = lines.findIndex(
+          (line, index) =>
+            index > headerIndex(lines) && word.test(line.replaceAll(/"[^"]*"/g, '""'))
+        );
+        if (at === -1) return { code: insert(code, block('  ')), follow: { parent: id }, name };
+        lines.splice(at + 1, 0, ...block(/^\s*/.exec(lines[at])?.[0] ?? '  '));
+        return { code: lines.join(eol), follow: { parent: id }, name };
+      },
+      button: 'add.state.compositeButton',
+      fields: [
+        { key: 'name', kind: 'text', label: 'add.f.name' },
+        { key: 'inside', kind: 'item', label: 'add.state.inside', optional: true, source: 'plain' }
+      ],
+      id: 'composite',
+      title: 'add.state.composite'
     }
   ],
   header: /^\s*stateDiagram(?:-v2)?\b/,
   kind: 'state',
-  parts: async (code) => ({
-    // The start and end point too, for transitions from and to them.
-    states: [item('[*]', '[*]'), ...(await objects(code))]
-  })
+  parts: stateParts
 };
 
 const classRelation: Record<string, (from: string, to: string) => string> = {
@@ -475,6 +548,48 @@ const classSpec: AddSpec = {
       ],
       id: 'relation',
       title: 'add.class.relation'
+    },
+    {
+      apply: (code, values) => {
+        if (!values.class) return { error: 'add.chooseClass' };
+        const kind = values.kind === 'method' ? 'method' : 'attribute';
+        const visibility = visibilities.includes(values.visibility as Visibility)
+          ? (values.visibility as Visibility)
+          : 'public';
+        const name = oneLine(values.name) || (kind === 'method' ? 'method' : 'name');
+        return {
+          code: addClassMember(
+            code,
+            values.class,
+            { args: values.args ?? '', kind, name, type: values.type ?? '', visibility },
+            (text, added) => insert(text, added)
+          ),
+          name
+        };
+      },
+      button: 'add.class.memberButton',
+      fields: [
+        { key: 'class', kind: 'item', label: 'add.class.ofClass', source: 'classes' },
+        {
+          initial: 'attribute',
+          key: 'kind',
+          kind: 'choice',
+          label: 'add.class.memberKind',
+          options: ['attribute', 'method']
+        },
+        {
+          initial: 'public',
+          key: 'visibility',
+          kind: 'choice',
+          label: 'add.class.visibility',
+          options: visibilities
+        },
+        { key: 'name', kind: 'text', label: 'add.f.name' },
+        { key: 'type', kind: 'text', label: 'add.class.type', optional: true },
+        { key: 'args', kind: 'text', label: 'add.class.args', optional: true }
+      ],
+      id: 'member',
+      title: 'add.class.member'
     }
   ],
   header: /^\s*classDiagram(?:-v2)?\b/,
@@ -528,6 +643,39 @@ const er: AddSpec = {
       ],
       id: 'relationship',
       title: 'add.er.relationship'
+    },
+    {
+      apply: (code, values) => {
+        if (!values.entity) return { error: 'add.chooseEntity' };
+        const attribute = {
+          comment: values.comment ?? '',
+          key: values.key || 'none',
+          name: values.name ?? '',
+          type: values.type ?? ''
+        };
+        return {
+          code: addEntityAttribute(code, values.entity, attribute, (text, added) =>
+            insert(text, added)
+          ),
+          name: oneLine(values.name) || 'name'
+        };
+      },
+      button: 'add.er.attributeButton',
+      fields: [
+        { key: 'entity', kind: 'item', label: 'add.er.ofEntity', source: 'entities' },
+        { initial: 'string', key: 'type', kind: 'text', label: 'add.er.type' },
+        { key: 'name', kind: 'text', label: 'add.f.name' },
+        {
+          initial: 'none',
+          key: 'key',
+          kind: 'choice',
+          label: 'add.er.key',
+          options: attributeKeys
+        },
+        { key: 'comment', kind: 'text', label: 'add.er.comment', optional: true }
+      ],
+      id: 'attribute',
+      title: 'add.er.attribute'
     }
   ],
   header: /^\s*erDiagram\b/,
@@ -551,7 +699,21 @@ const mindmap: AddSpec = {
         { key: 'name', kind: 'text', label: 'add.f.name' }
       ],
       id: 'topic',
-      title: 'add.mind.topic'
+      title: 'add.mind.topic',
+      when: (parts) => (parts.topics ?? []).length > 0
+    },
+    {
+      apply: (code, values) => {
+        if (nodeLines(splitLines(code).lines).length > 0) return { error: 'add.mind.hasRoot' };
+        const name = noBrackets(values.name) || 'New topic';
+        return { code: insert(code, [`  ${name}`]), name };
+      },
+      button: 'add.mind.rootButton',
+      fields: [{ key: 'name', kind: 'text', label: 'add.f.name' }],
+      id: 'root',
+      title: 'add.mind.root',
+      // An empty mindmap has no topic to put the first one under.
+      when: (parts) => (parts.topics ?? []).length === 0
     }
   ],
   header: /^\s*mindmap\b/,
@@ -565,37 +727,32 @@ const mindmap: AddSpec = {
     })
 };
 
-/** A date from the date input (YYYY-MM-DD) in the chart's dateFormat. */
-const ganttDate = (code: string, date: string) => {
-  const format = /^\s*dateFormat\s+(\S+)/m.exec(code)?.[1] ?? 'YYYY-MM-DD';
-  const [year, month, day] = date.split('-');
-  if (!year || !month || !day) return date;
-  // Unix time, in seconds (X) or milliseconds (x).
-  if (format === 'X' || format === 'x') {
-    const ms = Date.UTC(Number(year), Number(month) - 1, Number(day));
-    return String(format === 'X' ? ms / 1000 : ms);
-  }
-  if (!/^[YMD\-./]+$/.test(format)) return date;
-  return format.replace('YYYY', year).replace('MM', month).replace('DD', day);
-};
-
 const sectionLine = /^\s*section\s+(.+?)\s*$/;
 
 const gantt: AddSpec = {
   actions: [
     {
       apply: (code, values) => {
-        const name = oneLine(values.name).replaceAll(/[:#;]/g, ' ').trim() || 'Task';
-        const days = Math.max(1, Math.round(Number(values.days) || 1));
-        const start = values.start ? `${ganttDate(code, values.start)}, ` : '';
-        const line = `    ${name} : ${start}${days}d`;
-        const { lines } = splitLines(code);
-        const section = lines.findIndex((text) => sectionLine.exec(text)?.[1] === values.section);
-        if (!values.section || section === -1) return { code: insert(code, [line]), name };
-        let end = lines.findIndex((text, index) => index > section && sectionLine.test(text));
+        const name = ganttName(values.name, 'Task');
+        const least = values.milestone === 'yes' ? 0 : 1;
+        const asked = Math.round(Number(values.days));
+        const days = Number.isFinite(asked) && asked >= least ? asked : Math.max(least, 1);
+        const { eol, lines } = splitLines(code);
+        // `after` gives the chosen task an id if it has none, so `lines` may change.
+        let start = taskStart(code, lines, values);
+        if (start === null) return { error: 'add.gantt.cannotFollow' };
+        // The first task needs a date: mermaid has no task before it to follow.
+        if (start === undefined && ganttTasks(lines).length === 0)
+          start = ganttDate(code, new Date().toISOString().slice(0, 10));
+        const items = [...taskTags(values), ...(start ? [start] : []), `${days}d`];
+        const line = `    ${name} : ${items.join(', ')}`;
+        const text = lines.join(eol);
+        const section = lines.findIndex((row) => sectionLine.exec(row)?.[1] === values.section);
+        if (!values.section || section === -1) return { code: insert(text, [line]), name };
+        let end = lines.findIndex((row, index) => index > section && sectionLine.test(row));
         if (end === -1) end = lines.length;
         while (end > section + 1 && !lines[end - 1].trim()) end--;
-        return { code: insert(code, [line], end), name };
+        return { code: insert(text, [line], end), name };
       },
       button: 'add.gantt.taskButton',
       fields: [
@@ -608,14 +765,36 @@ const gantt: AddSpec = {
           source: 'sections'
         },
         { key: 'start', kind: 'date', label: 'add.gantt.start', optional: true },
-        { initial: '3', key: 'days', kind: 'number', label: 'add.gantt.days' }
+        { key: 'after', kind: 'item', label: 'add.gantt.after', optional: true, source: 'tasks' },
+        { initial: '3', key: 'days', kind: 'number', label: 'add.gantt.days' },
+        {
+          initial: 'none',
+          key: 'status',
+          kind: 'choice',
+          label: 'add.gantt.status',
+          options: ganttStatuses
+        },
+        {
+          initial: 'no',
+          key: 'crit',
+          kind: 'choice',
+          label: 'add.gantt.crit',
+          options: ['no', 'yes']
+        },
+        {
+          initial: 'no',
+          key: 'milestone',
+          kind: 'choice',
+          label: 'add.gantt.milestone',
+          options: ['no', 'yes']
+        }
       ],
       id: 'task',
       title: 'add.gantt.task'
     },
     {
       apply: (code, values) => {
-        const name = oneLine(values.name).replaceAll(/[:#;]/g, ' ').trim() || 'Section';
+        const name = ganttName(values.name, 'Section');
         return { code: insert(code, [`  section ${name}`]), follow: { section: name }, name };
       },
       button: 'add.gantt.sectionButton',
@@ -631,7 +810,8 @@ const gantt: AddSpec = {
       sections: splitLines(code)
         .lines.map((line) => sectionLine.exec(line)?.[1])
         .filter((name) => name !== undefined)
-        .map((name) => item(name, name))
+        .map((name) => item(name, name)),
+      tasks: ganttTasks(splitLines(code).lines).map(({ line, name }) => item(String(line), name))
     })
 };
 
@@ -651,6 +831,32 @@ const pie: AddSpec = {
       ],
       id: 'slice',
       title: 'add.pie.slice'
+    },
+    {
+      apply: (code, values) => {
+        const { eol, lines } = splitLines(code);
+        const at = headerIndex(lines);
+        const header = lines[at] ?? '';
+        const shown = /^\s*pie\s+showData\b/.test(header);
+        const wanted = values.showData !== 'off';
+        if (shown === wanted) return { error: 'add.pie.noChange' };
+        lines[at] = wanted
+          ? header.replace(/^(\s*pie)\b/, '$1 showData')
+          : header.replace(/^(\s*pie)\s+showData\b/, '$1');
+        return { code: lines.join(eol), name: 'showData' };
+      },
+      button: 'add.pie.displayButton',
+      fields: [
+        {
+          initial: 'on',
+          key: 'showData',
+          kind: 'choice',
+          label: 'add.pie.showData',
+          options: ['on', 'off']
+        }
+      ],
+      id: 'display',
+      title: 'add.pie.display'
     }
   ],
   header: /^\s*pie\b/,
@@ -842,6 +1048,47 @@ const c4: AddSpec = {
       ],
       id: 'rel',
       title: 'add.c4.rel'
+    },
+    {
+      apply: (code, values) => {
+        // mermaid rejects an empty boundary, so one is drawn around an element.
+        if (!values.element) return { error: 'add.c4.chooseElement' };
+        const { eol, lines } = splitLines(code);
+        const element = new RegExp(
+          `^\\s*(?!(?:Bi)?Rel|Update)\\w+\\(\\s*${values.element.replaceAll(/[$()*+.?[\\\]^{|}-]/g, String.raw`\$&`)}\\s*,`
+        );
+        const at = lines.findIndex(
+          (line, index) => index > headerIndex(lines) && element.test(line) && !/\{\s*$/.test(line)
+        );
+        if (at === -1) return { error: 'add.c4.chooseElement' };
+        const id = freshId(code, 'b');
+        const name = noQuotes(values.name) || id;
+        const kinds = ['System_Boundary', 'Container_Boundary', 'Enterprise_Boundary', 'Boundary'];
+        const kind = kinds.includes(values.kind) ? values.kind : 'System_Boundary';
+        const indent = /^\s*/.exec(lines[at])?.[0] ?? '  ';
+        lines.splice(
+          at,
+          1,
+          `${indent}${kind}(${id}, "${name}") {`,
+          `${indent}  ${lines[at].trim()}`,
+          `${indent}}`
+        );
+        return { code: lines.join(eol), follow: { boundary: id }, name };
+      },
+      button: 'add.c4.boundaryButton',
+      fields: [
+        { key: 'name', kind: 'text', label: 'add.f.name' },
+        {
+          initial: 'System_Boundary',
+          key: 'kind',
+          kind: 'choice',
+          label: 'add.c4.boundaryKind',
+          options: ['System_Boundary', 'Container_Boundary', 'Enterprise_Boundary', 'Boundary']
+        },
+        { key: 'element', kind: 'item', label: 'add.c4.around', source: 'elements' }
+      ],
+      id: 'boundary',
+      title: 'add.c4.boundaryTitle'
     }
   ],
   header: /^\s*C4(?:Context|Container|Component|Dynamic|Deployment)\b/,
@@ -889,6 +1136,165 @@ const block: AddSpec = {
   parts: async (code) => ({ blocks: await objects(code) })
 };
 
+const requirementParts = memoByCode(async (code: string) => {
+  try {
+    await mermaid.parse(code);
+    const db = (await diagramFromText(code)).db as {
+      getRequirements?: () => Map<string, unknown>;
+      getElements?: () => Map<string, unknown>;
+    };
+    const names = (found: Map<string, unknown> | undefined) =>
+      [...(found?.keys() ?? [])].map((name) => item(name, name));
+    const requirements = names(db.getRequirements?.());
+    const elements = names(db.getElements?.());
+    return { elements, items: [...requirements, ...elements], requirements };
+  } catch {
+    return { elements: [], items: [], requirements: [] };
+  }
+});
+
+/** A requirement's or element's name: one line, unique in the diagram. */
+const freshName = (code: string, typed: string, prefix: string) => {
+  const name = noQuotes(typed).replaceAll(/[{}]/g, '');
+  const taken = splitLines(code).lines.flatMap((line) => {
+    const match =
+      /^\s*(?:requirement|functionalRequirement|interfaceRequirement|performanceRequirement|physicalRequirement|designConstraint|element)\s+("[^"]*"|[\w-]+)\s*\{/.exec(
+        line
+      );
+    return match ? [match[1].replace(/^"(.*)"$/, '$1')] : [];
+  });
+  return name && !taken.includes(name) ? name : freshId(code, prefix);
+};
+const fieldText = (text: string) => `"${noQuotes(text).replaceAll(/[{}]/g, '')}"`;
+
+const requirement: AddSpec = {
+  actions: [
+    {
+      apply: (code, values) => {
+        const name = freshName(code, values.name, 'req');
+        const kinds = [
+          'requirement',
+          'functionalRequirement',
+          'interfaceRequirement',
+          'performanceRequirement',
+          'physicalRequirement',
+          'designConstraint'
+        ];
+        const kind = kinds.includes(values.kind) ? values.kind : 'requirement';
+        const id = freshId(code, 'R');
+        const body = [
+          `    id: ${id}`,
+          ...(oneLine(values.text ?? '') ? [`    text: ${fieldText(values.text)}`] : []),
+          ...(['low', 'medium', 'high'].includes(values.risk) ? [`    risk: ${values.risk}`] : []),
+          ...(['analysis', 'inspection', 'test', 'demonstration'].includes(values.verify)
+            ? [`    verifymethod: ${values.verify}`]
+            : [])
+        ];
+        return {
+          code: insert(code, [`  ${kind} ${requirementName(name)} {`, ...body, '  }']),
+          follow: { to: name },
+          name
+        };
+      },
+      button: 'add.req.requirementButton',
+      fields: [
+        { key: 'name', kind: 'text', label: 'add.f.name' },
+        {
+          initial: 'requirement',
+          key: 'kind',
+          kind: 'choice',
+          label: 'add.req.kind',
+          options: [
+            'requirement',
+            'functionalRequirement',
+            'interfaceRequirement',
+            'performanceRequirement',
+            'physicalRequirement',
+            'designConstraint'
+          ]
+        },
+        { key: 'text', kind: 'text', label: 'add.req.text', optional: true },
+        {
+          initial: 'medium',
+          key: 'risk',
+          kind: 'choice',
+          label: 'add.req.risk',
+          options: ['low', 'medium', 'high']
+        },
+        {
+          initial: 'test',
+          key: 'verify',
+          kind: 'choice',
+          label: 'add.req.verify',
+          options: ['analysis', 'inspection', 'test', 'demonstration']
+        }
+      ],
+      id: 'requirement',
+      title: 'add.req.requirement'
+    },
+    {
+      apply: (code, values) => {
+        const name = freshName(code, values.name, 'el');
+        const type = oneLine(values.type ?? '');
+        return {
+          code: insert(code, [
+            `  element ${requirementName(name)} {`,
+            ...(type ? [`    type: ${fieldText(type)}`] : []),
+            '  }'
+          ]),
+          follow: { from: name },
+          name
+        };
+      },
+      button: 'add.req.elementButton',
+      fields: [
+        { key: 'name', kind: 'text', label: 'add.f.name' },
+        { key: 'type', kind: 'text', label: 'add.req.type', optional: true }
+      ],
+      id: 'element',
+      title: 'add.req.element'
+    },
+    {
+      apply: (code, values) => {
+        if (!need(values, 'from', 'to')) return { error: 'add.choose' };
+        const kinds = [
+          'satisfies',
+          'verifies',
+          'refines',
+          'traces',
+          'contains',
+          'copies',
+          'derives'
+        ];
+        const kind = kinds.includes(values.kind) ? values.kind : 'satisfies';
+        return {
+          code: insert(code, [
+            `  ${requirementName(values.from)} - ${kind} -> ${requirementName(values.to)}`
+          ]),
+          name: `${values.from} → ${values.to}`
+        };
+      },
+      button: 'add.connectButton',
+      fields: [
+        { key: 'from', kind: 'item', label: 'add.f.from', source: 'items' },
+        { key: 'to', kind: 'item', label: 'add.f.to', source: 'items' },
+        {
+          initial: 'satisfies',
+          key: 'kind',
+          kind: 'choice',
+          label: 'add.req.relation',
+          options: ['satisfies', 'verifies', 'refines', 'traces', 'contains', 'copies', 'derives']
+        }
+      ],
+      id: 'relationship',
+      title: 'add.req.relationship'
+    }
+  ],
+  header: /^\s*requirementDiagram\b/,
+  kind: 'requirement',
+  parts: requirementParts
+};
+
 export const addSpecs: AddSpec[] = [
   sequence,
   state,
@@ -900,7 +1306,8 @@ export const addSpecs: AddSpec[] = [
   kanban,
   timeline,
   c4,
-  block
+  block,
+  requirement
 ];
 
 /** The Add spec for the code's diagram type, from its header line. */
@@ -908,6 +1315,27 @@ export const specFor = (code: string): AddSpec | undefined => {
   const { lines } = splitLines(code);
   const header = lines[headerIndex(lines)] ?? '';
   return addSpecs.find((spec) => spec.header.test(header));
+};
+
+const diagramType = async (code: string) => {
+  try {
+    return (await mermaid.parse(code)).diagramType;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Whether the Add card may write `after` over `before`: mermaid parses it as the
+ * same type. Code that did not parse before (an empty `mindmap` has no root yet)
+ * may become a diagram of the type its header names.
+ */
+export const checkAdd = async (before: string, after: string): Promise<boolean> => {
+  const [was, is] = await Promise.all([diagramType(before), diagramType(after)]);
+  if (is === undefined) return false;
+  if (was !== undefined) return was === is;
+  const spec = specFor(before);
+  return spec !== undefined && specFor(after)?.kind === spec.kind;
 };
 
 /** The initial values of an action's fields. */

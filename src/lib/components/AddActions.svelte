@@ -4,7 +4,13 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import type { MessageKey } from '$/i18n/messages';
-  import { initialValues, type Action, type AddSpec, type Values } from '$/util/addActions';
+  import {
+    checkAdd,
+    initialValues,
+    type Action,
+    type AddSpec,
+    type Values
+  } from '$/util/addActions';
   import type { DiagramObject } from '$/util/mermaid';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
 
@@ -39,7 +45,10 @@
     };
   };
 
-  const run = (action: Action) => {
+  // Some actions only make sense for some diagrams (the first topic of an empty mindmap).
+  const shown = $derived(spec.actions.filter((action) => action.when?.(parts) ?? true));
+
+  const run = async (action: Action) => {
     const current = { ...(values[action.id] ?? initialValues(action)) };
     // A choice the diagram no longer has (the part was deleted in the code) is no choice.
     for (const field of action.fields) {
@@ -47,9 +56,15 @@
       const known = (parts[field.source ?? ''] ?? []).some(({ id }) => id === current[field.key]);
       if (!known) current[field.key] = '';
     }
-    const result = action.apply(inputState.code, current);
+    const before = inputState.code;
+    const result = action.apply(before, current);
     if ('error' in result) {
       message = t(result.error);
+      return;
+    }
+    // Written only if mermaid still reads it as the same type of diagram.
+    if (!(await checkAdd(before, result.code)) || inputState.code !== before) {
+      message = t('add.breaks');
       return;
     }
     updateCode(result.code, { updateDiagram: true });
@@ -80,7 +95,7 @@
       : `${part.label} (${part.id})`;
 </script>
 
-{#each spec.actions as action (action.id)}
+{#each shown as action (action.id)}
   {@const current = values[action.id] ?? initialValues(action)}
   <div class="flex flex-col gap-1">
     <span class="font-semibold">{t(action.title)}</span>
@@ -115,12 +130,12 @@
             value={current[field.key]}
             data-testid={testID(action, field.key)}
             oninput={(event) => set(action, field.key, event.currentTarget.value)}
-            onkeydown={(event) => event.key === 'Enter' && run(action)} />
+            onkeydown={(event) => event.key === 'Enter' && void run(action)} />
         {/if}
       </label>
     {/each}
     <div>
-      <Button size="sm" data-testid={testID(action, 'button')} onclick={() => run(action)}
+      <Button size="sm" data-testid={testID(action, 'button')} onclick={() => void run(action)}
         >{t(action.button)}</Button>
     </div>
   </div>

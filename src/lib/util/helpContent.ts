@@ -52,7 +52,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'Choose an arrow (or click it) to change its label, turn it round, draw it solid, dotted or thick, with or without an arrowhead, or delete it.',
         'Flowchart and swimlane nodes: change the shape, move the node to another lane (or out of every lane; its arrows stay), and give it an icon by searching for one or remove it. Architecture services: change the icon, or move the service to another group.',
         'A change that would break the diagram is not made; the card says so instead.',
-        'Class members and ER attributes: choose one under the class or entity to change or delete it. Gantt tasks: change the start, the predecessor, the days, the status and the marks; sections and composite states, C4 boundaries and nested blocks can go with or without what is inside. Pie slices: change the value.'
+        'Class members and ER attributes: choose one under the class or entity to change or delete it. Gantt tasks: change the start, the predecessor, the days, the status and the marks; sections and composite states, C4 boundaries and nested blocks can go with or without what is inside. Pie slices: change the value.',
+        '"Edit as a table" (at the bottom of Edit) shows gantt tasks, kanban cards, timeline periods, pie slices and the attributes of an ER entity as rows: change a cell and leave it or press Enter, add, delete or move rows, move a card to another column, and paste rows copied from Excel to add them.'
       ],
       title: 'Changing and deleting'
     },
@@ -159,7 +160,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '矢印を選ぶ（クリックでも可）と、ラベルの変更、向きの反転、実線・点線・太線や矢じりの有無の切り替え、削除ができます。',
         'フローチャートとスイムレーンのノードは、形の変更、別のレーンへの移動（どのレーンにも入れないことも可。矢印はそのまま）、アイコンの検索・設定と取り外しができます。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
         '図が壊れる変更は行われず、カードにその旨が表示されます。',
-        'クラスの属性・メソッドと ER 図の属性は、クラスやエンティティを選ぶと下に一覧が出て、変更・削除できます。ガントのタスクは開始日・前のタスク・日数・状況・印を変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。円グラフの項目は値を変えられます。'
+        'クラスの属性・メソッドと ER 図の属性は、クラスやエンティティを選ぶと下に一覧が出て、変更・削除できます。ガントのタスクは開始日・前のタスク・日数・状況・印を変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。円グラフの項目は値を変えられます。',
+        '「表で編集」（編集の下）では、ガントのタスク・カンバンのカード・タイムラインの期間・円グラフの項目・ER 図のエンティティの属性を表として扱えます。セルを書き換えて離れるか Enter で反映、行の追加・削除・上下の移動、カードの別の列への移動ができ、Excel でコピーした行を貼り付けると行として追加されます。'
       ],
       title: '変更と削除'
     },

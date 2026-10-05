@@ -42,6 +42,7 @@ import { localSamples } from './localSamples';
 import { starter, starterKinds } from './newDiagram';
 import { architectureParts, diagramEdges, diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
+import { addRow, deleteRow, moveRow, tableKind, tableModel } from './tableEdit';
 
 // Every sample diagram the editor offers (mermaid's examples and this fork's
 // own), through every feature that rewrites or exports the code.
@@ -256,6 +257,54 @@ describe.each(samples)('$name', ({ code }) => {
           expect(left, `delete ${object.id}`).not.toContain(object.id);
         }
       }
+    }
+  }, 120_000);
+
+  it('reads every row of its table editor as mermaid does, and keeps parsing after each row edit', async () => {
+    const kind = tableKind(code);
+    if (!kind) return;
+    const type = await typeOf(code);
+    const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as Record<
+      string,
+      () => unknown
+    >;
+    const entities =
+      kind === 'er' ? [...(db.getEntities() as Map<string, { attributes: unknown[] }>)] : [];
+    for (const entity of kind === 'er' ? entities.map(([id]) => id) : [undefined]) {
+      const model = await tableModel(code, entity);
+      expect(model, entity).toBeDefined();
+      const rows = model?.rows ?? [];
+      // As many rows as mermaid's own parse has items.
+      const expected = {
+        er: () => entities.find(([id]) => id === entity)?.[1].attributes.length,
+        gantt: () => (db.getTasks() as unknown[]).length,
+        kanban: () =>
+          ((db.getData() as { nodes: { isGroup: boolean }[] }).nodes ?? []).filter(
+            (node) => !node.isGroup
+          ).length,
+        pie: () => (db.getSections() as Map<string, number>).size,
+        timeline: () => (db.getTasks() as unknown[]).length
+      }[kind]();
+      expect(rows.length, entity).toBe(expected);
+      for (const [index, row] of rows.entries()) {
+        for (const column of model?.columns ?? []) {
+          expect(row.cells, `${index} ${column.key}`).toHaveProperty([column.key]);
+          if (column.kind === 'choice')
+            expect(
+              column.options?.map(({ value }) => value),
+              `${index} ${column.key}`
+            ).toContain(row.cells[column.key]);
+        }
+        for (const edited of [
+          deleteRow(code, index, entity),
+          moveRow(code, index, index === 0 ? 1 : -1, entity)
+        ]) {
+          if (edited === undefined) continue;
+          await expect(typeOf(edited), `row ${index}`).resolves.toBe(type);
+        }
+      }
+      const added = addRow(code, {}, entity);
+      if (added !== undefined) await expect(typeOf(added), 'add').resolves.toBe(type);
     }
   }, 120_000);
 

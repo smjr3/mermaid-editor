@@ -7,11 +7,18 @@ import {
   editKind,
   editableEdges,
   editableObjects,
+  flowNodeDetails,
+  moveNodeToLane,
+  moveService,
   renameObject,
   reverseEdge,
+  serviceDetails,
   setEdgeHead,
   setEdgeLabel,
   setEdgeStyle,
+  setNodeIcon,
+  setNodeShape,
+  setServiceIcon,
   type EditEdge,
   type EditObject
 } from './diagramModify';
@@ -374,7 +381,10 @@ describe('sequence diagrams', () => {
     expect(objects?.items.map(({ id, label }) => `${id}:${label}`)).toEqual([
       'A:Alice',
       'B:B',
-      'C:C'
+      'C:C',
+      // Notes follow, by line.
+      'line:6:Note over A,B: both',
+      'line:7:Note right of B: alone'
     ]);
     expect(renameObject(code, 'sequence', await object(code, 'A'), 'Alicia')).toContain(
       '  participant A as Alicia'
@@ -584,7 +594,7 @@ describe('non-ASCII ids', () => {
   Note over 経理: 月次
   経理->>経理: 確認`);
     await expect(typeOf(result)).resolves.toBe('sequence');
-    expect((await editableObjects(result))?.items.map(({ id }) => id)).toEqual(['経理']);
+    expect((await editableObjects(result))?.items.map(({ id }) => id)).toEqual(['経理', 'line:2']);
   });
 
   it('deletes Japanese flowchart nodes, lanes and states', async () => {
@@ -615,5 +625,231 @@ describe('non-ASCII ids', () => {
     const gone = deleteEdge(code, 'er', await edge(code, 1));
     expect(gone).not.toMatch(/明細/);
     await expect(typeOf(gone)).resolves.toBe('er');
+  });
+});
+
+describe('flowchart node shape, lane and icon', () => {
+  it('reads a node’s shape, lane and icon', () => {
+    expect(flowNodeDetails(lanes, 'D')).toEqual({ icon: '', lane: 'Shop', shape: 'diamond' });
+    expect(flowNodeDetails(lanes, 'A')).toEqual({ icon: '', lane: 'Customer', shape: 'rect' });
+    const icon = 'flowchart LR\n  A@{ icon: "tabler:user", label: "利用者" } --> B';
+    expect(flowNodeDetails(icon, 'A')).toEqual({ icon: 'tabler:user', lane: '', shape: undefined });
+    expect(flowNodeDetails(icon, 'B')).toEqual({ icon: '', lane: '', shape: 'rect' });
+    expect(flowNodeDetails('flowchart LR\n  A[[sub]]', 'A').shape).toBe('other');
+  });
+
+  it('changes the shape where the node is defined, keeping its label and class', async () => {
+    const code = 'flowchart LR\n  A[Place order]:::hot --> B\n  A --> C';
+    const round = setNodeShape(code, 'A', 'rounded');
+    expect(round).toBe('flowchart LR\n  A(Place order):::hot --> B\n  A --> C');
+    expect(setNodeShape(code, 'A', 'diamond')).toContain('A{Place order}:::hot');
+    expect(setNodeShape(code, 'A', 'circle')).toContain('A((Place order)):::hot');
+    expect(setNodeShape(code, 'A', 'stadium')).toContain('A([Place order]):::hot');
+    // A bare node gets its id as the label.
+    expect(setNodeShape(code, 'B', 'diamond')).toContain('A[Place order]:::hot --> B{"B"}');
+    await expect(typeOf(setNodeShape(lanes, 'D', 'stadium') ?? '')).resolves.toBe('swimlane');
+    expect(setNodeShape(lanes, 'D', 'stadium')).toContain('    D([In stock?])\n');
+  });
+
+  it('quotes a label whose brackets would end the new shape', () => {
+    expect(setNodeShape('flowchart LR\n  A["x (y)"]', 'A', 'rounded')).toBe(
+      'flowchart LR\n  A("x (y)")'
+    );
+  });
+
+  it('changes a shape given as data, and leaves an icon node alone', () => {
+    expect(setNodeShape('flowchart LR\n  A@{ shape: rect, label: "x" }', 'A', 'diamond')).toBe(
+      'flowchart LR\n  A@{ shape: diam, label: "x" }'
+    );
+    expect(setNodeShape('flowchart LR\n  A@{ icon: "tabler:user" }', 'A', 'rect')).toBeUndefined();
+  });
+
+  it('sets, changes and clears an icon', async () => {
+    const code = 'flowchart LR\n  A["利用者"] --> B(処理)';
+    const withIcon = setNodeIcon(code, 'A', 'tabler:user');
+    expect(withIcon).toBe('flowchart LR\n  A@{ icon: "tabler:user", label: "利用者" } --> B(処理)');
+    await expect(typeOf(withIcon ?? '')).resolves.toBe('flowchart-v2');
+    const changed = setNodeIcon(withIcon ?? '', 'A', 'mdi:account');
+    expect(changed).toContain('A@{ icon: "mdi:account", label: "利用者" }');
+    expect(setNodeIcon(changed ?? '', 'A', '')).toBe(code);
+    expect(setNodeIcon(code, 'B', 'tabler:server')).toContain(
+      'B@{ icon: "tabler:server", label: "処理" }'
+    );
+    expect(setNodeIcon(code, 'A', 'not an icon')).toBeUndefined();
+  });
+
+  it('moves a standalone node to another lane', async () => {
+    const moved = moveNodeToLane(lanes, 'C', 'Customer');
+    expect(moved).toContain(
+      '  subgraph Customer\n    A[Place order] --> B[Receive goods]\n    C[Accept order]\n  end\n  subgraph Shop\n    D{In stock?}\n  end'
+    );
+    expect(moved?.split('\n').slice(-2)).toEqual([
+      '  linkStyle 1 stroke:#d64545',
+      '  linkStyle 3,4 stroke:#3f9b52'
+    ]);
+    await expect(typeOf(moved ?? '')).resolves.toBe('swimlane');
+    expect(flowNodeDetails(moved ?? '', 'C').lane).toBe('Customer');
+  });
+
+  it('moves a node out of a chain inside its lane; the arrow stays and keeps its colour', async () => {
+    const code = `flowchart LR
+  subgraph Customer
+    A[Place order] --> B[Receive goods]
+  end
+  subgraph Shop
+    C[Accept order]
+  end
+  B --> C
+  linkStyle 0 stroke:#d64545`;
+    const moved = moveNodeToLane(code, 'A', 'Shop');
+    expect(moved).toBe(`flowchart LR
+  subgraph Customer
+    B[Receive goods]
+  end
+  A --> B
+  subgraph Shop
+    C[Accept order]
+    A[Place order]
+  end
+  B --> C
+  linkStyle 0 stroke:#d64545`);
+    await expect(typeOf(moved ?? '')).resolves.toBe('flowchart-v2');
+    const objects = await editableObjects(moved ?? '');
+    expect(objects?.items.find(({ id }) => id === 'Shop')?.members).toEqual(['C', 'A']);
+    expect(objects?.items.find(({ id }) => id === 'Customer')?.members).toEqual(['B']);
+  });
+
+  it('renumbers linkStyle when an arrow moves past another', () => {
+    const code = `flowchart LR
+  subgraph L1
+    A --> B
+    C --> D
+  end
+  subgraph L2
+    E
+  end
+  linkStyle 0 stroke:red
+  linkStyle 1 stroke:blue`;
+    const moved = moveNodeToLane(code, 'A', 'L2');
+    expect(moved).toBe(`flowchart LR
+  subgraph L1
+    B
+    C --> D
+  end
+  A --> B
+  subgraph L2
+    E
+    A
+  end
+  linkStyle 1 stroke:red
+  linkStyle 0 stroke:blue`);
+  });
+
+  it('takes a node out of every lane, and puts a top-level node into one', async () => {
+    const out = moveNodeToLane(lanes, 'D', '');
+    expect(out).toContain('  subgraph Shop\n    C[Accept order]\n  end\n');
+    expect(out).toContain('  D ==> B\n  D{In stock?}\n  style Shop');
+    expect(flowNodeDetails(out ?? '', 'D').lane).toBe('');
+    await expect(typeOf(out ?? '')).resolves.toBe('swimlane');
+    const back = moveNodeToLane(out ?? '', 'D', 'Shop');
+    expect(back).toContain('  subgraph Shop\n    C[Accept order]\n    D{In stock?}\n  end\n');
+    expect(back).not.toContain('  D{In stock?}\n  style');
+    expect(moveNodeToLane(lanes, 'D', 'Nowhere')).toBeUndefined();
+  });
+
+  it('moves a node into a nested lane', () => {
+    const code = `flowchart TB
+  subgraph Outer
+    subgraph Inner
+      X
+    end
+  end
+  A[Start] --> X`;
+    expect(moveNodeToLane(code, 'A', 'Inner')).toBe(`flowchart TB
+  subgraph Outer
+    subgraph Inner
+      X
+      A[Start]
+    end
+  end
+  A --> X`);
+  });
+});
+
+describe('architecture service icon and group', () => {
+  const code = `architecture-beta
+  group api(cloud)[API]
+  group inner(cloud)[Inner] in api
+  service db(database)[Database] in inner
+  service dns(internet)[DNS]
+  db:R --> L:dns`;
+  it('reads a service’s icon and group', () => {
+    expect(serviceDetails(code, 'db')).toEqual({ group: 'inner', icon: 'database' });
+    expect(serviceDetails(code, 'dns')).toEqual({ group: '', icon: 'internet' });
+    expect(serviceDetails(code, 'api')).toBeUndefined();
+  });
+  it('changes the icon', async () => {
+    const next = setServiceIcon(code, 'dns', 'logos:aws-route53');
+    expect(next).toContain('  service dns(logos:aws-route53)[DNS]\n');
+    await expect(typeOf(next ?? '')).resolves.toBe('architecture');
+    expect(setServiceIcon(code, 'dns', 'bad icon!')).toBeUndefined();
+  });
+  it('moves a service into another group and out of every group', async () => {
+    const moved = moveService(code, 'dns', 'api');
+    expect(moved).toContain('  service dns(internet)[DNS] in api\n');
+    await expect(typeOf(moved ?? '')).resolves.toBe('architecture');
+    expect(moveService(code, 'db', '')).toContain('  service db(database)[Database]\n');
+    expect(moveService(code, 'db', 'api')).toContain('  service db(database)[Database] in api\n');
+  });
+});
+
+describe('sequence notes and blocks', () => {
+  const code = `sequenceDiagram
+  participant A as Alice
+  participant B
+  A->>B: hi
+  Note over A,B: 確認
+  alt 在庫あり
+    B-->>A: ok
+  else 在庫なし
+    B-->>A: ng
+  end
+  loop 毎日
+  end`;
+  it('lists notes and blocks after the participants', async () => {
+    const items = (await editableObjects(code))?.items ?? [];
+    expect(items.map(({ id, label }) => [id, label])).toEqual([
+      ['A', 'Alice'],
+      ['B', 'B'],
+      ['line:4', 'Note over A,B: 確認'],
+      ['line:5', 'alt 在庫あり'],
+      ['line:10', 'loop 毎日']
+    ]);
+  });
+  it('changes a note’s text and a block’s condition', async () => {
+    expect(renameObject(code, 'sequence', await object(code, 'line:4'), '承認; 済み')).toContain(
+      '\n  Note over A,B: 承認, 済み\n'
+    );
+    expect(renameObject(code, 'sequence', await object(code, 'line:5'), '在庫は?')).toContain(
+      '\n  alt 在庫は?\n'
+    );
+  });
+  it('deletes a note, and a block keeping the messages inside', async () => {
+    const note = deleteObject(code, 'sequence', await object(code, 'line:4'));
+    expect(note).not.toContain('Note');
+    const alt = deleteObject(code, 'sequence', await object(code, 'line:5'));
+    expect(alt).toBe(`sequenceDiagram
+  participant A as Alice
+  participant B
+  A->>B: hi
+  Note over A,B: 確認
+  B-->>A: ok
+  B-->>A: ng
+  loop 毎日
+  end`);
+    await expect(typeOf(alt)).resolves.toBe('sequence');
+    const loop = deleteObject(code, 'sequence', await object(code, 'line:10'));
+    await expect(typeOf(loop)).resolves.toBe('sequence');
+    expect(loop).not.toContain('loop');
   });
 });

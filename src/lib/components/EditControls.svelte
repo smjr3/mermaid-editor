@@ -1,5 +1,6 @@
 <script lang="ts">
   import Card from '$/components/Card/Card.svelte';
+  import IconChooser from '$/components/IconChooser.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
@@ -12,17 +13,25 @@
     editKind,
     editableEdges,
     editableObjects,
+    flowNodeDetails,
+    moveNodeToLane,
+    moveService,
     renameObject,
     reverseEdge,
+    serviceDetails,
     setEdgeHead,
     setEdgeLabel,
     setEdgeStyle,
+    setNodeIcon,
+    setNodeShape,
+    setServiceIcon,
     type EdgeStyle,
     type EditEdge,
     type EditEdges,
     type EditKind,
     type EditObjects
   } from '$/util/diagramModify';
+  import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
 
@@ -62,6 +71,20 @@
   // The fields start from what is there (writable: typing replaces it until the choice changes).
   let newName = $derived(selectedItem?.label.trim() ?? '');
   let edgeLabel = $derived(edge?.label ?? '');
+
+  // A flowchart node's shape, lane and icon; an architecture service's icon and group.
+  const node = $derived(
+    kind === 'flowchart' && selectedItem && !selectedItem.group
+      ? flowNodeDetails(inputState.code, selectedItem.id)
+      : undefined
+  );
+  const service = $derived(
+    kind === 'architecture' && selectedItem && !selectedItem.group
+      ? serviceDetails(inputState.code, selectedItem.id)
+      : undefined
+  );
+  const groups = $derived(items.filter((item) => item.group && item.id !== selected));
+  let moveTo = $derived(node?.lane ?? service?.group ?? '');
 
   // A click in the diagram picks the object or arrow under it (see pickedObject, pickedEdge).
   $effect(() => {
@@ -124,6 +147,27 @@
       t('edit.deleted', { name: selectedItem.label.trim() })
     );
   };
+  const onShape = (shape: NodeShape) => {
+    if (!selectedItem) return;
+    void apply(
+      setNodeShape(inputState.code, selectedItem.id, shape),
+      t('edit.changed', { name: selectedItem.label.trim() })
+    );
+  };
+  const onMove = () => {
+    if (!selectedItem) return;
+    const next = service
+      ? moveService(inputState.code, selectedItem.id, moveTo)
+      : moveNodeToLane(inputState.code, selectedItem.id, moveTo);
+    void apply(next, t('edit.moved', { name: selectedItem.label.trim() }));
+  };
+  const onIcon = (icon: string) => {
+    if (!selectedItem) return;
+    const next = service
+      ? setServiceIcon(inputState.code, selectedItem.id, icon)
+      : setNodeIcon(inputState.code, selectedItem.id, icon);
+    void apply(next, t('edit.changed', { name: selectedItem.label.trim() }));
+  };
   const onEdge = (change: (kind: EditKind, edge: EditEdge) => string) => {
     if (!kind || !edge) return;
     void apply(change(kind, edge), t('edit.updated'));
@@ -174,6 +218,66 @@
                   onkeydown={(event) => event.key === 'Enter' && onRename()} />
                 <Button size="sm" class="h-9" data-testid={TID.editRenameButton} onclick={onRename}
                   >{t('edit.rename')}</Button>
+              </div>
+            {/if}
+            {#if node && node.shape !== undefined && !node.icon}
+              <div class="flex items-center gap-1">
+                <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('edit.shape')}</span>
+                <select
+                  value={node.shape}
+                  aria-label={t('edit.shape')}
+                  data-testid={TID.editShapeSelect}
+                  class={selectClass}
+                  onchange={(event) => onShape(event.currentTarget.value as NodeShape)}>
+                  {#if node.shape === 'other'}
+                    <option value="other" disabled>{t('edit.shapeOther')}</option>
+                  {/if}
+                  {#each nodeShapes as option (option)}
+                    <option value={option}>{t(`add.shape.${option}`)}</option>
+                  {/each}
+                </select>
+              </div>
+            {:else if node?.icon}
+              <p class="text-xs text-muted-foreground">{t('edit.shapeIcon')}</p>
+            {/if}
+            {#if node || service}
+              <div class="flex items-center gap-1">
+                <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('edit.moveTo')}</span>
+                <select
+                  bind:value={moveTo}
+                  aria-label={t('edit.moveTo')}
+                  data-testid={TID.editMoveSelect}
+                  class={selectClass}>
+                  <option value="">{t(service ? 'edit.noGroup' : 'edit.noLane')}</option>
+                  {#each groups as group (group.id)}
+                    <option value={group.id}>{shown(group.label, group.id)}</option>
+                  {/each}
+                </select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  class="h-9"
+                  data-testid={TID.editMoveButton}
+                  onclick={onMove}>{t('edit.moveButton')}</Button>
+              </div>
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-1">
+                  <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('edit.icon')}</span>
+                  <span class="min-w-0 flex-1 truncate text-xs" data-testid={TID.editIconCurrent}
+                    >{(node?.icon ?? service?.icon)
+                      ? t('edit.iconCurrent', { icon: node?.icon ?? service?.icon ?? '' })
+                      : t('edit.iconNone')}</span>
+                  {#if node?.icon}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid={TID.editIconClear}
+                      onclick={() => onIcon('')}>{t('edit.iconClear')}</Button>
+                  {/if}
+                </div>
+                {#key selected}
+                  <IconChooser standard={!!service} onpick={onIcon} />
+                {/key}
               </div>
             {/if}
             {#if selectedItem.noDelete}

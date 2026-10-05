@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { TID } from '$/constants';
+  import { defaultState, TID } from '$/constants';
   import { t } from '$/i18n';
   import Card from '$/components/Card/Card.svelte';
   import { Button, buttonVariants } from '$/components/ui/button';
   import * as Popover from '$/components/ui/popover';
+  import NewDiagram from '$/components/NewDiagram.svelte';
   import { businessTemplatesName, localSamples } from '$/util/localSamples';
   import { getSampleDiagrams, type SampleExample } from '$/util/mermaid';
   import { updateCode } from '$lib/util/state.svelte';
@@ -46,6 +47,11 @@
   };
 
   const samples = { ...getSampleDiagrams(), ...extras, ...localSamples };
+  // Local: what "New diagram" may replace without asking.
+  const sampleCodes = [
+    defaultState.code,
+    ...Object.values(samples).flatMap((list) => list.map(({ code }) => code))
+  ];
 
   const loadSampleDiagram = (diagramType: string, example: SampleExample): void => {
     updateCode(example.code, {
@@ -80,6 +86,7 @@
   isOpen
   isStackable
   icon={{ component: ShapesIcon }}>
+  <NewDiagram samples={sampleCodes} />
   <div class="flex h-fit max-h-52 flex-wrap gap-2 overflow-y-auto p-2">
     {#each diagramOrder as sample (sample)}
       {@const examples = samples[sample]}

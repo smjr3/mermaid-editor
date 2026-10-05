@@ -17,15 +17,22 @@ import {
   deleteObject,
   editableEdges,
   editableObjects,
+  flowNodeDetails,
+  moveNodeToLane,
+  moveService,
   renameObject,
   reverseEdge,
   setEdgeHead,
   setEdgeLabel,
-  setEdgeStyle
+  setEdgeStyle,
+  setNodeIcon,
+  setNodeShape,
+  setServiceIcon
 } from './diagramModify';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
 import { localSamples } from './localSamples';
+import { starter, starterKinds } from './newDiagram';
 import { architectureParts, diagramEdges, diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 
@@ -40,7 +47,12 @@ const samples = [
   ),
   ...Object.entries(localSamples).flatMap(([name, list]) =>
     list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
-  )
+  ),
+  // The New diagram starters, with a title and a direction where they take one.
+  ...starterKinds.map(({ id }) => ({
+    code: starter(id, { direction: 'LR', title: '新しい図' }),
+    name: `New diagram: ${id}`
+  }))
 ];
 
 const typeOf = async (code: string) => (await mermaid.parse(code)).diagramType;
@@ -173,6 +185,48 @@ describe.each(samples)('$name', ({ code }) => {
         if (object.line === undefined && !keepContents) {
           const left = (await editableObjects(deleted))?.items.map(({ id }) => id) ?? [];
           expect(left, `delete ${object.id}`).not.toContain(object.id);
+        }
+      }
+    }
+  }, 120_000);
+
+  it('keeps parsing, as the same type and with the same arrows, after each node shape, icon and lane change of its Edit card', async () => {
+    const objects = await editableObjects(code);
+    if (objects?.kind !== 'flowchart' && objects?.kind !== 'architecture') return;
+    const type = await typeOf(code);
+    const arrows = async (text: string) =>
+      (await diagramEdges(text)).map(({ label }) => label).sort();
+    const before = await arrows(code);
+    const groups = objects.items.filter((item) => item.group).map(({ id }) => id);
+    for (const object of objects.items.filter((item) => !item.group && !item.noRename)) {
+      const edits: [string, string | undefined][] =
+        objects.kind === 'flowchart'
+          ? [
+              ['shape', setNodeShape(code, object.id, 'rounded')],
+              ['icon', setNodeIcon(code, object.id, 'tabler:user')],
+              ['no lane', moveNodeToLane(code, object.id, '')],
+              ...groups.map((lane): [string, string | undefined] => [
+                `lane ${lane}`,
+                moveNodeToLane(code, object.id, lane)
+              ])
+            ]
+          : [
+              ['icon', setServiceIcon(code, object.id, 'logos:aws-lambda')],
+              ['no group', moveService(code, object.id, '')],
+              ...groups.map((group): [string, string | undefined] => [
+                `group ${group}`,
+                moveService(code, object.id, group)
+              ])
+            ];
+      for (const [name, edited] of edits) {
+        if (edited === undefined) continue;
+        const why = `${name} ${object.id}`;
+        await expect(typeOf(edited), why).resolves.toBe(type);
+        if (objects.kind === 'flowchart') {
+          expect(await arrows(edited), why).toEqual(before);
+          if (name.startsWith('lane ')) {
+            expect(flowNodeDetails(edited, object.id).lane, why).toBe(name.slice(5));
+          }
         }
       }
     }

@@ -19,6 +19,22 @@ mermaid.registerIconPacks([...iconPacks, ...remoteIconPacks(env.iconPacks)]);
 const storedIconPacks = registerStoredIconPacks();
 const init = mermaid.registerExternalDiagrams([zenuml]);
 
+// Local: mermaid keeps a diagram's title in one store shared by every diagram, and each
+// parse clears it. mermaid.parse and mermaid.render take turns in mermaid's own queue,
+// but getDiagramFromText (which the cards use to read a diagram's parts) does not, so
+// a card reading the new code while the view rendered it could drop the title from the
+// picture. Renders and those reads take turns here.
+let turn: Promise<unknown> = Promise.resolve();
+const inTurn = <T>(task: () => Promise<T>): Promise<T> => {
+  const run = turn.then(task, task);
+  turn = run.catch(() => undefined);
+  return run;
+};
+
+/** mermaid's parsed diagram (and its database), read in turn with renders. */
+export const diagramFromText = (code: string) =>
+  inTurn(() => mermaid.mermaidAPI.getDiagramFromText(code));
+
 export const render = async (
   config: MermaidConfig,
   code: string,
@@ -30,7 +46,7 @@ export const render = async (
   // Should be able to call this multiple times without any issues.
   // Local: brighter lines in dark themes (darkLines.ts).
   mermaid.initialize(withVisibleLines(config));
-  const result = await mermaid.render(id, code);
+  const result = await inTurn(() => mermaid.render(id, code));
   // Local: keep architecture edges from running through service labels (architectureLabels.ts),
   // and keep a light-themed diagram readable on the dark site (darkLines.ts).
   const themeBackground = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
@@ -183,7 +199,7 @@ export const diagramObjects = memoByCode(
   async (code: string): Promise<DiagramObjects | undefined> => {
     try {
       await mermaid.parse(code);
-      const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+      const diagram = await diagramFromText(code);
       const found = extractors[diagram.type]?.(diagram.db as Db);
       if (!found) return undefined;
       const seen = new Set<string>();
@@ -217,7 +233,7 @@ export interface DiagramEdge {
 export const diagramEdges = memoByCode(async (code: string): Promise<DiagramEdge[]> => {
   try {
     await mermaid.parse(code);
-    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+    const diagram = await diagramFromText(code);
     if (extractors[diagram.type] !== extractors.flowchart) return [];
     const db = diagram.db as Db;
     const vertices = new Map(entries(read(db, 'getVertices')));
@@ -240,7 +256,7 @@ export const architectureParts = memoByCode(
   async (code: string): Promise<{ groups: DiagramObject[]; services: DiagramObject[] }> => {
     try {
       await mermaid.parse(code);
-      const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+      const diagram = await diagramFromText(code);
       if (diagram.type !== 'architecture') return { groups: [], services: [] };
       const db = diagram.db as Db;
       const parts = (name: string) =>

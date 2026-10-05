@@ -25,6 +25,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
+        '"New diagram…" at the top of Samples: choose a type (each has a one-line description), a title and a direction, and press Create for a small starter to grow with Add and change with Edit.',
         'Samples: pick a diagram type to load a ready-made example to edit; 業務テンプレート holds Japanese business templates (approval flow, swimlanes, gantt, org chart, …).',
         'Add: type a name and press a button to add a lane, node, participant, task, … without writing the syntax.',
         'The Docs tab opens the mermaid documentation for the kind of diagram you are writing.'
@@ -36,7 +37,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Works for flowcharts, swimlanes, architecture, sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4 and block diagrams.',
         'Choose where it goes (lane, group, section, column, …), its shape, and what it is joined from; "Connect" joins two existing shapes.',
-        'What you just added becomes the next "from", so a flow can be built step by step.'
+        'What you just added becomes the next "from", so a flow can be built step by step.',
+        'Sequence diagrams also take a note over or beside participants, and an empty "if" (alt), "repeat" (loop) or "optional" (opt) block after a chosen message, to fill in the code.'
       ],
       title: 'Adding shapes'
     },
@@ -45,6 +47,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Edit: choose a shape (or click it in the picture) to change its text or delete it with every arrow that touches it; a lane or topic can go with or without what is inside.',
         'Choose an arrow (or click it) to change its label, turn it round, draw it solid, dotted or thick, with or without an arrowhead, or delete it.',
+        'Flowchart and swimlane nodes: change the shape, move the node to another lane (or out of every lane; its arrows stay), and give it an icon by searching for one or remove it. Architecture services: change the icon, or move the service to another group.',
         'A change that would break the diagram is not made; the card says so instead.'
       ],
       title: 'Changing and deleting'
@@ -54,7 +57,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Direction: top to bottom or left to right; "Fit to view" picks the one that shows larger.',
         'Layout engine: Standard, or ELK for compact layouts of large diagrams.',
-        'Spacing: compact, normal or wide.'
+        'Spacing: compact, normal or wide.',
+        'Title: shown above flowcharts, swimlanes, sequence, state, class, ER, gantt, pie, timeline and C4 diagrams; mindmaps, kanban, architecture and block diagrams show none.'
       ],
       title: 'Layout'
     },
@@ -121,6 +125,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
+        '「サンプル図」の上の「新しい図を作る…」で、図の種類（それぞれ一行の説明付き）・タイトル・向きを選んで「作成」を押すと、小さなひな形ができます。「追加」で要素を足し、「編集」で変えていきます。',
         '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。「業務テンプレート」には稟議・承認フロー、スイムレーン、工程表、組織図などの日本語のひな形があります。',
         '「追加」で名前を入れてボタンを押すと、レーン・ノード・登場人物・タスクなどを書き方を知らなくても足せます。',
         '「ドキュメント」タブで、今書いている図の書き方（Mermaid公式）を開けます。'
@@ -132,7 +137,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'フローチャート・スイムレーン・アーキテクチャ・シーケンス・状態・クラス・ER・マインドマップ・ガント・円グラフ・カンバン・タイムライン・C4・ブロック図で使えます。',
         '入れる場所（レーン・グループ・セクション・列など）、形、つなぐ元を選べます。「つなぐ」で、ある2つの図形の間に矢印を引けます。',
-        '追加した直後のものが次の「つなぐ元」になるので、流れを順に作れます。'
+        '追加した直後のものが次の「つなぐ元」になるので、流れを順に作れます。',
+        'シーケンス図では、登場人物の上や横に置くノートと、選んだメッセージの後に入れる空の枠（条件分岐 alt・繰り返し loop・任意 opt）も追加できます。中身はコードで書き足します。'
       ],
       title: '要素の追加'
     },
@@ -141,6 +147,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         '「編集」で図形を選ぶ（図をクリックしても選べます）と、表示名を変えたり、つながる矢印ごと削除したりできます。レーンやトピックは中身ごと、または中身を残して削除できます。',
         '矢印を選ぶ（クリックでも可）と、ラベルの変更、向きの反転、実線・点線・太線や矢じりの有無の切り替え、削除ができます。',
+        'フローチャートとスイムレーンのノードは、形の変更、別のレーンへの移動（どのレーンにも入れないことも可。矢印はそのまま）、アイコンの検索・設定と取り外しができます。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
         '図が壊れる変更は行われず、カードにその旨が表示されます。'
       ],
       title: '変更と削除'
@@ -150,7 +157,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         '向き：上→下 か 左→右。「画面に合わせる」で大きく表示できる向きを自動で選びます。',
         '配置方式：標準 か ELK（大きな図を詰めて配置）。',
-        '間隔：詰める・標準・広く。'
+        '間隔：詰める・標準・広く。',
+        'タイトル：フローチャート・スイムレーン・シーケンス・状態・クラス・ER・ガント・円グラフ・タイムライン・C4 の図の上に表示されます。マインドマップ・カンバン・アーキテクチャ・ブロック図には表示されません。'
       ],
       title: 'レイアウト'
     },

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **213**.
+  every locally changed path — currently **215**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -79,7 +79,7 @@ checks it renders; the all-diagram checks cover them too.
 used, leaving labels and messages alone (`mermaidRename.ts`). The config tab has a "Reset
 config" button for a config that leaves every render failing. With AI features off, the
 editor no longer shows the AI gutter button, which used to open an empty zone that could not be
-closed. On desktop the code, the diagram and the tools are three fixed panes with visible dividers
+closed. On desktop the tools, the diagram and the code are three fixed panes with visible dividers (swappable)
 instead of floating cards (see "Three panes and one toolbar" below). Each has an e2e test; see `UPSTREAM.md` → "Editor, layout and icon additions".
 
 **Icons (0.2.0)** (`ICONS.md`). Diagrams can name icons as `prefix:name` from twelve bundled OSS
@@ -267,25 +267,54 @@ the diagram is loaded, so opening a shared link offers no step back to what the 
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
 **Three panes and one toolbar (unreleased, after 0.2.1).** On desktop (640px and wider) the editor is three panes:
-the code on the left (code and config tabs, undo/redo, reset config, docs), the diagram in the
-centre, and the tools on the right (layout, add, edit, colours, icons, samples, actions, in their
-own scrolling column), about 25% / 50% / 25% by default. Each divider drags, and the sizes are
-remembered per browser (paneforge `autoSaveId`; each pane has an `id`/`order`, so the layout with
-the history column open is remembered separately). Both side panes collapse on their own: the
-button in the code header folds the code to a slim left rail (code, config), the button in the
-tools header ("ツール") folds the tools to a slim right rail (one icon per card); a rail icon expands
-its pane and opens that section. Someone who never writes code folds the code away and works with
-the diagram and the tools; someone who only writes code folds the tools away. The old "Hide the
-tools" bar under the editor and its `editorFocus` setting are gone — the tools pane's own collapse
-replaces them. When the code pane is narrow (under 30rem) the buttons in its header show icons
-only, so the collapse button stays in view at 1024px. Upstream's three floating toolbars over the
-drawing are replaced by one bar across the top of the diagram pane (`DiagramToolbar.svelte`): zoom
-out, zoom in, reset, full screen; hand-drawn and grid; then, at the right end, light/dark, the
-language button, privacy (only when the deployment shows it) and the mermaid version as plain
-text. There is no auto-sync toggle: upstream removed it before this fork's base. It fits on one row
-at 1024px. On phones (under 640px) the layout is unchanged — the editor with the tool cards under
-it, swiped against the diagram — except that the same bar sits above the diagram, without the zoom
-buttons, as before. `tests/toolsPane.spec.ts`, `tests/editorPanes.spec.ts`, `tests/fixedLayout.spec.ts`.
+by default the tools on the left (layout, add, edit, colours, icons, samples, actions), the diagram
+in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
+people start from the left, and most of this fork's users build diagrams with the tools, so the
+code comes last. The ⇄ button in the tools header ("パネルの並びを入れ替える") swaps to mermaid.live's
+code | diagram | tools; the choice is kept per browser (`localStorage` `paneOrder`,
+`src/lib/util/toolsPane.svelte.ts`). The tools take about 32% of a window 1280px or wider (25%
+below), the code about 22% (25%). Each divider drags, and the sizes are remembered per browser
+(paneforge `autoSaveId`), separately for each order (`liveEditorToolsLeft`, and `liveEditor` for
+code-left, which keeps the sizes saved before the swap existed), so one order's widths never
+apply to the other; each pane has an `id`/`order`, so the layout with the history column open is
+remembered separately too. Swapping remounts the panes; the Monaco models get a path per editor
+instance (`DesktopEditor.svelte`) and the pan/zoom observer ignores a removed diagram
+(`panZoom.ts`), which the remount would otherwise trip over. Both side panes collapse on their
+own to a slim rail on their own side: the button in the code header folds the code to a rail
+(code, config), the button in the tools header ("ツール") folds the tools to a rail with one icon
+per card; a rail icon expands its pane and opens that section. Someone who never writes code
+folds the code away and works with the diagram and the tools; someone who only writes code folds
+the tools away. The old "Hide the tools" bar under the editor and its `editorFocus` setting are
+gone — the tools pane's own collapse replaces them.
+
+The tool cards in the desktop tools pane are an **accordion**: one card open at a time
+(`toolsAccordion` in `toolsPane.svelte.ts`, used by `Card.svelte` for the stackable cards that
+have a test id), the closed ones one-line headers, the open one filling the rest of the pane's
+height and the only thing that scrolls — the pane itself never shows a second scrollbar. Samples
+is open on a first visit, as upstream's card is. The boxed inner scroll areas (icon results and
+browse grids, the edit card's icon results, the New diagram type list, the sample buttons) keep
+their `max-h-*` on phones and drop it from `sm:` up, so on desktop they use the card's height; the
+sample types are a grid that fits the width (truncated names carry a tooltip), with "新しい図を作る…"
+first. The forms are styled from the page (`+page.svelte`, scoped to `.tools-pane`, written against
+the cards' existing markup so the cards' own logic is untouched): controls at 2.25rem (h-9), a 0.5rem
+gap, a little more space above each section title, and, where the pane is 25rem or wider (a third
+of a 1280px window), the label-and-select rows of a section two to a row with each label above its
+select. Checked at 1280×800 and 1920×1080: new diagram → three nodes → connect → colour one →
+PNG needs no page scroll and at most one scroll inside the open card (at 1280×800, to reach
+"作成" in New diagram). On phones the cards stack under the editor and open independently as before.
+
+When the code pane is narrow (under 30rem) the buttons in its header show icons only, so the
+collapse button stays in view at 1024px. Upstream's three floating toolbars over the drawing are
+replaced by one bar across the top of the diagram pane (`DiagramToolbar.svelte`): zoom out, zoom
+in, reset view (the frame icon, "図を画面に収める"), open the diagram alone in a new tab (the
+`open-in-new` icon — the earlier diagonal open-in-full arrows read as "fit to screen" next to
+reset); hand-drawn and grid; then, at the right end, light/dark, the language button, privacy (only
+when the deployment shows it) and the mermaid version as plain text. There is no auto-sync toggle:
+upstream removed it before this fork's base. It fits on one row at 1024px. On phones (under 640px)
+the layout is unchanged — the editor with the tool cards under it, swiped against the diagram —
+except that the same bar sits above the diagram, without the zoom buttons, as before.
+`tests/toolsPane.spec.ts` (order, swap and reload, rails, accordion), `tests/editorPanes.spec.ts`,
+`tests/fixedLayout.spec.ts`.
 
 **Dark mode (0.2.0).** In dark mode, the dark themes
 render with near-white lines unless the user set `lineColor`, and a diagram in a light theme
@@ -372,7 +401,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **550 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **551 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

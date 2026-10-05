@@ -3,9 +3,9 @@ import { nextLocale, resolveLocale } from '$/i18n/translate';
 import type { Page } from '@playwright/test';
 import { EditorPage, expect, test } from './test';
 
-// Desktop layout: code (left), diagram (centre) and tools (right) are three panes;
-// each side pane collapses to an icon rail. One toolbar runs across the top of the
-// diagram pane.
+// Desktop layout: tools (left), diagram (centre) and code (right) are three panes, or
+// code | diagram | tools after "swap panes"; each side pane collapses to an icon rail on
+// its own side. One toolbar runs across the top of the diagram pane.
 const urlFor = (code: string) =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid: '{}' })).toString('base64')}`;
 const flowchart = urlFor('flowchart TD\n  A[Start] --> B[End]');
@@ -20,32 +20,37 @@ const stored = (page: Page) =>
       }
   );
 
-/** The tools pane's stored share (%) in each saved three-pane layout. */
+/** The tools pane's stored share (%) in each saved three-pane layout (tools first). */
 const storedToolsShares = (page: Page) =>
   page.evaluate(() => {
-    const saved = JSON.parse(localStorage.getItem('paneforge:liveEditor') ?? '{}') as Record<
-      string,
-      { layout: number[] }
-    >;
+    const saved = JSON.parse(
+      localStorage.getItem('paneforge:liveEditorToolsLeft') ?? '{}'
+    ) as Record<string, { layout: number[] }>;
     return Object.values(saved)
       .filter(({ layout }) => layout.length === 3)
-      .map(({ layout }) => Math.round(layout[2]));
+      .map(({ layout }) => Math.round(layout[0]));
   });
+
+const boxOf = async (page: Page, testId: string) => {
+  const box = await page.getByTestId(testId).boundingBox();
+  if (!box) throw new Error(`${testId} missing`);
+  return box;
+};
 
 test.describe('Tools pane', () => {
   test.use({ viewport: { height: 900, width: 1400 } });
 
-  test('sits right of the diagram at about a quarter of the width', async ({ editPage, page }) => {
+  test('sits left of the diagram at about a third of the width', async ({ editPage, page }) => {
     await editPage.start(flowchart);
     const tools = await page.getByTestId(TID.toolsPane).boundingBox();
     const view = await editPage.view.boundingBox();
     const editor = await editPage.editor.boundingBox();
     if (!tools || !view || !editor) throw new Error('layout boxes missing');
-    expect(editor.x).toBeLessThan(view.x);
-    expect(view.x + view.width).toBeLessThanOrEqual(tools.x + 1);
-    expect(tools.x + tools.width).toBeGreaterThanOrEqual(1399);
-    expect(tools.width).toBeGreaterThan(1400 * 0.2);
-    expect(tools.width).toBeLessThan(1400 * 0.3);
+    expect(tools.x).toBeLessThan(1);
+    expect(tools.x + tools.width).toBeLessThanOrEqual(view.x + 1);
+    expect(editor.x).toBeGreaterThan(view.x + view.width - 1);
+    expect(tools.width).toBeGreaterThan(1400 * 0.28);
+    expect(tools.width).toBeLessThan(1400 * 0.36);
     // The tool cards live in the tools pane, not under the code.
     await expect(page.getByTestId(TID.toolsPane).getByTestId(TID.layoutCard)).toBeVisible();
     await expect(page.getByTestId(TID.toolsPane).getByTestId(TID.actionsCard)).toBeAttached();
@@ -63,6 +68,8 @@ test.describe('Tools pane', () => {
     await page.getByTestId(TID.toolsPaneToggle).click();
     await expect.poll(paneWidth).toBeLessThan(5);
     await expect(rail).toBeVisible();
+    // The rail stays on the tools' side: the left edge.
+    expect((await boxOf(page, TID.toolsRail)).x).toBeLessThan(1);
     await editPage.checkTextInView('Start');
     // The code pane is untouched.
     await expect(page.getByTestId(TID.editorRail)).toBeHidden();
@@ -104,18 +111,18 @@ test.describe('Tools pane', () => {
     const pane = page.getByTestId(TID.toolsPane);
     const before = (await pane.boundingBox())?.width ?? 0;
 
-    // Drag the divider left of the tools pane 150px further left.
-    const handle = page.locator('[data-pane-resizer]').last();
+    // Drag the divider right of the tools pane 150px further right.
+    const handle = page.locator('[data-pane-resizer]').first();
     const box = await handle.boundingBox();
     if (!box) throw new Error('divider missing');
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
-    await page.mouse.move(box.x - 150, box.y + box.height / 2, { steps: 10 });
+    await page.mouse.move(box.x + 150, box.y + box.height / 2, { steps: 10 });
     await page.mouse.up();
     const widened = (await pane.boundingBox())?.width ?? 0;
     expect(widened).toBeGreaterThan(before + 100);
     // paneforge writes the sizes after a short debounce; reload only once they are stored.
-    await expect.poll(async () => Math.max(...(await storedToolsShares(page)))).toBeGreaterThan(30);
+    await expect.poll(async () => Math.max(...(await storedToolsShares(page)))).toBeGreaterThan(38);
 
     await page.reload();
     await editPage.checkTextInView('Start');
@@ -130,6 +137,91 @@ test.describe('Tools pane', () => {
     await page.reload();
     await editPage.checkTextInView('Start');
     await expect(page.getByTestId(TID.toolsRail)).toBeVisible();
+  });
+
+  test('swaps to code | diagram | tools, kept across a reload, rails on their sides', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(flowchart);
+    await page.getByTestId(TID.swapPanesButton).click();
+    const inCodeLeftOrder = async () => {
+      const tools = await boxOf(page, TID.toolsPane);
+      const view = await editPage.view.boundingBox();
+      const editor = await editPage.editor.boundingBox();
+      if (!view || !editor) throw new Error('layout boxes missing');
+      return editor.x < view.x && view.x + view.width <= tools.x + 1;
+    };
+    await expect.poll(inCodeLeftOrder).toBe(true);
+    expect(await page.evaluate(() => localStorage.getItem('paneOrder'))).toBe('"code-left"');
+
+    await page.reload();
+    await editPage.checkTextInView('Start');
+    await expect.poll(inCodeLeftOrder).toBe(true);
+
+    // Both collapsed: the code rail on the left, the tools rail on the right.
+    await page.getByTestId(TID.editorPaneToggle).click();
+    await page.getByTestId(TID.toolsPaneToggle).click();
+    const codeRail = await boxOf(page, TID.editorRail);
+    const toolsRail = await boxOf(page, TID.toolsRail);
+    expect(codeRail.x).toBeLessThan(1);
+    expect(toolsRail.x + toolsRail.width).toBeGreaterThanOrEqual(1399);
+    await editPage.checkTextInView('Start');
+
+    // Back to the default order: the rails change sides with their panes.
+    await page.getByTestId(TID.toolsRailExpand).click();
+    await page.getByTestId(TID.swapPanesButton).click();
+    await expect.poll(async () => (await boxOf(page, TID.toolsPane)).x).toBeLessThan(1);
+    await page.getByTestId(TID.toolsPaneToggle).click();
+    await expect.poll(async () => (await boxOf(page, TID.toolsRail)).x).toBeLessThan(1);
+    // The default order keeps its own sizes: the code pane was never collapsed in it.
+    await expect(page.getByTestId(TID.editorRail)).toBeHidden();
+    await expect(editPage.editor).toBeVisible();
+  });
+
+  test('opens one card at a time, filling the pane', async ({ editPage, page }) => {
+    await editPage.start(flowchart);
+    const pane = page.getByTestId(TID.toolsPane);
+    const openCards = pane.locator('.card.isOpen');
+    const card = (testId: string) =>
+      pane.locator('.card').filter({ has: page.getByTestId(testId) });
+
+    await page.getByTestId(TID.addCard).click();
+    await expect(openCards).toHaveCount(1);
+    await expect(card(TID.addCard)).toHaveClass(/isOpen/);
+    await page.getByTestId(TID.colorsCard).click();
+    await expect(openCards).toHaveCount(1);
+    await expect(card(TID.colorsCard)).toHaveClass(/isOpen/);
+    await expect(card(TID.addCard)).not.toHaveClass(/isOpen/);
+
+    // The open card takes the rest of the pane, so the closed headers after it sit at the
+    // bottom; only the open card scrolls, not the pane.
+    const paneBox = await boxOf(page, TID.toolsPane);
+    const lastBox = await card(TID.actionsCard).boundingBox();
+    if (!lastBox) throw new Error('card missing');
+    expect(lastBox.y + lastBox.height).toBeGreaterThan(paneBox.y + paneBox.height - 3);
+    const paneScrolls = await pane.evaluate((element) =>
+      [...element.querySelectorAll('*')]
+        .filter((node) => !node.closest('.card.isOpen'))
+        .some(
+          (node) =>
+            node.scrollHeight > node.clientHeight + 1 &&
+            getComputedStyle(node).overflowY !== 'visible' &&
+            getComputedStyle(node).overflowY !== 'hidden'
+        )
+    );
+    expect(paneScrolls).toBe(false);
+
+    // Clicking the open card's header closes it.
+    await page.getByTestId(TID.colorsCard).click();
+    await expect(openCards).toHaveCount(0);
+
+    // A rail icon opens its card, closing the others.
+    await page.getByTestId(TID.addCard).click();
+    await page.getByTestId(TID.toolsPaneToggle).click();
+    await page.getByTestId(`${TID.toolsRail}-icons`).click();
+    await expect(card(TID.iconPacksCard)).toHaveClass(/isOpen/);
+    await expect(openCards).toHaveCount(1);
   });
 });
 

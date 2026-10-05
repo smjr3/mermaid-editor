@@ -16,7 +16,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'basics',
       items: [
-        'Write the diagram on the left; the picture in the middle follows as you type. The tools (Layout, Add, Edit, Colours, Icons, Samples, Actions) are on the right.',
+        "The tools (Layout, Add, Edit, Colours, Icons, Samples, Actions) are on the left, the picture in the middle and the code on the right; the picture follows every change. Click a tool's title to open it — one opens at a time and gets the whole column.",
         'Drag the picture to move it, and use the wheel or the zoom buttons in the bar above it.',
         'Your work is kept in this browser; History (clock icon) brings back earlier versions.'
       ],
@@ -106,7 +106,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         'F2 on a name renames it everywhere in the diagram.',
-        'The button at the top of the code or of the tools folds that side to a row of icons; click an icon to open it again. Fold the code away if you only use the tools, or the tools if you only write code.',
+        'The button at the top of the code or of the tools folds that side to a row of icons; click an icon to open it again. Fold the code away if you only use the tools, or the tools if you only write code. The ⇄ button above the tools swaps the sides (code on the left, as on mermaid.live); this browser remembers it.',
         'The sun / moon button in the bar above the picture switches dark mode; the Config tab holds the mermaid settings.',
         'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
         'The undo / redo arrows above the code take back the last change, including what the Add, Colours and Layout cards wrote.'
@@ -118,7 +118,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'basics',
       items: [
-        '左にコードを書くと、中央の図がすぐに変わります。右側にはツール（レイアウト・追加・編集・色・アイコン・サンプル図・操作）があります。',
+        '左にツール（レイアウト・追加・編集・色・アイコン・サンプル図・操作）、中央に図、右にコードがあります。どこを変えても図はすぐに変わります。ツールは見出しを押すと開き、一度に一つだけ開いて列の高さいっぱいに使えます。',
         '図はドラッグで動かし、マウスホイールや図の上のバーのボタンで拡大・縮小できます。',
         '作業内容はこのブラウザに保存されます。時計のアイコン（履歴）で前の状態に戻せます。'
       ],
@@ -208,7 +208,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         '名前の上で F2 を押すと、図の中のその名前をまとめて変えられます。',
-        'コードやツールの上部のボタンで、その側をアイコンだけにたためます。アイコンを押すと元に戻ります。ツールだけ使うならコードを、コードだけ書くならツールをたたむと広く使えます。',
+        'コードやツールの上部のボタンで、その側をアイコンだけにたためます。アイコンを押すと元に戻ります。ツールだけ使うならコードを、コードだけ書くならツールをたたむと広く使えます。ツールの上の ⇄ ボタンで左右を入れ替えられます（mermaid.live と同じくコードを左に）。この設定はブラウザに記憶されます。',
         '図の上のバーにある太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
         'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
         'コードの上にある「元に戻す」「やり直す」の矢印で、直前の変更を取り消せます。「追加」「色」「レイアウト」で書き込んだ内容も戻せます。'

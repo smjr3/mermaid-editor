@@ -541,8 +541,8 @@ export const messages = {
     'new.title': 'New diagram',
     'new.type': 'Type',
     'notify.copyFailed': 'Failed to copy',
-    'panzoom.fullScreen': 'Full Screen',
-    'panzoom.resetView': 'Reset view',
+    'panzoom.fullScreen': 'Open the diagram alone in a new tab',
+    'panzoom.resetView': 'Fit the diagram back into view (reset zoom and position)',
     'panzoom.zoomIn': 'Zoom in',
     'panzoom.zoomOut': 'Zoom out',
     'preset.chooseExample': 'Choose a {sample} example',
@@ -601,6 +601,7 @@ export const messages = {
     'tools.hidePane': 'Hide the tools',
     'tools.rail': 'Tools',
     'tools.showPane': 'Show the tools',
+    'tools.swapPanes': 'Swap panes (tools and code change sides)',
     'tools.title': 'Tools'
   },
   ja: {
@@ -1131,8 +1132,8 @@ export const messages = {
     'new.title': '新しい図',
     'new.type': '図の種類',
     'notify.copyFailed': 'コピーに失敗しました',
-    'panzoom.fullScreen': '全画面',
-    'panzoom.resetView': '表示をリセット',
+    'panzoom.fullScreen': '図だけを新しいタブで表示',
+    'panzoom.resetView': '図を画面に収める（拡大と位置を元に戻す）',
     'panzoom.zoomIn': '拡大',
     'panzoom.zoomOut': '縮小',
     'preset.chooseExample': '{sample} の例を選ぶ',
@@ -1190,6 +1191,7 @@ export const messages = {
     'tools.hidePane': 'ツールを隠す',
     'tools.rail': 'ツール',
     'tools.showPane': 'ツールを表示',
+    'tools.swapPanes': 'パネルの並びを入れ替える（ツールとコードの左右）',
     'tools.title': 'ツール'
   }
 } as const;

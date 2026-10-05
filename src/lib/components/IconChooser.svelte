@@ -49,7 +49,8 @@
     <p class="text-xs text-muted-foreground">{t('edit.iconNoMatch')}</p>
   {/if}
   {#if results.length > 0}
-    <div class="grid max-h-36 grid-cols-8 gap-1 overflow-y-auto">
+    <div
+      class="grid max-h-36 grid-cols-[repeat(auto-fill,minmax(2.25rem,1fr))] gap-1 overflow-y-auto sm:max-h-none sm:overflow-visible">
       {#each results as match (match.id)}
         <button
           type="button"

@@ -38,6 +38,8 @@ test.describe('Check actions', () => {
     // Verify downloaded file is different for different diagrams
     await editPage.toggleSampleDiagrams();
     await editPage.loadSampleDiagram('Entity Relationship');
+    // One tool card is open at a time: the Samples card closed Actions.
+    await editPage.toggleActions();
 
     const secondPngSize = await editPage.checkAndDownloadPNG(20_000);
     const secondSvgSize = await editPage.downloadSVG(10_000);

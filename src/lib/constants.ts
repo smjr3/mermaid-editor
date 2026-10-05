@@ -159,6 +159,7 @@ export const TID = {
   resetViewButton: 'reset-view-button',
   roughToggle: 'rough-toggle',
   sampleDiagramsCard: 'sample-diagrams-card',
+  swapPanesButton: 'swap-panes-button',
   themeToggleButton: 'theme-toggle-button',
   toolsPane: 'tools-pane',
   toolsPaneToggle: 'tools-pane-toggle',

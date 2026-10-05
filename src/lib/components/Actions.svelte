@@ -284,7 +284,7 @@ ${stylesheet}${svgString}`);
   isStackable
   icon={{ component: DownloadIcon, class: 'rotate-180' }}>
   <div class="flex min-w-fit flex-col gap-2 p-2">
-    <div class="flex w-full items-center gap-2 py-2 whitespace-nowrap">
+    <div class="flex w-full flex-wrap items-center gap-2 py-2 whitespace-nowrap">
       {t('actions.pngSize')}
       <ToggleGroup.Root type="single" variant="outline" bind:value={imageSizeMode}>
         <ToggleGroup.Item value="auto">{t('actions.sizeAuto')}</ToggleGroup.Item>

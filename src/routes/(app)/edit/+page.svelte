@@ -23,6 +23,7 @@
   import Share from '$/components/Share.svelte';
   import { TID } from '$/constants';
   import ToolsBar from '$/components/ToolsBar.svelte';
+  import UndoRedoButtons from '$/components/UndoRedoButtons.svelte';
   import SyncRoughToolbar from '$/components/SyncRoughToolbar.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
@@ -36,7 +37,8 @@
   import { editorFocus } from '$/util/editorFocus.svelte';
   import { PanZoomState } from '$/util/panZoom';
   import { env } from '$/util/env';
-  import { validatedState, updateCodeStore, urls } from '$/util/state.svelte';
+  import { inputState, validatedState, updateCodeStore, urls } from '$/util/state.svelte';
+  import { codeHistory } from '$/util/undoStack.svelte';
   import { logEvent, logMermaidChartClick } from '$/util/stats';
   import { getContactSalesUrl, initHandler } from '$/util/util';
   import { onMount, tick } from 'svelte';
@@ -72,6 +74,8 @@
   onMount(async () => {
     showEditorChooser = shouldShowEditorChooser();
     await initHandler();
+    // Local: the loaded diagram is where undo starts; what the URL replaced is not a step back.
+    codeHistory.reset(inputState.code);
     window.addEventListener('appinstalled', () => {
       logEvent('pwaInstalled', { isMobile });
     });
@@ -195,6 +199,7 @@
               activeTabID={validatedState.current.editorMode}
               isClosable={false}>
               {#snippet actions()}
+                <UndoRedoButtons />
                 <ResetConfigButton />
                 <DiagramDocButton />
                 {#if !isMobile}

@@ -81,7 +81,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'F2 on a name renames it everywhere in the diagram.',
         'The button at the top of the editor folds the left side to icons; "Hide the tools" gives the code more room.',
         'The sun / moon button switches dark mode; the Config tab holds the mermaid settings.',
-        'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.'
+        'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
+        'The undo / redo arrows above the code take back the last change, including what the Add, Colours and Layout cards wrote.'
       ],
       title: 'Tips'
     }
@@ -155,7 +156,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '名前の上で F2 を押すと、図の中のその名前をまとめて変えられます。',
         'エディタ上部のボタンで左側をアイコンだけに、「ツールを隠す」でコードを広く使えます。',
         '太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
-        'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。'
+        'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
+        'コードの上にある「元に戻す」「やり直す」の矢印で、直前の変更を取り消せます。「追加」「色」「レイアウト」で書き込んだ内容も戻せます。'
       ],
       title: '便利な操作と困ったとき'
     }

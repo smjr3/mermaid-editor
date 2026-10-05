@@ -98,9 +98,11 @@ export const TID = {
   layoutMessage: 'layout-message',
   layoutSpacing: 'layout-spacing',
   localeToggleButton: 'locale-toggle-button',
+  redoButton: 'redo-button',
   resetConfigButton: 'reset-config-button',
   sampleDiagramsCard: 'sample-diagrams-card',
-  themeToggleButton: 'theme-toggle-button'
+  themeToggleButton: 'theme-toggle-button',
+  undoButton: 'undo-button'
 } as const;
 
 export const C = {

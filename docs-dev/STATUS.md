@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **178**.
+  every locally changed path — currently **182**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -168,6 +168,16 @@ has no id a `style` statement could name.
 header opens a short guide: the basics, starting a diagram, adding shapes, layout, colours, icons,
 export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the
 languages' sections and points in step. Update it when a tool changes.
+
+**Undo / redo** (`src/lib/util/undoStack.svelte.ts`). Two arrow buttons in the editor header step
+back and forward through the diagram code, for the user who does not know Ctrl+Z or whose change
+came from the Add, Colours or Layout card rather than the editor. The history records each distinct
+code value as it passes through the input state (typing settles into one entry after a 500 ms pause,
+100 entries kept), so it is the same for Monaco, CodeMirror and the cards and does not depend on
+either editor's own stack; an undo is applied through `updateCode` and is not itself recorded.
+The buttons are disabled when there is nothing to undo or redo, and the history starts afresh once
+the diagram is loaded, so opening a shared link offers no step back to what the browser held before.
+Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
 **Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
 column to a slim icon rail; each rail icon (code, config, layout, add, colours, icons, samples, actions)

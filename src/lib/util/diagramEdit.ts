@@ -52,7 +52,7 @@ export const addLane = (code: string, label: string): { code: string; id: string
 };
 
 /** The index of the `end` that closes the subgraph `id`, or -1. */
-const laneEnd = (lines: string[], id: string) => {
+export const laneEnd = (lines: string[], id: string) => {
   const start = lines.findIndex((line) => new RegExp(`^\\s*subgraph\\s+${id}\\b`).test(line));
   if (start === -1) return -1;
   let depth = 0;

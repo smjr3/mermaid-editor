@@ -72,13 +72,13 @@ const stripTags = (text: string) => {
   } while (text !== previous);
   return text;
 };
-const oneLine = (text: string) =>
+export const oneLine = (text: string) =>
   stripTags(text.replaceAll(/[\r\n]+/g, ' ').replaceAll(';', ',')).trim();
 // Sequence diagrams read `#…;` as an entity code and `#` + digits breaks the message.
-const sequenceText = (text: string) => oneLine(text).replaceAll('#', '#35;');
+export const sequenceText = (text: string) => oneLine(text).replaceAll('#', '#35;');
 const noQuotes = (text: string) => oneLine(text).replaceAll('"', "'");
 const noBrackets = (text: string) => oneLine(text).replaceAll(/[()[\]{}]/g, '');
-const indentOf = (line: string) => /^\s*/.exec(line)?.[0].length ?? 0;
+export const indentOf = (line: string) => /^\s*/.exec(line)?.[0].length ?? 0;
 const isContent = (line: string) => line.trim() !== '' && !line.trim().startsWith('%%');
 
 const need = (values: Values, ...keys: string[]) => keys.every((key) => values[key]);
@@ -91,7 +91,7 @@ const item = (id: string, label: string): DiagramObject => ({
 // ---- Indentation-based diagrams (mindmap, kanban) ----
 
 /** The index of the header line: the first content line past any front matter. */
-const headerIndex = (lines: string[]) => {
+export const headerIndex = (lines: string[]) => {
   let start = 0;
   if (lines[0]?.trim() === '---') {
     const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
@@ -102,7 +102,7 @@ const headerIndex = (lines: string[]) => {
 };
 
 /** The lines after the header that hold a node, with their indentation. */
-const nodeLines = (lines: string[]) => {
+export const nodeLines = (lines: string[]) => {
   const header = headerIndex(lines);
   return lines
     .map((line, index) => ({ index, indent: indentOf(line), line }))
@@ -113,7 +113,7 @@ const nodeLines = (lines: string[]) => {
 };
 
 /** The index after the last line of the block a node line starts. */
-const blockEnd = (lines: string[], start: number) => {
+export const blockEnd = (lines: string[], start: number) => {
   const indent = indentOf(lines[start]);
   let end = start + 1;
   for (let index = start + 1; index < lines.length; index++) {
@@ -124,7 +124,7 @@ const blockEnd = (lines: string[], start: number) => {
   return end;
 };
 
-const nodeLabel = (line: string) =>
+export const nodeLabel = (line: string) =>
   line
     .trim()
     .replace(/^[\w-]+(?=[([{)])/, '')

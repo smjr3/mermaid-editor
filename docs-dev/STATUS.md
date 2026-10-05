@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **187**.
+  every locally changed path — currently **191**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -169,6 +169,26 @@ though a `style` statement colours nothing on them, a C4 Deployment element not 
 is left as mermaid's own behaviour: `<`/`>` in a flowchart, class or ER label render as HTML
 (`x < 10` is fine), and `linkStyle` numbers shift when arrows are added above by hand.
 
+**Edit card (0.2.0)** (`src/lib/util/diagramModify.ts`, `EditControls.svelte`). Choose an object
+from a list or by clicking it in the diagram, then change the text it shows or delete it with every
+arrow, relationship, note and `style` line that refers to it; a lane, architecture group or mindmap
+topic can go with what is inside or leave it, moved out one level. Choose an arrow the same way,
+then change its label, turn it round (the two ends swap, the arrow text stays), draw it solid, dotted
+or thick, with or without an arrowhead, or delete it. Flowchart and swimlane statements go through a
+small tokenizer (`A[x] & B --> C -->|yes| D`): a node is taken out of its chain, one arrow of a chain
+is edited by splitting the chain in place, and `linkStyle N` statements are renumbered the way
+mermaid numbers arrows; the tokenizer's arrows are matched against mermaid's own list and the card
+refuses to edit arrows it cannot match. Objects: flowchart/swimlane nodes and lanes, states,
+classes, ER entities (through an alias), C4 elements, architecture services and groups (junctions
+have no text), sequence participants (an undeclared one is declared in its place so the order
+stays), mindmap topics (not the centre), kanban columns and cards, timeline periods and events.
+Arrows: flowchart/swimlane in full; state (label, reverse, delete), class (plus solid/dotted and
+arrowhead), ER (plus solid/dotted), sequence (plus solid/dotted; `+`/`-` activations stay paired),
+architecture (reverse, arrowhead, delete). Requirement, block, gantt, pie, git and the chart types
+have no edit forms. Every edit is applied only if mermaid still parses the result as the same
+diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
+every sample.
+
 The lists behind the Add and Colours cards come from mermaid's parse on every change; results
 are shared per code (`memoByCode`, `memo.ts`), so a large diagram is not parsed once per card. It
 cut the heaviest sample's all-diagram e2e from about 15 s to 9 s locally (it had begun timing out
@@ -177,7 +197,7 @@ Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a qu
 has no id a `style` statement could name.
 
 **How to use (0.2.0)** (`src/lib/util/helpContent.ts`). A "How to use" button in the editor's
-header opens a short guide: the basics, starting a diagram, adding shapes, layout, colours, icons,
+header opens a short guide: the basics, starting a diagram, adding shapes, changing and deleting, layout, colours, icons,
 export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the
 languages' sections and points in step. Update it when a tool changes.
 
@@ -192,7 +212,7 @@ the diagram is loaded, so opening a shared link offers no step back to what the 
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
 **Editor column and dark mode (0.2.0).** The button in the editor header collapses the editor
-column to a slim icon rail; each rail icon (code, config, layout, add, colours, icons, samples, actions)
+column to a slim icon rail; each rail icon (code, config, layout, add, edit, colours, icons, samples, actions)
 expands the column and opens that section. The bar above the tool cards hides them so the
 editor fills the column (remembered per browser); the cards are stacked — layout, icons,
 samples, actions — and scroll instead of squeezing the editor. In dark mode, the dark themes
@@ -248,7 +268,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **130 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **402 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

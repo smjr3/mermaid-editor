@@ -18,6 +18,7 @@ describe('helpContent', () => {
       'basics',
       'start',
       'add',
+      'edit',
       'layout',
       'colours',
       'icons',

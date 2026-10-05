@@ -417,6 +417,7 @@ export const messages = {
     'layout.spacing.compact': 'Compact',
     'layout.spacing.normal': 'Normal',
     'layout.spacing.wide': 'Wide',
+    'layout.spacingElkNote': 'ELK sets its own spacing. Choose Standard to change it here.',
     'layout.title': 'Layout',
     'locale.name': 'English',
     'menu.community': 'Community',
@@ -882,6 +883,8 @@ export const messages = {
     'layout.spacing.compact': '詰める',
     'layout.spacing.normal': '標準',
     'layout.spacing.wide': '広く',
+    'layout.spacingElkNote':
+      'ELK は間隔を自動で決めます。間隔を変えるには「標準」を選んでください。',
     'layout.title': 'レイアウト',
     'locale.name': '日本語',
     'menu.community': 'コミュニティ',

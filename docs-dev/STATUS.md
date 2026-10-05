@@ -101,7 +101,9 @@ of it the logo sets); a page loads only the ones its diagram names.
 "Layout" card adjusts what shapes a diagram instead: its direction (top-to-bottom, left-to-right,
 or "fit to view", which renders both and keeps the one that shows larger in the view, preferring
 left-to-right when they are close), the layout engine (standard or ELK) and the node/rank
-spacing. The direction is written into the code (`flowchart LR`, `direction LR` for state, class,
+spacing. mermaid 12's default `layout` is `elk`, and ELK ignores `nodeSpacing`/`rankSpacing`, so
+"Standard" is written as `layout: dagre`, ELK is the absence of the key, and the spacing buttons only
+change the picture under Standard (the card says so under ELK). The direction is written into the code (`flowchart LR`, `direction LR` for state, class,
 ER and requirement diagrams, the `swimlane-beta` header) and the rest into the config, so shared
 links and mermaid.live render the same. Diagram types without a direction (architecture, sequence,
 …) get an explanation instead of the buttons.

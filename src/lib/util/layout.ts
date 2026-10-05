@@ -150,15 +150,19 @@ export const getLayoutOptions = (config: string): LayoutOptions => {
     (Object.keys(spacingValues) as (keyof typeof spacingValues)[]).find(
       (key) => flowchart?.nodeSpacing === spacingValues[key].nodeSpacing
     ) ?? 'normal';
-  return { engine: parsed.layout === 'elk' ? 'elk' : 'dagre', spacing };
+  // mermaid 12's default layout is ELK, so only an explicit `dagre` selects the standard one.
+  return { engine: parsed.layout === 'dagre' ? 'dagre' : 'elk', spacing };
 };
 
 /** The config JSON with the layout engine and spacing set; unchanged when it does not parse. */
 export const setLayoutOptions = (config: string, { engine, spacing }: LayoutOptions): string => {
   const parsed = parse(config);
   if (!parsed) return config;
-  if (engine === 'elk') {
-    parsed.layout = 'elk';
+  // mermaid 12 renders with ELK unless told otherwise (`layout` defaults to 'elk'), and ELK
+  // ignores nodeSpacing/rankSpacing. So the standard engine has to be asked for by name,
+  // and ELK is the absence of the key.
+  if (engine === 'dagre') {
+    parsed.layout = 'dagre';
   } else {
     delete parsed.layout;
   }
@@ -170,7 +174,7 @@ export const setLayoutOptions = (config: string, { engine, spacing }: LayoutOpti
     );
     parsed[name] = spacing === 'normal' ? rest : { ...rest, ...spacingValues[spacing] };
   }
-  // Drop the sections left empty, so a normal layout leaves no trace in the config.
+  // Drop the sections left empty, so a normal spacing leaves no trace in the config.
   const result = Object.fromEntries(
     Object.entries(parsed).filter(
       ([name, value]) => !spacingSections.includes(name) || Object.keys(value as Config).length > 0

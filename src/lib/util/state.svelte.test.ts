@@ -15,6 +15,7 @@ import {
   validatedState,
   verifyState
 } from './state.svelte';
+import { applyThemePreset } from './themePresets';
 
 // Runs `body` inside an effect and reports how often the effect (re-)runs.
 const countEffectRuns = (body: () => void): { runs: () => number; stop: () => void } => {
@@ -169,6 +170,29 @@ describe('managed theme', () => {
     await settled();
     expect(themeOf()).toBe('forest');
   });
+
+  it(
+    'leaves a theme preset alone when the site switches mode, and manages again after standard',
+    slow,
+    async () => {
+      toggleDarkTheme(false);
+      updateCode(flowchart);
+      const neon = applyThemePreset('{"look":"neo"}', 'neon');
+      updateConfig(neon);
+      toggleDarkTheme(true);
+      await settled();
+      expect(inputState.mermaid).toBe(neon);
+      toggleDarkTheme(false);
+      await settled();
+      expect(inputState.mermaid).toBe(neon);
+      updateConfig(applyThemePreset(inputState.mermaid, 'standard'));
+      await waitForTheme('redux-color');
+      toggleDarkTheme(true);
+      await waitForTheme('redux-dark-color');
+      toggleDarkTheme(false);
+      await waitForTheme('redux-color');
+    }
+  );
 
   it('keeps the other config keys', slow, async () => {
     toggleDarkTheme(false);

@@ -10,6 +10,7 @@ import { registerStoredIconPacks } from './customIconStore';
 import { env } from './env';
 import { iconPacks } from './iconPacks';
 import { memoByCode } from './memo';
+import { presetBackground } from './themePresets';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
@@ -51,11 +52,18 @@ export const render = async (
   // and keep a light-themed diagram readable on the dark site (darkLines.ts).
   const themeBackground = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
   const background = typeof themeBackground === 'string' ? themeBackground : '';
+  // Local: a theme preset (themePresets.ts) paints its own background, in the view and
+  // in every export, instead of the dark site's grey backdrop.
+  const presetFill = presetBackground(config as Record<string, unknown>);
+  const svg = addLabelHalo(result.svg, id, background);
   return {
     ...result,
-    svg: addDarkSiteBackdrop(addLabelHalo(result.svg, id, background), id, background)
+    svg: presetFill ? withBackground(svg, id, presetFill) : addDarkSiteBackdrop(svg, id, background)
   };
 };
+
+const withBackground = (svg: string, id: string, color: string): string =>
+  svg.replace(/<svg\b[^>]*>/, (open) => `${open}<style>#${id}{background-color:${color};}</style>`);
 
 export const parse = async (code: string) => {
   return await mermaid.parse(code);

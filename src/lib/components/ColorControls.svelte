@@ -43,7 +43,14 @@
     type DiagramObjects
   } from '$/util/mermaid';
   import { persisted } from '$/util/persist.svelte';
+  import {
+    applyThemePreset,
+    presetOf,
+    themePresets,
+    type ThemePresetId
+  } from '$/util/themePresets';
   import { inputState, updateCode, updateConfig, validatedState } from '$/util/state.svelte';
+  import CheckIcon from '~icons/material-symbols/check-circle-rounded';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
 
   // Local: the theme, the line colour, and lane, object and edge colours
@@ -67,7 +74,19 @@
   );
   const remember = (color: string) => (recent.value = addRecent(recents, color));
 
-  const applyTheme = (next: ThemeChoice) => updateConfig(setTheme(inputState.mermaid, next));
+  // Local: a named theme (themePresets.ts) replaces the theme, its variables and CSS as a whole.
+  const preset = $derived(presetOf(inputState.mermaid));
+  const applyPreset = (id: ThemePresetId) => updateConfig(applyThemePreset(inputState.mermaid, id));
+  // A built-in theme over a named one drops the named one's variables and CSS first.
+  const applyTheme = (next: ThemeChoice) =>
+    updateConfig(
+      setTheme(
+        preset === 'standard'
+          ? inputState.mermaid
+          : applyThemePreset(inputState.mermaid, 'standard'),
+        next
+      )
+    );
   const applyLine = (next: string | undefined) =>
     updateConfig(setLineColor(inputState.mermaid, next));
   const applyCode = (code: string) => updateCode(code, { updateDiagram: true });
@@ -133,7 +152,9 @@
 
   const choice = (active: boolean) => (active ? 'default' : 'outline');
   const isCustomTheme = $derived(
-    theme !== 'auto' && !(themeChoices as readonly string[]).includes(theme)
+    preset === 'standard' &&
+      theme !== 'auto' &&
+      !(themeChoices as readonly string[]).includes(theme)
   );
   const same = (a: string | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
 </script>
@@ -255,17 +276,63 @@
   icon={{ component: PaletteIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
     <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('colors.theme')}</span>
+      <span class="font-semibold" id="theme-presets-label">{t('colors.presets')}</span>
+      <div
+        class="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1.5"
+        role="group"
+        aria-labelledby="theme-presets-label"
+        data-testid={TID.colorsThemePreset}>
+        {#each themePresets as entry (entry.id)}
+          {@const active = preset === entry.id}
+          <button
+            type="button"
+            aria-pressed={active}
+            data-active={active}
+            data-testid={`${TID.colorsThemePreset}-${entry.id}`}
+            title={t(entry.description)}
+            class={[
+              'flex min-w-0 flex-col gap-1 rounded-md border p-2 text-left transition-colors outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring',
+              active
+                ? 'border-sky-600 bg-sky-50 ring-2 ring-sky-600 dark:border-sky-400 dark:bg-sky-950/40 dark:ring-sky-400'
+                : 'border-border'
+            ]}
+            onclick={() => applyPreset(entry.id)}>
+            <span class="flex items-start justify-between gap-1">
+              <span class="min-w-0 text-xs leading-tight font-semibold break-words"
+                >{t(entry.name)}</span>
+              {#if active}
+                <CheckIcon
+                  class="size-4 shrink-0 text-sky-600 dark:text-sky-400"
+                  aria-hidden="true" />
+              {/if}
+            </span>
+            <span class="flex gap-1" aria-hidden="true">
+              {#each entry.swatches as color, index (index)}
+                <span
+                  class="size-3 shrink-0 rounded-full border border-black/20 dark:border-white/30"
+                  style:background-color={color}></span>
+              {/each}
+            </span>
+            <span class="line-clamp-2 text-[11px] leading-snug text-muted-foreground"
+              >{t(entry.description)}</span>
+          </button>
+        {/each}
+      </div>
+      <p class="text-xs text-muted-foreground">{t('colors.presetsHint')}</p>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <span class="font-semibold">{t('colors.builtinThemes')}</span>
       <div class="flex flex-wrap gap-1">
         {#each ['auto', ...themeChoices] as const as id (id)}
           <Button
             size="sm"
-            variant={choice(theme === id)}
+            variant={choice(preset === 'standard' && theme === id)}
             data-testid={`${TID.colorsTheme}-${id}`}
             onclick={() => applyTheme(id)}>{t(`colors.theme.${id}`)}</Button>
         {/each}
       </div>
-      {#if isCustomTheme || theme === 'auto'}
+      {#if isCustomTheme || (preset === 'standard' && theme === 'auto')}
         <p class="text-xs text-muted-foreground">
           {isCustomTheme ? t('colors.themeCustom', { theme }) : t('colors.themeAutoHint')}
         </p>

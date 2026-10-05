@@ -60,6 +60,7 @@ export const TID = {
   colorsTextReset: 'colors-text-reset',
   colorsTextSize: 'colors-text-size',
   colorsTheme: 'colors-theme',
+  colorsThemePreset: 'colors-theme-preset',
   commandButton: 'command-button',
   commandInput: 'command-input',
   commandItem: 'command-item',

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **258**.
+  every locally changed path — currently **262**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -100,7 +100,7 @@ a generic cloud and an AWS example with logos. The packs add about 39 MB to the 
 of it the logo sets, 2.8 MB the three 0.2.2 packs); a page loads only the ones its diagram names.
 
 **Command palette and first-visit guide.** Ctrl+K (⌘K) or the search button in the header opens
-a palette of twenty actions in Japanese with English keywords (`src/lib/util/commands.ts`, a
+a palette of twenty actions (and one per diagram theme) in Japanese with English keywords (`src/lib/util/commands.ts`, a
 registry plus a small scorer; arrow keys, Enter, Escape; Enter that confirms an IME conversion
 is ignored). An entry opens the right tools card and focuses or presses a control by
 `data-testid` (`uiBus.ts` drives the card header click and the tools rail's expand button, so
@@ -152,6 +152,37 @@ leads when no colour does and is dropped again once one does; and a text colour 
 kept when the fill changes (the dark default is written only when none is set). C4 gets the text
 colour only (`$fontColor`), and the card says bold and size are unavailable there; the types with
 no `style` statement show the existing "nothing to colour" note.
+
+**Diagram themes (unreleased)** (`src/lib/util/themePresets.ts`). The Colours card opens with a grid
+of twelve named themes (テーマ), each a card with its name, five colour dots and a two-line description,
+the current one ringed and ticked; the old row of mermaid's built-in themes stays under it as
+"mermaid の組み込みテーマ". 標準（mermaid 既定） is the default and is the absence of a preset: the
+editor manages the theme as before. The other eleven — モダン, ネオン, サイバー, パステル, ミニマル／モノクロ,
+ビジネス（ブルー）, サンセット, フォレスト, ダーク・グラス, 和（わ）, ハイコントラスト — are plain mermaid config:
+`theme: "base"` (which the editor does not manage, so dark/light switching leaves a preset alone), a full
+set of `themeVariables` generated from a small palette per preset (`variablesOf`: flowchart, sequence,
+state, class, ER, gantt, pie, git graph, mindmap/timeline/kanban `cScale*`, quadrant, xy, requirement,
+C4 person, architecture) and a `themeCSS` for what variables cannot do (glow via `drop-shadow`, rounded
+corners via `rx`, line weight, dashed clusters). The CSS starts with `/* theme-preset: <id> */`, which is
+how `presetOf` recognises a preset after a shared link, a reload or a hand-changed line colour.
+Applying a preset replaces the previous theme, variables and CSS as a whole and keeps every other key;
+標準 drops all three. Each preset is also in the command palette as 「テーマ: ネオン」 etc.
+A preset paints its own background: `render` (`mermaid.ts`) adds `#id{background-color}` to the SVG
+instead of the dark site's grey backdrop, `renderView.ts` puts it inline on the hand-drawn sketch (which
+drops the SVG's `<style>`), and the PNG/SVG exports use it in place of white or the site colour
+("transparent" still drops it). Every rule is in the SVG's own `<style>`, so the exported files carry it.
+mermaid limits found while checking every diagram type: `themeCSS` goes through the browser's CSS parser
+and is prefixed with the diagram id, so it cannot style the root `<svg>` itself (hence the injected
+background); `useGradient`/`dropShadow` only apply to the neo look's nodes, so the glow is CSS; ER and
+flowchart edge labels draw a half-transparent box derived from `tertiaryColor` (overridden on
+`.labelBkg`); C4 draws boundaries, relationships and their text in a fixed `#444444` presentation
+attribute (overridden by attribute selectors), and its elements keep mermaid's own blue/grey boxes with
+white text; a `style` statement in the code that sets a fill without a text colour (as some upstream
+samples do) keeps the preset's text colour, which can be light on a dark preset; and CSS cannot make text
+bold without overflow, since mermaid measures labels before the CSS applies (ハイコントラスト uses a larger
+font instead). Unit tests `themePresets.test.ts` and a managed-theme case in `state.svelte.test.ts`;
+`tests/themePresets.spec.ts` (neon colours and glow, SVG and PNG export, reload, shared link, back to
+標準 and dark-mode switching, a phone-width picker driven by the keyboard).
 
 **Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
 lane, or a node (box, rounded box, decision diamond, circle or stadium) into a lane, optionally
@@ -581,7 +612,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **732 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **808 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay

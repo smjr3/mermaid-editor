@@ -18,7 +18,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Write the diagram on the left; the picture in the middle follows as you type. The tools (Layout, Add, Edit, Colours, Icons, Samples, Actions) are on the right.',
         'Drag the picture to move it, and use the wheel or the zoom buttons in the bar above it.',
-        'Your work is kept in this browser; History (clock icon) brings back earlier versions.'
+        'Your work is kept in this browser; History (clock icon) brings back earlier versions.',
+        'Press Ctrl+K (⌘K on a Mac) or the search button in the header to find any action by name, such as "colour", "PNG" or "undo".'
       ],
       title: 'The basics'
     },
@@ -120,7 +121,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         '左にコードを書くと、中央の図がすぐに変わります。右側にはツール（レイアウト・追加・編集・色・アイコン・サンプル図・操作）があります。',
         '図はドラッグで動かし、マウスホイールや図の上のバーのボタンで拡大・縮小できます。',
-        '作業内容はこのブラウザに保存されます。時計のアイコン（履歴）で前の状態に戻せます。'
+        '作業内容はこのブラウザに保存されます。時計のアイコン（履歴）で前の状態に戻せます。',
+        'Ctrl+K（Mac は ⌘K）かヘッダーの検索ボタンで、「色」「PNG」「元に戻す」のように操作を名前で探して実行できます。'
       ],
       title: '基本'
     },

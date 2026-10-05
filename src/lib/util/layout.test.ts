@@ -1,5 +1,7 @@
+import { messages } from '$/i18n/messages';
 import { describe, expect, it } from 'vitest';
 import {
+  directionUnsupportedKey,
   getDirection,
   getLayoutOptions,
   pickDirection,
@@ -115,5 +117,33 @@ describe('getLayoutOptions / setLayoutOptions', () => {
   it('leaves an unparsable config alone', () => {
     expect(setLayoutOptions('{oops', { engine: 'elk', spacing: 'wide' })).toBe('{oops');
     expect(getLayoutOptions('{oops')).toEqual({ engine: 'dagre', spacing: 'normal' });
+  });
+});
+
+describe('directionUnsupportedKey', () => {
+  it.each([
+    ['architecture-beta\n  service a(server)[A]', 'architecture'],
+    ['pie\n  "a": 1', 'pie'],
+    ['gantt\n  title T', 'gantt'],
+    ['kanban\n  todo[Todo]', 'kanban'],
+    ['sequenceDiagram\n  A->>B: hi', 'sequence'],
+    ['---\ntitle: x\n---\nmindmap\n  root', 'mindmap'],
+    ['timeline\n  2021 : A', 'timeline']
+  ])('explains %j with its own reason', (code, type) => {
+    expect(directionUnsupportedKey(code)).toBe(`layout.directionUnsupported.${type}`);
+  });
+  it('uses the general sentence for other types', () => {
+    expect(directionUnsupportedKey('journey\n  title x')).toBe('layout.directionUnsupported');
+  });
+  it('mentions R/L/T/B in the architecture reason only', () => {
+    for (const catalogue of Object.values(messages)) {
+      for (const [key, text] of Object.entries(catalogue)) {
+        if (key.startsWith('layout.directionUnsupported')) {
+          expect(text.includes('R/L/T/B'), key).toBe(
+            key.endsWith('.architecture') && catalogue === messages.en
+          );
+        }
+      }
+    }
   });
 });

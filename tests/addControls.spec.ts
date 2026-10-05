@@ -182,4 +182,22 @@ test.describe('Add card', () => {
     await page.getByTestId(TID.addCard).click();
     await expect(page.getByText(t('add.unsupported'))).toBeVisible();
   });
+
+  test('says what is missing, not "both ends", when nothing is chosen', async ({
+    editPage,
+    page
+  }) => {
+    const cases: [string, string, string, string][] = [
+      ['mindmap', 'topic', '', 'add.chooseParent'],
+      ['kanban', 'card', '', 'add.chooseColumn'],
+      ['timeline\n  title History', 'event', 'History', 'add.choosePeriod']
+    ];
+    for (const [code, action, text, key] of cases) {
+      await editPage.start(urlFor(code));
+      if (text) await editPage.checkTextInView(text);
+      await page.getByTestId(TID.addCard).click();
+      await page.getByTestId(field(action, 'button')).click();
+      await expect(page.getByTestId(TID.addMessage)).toHaveText(t(key as Parameters<typeof t>[0]));
+    }
+  });
 });

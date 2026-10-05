@@ -13,6 +13,7 @@
     addLane,
     addNode,
     canAdd,
+    headerLine,
     isArchitecture,
     nodeShapes,
     type NodeShape
@@ -40,6 +41,8 @@
     };
   });
 
+  // Swimlane diagrams have lanes; a flowchart's `subgraph` is a group.
+  const word = $derived(/^\s*swimlane-beta\b/.test(headerLine(inputState.code)) ? 'lane' : 'group');
   let laneName = $state('');
   let nodeName = $state('');
   let lane = $state('');
@@ -55,7 +58,7 @@
     message = t('add.done', { name });
   };
   const onAddLane = () => {
-    const name = laneName.trim() || t('add.laneDefault');
+    const name = laneName.trim() || t(`add.${word}Default`);
     const { code, id } = addLane(inputState.code, name);
     apply(code, name);
     laneName = '';
@@ -105,16 +108,16 @@
       <p class="text-muted-foreground">{t('add.unsupported')}</p>
     {:else}
       <div class="flex flex-col gap-1">
-        <span class="font-semibold">{t('add.lane')}</span>
+        <span class="font-semibold">{t(`add.${word}`)}</span>
         <div class="flex gap-1">
           <Input
             bind:value={laneName}
-            placeholder={t('add.laneDefault')}
-            aria-label={t('add.laneName')}
+            placeholder={t(`add.${word}Default`)}
+            aria-label={t(`add.${word}Name`)}
             data-testid={TID.addLaneName}
             onkeydown={(event) => event.key === 'Enter' && onAddLane()} />
           <Button size="sm" class="h-9" data-testid={TID.addLaneButton} onclick={onAddLane}
-            >{t('add.laneButton')}</Button>
+            >{t(`add.${word}Button`)}</Button>
         </div>
       </div>
 
@@ -139,9 +142,10 @@
           </select>
         </div>
         <div class="flex items-center gap-1">
-          <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('add.nodeLane')}</span>
+          <span class="w-20 shrink-0 text-xs text-muted-foreground"
+            >{t(`add.node${word === 'lane' ? 'Lane' : 'Group'}`)}</span>
           <select bind:value={lane} class={selectClass} data-testid={TID.addNodeLane}>
-            <option value="">{t('add.noLane')}</option>
+            <option value="">{t(`add.no${word === 'lane' ? 'Lane' : 'Group'}`)}</option>
             {#each groups as group (group.id)}
               <option value={group.id}>{group.label}</option>
             {/each}

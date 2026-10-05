@@ -4,6 +4,7 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import {
+    directionUnsupportedKey,
     getDirection,
     getLayoutOptions,
     pickDirection,
@@ -106,7 +107,7 @@
             onclick={fitToView}>{t('layout.fit')}</Button>
         </div>
       {:else}
-        <p class="text-muted-foreground">{t('layout.directionUnsupported')}</p>
+        <p class="text-muted-foreground">{t(directionUnsupportedKey(inputState.code))}</p>
       {/if}
     </div>
 

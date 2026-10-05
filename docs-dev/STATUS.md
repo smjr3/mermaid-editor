@@ -196,6 +196,17 @@ on CI).
 Only groups with an id (`subgraph id` or `subgraph id [Title]`) are listed; a quoted title alone
 has no id a `style` statement could name.
 
+**Audit fixes.** From the UI audit: renaming or deleting a kanban card that carries `@{ … }`
+metadata keeps its id and attributes, and the Edit list shows only the text in the brackets
+(`splitMeta` in `addActions.ts`, used by `nodeLabel` and `renameLine`). The Add card says what is
+missing (`add.chooseParent`, `add.chooseColumn`, `add.choosePeriod`; `add.choose` stays for
+connections). The Layout card's "cannot change direction" note is per diagram type
+(`directionUnsupportedKey` in `layout.ts`; only architecture mentions R/L/T/B). Japanese wording is
+unified: 接続元/接続先, ラベル, 参加者; a flowchart's subgraph is グループ and a swimlane's is レーン
+(the Add and Edit cards pick the key from the header); the Samples card shows ER 図 / XY チャート /
+パケット図 through a display-name map (group names stay mermaid's catalogue keys); the nav title
+and the Gist button read naturally in Japanese (`nav.appTitle`).
+
 **How to use (0.2.0)** (`src/lib/util/helpContent.ts`). A "How to use" button in the editor's
 header opens a short guide: the basics, starting a diagram, adding shapes, changing and deleting, layout, colours, icons,
 export and sharing, tips. The text is prose, kept out of the message catalogue; a test keeps the

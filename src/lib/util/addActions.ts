@@ -124,8 +124,14 @@ export const blockEnd = (lines: string[], start: number) => {
   return end;
 };
 
+/** Splits a kanban card's `@{ … }` metadata off the end of its line. */
+export const splitMeta = (line: string): [string, string] => {
+  const match = /^(.*?[)\]}])(\s*@\{.*\})\s*$/.exec(line);
+  return match ? [match[1], match[2]] : [line, ''];
+};
+
 export const nodeLabel = (line: string) =>
-  line
+  splitMeta(line)[0]
     .trim()
     .replace(/^[\w-]+(?=[([{)])/, '')
     .replaceAll(/^[([{)]+|[)\]}(]+$/g, '')
@@ -404,7 +410,7 @@ const mindmap: AddSpec = {
       apply: (code, values) => {
         const { lines } = splitLines(code);
         const parent = Number(values.parent);
-        if (!values.parent || !lines[parent]) return { error: 'add.choose' };
+        if (!values.parent || !lines[parent]) return { error: 'add.chooseParent' };
         const name = noBrackets(values.name) || 'New topic';
         return { code: addChild(code, parent, name), name };
       },
@@ -533,7 +539,7 @@ const kanban: AddSpec = {
       apply: (code, values) => {
         const { lines } = splitLines(code);
         const column = Number(values.column);
-        if (!values.column || !lines[column]) return { error: 'add.choose' };
+        if (!values.column || !lines[column]) return { error: 'add.chooseColumn' };
         const id = freshId(code, 'card');
         const name = noBrackets(values.name) || id;
         return { code: addChild(code, column, `${id}[${name}]`), name };
@@ -581,7 +587,7 @@ const timeline: AddSpec = {
       apply: (code, values) => {
         const { lines } = splitLines(code);
         const start = Number(values.period);
-        if (!values.period || !lines[start]) return { error: 'add.choose' };
+        if (!values.period || !lines[start]) return { error: 'add.choosePeriod' };
         let end = start + 1;
         while (end < lines.length && /^\s*:/.test(lines[end])) end++;
         const event = timelineText(values.text) || 'Event';

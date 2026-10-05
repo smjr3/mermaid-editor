@@ -364,3 +364,22 @@ describe('found by the review', () => {
     expect(added(millis, ms.code)).toEqual([`    X : ${Date.UTC(2024, 1, 1)}, 3d`]);
   });
 });
+
+describe('what is missing', () => {
+  it('names the parent topic, column or period that was not chosen', async () => {
+    expect(await run('mindmap\n  root((Centre))\n    A', 'topic', { parent: '' })).toEqual({
+      error: 'add.chooseParent'
+    });
+    expect(await run('kanban\n  todo[Todo]', 'card', { column: '' })).toEqual({
+      error: 'add.chooseColumn'
+    });
+    expect(await run('timeline\n  2021 : A', 'event', { period: '' })).toEqual({
+      error: 'add.choosePeriod'
+    });
+  });
+  it('has every message in every language', () => {
+    for (const key of ['add.choose', 'add.chooseParent', 'add.chooseColumn', 'add.choosePeriod']) {
+      for (const catalogue of Object.values(messages)) expect(catalogue).toHaveProperty([key]);
+    }
+  });
+});

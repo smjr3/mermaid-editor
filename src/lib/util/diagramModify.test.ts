@@ -545,6 +545,26 @@ describe('mindmap, kanban and timeline', () => {
     );
   });
 
+  it("keeps a kanban card's @{ … } metadata when renaming and shows only its text", async () => {
+    const meta = [
+      "kanban\n  todo[To do]\n    t1[Write blog]@{ priority: 'Low', assigned: 'x' }\n    t2[Test]",
+      'kanban\n  todo[To do]\n    t1[Write blog]@{ priority: "Low", ticket: "a]b" }\n    t2[Test]'
+    ];
+    for (const code of meta) {
+      const items = (await editableObjects(code))?.items ?? [];
+      expect(items.map(({ label }) => label.trim())).toEqual(['To do', 'Write blog', 'Test']);
+      const renamed = renameObject(code, 'kanban', await object(code, 'L2'), 'Rename');
+      expect(renamed).toBe(code.replace('[Write blog]', '[Rename]'));
+      await expect(typeOf(renamed ?? '')).resolves.toBe('kanban');
+      expect(deleteObject(code, 'kanban', await object(code, 'L2'))).toBe(
+        code
+          .split('\n')
+          .filter((line) => !line.includes('t1['))
+          .join('\n')
+      );
+    }
+  });
+
   it('deletes a topic with or without its children, a card and a period', async () => {
     const alpha = await object(mindmap, 'L2');
     expect(deleteObject(mindmap, 'mindmap', alpha)).toBe('mindmap\n  root((Centre))\n    B');

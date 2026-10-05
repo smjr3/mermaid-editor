@@ -86,10 +86,7 @@
   <div class="flex flex-1 items-center gap-2">
     <MainMenu />
     <a href={resolve('/', {})} class="whitespace-nowrap text-accent">
-      {#if !mobileToggle}
-        Mermaid
-      {/if}
-      Live Editor
+      {t(mobileToggle ? 'nav.appTitleShort' : 'nav.appTitle')}
     </a>
   </div>
   <!-- Local: the guide to the editor, on every page and screen size. -->

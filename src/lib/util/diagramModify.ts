@@ -18,13 +18,38 @@ import {
   headerIndex,
   indentOf,
   nodeLabel,
+  splitMeta,
   nodeLines,
   oneLine,
   sequenceText
 } from './addActions';
-import { headerLine, laneEnd, splitLines } from './diagramEdit';
+import {
+  ensureTaskId,
+  ganttName,
+  ganttSection,
+  ganttTasks,
+  parseGanttTask,
+  pieSlice,
+  renderGanttTask,
+  type GanttTask
+} from './diagramDetails';
+import {
+  chartHeaders,
+  chartObjects,
+  deleteChartObject,
+  renameChartObject,
+  type ChartKind
+} from './chartEdit';
+import { requirementName } from './codeText';
+import { freshId, headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
 import { memoByCode } from './memo';
-import { decodeEntities, diagramEdges, diagramObjects, type DiagramObject } from './mermaid';
+import {
+  decodeEntities,
+  diagramEdges,
+  diagramFromText,
+  diagramObjects,
+  type DiagramObject
+} from './mermaid';
 import { findOccurrences } from './mermaidRename';
 
 export type EditKind =
@@ -37,7 +62,12 @@ export type EditKind =
   | 'sequence'
   | 'mindmap'
   | 'kanban'
-  | 'timeline';
+  | 'timeline'
+  | 'gantt'
+  | 'pie'
+  | 'requirement'
+  | 'block'
+  | ChartKind;
 
 export interface EditObject {
   id: string;
@@ -100,8 +130,16 @@ const kinds: [EditKind, RegExp][] = [
   ['sequence', /^\s*sequenceDiagram\b/],
   ['mindmap', /^\s*mindmap\b/],
   ['kanban', /^\s*kanban\b/],
-  ['timeline', /^\s*timeline\b/]
+  ['timeline', /^\s*timeline\b/],
+  ['gantt', /^\s*gantt\b/],
+  ['pie', /^\s*pie\b/],
+  ['requirement', /^\s*requirementDiagram\b/],
+  ['block', /^\s*block(?:-beta)?\b/],
+  ...chartHeaders
 ];
+
+const isChart = (kind: EditKind): kind is ChartKind =>
+  chartHeaders.some(([chart]) => chart === kind);
 
 /** The kind of diagram the Edit card handles, or undefined for the others. */
 export const editKind = (code: string): EditKind | undefined =>
@@ -119,7 +157,7 @@ const list = (value: unknown): Record<string, unknown>[] =>
 const parseDb = async (code: string): Promise<Db | undefined> => {
   try {
     await mermaid.parse(code);
-    return (await mermaid.mermaidAPI.getDiagramFromText(code)).db as Db;
+    return (await diagramFromText(code)).db as Db;
   } catch {
     return undefined;
   }
@@ -519,7 +557,8 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
     );
     return lines;
   }
-  // The first statement that gives the node a shape, else its first mention.
+  // Every statement that gives the node a shape (mermaid draws the last one's
+  // text, so all of them change), else its first mention.
   const flow = flowLines(lines);
   const refs = flow.flatMap(({ chains, index }) =>
     chains.flatMap((chain) =>
@@ -529,15 +568,18 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
         .map((node) => ({ index, node }))
     )
   );
-  const target = refs.find(({ node }) => hasShape(node)) ?? refs[0];
-  if (!target) {
+  const shaped = refs.filter(({ node }) => hasShape(node));
+  const targets = shaped.length > 0 ? shaped : refs.slice(0, 1);
+  if (targets.length === 0) {
     append(lines, [`  ${object.id}[${quoted(label)}]`]);
     return lines;
   }
-  // The same text may occur twice on the line; the replacement keeps the node's id, so once is enough.
-  lines[target.index] = lines[target.index].replace(target.node.text, () =>
-    relabelNode(target.node, label)
-  );
+  // The same text may occur twice on the line; the replacement keeps the node's id, so once each is enough.
+  for (const target of targets) {
+    lines[target.index] = lines[target.index].replace(target.node.text, () =>
+      relabelNode(target.node, label)
+    );
+  }
   return lines;
 };
 
@@ -667,7 +709,12 @@ interface EdgeSyntax {
 
 const stateSyntax: EdgeSyntax = {
   can: { head: false, label: true, reverse: true, styles: [] },
-  count: (db) => list(read(db, 'getRelations')).length,
+  // Every transition, inside composite states too (getRelations has only the top level),
+  // but not the lines that tie a note to its state.
+  count: (db) =>
+    list((read(db, 'getData') as Db | undefined)?.edges).filter(
+      ({ start, end }) => !`${String(start)} ${String(end)}`.includes('----')
+    ).length,
   head: () => true,
   label: (text) => oneLine(text).replaceAll(':', '：'),
   parse: ([, indent, from, to, label = '']) => ({ from, indent, label, parts: {}, to }),
@@ -833,8 +880,53 @@ const unpairActivation = (lines: string[], line: number, statement: Statement) =
   }
 };
 
+// C4: `Rel(from, to, "label", …)` and its variants (`Rel_D`, `BiRel`, `Rel_Back`, …);
+// what follows the label (technology, `$tags=…`) is kept as written.
+const c4Syntax: EdgeSyntax = {
+  can: { head: false, label: true, reverse: true, styles: [] },
+  count: (db) => list(read(db, 'getRels')).length,
+  head: () => true,
+  label: (text) => oneLine(text).replaceAll('"', "'"),
+  parse: ([, indent, kind, from, to, label = '', rest = '']) => ({
+    from,
+    indent,
+    label,
+    parts: { kind, rest },
+    to
+  }),
+  pattern:
+    /^(\s*)((?:Bi)?Rel(?:_\w+)?)\(\s*([\p{L}\p{N}_]+)\s*,\s*([\p{L}\p{N}_]+)\s*(?:,\s*"([^"]*)")?\s*(,.*?)?\)\s*$/u,
+  render: ({ from, indent, label, parts, to }) =>
+    `${indent}${parts.kind}(${from}, ${to}, "${label}"${parts.rest ? parts.rest.replace(/^,\s*/, ', ') : ''})`,
+  reverse: (s) => ({ ...s, from: s.to, to: s.from }),
+  style: () => 'solid'
+};
+
+// Block: `a --> b`, `a --- b` (no head) and `a -- "label" --> b`.
+const blockSyntax: EdgeSyntax = {
+  can: { head: true, label: true, reverse: true, styles: [] },
+  count: (db) => list(read(db, 'getEdges')).length,
+  head: ({ parts }) => parts.link !== '---',
+  label: (text) => oneLine(text).replaceAll('"', "'"),
+  parse: ([, indent, from, label = '', link, to]) => ({
+    from,
+    indent,
+    label,
+    parts: { link },
+    to
+  }),
+  pattern: /^(\s*)([\p{L}\p{N}_-]+)\s*(?:--\s*"([^"]*)"\s*)?(-->|---)\s*([\p{L}\p{N}_-]+)\s*$/u,
+  render: ({ from, indent, label, parts, to }) =>
+    `${indent}${from} ${label ? `-- "${label}" ` : ''}${parts.link} ${to}`,
+  reverse: (s) => ({ ...s, from: s.to, to: s.from }),
+  setHead: (s, head) => ({ ...s, parts: { ...s.parts, link: head ? '-->' : '---' } }),
+  style: () => 'solid'
+};
+
 const syntaxes: Partial<Record<EditKind, EdgeSyntax>> = {
   architecture: architectureSyntax,
+  block: blockSyntax,
+  c4: c4Syntax,
   class: classSyntax,
   er: erSyntax,
   sequence: sequenceSyntax,
@@ -874,7 +966,18 @@ const stateDeclaration = (id: string) =>
   new RegExp(`^(\\s*)state\\s+"([^"]*)"\\s+as\\s+${escape(id)}\\s*$`);
 const stateDescription = (id: string) => new RegExp(`^(\\s*)${escape(id)}\\s*:\\s*(.*?)\\s*$`);
 
+const compositeLine = (id: string) =>
+  new RegExp(`^(\\s*)state\\s+(?:"[^"]*"\\s+as\\s+)?${escape(id)}\\s*\\{\\s*$`);
+
 const renameState = (lines: string[], id: string, label: string) => {
+  const composite = lines.findIndex((line) => compositeLine(id).test(line));
+  if (composite !== -1) {
+    lines[composite] = lines[composite].replace(
+      compositeLine(id),
+      (_, indent: string) => `${indent}state "${label}" as ${id} {`
+    );
+    return lines;
+  }
   const declared = lines.findIndex((line) => stateDeclaration(id).test(line));
   if (declared !== -1) {
     lines[declared] = lines[declared].replace(
@@ -916,6 +1019,53 @@ const deleteState = (lines: string[], id: string) => {
     (indent, rest, cls) => `${indent}class ${rest.join(',')} ${cls}`
   );
   return lines;
+};
+
+/** How deep line `index` of these lines is inside `{ }` blocks that open among them. */
+const depthAt = (lines: string[], index: number) =>
+  lines
+    .slice(0, index)
+    .reduce(
+      (depth, line) => depth + (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0),
+      0
+    );
+
+/**
+ * The code without a composite state: with what is inside it, or keeping its
+ * states, moved out one level (a concurrency divider `--` goes, since it only
+ * means something inside the composite). Transitions to and from it go too.
+ */
+const deleteComposite = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const start = lines.findIndex((line) => compositeLine(object.id).test(line));
+  if (start === -1) return deleteState(lines, object.id);
+  let depth = 0;
+  let end = start;
+  for (let index = start; index < lines.length; index++) {
+    const line = lines[index].replaceAll(/"[^"]*"/g, '""');
+    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
+    if (depth <= 0) {
+      end = index;
+      break;
+    }
+  }
+  if (keepContents) {
+    const inner = lines.slice(start + 1, end);
+    const shift = Math.max(
+      0,
+      Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[start])
+    );
+    lines.splice(
+      start,
+      end - start + 1,
+      ...inner
+        .filter((l, i) => !/^\s*--\s*$/.test(l) || depthAt(inner, i) > 0)
+        .map((l) => (isBlank(l) ? l : l.slice(Math.min(shift, indentOf(l)))))
+    );
+  } else {
+    lines.splice(start, end - start + 1);
+    for (const member of object.members ?? []) deleteState(lines, member);
+  }
+  return deleteState(lines, object.id);
 };
 
 const classStatement = (id: string) =>
@@ -1045,6 +1195,48 @@ const renameC4 = (lines: string[], id: string, label: string) => {
   return lines;
 };
 
+const c4BoundaryLine = (id: string) =>
+  new RegExp(`^\\s*(?:\\w*Boundary|Deployment_Node\\w*)\\(\\s*${escape(id)}\\s*,.*\\{\\s*$`);
+
+/**
+ * The code without a C4 boundary: with the elements inside it (and their
+ * relationships), or keeping them, moved out one level.
+ */
+const deleteC4Boundary = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const start = lines.findIndex((line) => c4BoundaryLine(object.id).test(line));
+  if (start === -1) return lines;
+  let depth = 0;
+  let end = start;
+  for (let index = start; index < lines.length; index++) {
+    const line = lines[index].replaceAll(/"[^"]*"/g, '""');
+    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
+    if (depth <= 0) {
+      end = index;
+      break;
+    }
+  }
+  if (keepContents) {
+    const inner = lines.slice(start + 1, end);
+    const shift = Math.max(
+      0,
+      Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[start])
+    );
+    lines.splice(
+      start,
+      end - start + 1,
+      ...inner.map((l) => (isBlank(l) ? l : l.slice(Math.min(shift, indentOf(l)))))
+    );
+  } else {
+    lines.splice(start, end - start + 1);
+    for (const member of object.members ?? []) deleteC4(lines, member);
+  }
+  // Its style statement.
+  removeWhere(lines, (line) =>
+    new RegExp(`^\\s*Update\\w*Style\\(\\s*${escape(object.id)}\\s*[,)]`).test(line)
+  );
+  return lines;
+};
+
 const deleteC4 = (lines: string[], id: string) => {
   const name = escape(id);
   removeWhere(lines, (line) =>
@@ -1168,6 +1360,64 @@ const deleteParticipant = (lines: string[], id: string) => {
   return lines;
 };
 
+// Sequence notes and blocks, listed by line after the participants: a note's text or a
+// block's condition can change, and a block goes without what is inside it.
+const seqNote = /^(\s*Note\s+(?:over|left\s+of|right\s+of)\s+[^:]+?\s*:\s*)(.*)$/i;
+const seqBlock = /^(\s*)(alt|loop|opt|par|critical|break)\b\s*(.*)$/;
+const seqOpener = /^\s*(?:alt|loop|opt|par|critical|break|rect|box)\b/;
+const seqDivider = /^\s*(?:else|and|option)\b/;
+
+const sequenceExtras = (lines: string[]): EditObject[] => {
+  const header = headerIndex(lines);
+  return lines.flatMap((line, index) =>
+    index > header && (seqNote.test(line) || seqBlock.test(line))
+      ? [{ id: `line:${index}`, label: line.trim(), line: index }]
+      : []
+  );
+};
+
+const renameSequenceExtra = (lines: string[], line: number, label: string) => {
+  const text = sequenceText(label);
+  const note = seqNote.exec(lines[line] ?? '');
+  const block = seqBlock.exec(lines[line] ?? '');
+  if (note) lines[line] = `${note[1]}${text}`;
+  else if (block) lines[line] = `${block[1]}${block[2]} ${text}`;
+  return lines;
+};
+
+const deleteSequenceExtra = (lines: string[], line: number) => {
+  if (seqNote.test(lines[line] ?? '')) {
+    lines.splice(line, 1);
+    return lines;
+  }
+  if (!seqBlock.test(lines[line] ?? '')) return lines;
+  let depth = 0;
+  let end = -1;
+  const dividers: number[] = [];
+  for (let index = line; index < lines.length; index++) {
+    if (seqOpener.test(lines[index])) depth++;
+    else if (/^\s*end\s*$/.test(lines[index]) && --depth === 0) {
+      end = index;
+      break;
+    } else if (depth === 1 && seqDivider.test(lines[index])) dividers.push(index);
+  }
+  if (end === -1) return lines;
+  const inner = lines
+    .slice(line + 1, end)
+    .filter((_, offset) => !dividers.includes(line + 1 + offset));
+  const shift = Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[line]);
+  lines.splice(
+    line,
+    end - line + 1,
+    ...inner.map((l) =>
+      isBlank(l) || !Number.isFinite(shift) || shift <= 0
+        ? l
+        : l.slice(Math.min(shift, indentOf(l)))
+    )
+  );
+  return lines;
+};
+
 // Mindmap and kanban lines: `id[Text]`, `id((Text))`, `root)Text(` or plain text.
 const shapedLine =
   /^(\s*)([\p{L}\p{N}_-]*)(\[|\(\(\(|\(\(|\(|\)\)|\)|\{\{)(.*?)(\]|\)\)\)|\)\)|\)|\(\(|\(|\}\})\s*$/u;
@@ -1177,11 +1427,29 @@ const plainText = (text: string) =>
     .trim();
 
 const renameLine = (lines: string[], line: number, label: string) => {
-  const match = shapedLine.exec(lines[line]);
+  // A kanban card's `@{ … }` metadata stays as it is.
+  const [head, meta] = splitMeta(lines[line]);
+  const match = shapedLine.exec(head);
+  const indent = /^\s*/.exec(lines[line])?.[0] ?? '';
+  const raw = oneLine(label).trim();
+  // Local (error recovery): a name with brackets or quotes used to lose them, which
+  // left "(" or "]" as an empty line and broke the diagram. Such a name is quoted
+  // instead, in the node's own brackets — or in `[…]`, under an id, for a plain line.
+  if (/[()[\]{}"]/.test(raw)) {
+    const text = `"${raw.replaceAll('"', '#quot;')}"`;
+    if (match) {
+      lines[line] = `${match[1]}${match[2]}${match[3]}${text}${match[5]}${meta}`;
+    } else {
+      const old = head.trim();
+      const id = /^[\p{L}\p{N}_-]+$/u.test(old) ? old : freshId(lines.join('\n'), 'n');
+      lines[line] = `${indent}${id}[${text}]${meta}`;
+    }
+    return lines;
+  }
   const text = plainText(label);
   lines[line] = match
-    ? `${match[1]}${match[2]}${match[3]}${text}${match[5]}`
-    : `${/^\s*/.exec(lines[line])?.[0] ?? ''}${text}`;
+    ? `${match[1]}${match[2]}${match[3]}${text}${match[5]}${meta}`
+    : `${indent}${text}`;
   return lines;
 };
 
@@ -1245,6 +1513,311 @@ const deleteTimeline = (lines: string[], object: EditObject) => {
   return lines;
 };
 
+// Gantt: `section …` lines and the tasks under them.
+const ganttObjects = (lines: string[]): EditObject[] => {
+  const tasks = ganttTasks(lines);
+  const sections = lines.flatMap((line, index) => {
+    const match = index > headerIndex(lines) ? ganttSection.exec(line) : null;
+    return match ? [{ index, name: match[2] }] : [];
+  });
+  const sectionOf = (line: number) => sections.findLast(({ index }) => index < line);
+  return [
+    ...sections.map(({ index, name }): EditObject => {
+      const next = sections.find((other) => other.index > index)?.index ?? lines.length;
+      return {
+        group: true,
+        id: `L${index}`,
+        label: name,
+        line: index,
+        members: tasks
+          .filter(({ line }) => line > index && line < next)
+          .map(({ line }) => `L${line}`)
+      };
+    }),
+    ...tasks.map(({ line, name }): EditObject => ({
+      id: `L${line}`,
+      label: `${sectionOf(line) ? '  ' : ''}${name}`,
+      line
+    }))
+  ].sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
+};
+
+const renameGantt = (lines: string[], line: number, label: string) => {
+  const section = ganttSection.exec(lines[line] ?? '');
+  if (section) {
+    lines[line] = `${section[1]}section ${ganttName(label, 'Section')}`;
+    return lines;
+  }
+  const task = parseGanttTask(lines[line] ?? '', line);
+  if (task) lines[line] = renderGanttTask({ ...task, name: ganttName(label, 'Task') });
+  return lines;
+};
+
+/**
+ * The code without one task. A task that started straight after it starts where
+ * it started; one that started after it (`after id`) starts where it started.
+ */
+const deleteGanttTask = (lines: string[], task: GanttTask) => {
+  const tasks = ganttTasks(lines);
+  const next = tasks.find(({ line }) => line > task.line);
+  if (next && !next.start && task.start)
+    lines[next.line] = renderGanttTask({ ...next, start: task.start });
+  if (task.id) {
+    for (const other of ganttTasks(lines)) {
+      const after = /^after\s+(.+)$/.exec(other.start);
+      if (!after) continue;
+      const ids = after[1].split(/\s+/);
+      if (!ids.includes(task.id)) continue;
+      const rest = ids.filter((id) => id !== task.id);
+      let start = rest.length > 0 ? `after ${rest.join(' ')}` : task.start;
+      if (!start && other.id) {
+        // An id needs a start of its own: after the task before the deleted one.
+        const previous = tasks.filter(({ line }) => line < task.line).at(-1);
+        const id = previous ? ensureTaskId(lines, previous.line) : undefined;
+        start = id ? `after ${id}` : other.start;
+      }
+      lines[other.line] = renderGanttTask({ ...other, start });
+    }
+  }
+  lines.splice(task.line, 1);
+};
+
+const deleteGantt = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const line = object.line ?? -1;
+  if (!object.group) {
+    const task = parseGanttTask(lines[line] ?? '', line);
+    if (task) deleteGanttTask(lines, task);
+    return lines;
+  }
+  if (!keepContents) {
+    for (const id of [...(object.members ?? [])].reverse()) {
+      const at = Number(id.slice(1));
+      const task = parseGanttTask(lines[at] ?? '', at);
+      if (task) deleteGanttTask(lines, task);
+    }
+  }
+  lines.splice(line, 1);
+  return lines;
+};
+
+const renamePie = (lines: string[], line: number, label: string) => {
+  const match = pieSlice.exec(lines[line] ?? '');
+  if (match) lines[line] = `${match[1]}"${label.replaceAll('"', "'")}" : ${match[3]}`;
+  return lines;
+};
+
+// Requirement diagrams: a requirement or element is named once, by its name,
+// in its `kind name { … }` block, its relationships and its style statements.
+const requirementKinds =
+  'requirement|functionalRequirement|interfaceRequirement|performanceRequirement|physicalRequirement|designConstraint|element';
+const nameToken = (name: string) => `(?:${escape(name)}(?![\\w-])|"${escape(name)}")`;
+const requirementBlock = (name: string) =>
+  new RegExp(`^(\\s*)(${requirementKinds})\\s+${nameToken(name)}\\s*\\{\\s*$`);
+const relationship = /^(\s*)("[^"]*"|[\w-]+)\s*(-\s*\w+\s*->|<-\s*\w+\s*-)\s*("[^"]*"|[\w-]+)\s*$/;
+const unquote = (token: string) => token.replace(/^"(.*)"$/, '$1');
+
+const renameRequirement = (lines: string[], id: string, label: string) => {
+  const name = requirementName(label.replaceAll('"', "'"));
+  lines.forEach((line, index) => {
+    const block = requirementBlock(id).exec(line);
+    if (block) {
+      lines[index] = `${block[1]}${block[2]} ${name} {`;
+      return;
+    }
+    const match = relationship.exec(line);
+    if (match && (unquote(match[2]) === id || unquote(match[4]) === id)) {
+      const end = (token: string) => (unquote(token) === id ? name : token);
+      lines[index] = `${match[1]}${end(match[2])} ${match[3]} ${end(match[4])}`;
+      return;
+    }
+    const styled = new RegExp(`^(\\s*(?:style|class)\\s+)${nameToken(id)}(.*)$`).exec(line);
+    if (styled) lines[index] = `${styled[1]}${name}${styled[2]}`;
+  });
+  return lines;
+};
+
+const deleteRequirement = (lines: string[], id: string) => {
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (requirementBlock(id).test(lines[index])) removeBlock(lines, index);
+  }
+  removeWhere(lines, (line) => {
+    const match = relationship.exec(line);
+    if (match) return unquote(match[2]) === id || unquote(match[4]) === id;
+    return new RegExp(`^\\s*style\\s+${nameToken(id)}`).test(line);
+  });
+  dropFromList(
+    lines,
+    /^(\s*)class\s+([\w\s,-]+?)\s+([\w-]+)\s*$/,
+    id,
+    (indent, rest, cls) => `${indent}class ${rest.join(',')} ${cls}`
+  );
+  return lines;
+};
+
+// Block diagrams: a line places blocks side by side (`a["A"] b:2`), an arrow
+// line joins them, and `block:id … end` is a block holding others.
+const blockKeyword = /^\s*(?:block-beta|block|columns|space|end|style|class|classDef)\b/;
+const blockOpener = /^\s*block:([\w-]+)(?::\d+)?\s*$/;
+
+interface BlockToken {
+  id: string;
+  start: number;
+  end: number;
+}
+
+/** The blocks a placement line names, or undefined for any other line. */
+const blockTokens = (line: string): BlockToken[] | undefined => {
+  if (blockKeyword.test(line) && !/^\s*space\s*\S/.test(line)) return undefined;
+  // A line with an arrow is a connection, not a placement (quoted labels aside).
+  const bare = line.replaceAll(/"[^"]*"/g, '""');
+  const arrows = ['-->', '---', '==>', '-.-'];
+  if (arrows.some((arrow) => bare.includes(arrow)) || line.includes('%%')) return undefined;
+  const tokens: BlockToken[] = [];
+  let i = 0;
+  while (i < line.length) {
+    while (i < line.length && /\s/.test(line[i])) i++;
+    if (i >= line.length) break;
+    const id = /^[\p{L}\p{N}_-]+/u.exec(line.slice(i))?.[0];
+    if (!id) return undefined;
+    const start = i;
+    i += id.length;
+    // Shape brackets (`["x"]`, `(("x"))`, `<["x"]>(down)`), then a width (`:2`).
+    while (i < line.length && '[({<'.includes(line[i])) {
+      let depth = 0;
+      for (; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          const close = line.indexOf('"', i + 1);
+          if (close === -1) return undefined;
+          i = close;
+        } else if ('[({<'.includes(char)) depth++;
+        else if ('])}>'.includes(char) && --depth === 0) {
+          i++;
+          break;
+        }
+      }
+      if (depth !== 0) return undefined;
+    }
+    const width = /^:\d+/.exec(line.slice(i));
+    if (width) i += width[0].length;
+    if (i < line.length && !/\s/.test(line[i])) return undefined;
+    if (id !== 'space') tokens.push({ end: i, id, start });
+  }
+  return tokens;
+};
+
+/** The index of the `end` closing the `block:` line at `start`. */
+const blockGroupEnd = (lines: string[], start: number) => {
+  let depth = 0;
+  for (let index = start; index < lines.length; index++) {
+    if (blockOpener.test(lines[index]) || /^\s*block\s*$/.test(lines[index])) depth++;
+    else if (/^\s*end\s*$/.test(lines[index]) && --depth === 0) return index;
+  }
+  return lines.length - 1;
+};
+
+const relabelBlock = (text: string, id: string, label: string) => {
+  const quotedLabel = `"${label.replaceAll('"', "'")}"`;
+  const rest = text.slice(id.length);
+  const width = /:\d+$/.exec(rest)?.[0] ?? '';
+  const shape = rest.slice(0, rest.length - width.length);
+  if (!shape) return `${id}[${quotedLabel}]${width}`;
+  if (shape.includes('"')) return `${id}${shape.replace(/"[^"]*"/, () => quotedLabel)}${width}`;
+  const open = /^[[({<]+/.exec(shape)?.[0] ?? '';
+  const close = /[\])}>]+(?:\([a-z, ]*\))?$/.exec(shape)?.[0] ?? '';
+  return `${id}${open}${quotedLabel}${close}${width}`;
+};
+
+const renameBlock = (lines: string[], id: string, label: string) => {
+  const opener = lines.findIndex((line) => blockOpener.exec(line)?.[1] === id);
+  if (opener !== -1) return undefined;
+  // The first line that places it, else the first arrow line naming it.
+  for (const [index, line] of lines.entries()) {
+    if (index <= headerIndex(lines)) continue;
+    const token = blockTokens(line)?.find((t) => t.id === id);
+    if (token) {
+      lines[index] =
+        line.slice(0, token.start) +
+        relabelBlock(line.slice(token.start, token.end), id, label) +
+        line.slice(token.end);
+      return lines;
+    }
+  }
+  for (const [index, line] of lines.entries()) {
+    const chains = index > headerIndex(lines) ? parseChains(line) : undefined;
+    const node = chains?.flatMap((chain) => chain.groups.flat()).find((n) => n.id === id);
+    if (!node) continue;
+    const at = line.indexOf(node.text);
+    lines[index] =
+      line.slice(0, at) + relabelBlock(node.text, id, label) + line.slice(at + node.text.length);
+    return lines;
+  }
+  return undefined;
+};
+
+/** Removes `block:… end` groups left with nothing inside: mermaid rejects them. */
+const dropEmptyBlockGroups = (lines: string[]) => {
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (!blockOpener.test(lines[index])) continue;
+    let end = index + 1;
+    while (end < lines.length && isBlank(lines[end])) end++;
+    if (/^\s*end\s*$/.test(lines[end] ?? '')) lines.splice(index, end - index + 1);
+  }
+};
+
+const deleteBlock = (lines: string[], object: EditObject, keepContents: boolean) => {
+  const ids = new Set([
+    object.id,
+    ...(object.group && !keepContents ? (object.members ?? []) : [])
+  ]);
+  const opener = lines.findIndex((line) => blockOpener.exec(line)?.[1] === object.id);
+  if (opener !== -1) {
+    const end = blockGroupEnd(lines, opener);
+    if (keepContents) {
+      const inner = lines.slice(opener + 1, end);
+      const shift = Math.max(
+        0,
+        Math.min(...inner.filter((l) => !isBlank(l)).map(indentOf)) - indentOf(lines[opener])
+      );
+      lines.splice(
+        opener,
+        end - opener + 1,
+        ...inner.map((l) => (isBlank(l) ? l : l.slice(Math.min(shift, indentOf(l)))))
+      );
+    } else {
+      lines.splice(opener, end - opener + 1);
+    }
+  }
+  for (let index = lines.length - 1; index > headerIndex(lines); index--) {
+    const line = lines[index];
+    const tokens = blockTokens(line);
+    if (tokens?.some((t) => ids.has(t.id))) {
+      const kept = tokens.filter((t) => !ids.has(t.id));
+      if (kept.length === 0) lines.splice(index, 1);
+      else
+        lines[index] =
+          (/^\s*/.exec(line)?.[0] ?? '') + kept.map((t) => line.slice(t.start, t.end)).join(' ');
+      continue;
+    }
+    const chains = tokens ? undefined : parseChains(line);
+    if (chains?.some((chain) => chain.groups.flat().some((n) => ids.has(n.id)))) {
+      lines.splice(index, 1);
+      continue;
+    }
+    if ([...ids].some((id) => new RegExp(`^\\s*style\\s+${escape(id)}${idEnd}`).test(line)))
+      lines.splice(index, 1);
+  }
+  for (const id of ids)
+    dropFromList(
+      lines,
+      /^(\s*)class\s+([\w\s,-]+?)\s+([\w-]+)\s*$/,
+      id,
+      (indent, rest, cls) => `${indent}class ${rest.join(',')} ${cls}`
+    );
+  dropEmptyBlockGroups(lines);
+  return lines;
+};
+
 // ---- The lists ----
 
 const sequenceOrder = memoByCode(async (code: string): Promise<DiagramObject[]> => {
@@ -1298,13 +1871,117 @@ export const editableObjects = memoByCode(
         });
         return { items, kind };
       }
+      case 'gantt':
+        return { items: ganttObjects(lines), kind };
+      case 'block': {
+        const objects = await diagramObjects(code);
+        if (!objects) return undefined;
+        // A `block:id … end` holds the blocks placed inside it.
+        const members = (id: string): string[] | undefined => {
+          const opener = lines.findIndex((line) => blockOpener.exec(line)?.[1] === id);
+          if (opener === -1) return undefined;
+          return lines
+            .slice(opener + 1, blockGroupEnd(lines, opener))
+            .flatMap((line) => [
+              ...(blockOpener.exec(line)?.[1] ? [blockOpener.exec(line)?.[1] ?? ''] : []),
+              ...(blockTokens(line) ?? []).map((t) => t.id)
+            ]);
+        };
+        return {
+          items: objects.items.map((item) => {
+            const inside = members(item.id);
+            return inside ? { ...item, group: true, members: inside, noRename: true } : item;
+          }),
+          kind
+        };
+      }
+      case 'requirement': {
+        const db = await parseDb(code);
+        if (!db) return undefined;
+        const names = (name: string) => {
+          const found = read(db, name);
+          return found instanceof Map ? [...(found as Map<string, unknown>).keys()] : [];
+        };
+        return {
+          items: [...names('getRequirements'), ...names('getElements')].map((name) => ({
+            id: name,
+            label: decodeEntities(name)
+          })),
+          kind
+        };
+      }
+      case 'c4': {
+        const [objects, db] = await Promise.all([diagramObjects(code), parseDb(code)]);
+        if (!objects || !db) return undefined;
+        // Boundaries hold elements and other boundaries: groups.
+        const boundaries = list(read(db, 'getBoundaries')).filter(
+          ({ alias }) => typeof alias === 'string' && alias !== 'global'
+        );
+        const shapes = list(read(db, 'getC4ShapeArray'));
+        const inside = (id: string): string[] => [
+          ...shapes
+            .filter((shape) => shape.parentBoundary === id)
+            .map(({ alias }) => String(alias)),
+          ...boundaries
+            .filter((boundary) => boundary.parentBoundary === id)
+            .flatMap(({ alias }) => [String(alias), ...inside(String(alias))])
+        ];
+        const groups = boundaries.map(({ alias, label }): EditObject => ({
+          group: true,
+          id: String(alias),
+          label:
+            decodeEntities(String((label as { text?: unknown } | undefined)?.text ?? '')) ||
+            String(alias),
+          members: inside(String(alias))
+        }));
+        return { items: [...objects.items, ...groups], kind };
+      }
+      case 'state': {
+        const [objects, db] = await Promise.all([diagramObjects(code), parseDb(code)]);
+        if (!objects || !db) return undefined;
+        // Composite states, which hold other states, are groups.
+        const nodes = list((read(db, 'getData') as Db | undefined)?.nodes);
+        const children = (id: string): string[] =>
+          nodes
+            .filter(({ parentId }) => parentId === id)
+            .flatMap(({ id: child, shape }) => {
+              const name = String(child);
+              const below = children(name);
+              return shape === 'stateStart' || shape === 'stateEnd' || shape === 'divider'
+                ? below
+                : [name, ...below];
+            });
+        const composites = nodes
+          .filter(
+            ({ id, shape }) =>
+              shape === 'roundedWithTitle' && typeof id === 'string' && /^[\w-]+$/.test(id)
+          )
+          .map(({ id, label }): EditObject => ({
+            group: true,
+            id: String(id),
+            label: decodeEntities(typeof label === 'string' ? label : '') || String(id),
+            members: children(String(id)).filter((child) => /^[\w-]+$/.test(child))
+          }));
+        return { items: [...objects.items, ...composites], kind };
+      }
+      case 'pie':
+        return {
+          items: lines.flatMap((line, index) => {
+            const match = index > headerIndex(lines) ? pieSlice.exec(line) : null;
+            return match ? [{ id: `L${index}`, label: match[2], line: index }] : [];
+          }),
+          kind
+        };
       case 'sequence': {
         const order = await sequenceOrder(code);
         return {
-          items: order.map((item, index) => ({
-            ...item,
-            after: order.slice(0, index).map((o) => o.id)
-          })),
+          items: [
+            ...order.map((item, index) => ({
+              ...item,
+              after: order.slice(0, index).map((o) => o.id)
+            })),
+            ...sequenceExtras(lines)
+          ],
           kind
         };
       }
@@ -1347,6 +2024,14 @@ export const editableObjects = memoByCode(
           }));
         return { items: [...objects.items, ...groups], kind };
       }
+      case 'journey':
+      case 'xychart':
+      case 'quadrant':
+      case 'sankey':
+      case 'git':
+      case 'packet':
+      case 'zenuml':
+        return { items: chartObjects(code, kind), kind };
       default: {
         const objects = await diagramObjects(code);
         return objects ? { items: objects.items, kind } : undefined;
@@ -1443,15 +2128,23 @@ export const renameObject = (
   const text = clean(label);
   if (!text || object.noRename) return undefined;
   const { eol, lines } = splitLines(code);
-  const edited: Record<EditKind, () => string[] | undefined> = {
+  if (isChart(kind)) return renameChartObject(code, kind, object, text);
+  const edited: Record<Exclude<EditKind, ChartKind>, () => string[] | undefined> = {
     architecture: () => renameArch(lines, object.id, text),
+    block: () => renameBlock(lines, object.id, text),
     c4: () => renameC4(lines, object.id, text.replaceAll('"', "'")),
     class: () => renameClass(lines, object.id, text),
     er: () => renameEntity(lines, object.id, text),
     flowchart: () => renameFlowObject(lines, object, text),
+    gantt: () => renameGantt(lines, object.line ?? -1, text),
     kanban: () => renameLine(lines, object.line ?? -1, text),
     mindmap: () => renameLine(lines, object.line ?? -1, text),
-    sequence: () => renameParticipant(lines, object, text),
+    pie: () => renamePie(lines, object.line ?? -1, text),
+    requirement: () => renameRequirement(lines, object.id, text),
+    sequence: () =>
+      object.line === undefined
+        ? renameParticipant(lines, object, text)
+        : renameSequenceExtra(lines, object.line, text),
     state: () => renameState(lines, object.id, text.replaceAll('"', "'")),
     timeline: () => renameTimeline(lines, object, text)
   };
@@ -1469,17 +2162,30 @@ export const deleteObject = (
   object: EditObject,
   { keepContents = false }: { keepContents?: boolean } = {}
 ): string => {
+  if (isChart(kind)) return deleteChartObject(code, kind, object, keepContents);
   const { eol, lines } = splitLines(code);
-  const edited: Record<EditKind, () => string[]> = {
+  const edited: Record<Exclude<EditKind, ChartKind>, () => string[]> = {
     architecture: () => deleteArch(lines, object, keepContents),
-    c4: () => deleteC4(lines, object.id),
+    block: () => deleteBlock(lines, object, keepContents),
+    c4: () =>
+      object.group ? deleteC4Boundary(lines, object, keepContents) : deleteC4(lines, object.id),
     class: () => deleteClass(lines, object.id),
     er: () => deleteEntity(lines, object.id),
     flowchart: () => deleteFlowObject(lines, object, keepContents),
+    gantt: () => deleteGantt(lines, object, keepContents),
     kanban: () => deleteLines(lines, object.line ?? -1, false),
     mindmap: () => deleteLines(lines, object.line ?? -1, keepContents),
-    sequence: () => deleteParticipant(lines, object.id),
-    state: () => deleteState(lines, object.id),
+    pie: () => {
+      lines.splice(object.line ?? -1, 1);
+      return lines;
+    },
+    requirement: () => deleteRequirement(lines, object.id),
+    sequence: () =>
+      object.line === undefined
+        ? deleteParticipant(lines, object.id)
+        : deleteSequenceExtra(lines, object.line),
+    state: () =>
+      object.group ? deleteComposite(lines, object, keepContents) : deleteState(lines, object.id),
     timeline: () => deleteTimeline(lines, object)
   };
   return edited[kind]().join(eol);
@@ -1579,3 +2285,404 @@ export const checkEdit = async (before: string, after: string): Promise<boolean>
     return false;
   }
 };
+
+// ---- Flowchart nodes: shape, lane and icon ----
+
+/** The node's parts as written: `A` + `["x"]` + `@{ … }` + `:::cls`. */
+const nodeParts = ({ id, text }: NodeRef) => {
+  let rest = text.slice(id.length);
+  let shape = '';
+  if (rest !== '' && '[({>'.includes(rest[0])) {
+    const end = closeBracket(rest, 0);
+    shape = rest.slice(0, end);
+    rest = rest.slice(end);
+  }
+  let data = '';
+  if (rest.startsWith('@{')) {
+    const end = closeBracket(rest, 1);
+    data = rest.slice(0, end);
+    rest = rest.slice(end);
+  }
+  return { data, rest, shape };
+};
+
+/** The opener of a bracket shape and the text inside it. */
+const bracketParts = (shape: string) => {
+  const open = shapeOpeners.find((opener) => shape.startsWith(opener)) ?? '[';
+  const close = shapeClosers[open] ?? shape.slice(-2);
+  return { inner: shape.slice(open.length, shape.length - close.length), open };
+};
+
+// `@{ key: value, key: "value" }` as ordered pairs; values keep their quotes.
+const dataPairs = (data: string): [string, string][] =>
+  [...data.slice(2, -1).matchAll(/([\w-]+)\s*:\s*("(?:[^"\\]|\\.)*"|[^,]*?)\s*(?:,|$)/g)].map(
+    ([, key, value]) => [key, value]
+  );
+const renderData = (pairs: [string, string][]) =>
+  `@{ ${pairs.map(([key, value]) => `${key}: ${value}`).join(', ')} }`;
+const dataValue = (data: string, key: string) =>
+  dataPairs(data)
+    .find(([name]) => name === key)?.[1]
+    .replace(/^"(.*)"$/, '$1') ?? '';
+
+const bracketShapes: Record<string, NodeShape> = {
+  '(': 'rounded',
+  '((': 'circle',
+  '([': 'stadium',
+  '[': 'rect',
+  '{': 'diamond'
+};
+const shapeBrackets: Record<NodeShape, [string, string]> = {
+  circle: ['((', '))'],
+  diamond: ['{', '}'],
+  rect: ['[', ']'],
+  rounded: ['(', ')'],
+  stadium: ['([', '])']
+};
+// mermaid's names in `@{ shape: … }`, and what the Edit card writes back.
+const dataShapes: Record<string, NodeShape> = {
+  circ: 'circle',
+  circle: 'circle',
+  decision: 'diamond',
+  diam: 'diamond',
+  diamond: 'diamond',
+  pill: 'stadium',
+  rect: 'rect',
+  rounded: 'rounded',
+  stadium: 'stadium',
+  terminal: 'stadium'
+};
+const dataShapeNames: Record<NodeShape, string> = {
+  circle: 'circle',
+  diamond: 'diam',
+  rect: 'rect',
+  rounded: 'rounded',
+  stadium: 'stadium'
+};
+
+/** Every mention of the node in the chain statements, with its line. */
+const nodeRefs = (flow: FlowLine[], id: string) =>
+  flow.flatMap(({ chains, index }) =>
+    chains.flatMap((chain) =>
+      chain.groups
+        .flat()
+        .filter((node) => node.id === id)
+        .map((node) => ({ index, node }))
+    )
+  );
+
+/** Where the node is defined: its first mention with a shape, else its first mention. */
+const nodeDefinition = (lines: string[], id: string) => {
+  const refs = nodeRefs(flowLines(lines), id);
+  return refs.find(({ node }) => hasShape(node)) ?? refs[0];
+};
+
+interface Range {
+  id?: string;
+  start: number;
+  end: number;
+}
+
+/** Every subgraph's `subgraph` and `end` lines, inner ones first (the order they close in). */
+const subgraphRanges = (lines: string[]): Range[] => {
+  const open: { id?: string; start: number }[] = [];
+  const ranges: Range[] = [];
+  lines.forEach((line, index) => {
+    const start = /^\s*subgraph(?:\s+([\p{L}\p{N}_-]+))?/u.exec(line);
+    if (start) open.push({ id: start[1], start: index });
+    else if (/^\s*end\s*$/.test(line) && open.length > 0) {
+      const top = open.pop();
+      if (top) ranges.push({ ...top, end: index });
+    }
+  });
+  return ranges.sort((a, b) => a.end - b.end);
+};
+
+/**
+ * The lane a node is drawn in: mermaid gives a node to the first subgraph to
+ * close that mentions it, so an inner lane wins over the one around it.
+ */
+const laneOfNode = (lines: string[], id: string): string => {
+  const mentions = nodeRefs(flowLines(lines), id).map(({ index }) => index);
+  const range = subgraphRanges(lines).find(({ end, start }) =>
+    mentions.some((index) => index > start && index < end)
+  );
+  return range?.id ?? '';
+};
+
+export interface NodeDetails {
+  /** One of the Add card's shapes, 'other' for any other, undefined for an icon or image. */
+  shape?: NodeShape | 'other';
+  /** `prefix:name`, or ''. */
+  icon: string;
+  /** The lane or subgraph it is drawn in, or ''. */
+  lane: string;
+}
+
+/** A flowchart node's shape, icon and lane, as the Edit card shows them. */
+export const flowNodeDetails = (code: string, id: string): NodeDetails => {
+  const { lines } = splitLines(code);
+  const lane = laneOfNode(lines, id);
+  const target = nodeDefinition(lines, id);
+  // A node written without a shape is drawn as a box.
+  if (!target || !hasShape(target.node)) return { icon: '', lane, shape: 'rect' };
+  const { data, shape } = nodeParts(target.node);
+  const icon = dataValue(data, 'icon');
+  if (shape) return { icon, lane, shape: bracketShapes[bracketParts(shape).open] ?? 'other' };
+  const named = dataValue(data, 'shape');
+  if (icon || dataValue(data, 'img')) return { icon, lane, shape: undefined };
+  return { icon, lane, shape: named ? (dataShapes[named] ?? 'other') : 'rect' };
+};
+
+/** A label for a bracket shape: kept as written unless its brackets would end the shape. */
+const shapeLabel = (inner: string) =>
+  /^\s*".*"\s*$/.test(inner) || !/[()[\]{}]/.test(inner) ? inner : quoted(inner);
+
+/** Rewrites the node where it is defined; undefined when `change` refuses. */
+const rewriteNode = (
+  code: string,
+  id: string,
+  change: (parts: ReturnType<typeof nodeParts>, bare: boolean) => string | undefined
+): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const target = nodeDefinition(lines, id);
+  const parts = target ? nodeParts(target.node) : { data: '', rest: '', shape: '' };
+  const next = change(parts, !target || !hasShape(target.node));
+  if (next === undefined) return undefined;
+  if (!target) append(lines, [`  ${id}${next}`]);
+  else lines[target.index] = lines[target.index].replace(target.node.text, () => `${id}${next}`);
+  return lines.join(eol);
+};
+
+/** The code with the node drawn in another of the Add card's shapes. */
+export const setNodeShape = (code: string, id: string, shape: NodeShape): string | undefined =>
+  rewriteNode(code, id, ({ data, rest, shape: current }) => {
+    const [open, close] = shapeBrackets[shape];
+    if (current) return `${open}${shapeLabel(bracketParts(current).inner)}${close}${data}${rest}`;
+    if (data) {
+      if (dataValue(data, 'icon') || dataValue(data, 'img')) return undefined;
+      const pairs = dataPairs(data);
+      const at = pairs.findIndex(([key]) => key === 'shape');
+      if (at === -1) pairs.unshift(['shape', dataShapeNames[shape]]);
+      else pairs[at] = ['shape', dataShapeNames[shape]];
+      return `${renderData(pairs)}${rest}`;
+    }
+    return `${open}${quoted(id)}${close}${rest}`;
+  });
+
+const iconPattern = /^[\w-]+:[\w-]+$/;
+const iconKeys = new Set(['icon', 'form', 'pos', 'h']);
+
+/** The code with the node showing an icon (`id@{ icon: "prefix:name", label: … }`); '' removes it. */
+export const setNodeIcon = (code: string, id: string, icon: string): string | undefined => {
+  const name = icon.trim();
+  if (name && !iconPattern.test(name)) return undefined;
+  return rewriteNode(code, id, ({ data, rest, shape }) => {
+    const pairs = dataPairs(data || '@{}');
+    if (!name) {
+      if (!data) return undefined;
+      const kept = pairs.filter(([key]) => !iconKeys.has(key));
+      if (shape) return `${shape}${kept.length > 0 ? renderData(kept) : ''}${rest}`;
+      if (kept.every(([key]) => key === 'label')) {
+        return `[${kept[0]?.[1] ?? quoted(id)}]${rest}`;
+      }
+      return `${renderData(kept)}${rest}`;
+    }
+    const at = pairs.findIndex(([key]) => key === 'icon');
+    if (at === -1) pairs.unshift(['icon', `"${name}"`]);
+    else pairs[at] = ['icon', `"${name}"`];
+    // The icon takes the place of a bracket shape; its text becomes the label.
+    if (!pairs.some(([key]) => key === 'label')) {
+      const inner = shape ? bracketParts(shape).inner.trim() : '';
+      const label = /^".*"$/.test(inner) ? inner : quoted(inner || id);
+      pairs.push(['label', label]);
+    }
+    return `${renderData(pairs.filter(([key]) => key !== 'shape'))}${rest}`;
+  });
+};
+
+/** `linkStyle` numbers carried over to the arrows' new order (matched by their ends). */
+const renumberAfterMove = (before: FlowEdge[], lines: string[]) => {
+  const after = flowEdges(flowLines(lines));
+  const key = (edge: FlowEdge) => `${edge.from.id}\u0000${edge.to.id}`;
+  const used = new Set<number>();
+  const map = new Map<number, number>();
+  for (const edge of before) {
+    const match = after.find(
+      (candidate) => !used.has(candidate.index) && key(candidate) === key(edge)
+    );
+    if (match) {
+      used.add(match.index);
+      map.set(edge.index, match.index);
+    }
+  }
+  if ([...map].every(([from, to]) => from === to)) return;
+  renumberLinkStyles(lines, (index) => map.get(index));
+};
+
+/**
+ * The code with the node in another lane (or, for '', in none). Its definition
+ * moves; an arrow statement inside its old lane moves out to just after that
+ * lane, leaving the other nodes it named behind, so every arrow stays and
+ * `linkStyle` follows the arrows.
+ */
+export const moveNodeToLane = (code: string, id: string, lane: string): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const ranges = subgraphRanges(lines);
+  const target = lane ? ranges.find((range) => range.id === lane) : undefined;
+  if (lane && !target) return undefined;
+  const flow = flowLines(lines);
+  const before = flowEdges(flow);
+  const replace = new Map<number, string[]>();
+  const after = new Map<number, string[]>();
+  const add = (map: Map<number, string[]>, index: number, added: string[]) =>
+    map.set(index, [...(map.get(index) ?? []), ...added]);
+  const lanesAt = (index: number) =>
+    ranges.filter(({ end, start }) => index > start && index < end);
+  let definition: string | undefined;
+  let fromLane = false;
+
+  // Out of every lane it is mentioned in.
+  for (const line of flow) {
+    const around = lanesAt(line.index);
+    const mentions = line.chains.some((chain) => chain.groups.flat().some((n) => n.id === id));
+    if (around.length === 0 || !mentions) continue;
+    const stay: Chain[] = [];
+    for (const chain of line.chains) {
+      const nodes = chain.groups.flat();
+      const own = nodes.filter((node) => node.id === id);
+      if (own.length === 0) {
+        stay.push(chain);
+        continue;
+      }
+      fromLane = true;
+      definition ??= own.find((node) => hasShape(node))?.text;
+      if (chain.links.length === 0) {
+        stay.push(...withoutNodes(chain, new Set([id])));
+        continue;
+      }
+      // The others stay where they were drawn; the arrows go after the outermost lane.
+      const seen = new Set<string>();
+      for (const node of nodes) {
+        if (node.id === id || seen.has(node.id)) continue;
+        seen.add(node.id);
+        stay.push({ groups: [[node]], links: [] });
+      }
+      const outer = around.reduce((a, b) => (a.start < b.start ? a : b));
+      const bare: Chain = {
+        groups: chain.groups.map((group) => group.map((node) => ({ id: node.id, text: node.id }))),
+        links: chain.links
+      };
+      add(after, outer.end, [renderChain(' '.repeat(indentOf(lines[outer.start])), bare)]);
+    }
+    replace.set(
+      line.index,
+      stay.map((chain) => renderChain(line.indent, chain))
+    );
+  }
+
+  // A definition outside the lanes moves into the new lane.
+  if (definition === undefined && target) {
+    const outside = nodeRefs(flow, id).find(
+      ({ index, node }) => hasShape(node) && lanesAt(index).length === 0
+    );
+    if (outside) {
+      definition = outside.node.text;
+      const line = flow.find(({ index }) => index === outside.index);
+      if (line) {
+        const chains = line.chains.flatMap((chain) =>
+          chain.links.length === 0 &&
+          chain.groups.flat().length === 1 &&
+          chain.groups[0][0].id === id
+            ? []
+            : [
+                {
+                  groups: chain.groups.map((group) =>
+                    group.map((node) => (node === outside.node ? { id, text: id } : node))
+                  ),
+                  links: chain.links
+                }
+              ]
+        );
+        replace.set(
+          line.index,
+          chains.map((chain) => renderChain(line.indent, chain))
+        );
+      }
+    }
+  }
+
+  const statement = definition ?? id;
+  if (target) {
+    add(replace, target.end, [
+      `${' '.repeat(indentOf(lines[target.end]) + 2)}${statement}`,
+      lines[target.end]
+    ]);
+  }
+
+  const out = lines.flatMap((line, index) => [
+    ...(replace.get(index) ?? [line]),
+    ...(after.get(index) ?? [])
+  ]);
+  if (!target) {
+    // Out of every lane: the definition (or a bare mention) goes after the last statement.
+    const rest = out.join('\n');
+    const needed = fromLane && (definition !== undefined || findOccurrences(rest, id).length === 0);
+    if (needed) {
+      let at = out.length;
+      while (
+        at > 1 &&
+        (!out[at - 1].trim() || /^\s*(?:style|linkStyle|classDef|class|click)\b/.test(out[at - 1]))
+      )
+        at--;
+      out.splice(at, 0, `  ${statement}`);
+    }
+  }
+  renumberAfterMove(before, out);
+  return out.join(eol);
+};
+
+// ---- Architecture services: icon and group ----
+
+const serviceLine = (id: string) =>
+  new RegExp(`^(\\s*)service\\s+${escape(id)}(?:\\(([^)]*)\\))?(\\s*\\[[^\\]]*\\])?(.*)$`);
+const inGroup = /\s+in\s+([\w-]+)\s*$/;
+
+/** An architecture service's icon and group, or undefined when `id` is not a service. */
+export const serviceDetails = (
+  code: string,
+  id: string
+): { icon: string; group: string } | undefined => {
+  const { lines } = splitLines(code);
+  const match = lines.map((line) => serviceLine(id).exec(line)).find(Boolean);
+  if (!match) return undefined;
+  return { group: inGroup.exec(match[4])?.[1] ?? '', icon: match[2] ?? '' };
+};
+
+const rewriteService = (
+  code: string,
+  id: string,
+  change: (icon: string, label: string, rest: string) => string
+): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const index = lines.findIndex((line) => serviceLine(id).test(line));
+  const match = index === -1 ? null : serviceLine(id).exec(lines[index]);
+  if (!match) return undefined;
+  lines[index] = `${match[1]}service ${id}${change(match[2] ?? '', match[3] ?? '', match[4])}`;
+  return lines.join(eol);
+};
+
+/** The code with the service showing another icon (a standard one or any `prefix:name`). */
+export const setServiceIcon = (code: string, id: string, icon: string): string | undefined =>
+  /^[\w-]+(?::[\w-]+)?$/.test(icon.trim())
+    ? rewriteService(code, id, (_, label, rest) => `(${icon.trim()})${label}${rest}`)
+    : undefined;
+
+/** The code with the service in another group (or, for '', in none). */
+export const moveService = (code: string, id: string, group: string): string | undefined =>
+  rewriteService(
+    code,
+    id,
+    (icon, label, rest) =>
+      `${icon ? `(${icon})` : ''}${label}${rest.replace(inGroup, '')}${group ? ` in ${group}` : ''}`
+  );

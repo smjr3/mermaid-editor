@@ -4,21 +4,28 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import type { MessageKey } from '$/i18n/messages';
   import { listGroups } from '$/util/colors';
   import AddActions from '$/components/AddActions.svelte';
   import ArchitectureAdd from '$/components/ArchitectureAdd.svelte';
   import { specFor } from '$/util/addActions';
+  import { displayName } from '$/util/displayName';
   import {
     addEdge,
     addLane,
     addNode,
     canAdd,
+    headerLine,
     isArchitecture,
     nodeShapes,
     type NodeShape
   } from '$/util/diagramEdit';
+  import { editableEdges } from '$/util/diagramModify';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { templateNotice } from '$/util/templateNotice.svelte';
+  import { applyToolEdit, type ToolEditResult } from '$/util/codeHealth.svelte';
+  import { inputState } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
 
   // Local: add a lane, or a node (in a lane, joined from another node), without
@@ -28,18 +35,25 @@
   const spec = $derived(specFor(inputState.code));
   const groups = $derived(listGroups(inputState.code));
   let nodes = $state<DiagramObject[]>([]);
+  // The arrows there are, so the same arrow is not added twice.
+  let edges = $state<{ from: string; to: string; label: string }[]>([]);
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void diagramObjects(code).then((found) => {
       if (!stale) nodes = found?.kind === 'flowchart' ? found.items : [];
+    });
+    void editableEdges(code).then((found) => {
+      if (!stale) edges = found?.kind === 'flowchart' ? found.items : [];
     });
     return () => {
       stale = true;
     };
   });
 
+  // Swimlane diagrams have lanes; a flowchart's `subgraph` is a group.
+  const word = $derived(/^\s*swimlane-beta\b/.test(headerLine(inputState.code)) ? 'lane' : 'group');
   let laneName = $state('');
   let nodeName = $state('');
   let lane = $state('');
@@ -50,18 +64,25 @@
   let edgeLabel = $state('');
   let message = $state('');
 
-  const apply = (code: string, name: string) => {
-    updateCode(code, { updateDiagram: true });
-    message = t('add.done', { name });
+  // Local: checked and refused while the code has an error (codeHealth.svelte.ts).
+  const said: Record<Exclude<ToolEditResult, 'applied'>, MessageKey> = {
+    blocked: 'recover.blocked',
+    refused: 'add.breaks',
+    unchanged: 'add.breaks'
   };
-  const onAddLane = () => {
-    const name = laneName.trim() || t('add.laneDefault');
+  const apply = async (code: string, name: string): Promise<boolean> => {
+    const result = await applyToolEdit(code);
+    message = result === 'applied' ? t('add.done', { name }) : t(said[result]);
+    return result === 'applied';
+  };
+  const onAddLane = async () => {
+    const name = laneName.trim() || t(`add.${word}Default`);
     const { code, id } = addLane(inputState.code, name);
-    apply(code, name);
+    if (!(await apply(code, name))) return;
     laneName = '';
     lane = id;
   };
-  const onAddNode = () => {
+  const onAddNode = async () => {
     const name = nodeName.trim() || t('add.nodeDefault');
     // A lane or node deleted in the code may still be chosen here.
     const { code, id } = addNode(inputState.code, {
@@ -70,21 +91,34 @@
       lane: groups.some((group) => group.id === lane) ? lane : undefined,
       shape
     });
-    apply(code, name);
+    if (!(await apply(code, name))) return;
     nodeName = '';
     // The next node most likely follows this one.
     from = id;
   };
 
-  const onAddEdge = () => {
+  const onAddEdge = async () => {
     const known = (id: string) => nodes.some((node) => node.id === id);
     if (!known(edgeFrom) || !known(edgeTo)) {
       message = t('add.choose');
       return;
     }
-    updateCode(addEdge(inputState.code, { from: edgeFrom, label: edgeLabel, to: edgeTo }), {
-      updateDiagram: true
-    });
+    // A second arrow between the same nodes only makes sense with another label.
+    const text = edgeLabel.trim();
+    const same = ({ from, to, label }: { from: string; to: string; label: string }) =>
+      from === edgeFrom && to === edgeTo && (!text || label.trim() === text);
+    if (edges.some(same)) {
+      const name = (id: string) => nodes.find((node) => node.id === id)?.label.trim() || id;
+      message = t('sel.alreadyConnected', { from: name(edgeFrom), to: name(edgeTo) });
+      return;
+    }
+    const result = await applyToolEdit(
+      addEdge(inputState.code, { from: edgeFrom, label: edgeLabel, to: edgeTo })
+    );
+    if (result !== 'applied') {
+      message = t(said[result]);
+      return;
+    }
     message = t('add.arch.edgeDone');
     edgeLabel = '';
   };
@@ -95,6 +129,11 @@
 
 <Card title={t('add.title')} testID={TID.addCard} isStackable icon={{ component: AddIcon }}>
   <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
+    {#if templateNotice.message}
+      <p role="status" class="text-muted-foreground" data-testid={TID.templateFormsMessage}>
+        {templateNotice.message}
+      </p>
+    {/if}
     {#if architecture}
       <ArchitectureAdd />
     {:else if spec}
@@ -105,16 +144,16 @@
       <p class="text-muted-foreground">{t('add.unsupported')}</p>
     {:else}
       <div class="flex flex-col gap-1">
-        <span class="font-semibold">{t('add.lane')}</span>
+        <span class="font-semibold">{t(`add.${word}`)}</span>
         <div class="flex gap-1">
           <Input
             bind:value={laneName}
-            placeholder={t('add.laneDefault')}
-            aria-label={t('add.laneName')}
+            placeholder={t(`add.${word}Default`)}
+            aria-label={t(`add.${word}Name`)}
             data-testid={TID.addLaneName}
             onkeydown={(event) => event.key === 'Enter' && onAddLane()} />
           <Button size="sm" class="h-9" data-testid={TID.addLaneButton} onclick={onAddLane}
-            >{t('add.laneButton')}</Button>
+            >{t(`add.${word}Button`)}</Button>
         </div>
       </div>
 
@@ -139,9 +178,10 @@
           </select>
         </div>
         <div class="flex items-center gap-1">
-          <span class="w-20 shrink-0 text-xs text-muted-foreground">{t('add.nodeLane')}</span>
+          <span class="w-20 shrink-0 text-xs text-muted-foreground"
+            >{t(`add.node${word === 'lane' ? 'Lane' : 'Group'}`)}</span>
           <select bind:value={lane} class={selectClass} data-testid={TID.addNodeLane}>
-            <option value="">{t('add.noLane')}</option>
+            <option value="">{t(`add.no${word === 'lane' ? 'Lane' : 'Group'}`)}</option>
             {#each groups as group (group.id)}
               <option value={group.id}>{group.label}</option>
             {/each}
@@ -152,8 +192,7 @@
           <select bind:value={from} class={selectClass} data-testid={TID.addNodeFrom}>
             <option value="">{t('add.noArrow')}</option>
             {#each nodes as node (node.id)}
-              <option value={node.id}
-                >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+              <option value={node.id}>{displayName(node.label, node.id, nodes)}</option>
             {/each}
           </select>
         </div>
@@ -166,8 +205,7 @@
             <select bind:value={edgeFrom} class={selectClass} data-testid={TID.addEdgeFrom}>
               <option value=""></option>
               {#each nodes as node (node.id)}
-                <option value={node.id}
-                  >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+                <option value={node.id}>{displayName(node.label, node.id, nodes)}</option>
               {/each}
             </select>
           </div>
@@ -176,8 +214,7 @@
             <select bind:value={edgeTo} class={selectClass} data-testid={TID.addEdgeTo}>
               <option value=""></option>
               {#each nodes as node (node.id)}
-                <option value={node.id}
-                  >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+                <option value={node.id}>{displayName(node.label, node.id, nodes)}</option>
               {/each}
             </select>
           </div>

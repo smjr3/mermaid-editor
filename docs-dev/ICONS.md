@@ -27,22 +27,59 @@ chunks — fetched from this site the first time a diagram uses the prefix, neve
 | `fluent`           | MIT        | Microsoft's Fluent UI icons: office, devices, documents                          |
 | `flat-color-icons` | MIT        | Colour icons: servers, documents, people                                         |
 | `mdi`              | Apache-2.0 | Material Design Icons: a very large general set                                  |
+| `clarity`          | MIT        | Data centre and network (VMware): router, switch, firewall, rack server, tape    |
+| `eos-icons`        | MIT        | Infrastructure concepts (SUSE): DNS, proxy, IP, ingress, network policy, pod     |
+| `fluent-color`     | MIT        | Microsoft's colour Fluent icons, the M365 look: team, chat, mail, approvals      |
 | `logos`            | CC0-1.0    | Logos: AWS/Azure/Google Cloud services, products (`logos:aws-lambda`)            |
 | `simple-icons`     | CC0-1.0    | Brand logos of ~3,000 products and companies (`simple-icons:microsoftazure`)     |
 | `devicon`          | MIT        | Languages, databases, middleware, cloud (`devicon:microsoftsqlserver`)           |
 
 The last three are logo sets. Names are the Iconify names. The "Icons" card has a picker: type part of a name (`server`,
 `aws lambda`), optionally pick a pack, and click an icon to insert its `prefix:name` at the cursor
-in the code (it is copied instead on mobile or on the config tab). "Enlarge" opens the same
-picker in a large dialog, with each icon's name and pack under it.
+in the code (it is copied instead on mobile or on the config tab). "Browse" (一覧から選ぶ) needs
+no name: it shows one of twelve hand-picked categories (`src/lib/util/iconCategories.ts`: standard
+icons, servers and storage, network equipment, security, cloud and SaaS, Microsoft 365,
+AWS / Azure / Google Cloud, databases, devices, people, documents and business, development and
+operations), each icon with a short Japanese or English label, or a whole pack, alphabetical,
+200 icons a page (`iconPage` in `iconSearch.ts`). A category keeps only the icons the build has,
+so with `MERMAID_BUNDLE_LOGOS=false` the cloud-vendor category disappears and Microsoft 365 shows
+its `fluent-color` icons. "Enlarge" opens the same picker in a large dialog, with each icon's name
+and pack under it, on the same mode, list and page.
+
+### Choosing the packs (2026-10)
+
+The owner asked for more Microsoft 365 and networking icons. Iconify collections on npm were
+compared by licence, coverage and size (icons, gzipped `icons.json`):
+
+| Pack                                | Licence    |   Icons |       gzip | Decision                                                                                        |
+| ----------------------------------- | ---------- | ------: | ---------: | ----------------------------------------------------------------------------------------------- |
+| `clarity` (VMware)                  | MIT        |   1,103 |     130 kB | **Added**: routers, switches, firewalls, rack servers, storage, tape, VMs, hosts, clusters      |
+| `eos-icons` (SUSE)                  | MIT        |     253 |      36 kB | **Added**: DNS, proxy, IP, ingress, network policy and Kubernetes objects; tiny                 |
+| `fluent-color` (Microsoft)          | MIT        |     890 |     266 kB | **Added**: the colour Fluent 2 style of Microsoft 365 apps (people, chat, mail, approvals, …)   |
+| `fluent-mdl2` (Microsoft)           | MIT        |   1,735 |     233 kB | Rejected: archived, monochrome, overlaps `fluent`; Microsoft ships its branded icons separately |
+| `vscode-icons`                      | MIT        |   1,666 |     1.1 MB | Rejected: colour Office file icons, but mostly programming file types that overlap `devicon`    |
+| `catppuccin`, `material-icon-theme` | MIT        | 656–905 |  60–260 kB | Rejected: file-type themes for code editors; only a few Office files                            |
+| `skill-icons`                       | MIT        |     400 |     495 kB | Rejected: programming-skill badges, overlaps `devicon`                                          |
+| `hugeicons`, `ph`, `solar`          | MIT, CC BY |   6–9 k |   0.8–2 MB | Rejected: large general UI sets with little network gear beyond `tabler`/`mdi`                  |
+| `streamline`, `cil`, `fa6-solid`    | CC BY 4.0  | 0.5–3 k | 0.1–0.5 MB | Rejected: little new network gear; would add CC BY attribution for few icons                    |
+| `uil`, `mingcute`, `ri`, `iconoir`  | Apache/MIT |   1–3 k | 0.1–0.4 MB | Rejected: general UI sets; routers/switches already in `tabler`, `carbon`, `mdi`                |
+| `cib` (CoreUI Brands)               | CC0        |     830 |     459 kB | Rejected: brand logos that `simple-icons` already covers                                        |
+
+No OSS Iconify set has Microsoft 365 product icons in Microsoft's own colour style, nor Entra ID
+or Intune: the product marks come from the logo sets already bundled (`logos:microsoft-teams`,
+`logos:microsoft-onedrive`, `logos:microsoft-power-bi`, `simple-icons:microsoftsharepoint`,
+`simple-icons:microsoftoutlook`, `simple-icons:powerapps`, `mdi:microsoft-*`, …). Microsoft's
+Azure architecture icons (which include Entra ID and Intune) are not OSS; import them at build
+time (section 2).
 
 The picker also lists mermaid's five built-in architecture icons (`database`, `server`, `disk`,
 `internet`, `cloud`), first and marked **standard** (green): they are written without a prefix
 and render anywhere mermaid runs, GitLab included — in architecture diagrams only (a flowchart
 shows `?` for them; the picker warns when inserting one elsewhere). Every other icon is marked **extended**
 (amber): it renders only in this editor, so share such diagrams as an exported image. The card also links to the
-Iconify browser, an external site. All packs together add about 36 MB of chunks to the
-built site (17 MB of it the logo sets); a page loads only the packs its diagram names.
+Iconify browser, an external site. All packs together add about 39 MB of chunks to the
+built site (17 MB of it the logo sets; the three 2026-10 packs about 2.8 MB); a page loads only
+the packs its diagram names.
 
 ### Logos, trademarks and redistribution
 

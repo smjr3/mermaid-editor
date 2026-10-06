@@ -2,6 +2,13 @@ import { diagramData } from '@mermaid-js/examples';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
 import { initialValues, specFor } from './addActions';
+import {
+  deleteMember,
+  objectFields,
+  objectMembers,
+  setMember,
+  setObjectFields
+} from './diagramDetails';
 import { colorAll, colorAllGroups, listGroups, setEdgeColor } from './colors';
 import {
   addArchEdge,
@@ -17,17 +24,25 @@ import {
   deleteObject,
   editableEdges,
   editableObjects,
+  flowNodeDetails,
+  moveNodeToLane,
+  moveService,
   renameObject,
   reverseEdge,
   setEdgeHead,
   setEdgeLabel,
-  setEdgeStyle
+  setEdgeStyle,
+  setNodeIcon,
+  setNodeShape,
+  setServiceIcon
 } from './diagramModify';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
-import { localSamples } from './localSamples';
+import { localExamples, localSamples } from './localSamples';
+import { starter, starterKinds } from './newDiagram';
 import { architectureParts, diagramEdges, diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
+import { addRow, deleteRow, moveRow, tableKind, tableModel } from './tableEdit';
 
 // Every sample diagram the editor offers (mermaid's examples and this fork's
 // own), through every feature that rewrites or exports the code.
@@ -40,7 +55,15 @@ const samples = [
   ),
   ...Object.entries(localSamples).flatMap(([name, list]) =>
     list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
-  )
+  ),
+  ...Object.entries(localExamples).flatMap(([name, list]) =>
+    list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
+  ),
+  // The New diagram starters, with a title and a direction where they take one.
+  ...starterKinds.map(({ id }) => ({
+    code: starter(id, { direction: 'LR', title: '新しい図' }),
+    name: `New diagram: ${id}`
+  }))
 ];
 
 const typeOf = async (code: string) => (await mermaid.parse(code)).diagramType;
@@ -146,11 +169,73 @@ describe.each(samples)('$name', ({ code }) => {
         if (field.kind === 'text') values[field.key] = 'Added: "x" [1]';
         if (field.kind === 'date') values[field.key] = '2025-01-02';
       }
-      const result = action.apply(code, values);
-      if ('error' in result) continue;
-      await expect(typeOf(result.code), `${spec.kind} ${action.id}`).resolves.toBe(type);
+      // Then each other option of each choice, one at a time.
+      const variants = [
+        values,
+        ...action.fields.flatMap((field) =>
+          (field.options ?? [])
+            .filter((option) => option !== values[field.key])
+            .map((option) => ({ ...values, [field.key]: option }))
+        )
+      ];
+      for (const variant of variants) {
+        const result = action.apply(code, variant);
+        if ('error' in result) continue;
+        await expect(
+          typeOf(result.code),
+          `${spec.kind} ${action.id} ${JSON.stringify(variant)}`
+        ).resolves.toBe(type);
+      }
     }
-  });
+  }, 120_000);
+
+  it('keeps parsing, as the same type, after changing and after deleting each member and property of its Edit card', async () => {
+    const objects = await editableObjects(code);
+    if (!objects) return;
+    const type = await typeOf(code);
+    for (const object of objects.items) {
+      const members = objectMembers(code, objects.kind, object.id) ?? [];
+      for (const member of members) {
+        const why = `${object.id} ${member.label}`;
+        // Every text field typed into adversarially, every choice at its last option.
+        const values = Object.fromEntries(
+          member.fields.map((field) => [
+            field.key,
+            field.kind === 'choice' ? (field.options?.at(-1) ?? '') : 'Edited: "x" {1} (y)'
+          ])
+        );
+        const changed = setMember(code, objects.kind, object.id, member, values);
+        expect(changed, why).toBeDefined();
+        await expect(typeOf(changed ?? ''), `change ${why}`).resolves.toBe(type);
+        const deleted = deleteMember(code, objects.kind, object.id, member);
+        expect(deleted, why).toBeDefined();
+        await expect(typeOf(deleted ?? ''), `delete ${why}`).resolves.toBe(type);
+      }
+      const fields = objectFields(code, objects.kind, object);
+      if (!fields) continue;
+      const variants = [
+        Object.fromEntries(fields.map(({ key, value }) => [key, value])),
+        ...fields.flatMap((field) => {
+          const base = Object.fromEntries(fields.map(({ key, value }) => [key, value]));
+          if (field.kind === 'choice')
+            return (field.options ?? []).map((option) => ({ ...base, [field.key]: option }));
+          if (field.kind === 'item')
+            return (field.choices ?? []).map(({ id }) => ({ ...base, [field.key]: id }));
+          if (field.kind === 'number') return [{ ...base, [field.key]: '7' }];
+          if (field.kind === 'date') return [{ ...base, [field.key]: '2025-03-04' }];
+          return [{ ...base, [field.key]: 'Edited: "x" {1} (y)' }];
+        })
+      ];
+      for (const variant of variants) {
+        const changed = setObjectFields(code, objects.kind, object, variant);
+        if (changed === undefined) continue;
+        await expect(
+          typeOf(changed),
+          `fields ${object.id} ${JSON.stringify(variant)}`
+        ).resolves.toBe(type);
+      }
+    }
+  }, 120_000);
 
   it('keeps parsing, as the same type, after renaming and after deleting each object of its Edit card', async () => {
     const objects = await editableObjects(code);
@@ -173,6 +258,113 @@ describe.each(samples)('$name', ({ code }) => {
         if (object.line === undefined && !keepContents) {
           const left = (await editableObjects(deleted))?.items.map(({ id }) => id) ?? [];
           expect(left, `delete ${object.id}`).not.toContain(object.id);
+        }
+      }
+    }
+  }, 120_000);
+
+  it('reads every row of its table editor as mermaid does, and keeps parsing after each row edit', async () => {
+    const kind = tableKind(code);
+    if (!kind) return;
+    const type = await typeOf(code);
+    const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as Record<
+      string,
+      () => unknown
+    >;
+    const entities =
+      kind === 'er' ? [...(db.getEntities() as Map<string, { attributes: unknown[] }>)] : [];
+    for (const entity of kind === 'er' ? entities.map(([id]) => id) : [undefined]) {
+      const model = await tableModel(code, entity);
+      expect(model, entity).toBeDefined();
+      const rows = model?.rows ?? [];
+      // As many rows as mermaid's own parse has items.
+      const expected = {
+        er: () => entities.find(([id]) => id === entity)?.[1].attributes.length,
+        gantt: () => (db.getTasks() as unknown[]).length,
+        journey: () => (db.getTasks() as unknown[]).length,
+        kanban: () =>
+          ((db.getData() as { nodes: { isGroup: boolean }[] }).nodes ?? []).filter(
+            (node) => !node.isGroup
+          ).length,
+        // A field crossing a 32-bit row is drawn as two blocks with the same label.
+        packet: () =>
+          (db.getPacket() as { start: number; end: number; label: string }[][])
+            .flat()
+            .filter(
+              (block, i, all) =>
+                !(
+                  i > 0 &&
+                  block.start % 32 === 0 &&
+                  all[i - 1].end + 1 === block.start &&
+                  all[i - 1].label === block.label
+                )
+            ).length,
+        pie: () => (db.getSections() as Map<string, number>).size,
+        quadrant: () => (db.getQuadrantData() as { points: unknown[] }).points.length,
+        sankey: () => (db.getLinks() as unknown[]).length,
+        timeline: () => (db.getTasks() as unknown[]).length,
+        xychart: () => (db.getXYChartData() as { plots: unknown[] }).plots.length
+      }[kind]();
+      expect(rows.length, entity).toBe(expected);
+      for (const [index, row] of rows.entries()) {
+        for (const column of model?.columns ?? []) {
+          expect(row.cells, `${index} ${column.key}`).toHaveProperty([column.key]);
+          if (column.kind === 'choice')
+            expect(
+              column.options?.map(({ value }) => value),
+              `${index} ${column.key}`
+            ).toContain(row.cells[column.key]);
+        }
+        for (const edited of [
+          deleteRow(code, index, entity),
+          moveRow(code, index, index === 0 ? 1 : -1, entity)
+        ]) {
+          if (edited === undefined) continue;
+          await expect(typeOf(edited), `row ${index}`).resolves.toBe(type);
+        }
+      }
+      const added = addRow(code, {}, entity);
+      if (added !== undefined) await expect(typeOf(added), 'add').resolves.toBe(type);
+    }
+  }, 120_000);
+
+  it('keeps parsing, as the same type and with the same arrows, after each node shape, icon and lane change of its Edit card', async () => {
+    const objects = await editableObjects(code);
+    if (objects?.kind !== 'flowchart' && objects?.kind !== 'architecture') return;
+    const type = await typeOf(code);
+    const arrows = async (text: string) =>
+      (await diagramEdges(text)).map(({ label }) => label).sort();
+    const before = await arrows(code);
+    const groups = objects.items.filter((item) => item.group).map(({ id }) => id);
+    for (const object of objects.items.filter((item) => !item.group && !item.noRename)) {
+      const edits: [string, string | undefined][] =
+        objects.kind === 'flowchart'
+          ? [
+              ['shape', setNodeShape(code, object.id, 'rounded')],
+              ['icon', setNodeIcon(code, object.id, 'tabler:user')],
+              ['no lane', moveNodeToLane(code, object.id, '')],
+              ...groups.map((lane): [string, string | undefined] => [
+                `lane ${lane}`,
+                moveNodeToLane(code, object.id, lane)
+              ])
+            ]
+          : [
+              ['icon', setServiceIcon(code, object.id, 'logos:aws-lambda')],
+              ['no group', moveService(code, object.id, '')],
+              ...groups.map((group): [string, string | undefined] => [
+                `group ${group}`,
+                moveService(code, object.id, group)
+              ])
+            ];
+      for (const [name, edited] of edits) {
+        if (edited === undefined) continue;
+        const why = `${name} ${object.id}`;
+        await expect(typeOf(edited), why).resolves.toBe(type);
+        if (objects.kind === 'flowchart') {
+          expect(await arrows(edited), why).toEqual(before);
+          if (name.startsWith('lane ')) {
+            expect(flowNodeDetails(edited, object.id).lane, why).toBe(name.slice(5));
+          }
         }
       }
     }

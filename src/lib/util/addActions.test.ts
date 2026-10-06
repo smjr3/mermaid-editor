@@ -1,7 +1,7 @@
 import { messages } from '$/i18n/messages';
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
-import { addSpecs, initialValues, specFor, type Values } from './addActions';
+import { addSpecs, checkAdd, initialValues, specFor, type Values } from './addActions';
 
 const typeOf = async (code: string) => (await mermaid.parse(code)).diagramType;
 
@@ -64,6 +64,94 @@ describe('sequence', () => {
   });
 });
 
+describe('sequence notes and blocks', () => {
+  const code =
+    'sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: hi\n  B-->>A: hello';
+  it('lists the messages to place things after', async () => {
+    expect((await specFor(code)?.parts(code))?.messages).toEqual([
+      { id: '3', label: 'A → B: hi' },
+      { id: '4', label: 'B → A: hello' }
+    ]);
+  });
+  it('adds a note over two participants at the end', async () => {
+    const result = await run(code, 'note', { at: 'A', place: 'over', text: '確認; 済み', to: 'B' });
+    if ('error' in result) throw new Error();
+    expect(result.code).toBe(`${code}\n  Note over A,B: 確認, 済み`);
+  });
+  it('adds a note beside one participant after a chosen message', async () => {
+    const result = await run(code, 'note', { after: '3', at: 'B', place: 'right', text: '#1' });
+    if ('error' in result) throw new Error();
+    expect(added(code, result.code)).toEqual(['  Note right of B: #35;1']);
+    expect(result.code.split('\n')[4]).toBe('  Note right of B: #35;1');
+  });
+  it('asks whom a note is about', async () => {
+    expect(await run(code, 'note', { text: 'x' })).toEqual({ error: 'add.seq.noteChoose' });
+  });
+  it('adds an empty alt or loop block after a chosen message, or at the end', async () => {
+    const alt = await run(code, 'block', {
+      after: '3',
+      kind: 'alt',
+      text: '在庫あり',
+      wrap: 'after'
+    });
+    if ('error' in alt) throw new Error();
+    expect(alt.code.split('\n').slice(3, 6)).toEqual(['  A->>B: hi', '  alt 在庫あり', '  end']);
+    const loop = await run(alt.code, 'block', { kind: 'loop', text: '', wrap: 'after' });
+    if ('error' in loop) throw new Error();
+    expect(loop.code.split('\n').slice(-2)).toEqual(['  loop 繰り返し', '  end']);
+  });
+  it('wraps the last message when no message is chosen, so the frame is never drawn empty', async () => {
+    const spec = specFor(code)?.actions.find(({ id }) => id === 'block');
+    expect(spec && initialValues(spec).wrap).toBe('around');
+    const result = await run(code, 'block', { kind: 'alt', text: '' });
+    if ('error' in result) throw new Error();
+    expect(result.code.split('\n').slice(3)).toEqual([
+      '  A->>B: hi',
+      '  alt 条件',
+      '    B-->>A: hello',
+      '  end'
+    ]);
+    // With no message at all there is nothing to wrap: an empty frame is all that can be written.
+    const bare = 'sequenceDiagram\n  participant A\n  participant B';
+    const empty = await run(bare, 'block', { kind: 'loop', text: '' });
+    if ('error' in empty) throw new Error();
+    expect(empty.code.split('\n').slice(-2)).toEqual(['  loop 繰り返し', '  end']);
+  });
+  it('wraps a block around a chosen message, and puts a message first inside a block', async () => {
+    const around = await run(code, 'block', {
+      after: '4',
+      kind: 'loop',
+      text: '毎日',
+      wrap: 'around'
+    });
+    if ('error' in around) throw new Error();
+    expect(around.code.split('\n').slice(3)).toEqual([
+      '  A->>B: hi',
+      '  loop 毎日',
+      '    B-->>A: hello',
+      '  end'
+    ]);
+    const parts = await specFor(around.code)?.parts(around.code);
+    expect(parts?.messages.map(({ label }) => label)).toEqual([
+      'A → B: hi',
+      'loop 毎日 ⋯',
+      'B → A: hello'
+    ]);
+    const inside = await run(around.code, 'message', {
+      after: '4',
+      from: 'A',
+      text: '確認',
+      to: 'B'
+    });
+    if ('error' in inside) throw new Error();
+    expect(inside.code.split('\n').slice(4, 7)).toEqual([
+      '  loop 毎日',
+      '    A->>B: 確認',
+      '    B-->>A: hello'
+    ]);
+  });
+});
+
 describe('state', () => {
   const code = 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy';
   it('lists states with the start and end point', async () => {
@@ -109,6 +197,169 @@ describe('class', () => {
   });
 });
 
+describe('composite states', () => {
+  const code = 'stateDiagram-v2\n  [*] --> Idle\n  state Busy {\n    Work\n  }\n  Idle --> Busy';
+  it('lists composite states apart, and as transition ends', async () => {
+    const parts = await specFor(code)?.parts(code);
+    expect(parts?.composites).toEqual([{ id: 'Busy', label: 'Busy' }]);
+    expect(parts?.plain.map(({ id }) => id)).toEqual(['Idle', 'Work']);
+    expect(parts?.states.map(({ id }) => id)).toEqual(['[*]', 'Idle', 'Work', 'Busy']);
+  });
+  it('adds a composite state with a placeholder inside, then a state inside it', async () => {
+    // mermaid draws an empty composite state as its label alone ("negative height").
+    const empty = await run(code, 'composite', { name: '確認中' });
+    if ('error' in empty) throw new Error();
+    expect(empty.code).toBe(`${code}\n  state "確認中" as g1 {\n    state "内容" as s1\n  }`);
+    expect(empty.follow).toEqual({ parent: 'g1' });
+    const inner = await run(empty.code, 'state', { from: 'Idle', name: 'Check', parent: 'g1' });
+    if ('error' in inner) throw new Error();
+    expect(inner.code.split('\n').slice(-5)).toEqual([
+      '  state "確認中" as g1 {',
+      '    state "内容" as s1',
+      '    state "Check" as s2',
+      '  }',
+      '  Idle --> s2'
+    ]);
+  });
+  it('puts a chosen state inside the new composite, right after its first mention', async () => {
+    const result = await run(code, 'composite', { inside: 'Work', name: 'Steps' });
+    if ('error' in result) throw new Error();
+    expect(result.code).toBe(
+      'stateDiagram-v2\n  [*] --> Idle\n  state Busy {\n    Work\n    state "Steps" as g1 {\n      Work\n    }\n  }\n  Idle --> Busy'
+    );
+    const top = await run(code, 'composite', { inside: 'Idle', name: 'Waiting' });
+    if ('error' in top) throw new Error();
+    expect(top.code.split('\n').slice(1, 5)).toEqual([
+      '  [*] --> Idle',
+      '  state "Waiting" as g1 {',
+      '    Idle',
+      '  }'
+    ]);
+  });
+});
+
+describe('requirement diagrams', () => {
+  const code = 'requirementDiagram\n  requirement login {\n    id: 1\n  }';
+  it('adds a requirement of a kind, an element and a relationship between them', async () => {
+    const first = await run(code, 'requirement', {
+      kind: 'performanceRequirement',
+      name: '応答 "速度"',
+      risk: 'high',
+      text: '2秒以内: 常に',
+      verify: 'demonstration'
+    });
+    if ('error' in first) throw new Error();
+    expect(added(code, first.code)).toEqual([
+      `  performanceRequirement "応答 '速度'" {`,
+      '    id: R1',
+      '    text: "2秒以内: 常に"',
+      '    risk: high',
+      '    verifymethod: demonstration'
+    ]);
+    const second = await run(first.code, 'element', { name: 'web_app', type: 'システム' });
+    if ('error' in second) throw new Error();
+    expect(added(first.code, second.code)).toEqual(['  element web_app {', '    type: "システム"']);
+    const parts = await specFor(second.code)?.parts(second.code);
+    expect(parts?.items.map(({ id }) => id)).toEqual(['login', "応答 '速度'", 'web_app']);
+    const third = await run(second.code, 'relationship', {
+      from: 'web_app',
+      kind: 'verifies',
+      to: "応答 '速度'"
+    });
+    if ('error' in third) throw new Error();
+    expect(added(second.code, third.code)).toEqual([`  web_app - verifies -> "応答 '速度'"`]);
+  });
+  it('gives a name already taken, or none, a fresh one', async () => {
+    const taken = await run(code, 'requirement', { name: 'login' });
+    if ('error' in taken) throw new Error();
+    expect(added(code, taken.code)[0]).toBe('  requirement req1 {');
+  });
+});
+
+describe('class members', () => {
+  it('adds an attribute and a method last in the class body', async () => {
+    const code = 'classDiagram\n  class Order {\n    +id: int\n  }\n  style Order fill:#fff';
+    const attribute = await run(code, 'member', {
+      class: 'Order',
+      kind: 'attribute',
+      name: '合計',
+      type: 'Money',
+      visibility: 'private'
+    });
+    if ('error' in attribute) throw new Error();
+    expect(attribute.code).toBe(
+      'classDiagram\n  class Order {\n    +id: int\n    -合計: Money\n  }\n  style Order fill:#fff'
+    );
+    const method = await run(attribute.code, 'member', {
+      args: 'rate: int',
+      class: 'Order',
+      kind: 'method',
+      name: 'discount',
+      type: 'Money',
+      visibility: 'protected'
+    });
+    if ('error' in method) throw new Error();
+    expect(added(attribute.code, method.code)).toEqual(['    #discount(rate: int) Money']);
+  });
+  it('adds a statement to a class without a body, after its other member statements', async () => {
+    const code = 'classDiagram\n  Animal <|-- Duck\n  Duck : +swim()\n  Animal <|-- Fish';
+    const result = await run(code, 'member', {
+      class: 'Duck',
+      kind: 'attribute',
+      name: 'beak',
+      type: 'Beak: big',
+      visibility: 'none'
+    });
+    if ('error' in result) throw new Error();
+    // Outside a body a colon ends the statement, and a type before the name is one word.
+    expect(result.code.split('\n')[3]).toBe('  Duck : Beakbig beak');
+    const bare = await run('classDiagram\n  class A', 'member', {
+      class: 'A',
+      kind: 'method',
+      name: 'run',
+      visibility: 'public'
+    });
+    if ('error' in bare) throw new Error();
+    expect(bare.code).toBe('classDiagram\n  class A\n  A : +run()');
+  });
+  it('asks which class', async () => {
+    expect(await run('classDiagram\n  class A', 'member', { name: 'x' })).toEqual({
+      error: 'add.chooseClass'
+    });
+  });
+});
+
+describe('ER attributes', () => {
+  it('adds an attribute last in the entity block, with a key and a comment', async () => {
+    const code = 'erDiagram\n  ORDER {\n    int id PK\n  }';
+    const result = await run(code, 'attribute', {
+      comment: '注文の "合計"',
+      entity: 'ORDER',
+      key: 'FK',
+      name: 'customer id',
+      type: 'int'
+    });
+    if ('error' in result) throw new Error();
+    expect(added(code, result.code)).toEqual([`    int customer_id FK "注文の '合計'"`]);
+  });
+  it('opens a block on the entity line, or adds one for an entity named only in relationships', async () => {
+    const aliased = 'erDiagram\n  e1["商品"]\n  e1 ||--o{ e2 : has';
+    const first = await run(aliased, 'attribute', { entity: 'e1', key: 'PK', name: '商品ID' });
+    if ('error' in first) throw new Error();
+    expect(first.code).toBe(
+      'erDiagram\n  e1["商品"] {\n    string 商品ID PK\n  }\n  e1 ||--o{ e2 : has'
+    );
+    const second = await run(aliased, 'attribute', { entity: 'e2', key: 'PKFK', name: 'id' });
+    if ('error' in second) throw new Error();
+    expect(added(aliased, second.code)).toEqual(['  e2 {', '    string id PK, FK', '  }']);
+  });
+  it('asks which entity', async () => {
+    expect(await run('erDiagram\n  A', 'attribute', { name: 'x' })).toEqual({
+      error: 'add.chooseEntity'
+    });
+  });
+});
+
 describe('er', () => {
   const code = 'erDiagram\n  CUSTOMER ||--o{ ORDER : places';
   it('adds an entity and a relationship', async () => {
@@ -142,6 +393,38 @@ describe('mindmap', () => {
     if ('error' in leaf) throw new Error();
     expect(leaf.code).toBe(`${code}\n      B1`);
   });
+  it('offers the first topic only on an empty mindmap, and topics under a parent after that', async () => {
+    const actions = (text: string) =>
+      specFor(text)
+        ?.parts(text)
+        .then((parts) =>
+          specFor(text)
+            ?.actions.filter((action) => action.when?.(parts) ?? true)
+            .map(({ id }) => id)
+        );
+    const empty = '---\ntitle: x\n---\nmindmap';
+    await expect(actions(empty)).resolves.toEqual(['root']);
+    await expect(actions(code)).resolves.toEqual(['topic']);
+    const root = specFor(empty)?.actions.find(({ id }) => id === 'root');
+    const result = root?.apply(empty, { name: '新しい話題 (中心)' });
+    if (!result || 'error' in result) throw new Error();
+    expect(result.code).toBe('---\ntitle: x\n---\nmindmap\n  新しい話題 中心');
+    await expect(typeOf(result.code)).resolves.toBe('mindmap');
+    await expect(checkAdd(empty, result.code)).resolves.toBe(true);
+    await expect(actions(result.code)).resolves.toEqual(['topic']);
+    expect(root?.apply(code, { name: 'x' })).toEqual({ error: 'add.mind.hasRoot' });
+  });
+});
+
+describe('checkAdd', () => {
+  it('accepts code that parses as the same type, or a broken diagram made whole', async () => {
+    const flow = 'classDiagram\n  class A';
+    await expect(checkAdd(flow, `${flow}\n  A : +x`)).resolves.toBe(true);
+    await expect(checkAdd(flow, `${flow}\n  A : +x: y`)).resolves.toBe(false);
+    await expect(checkAdd(flow, 'erDiagram\n  A')).resolves.toBe(false);
+    await expect(checkAdd('mindmap', 'mindmap\n  root')).resolves.toBe(true);
+    await expect(checkAdd('mindmap', 'kanban\n  a[A]')).resolves.toBe(false);
+  });
 });
 
 describe('gantt', () => {
@@ -156,7 +439,7 @@ describe('gantt', () => {
   it('adds a task at the end of a section, after the previous task or on a date', async () => {
     const after = await run(code, 'task', { days: '2', name: 'Review: spec', section: 'Plan' });
     if ('error' in after) throw new Error();
-    expect(after.code).toBe(code.replace('3d\n', '3d\n    Review  spec : 2d\n'));
+    expect(after.code).toBe(code.replace('3d\n', '3d\n    Review spec : 2d\n'));
     const dated = await run(code, 'task', { days: '4', name: 'Test', start: '2024-02-01' });
     if ('error' in dated) throw new Error();
     expect(added(code, dated.code)).toEqual(['    Test : 2024-02-01, 4d']);
@@ -171,6 +454,61 @@ describe('gantt', () => {
     expect(added(code, section.code)).toEqual(['  section Ship']);
     expect(section.follow).toEqual({ section: 'Ship' });
   });
+  it('lists tasks, and adds one with a status and marks after a chosen task', async () => {
+    const tasks = (await specFor(code)?.parts(code))?.tasks;
+    expect(tasks).toEqual([
+      { id: '3', label: 'Spec' },
+      { id: '5', label: 'Code' }
+    ]);
+    const result = await run(code, 'task', {
+      after: '3',
+      crit: 'yes',
+      days: '2',
+      name: 'Review',
+      section: 'Build',
+      status: 'active'
+    });
+    if ('error' in result) throw new Error();
+    expect(added(code, result.code)).toEqual(['    Review : active, crit, after a1, 2d']);
+    const milestone = await run(code, 'task', {
+      days: '0',
+      milestone: 'yes',
+      name: 'Go',
+      status: 'done'
+    });
+    if ('error' in milestone) throw new Error();
+    expect(added(code, milestone.code)).toEqual(['    Go : done, milestone, 0d']);
+  });
+  it('gives the chosen task an id to follow, and its predecessors when it has no start', async () => {
+    const result = await run(code, 'task', { after: '5', name: 'Test' });
+    if ('error' in result) throw new Error();
+    expect(result.code.split('\n').slice(5)).toEqual([
+      '    Code : t1, after a1, 5d',
+      '    Test : after t1, 3d'
+    ]);
+  });
+  it('dates the first task of an empty chart today, since it has nothing to follow', async () => {
+    const result = await run('gantt\n  dateFormat YYYY-MM-DD\n  section A', 'task', { name: 'X' });
+    if ('error' in result) throw new Error();
+    const today = new Date().toISOString().slice(0, 10);
+    expect(result.code).toBe(`gantt\n  dateFormat YYYY-MM-DD\n  section A\n    X : ${today}, 3d`);
+  });
+});
+
+describe('gantt tasks next to ids that mermaid also hands out', () => {
+  it('gives a new task an id of its own when a chart already has task1, task2…', async () => {
+    const chart =
+      'gantt\n  dateFormat YYYY-MM-DD\n  section A\n    a :task1, 2024-01-01, 3d\n    b :task2, after task1, 2d';
+    const result = await run(chart, 'task', { days: '4', name: 'c' });
+    if ('error' in result) throw new Error();
+    // mermaid would call an id-less task "task1" too, and the two collide (NaN in the picture).
+    expect(added(chart, result.code)).toEqual(['    c : t1, after task2, 4d']);
+    // A chart without such ids is left as it was: no id, no start.
+    const plain = 'gantt\n  dateFormat YYYY-MM-DD\n  section A\n    a :t1, 2024-01-01, 3d';
+    const other = await run(plain, 'task', { days: '4', name: 'c' });
+    if ('error' in other) throw new Error();
+    expect(added(plain, other.code)).toEqual(['    c : 4d']);
+  });
 });
 
 describe('pie', () => {
@@ -182,6 +520,32 @@ describe('pie', () => {
     expect(await run(code, 'slice', { name: 'x', value: 'abc' })).toEqual({
       error: 'add.pie.badValue'
     });
+  });
+  it('shows and hides the values in the legend', async () => {
+    const shown = await run(code, 'display', { showData: 'on' });
+    if ('error' in shown) throw new Error();
+    expect(shown.code).toBe('pie showData title Pets\n  "Dogs" : 386');
+    expect(await run(shown.code, 'display', { showData: 'on' })).toEqual({
+      error: 'add.pie.noChange'
+    });
+    const hidden = await run(shown.code, 'display', { showData: 'off' });
+    if ('error' in hidden) throw new Error();
+    expect(hidden.code).toBe(code);
+    // The card words the result itself, not with the keyword (`showData`).
+    expect(shown).toMatchObject({ done: 'add.pie.shownDone' });
+    expect(hidden).toMatchObject({ done: 'add.pie.hiddenDone' });
+  });
+  it('names an unnamed slice, task and section in Japanese, not English', async () => {
+    const slice = await run(code, 'slice', { name: '', value: '5' });
+    if ('error' in slice) throw new Error();
+    expect(added(code, slice.code)).toEqual(['    "項目" : 5']);
+    const plan = 'gantt\n  dateFormat YYYY-MM-DD\n  section A\n    X : 2024-01-01, 3d';
+    const task = await run(plan, 'task', { name: '' });
+    if ('error' in task) throw new Error();
+    expect(task.name).toBe('作業');
+    const section = await run(plan, 'section', { name: '' });
+    if ('error' in section) throw new Error();
+    expect(section.name).toBe('セクション');
   });
 });
 
@@ -247,6 +611,30 @@ describe('c4', () => {
     const relation = await run(code, 'rel', { from: 's', text: 'calls', to: 'a' });
     if ('error' in relation) throw new Error();
     expect(added(code, relation.code)).toEqual(['  Rel(s, a, "calls")']);
+  });
+  it('draws a boundary around a chosen element, where it is', async () => {
+    const around = await run(code, 'boundary', {
+      element: 's',
+      kind: 'Container_Boundary',
+      name: 'API "v2"'
+    });
+    if ('error' in around) throw new Error();
+    expect(around.code.split('\n').slice(2, 7)).toEqual([
+      '  System_Boundary(b1, "Shop") {',
+      '    Container_Boundary(b2, "API \'v2\'") {',
+      '      System(s, "Web")',
+      '    }',
+      '  }'
+    ]);
+    expect(around.follow).toEqual({ boundary: 'b2' });
+    const top = await run(`${code}\n  Rel(a, s, "x")`, 'boundary', { element: 'a', name: 'Users' });
+    if ('error' in top) throw new Error();
+    expect(top.code.split('\n').slice(1, 4)).toEqual([
+      '  System_Boundary(b2, "Users") {',
+      '    Person(a, "Alice")',
+      '  }'
+    ]);
+    expect(await run(code, 'boundary', { name: 'x' })).toEqual({ error: 'add.c4.chooseElement' });
   });
 });
 
@@ -362,5 +750,24 @@ describe('found by the review', () => {
     const ms = await run(millis, 'task', { name: 'X', start: '2024-02-01' });
     if ('error' in ms) throw new Error();
     expect(added(millis, ms.code)).toEqual([`    X : ${Date.UTC(2024, 1, 1)}, 3d`]);
+  });
+});
+
+describe('what is missing', () => {
+  it('names the parent topic, column or period that was not chosen', async () => {
+    expect(await run('mindmap\n  root((Centre))\n    A', 'topic', { parent: '' })).toEqual({
+      error: 'add.chooseParent'
+    });
+    expect(await run('kanban\n  todo[Todo]', 'card', { column: '' })).toEqual({
+      error: 'add.chooseColumn'
+    });
+    expect(await run('timeline\n  2021 : A', 'event', { period: '' })).toEqual({
+      error: 'add.choosePeriod'
+    });
+  });
+  it('has every message in every language', () => {
+    for (const key of ['add.choose', 'add.chooseParent', 'add.chooseColumn', 'add.choosePeriod']) {
+      for (const catalogue of Object.values(messages)) expect(catalogue).toHaveProperty([key]);
+    }
   });
 });

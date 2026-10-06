@@ -10,6 +10,7 @@ import { registerStoredIconPacks } from './customIconStore';
 import { env } from './env';
 import { iconPacks } from './iconPacks';
 import { memoByCode } from './memo';
+import { presetBackground } from './themePresets';
 
 // ELK ships bundled with mermaid 12 and is registered automatically.
 mermaid.registerLayoutLoaders(tidyTreeLayouts);
@@ -18,6 +19,22 @@ mermaid.registerLayoutLoaders(tidyTreeLayouts);
 mermaid.registerIconPacks([...iconPacks, ...remoteIconPacks(env.iconPacks)]);
 const storedIconPacks = registerStoredIconPacks();
 const init = mermaid.registerExternalDiagrams([zenuml]);
+
+// Local: mermaid keeps a diagram's title in one store shared by every diagram, and each
+// parse clears it. mermaid.parse and mermaid.render take turns in mermaid's own queue,
+// but getDiagramFromText (which the cards use to read a diagram's parts) does not, so
+// a card reading the new code while the view rendered it could drop the title from the
+// picture. Renders and those reads take turns here.
+let turn: Promise<unknown> = Promise.resolve();
+const inTurn = <T>(task: () => Promise<T>): Promise<T> => {
+  const run = turn.then(task, task);
+  turn = run.catch(() => undefined);
+  return run;
+};
+
+/** mermaid's parsed diagram (and its database), read in turn with renders. */
+export const diagramFromText = (code: string) =>
+  inTurn(() => mermaid.mermaidAPI.getDiagramFromText(code));
 
 export const render = async (
   config: MermaidConfig,
@@ -30,20 +47,30 @@ export const render = async (
   // Should be able to call this multiple times without any issues.
   // Local: brighter lines in dark themes (darkLines.ts).
   mermaid.initialize(withVisibleLines(config));
-  const result = await mermaid.render(id, code);
+  const result = await inTurn(() => mermaid.render(id, code));
   // Local: keep architecture edges from running through service labels (architectureLabels.ts),
   // and keep a light-themed diagram readable on the dark site (darkLines.ts).
   const themeBackground = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
   const background = typeof themeBackground === 'string' ? themeBackground : '';
+  // Local: a theme preset (themePresets.ts) paints its own background, in the view and
+  // in every export, instead of the dark site's grey backdrop.
+  const presetFill = presetBackground(config as Record<string, unknown>);
+  const svg = addLabelHalo(result.svg, id, background);
   return {
     ...result,
-    svg: addDarkSiteBackdrop(addLabelHalo(result.svg, id, background), id, background)
+    svg: presetFill ? withBackground(svg, id, presetFill) : addDarkSiteBackdrop(svg, id, background)
   };
 };
 
-export const parse = async (code: string) => {
+const withBackground = (svg: string, id: string, color: string): string =>
+  svg.replace(/<svg\b[^>]*>/, (open) => `${open}<style>#${id}{background-color:${color};}</style>`);
+
+// Local: remembered per code. The store re-validates on every update, including pan,
+// zoom and editor-mode changes that leave the code as it was; a large diagram's parse
+// then ran dozens of times a second while panning.
+export const parse = memoByCode(async (code: string) => {
   return await mermaid.parse(code);
-};
+}, 16);
 
 // mermaid keeps `#35;` / `#quot;` entity codes as placeholders in what it parsed.
 const namedEntities: Record<string, string> = {
@@ -183,7 +210,7 @@ export const diagramObjects = memoByCode(
   async (code: string): Promise<DiagramObjects | undefined> => {
     try {
       await mermaid.parse(code);
-      const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+      const diagram = await diagramFromText(code);
       const found = extractors[diagram.type]?.(diagram.db as Db);
       if (!found) return undefined;
       const seen = new Set<string>();
@@ -217,7 +244,7 @@ export interface DiagramEdge {
 export const diagramEdges = memoByCode(async (code: string): Promise<DiagramEdge[]> => {
   try {
     await mermaid.parse(code);
-    const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+    const diagram = await diagramFromText(code);
     if (extractors[diagram.type] !== extractors.flowchart) return [];
     const db = diagram.db as Db;
     const vertices = new Map(entries(read(db, 'getVertices')));
@@ -240,7 +267,7 @@ export const architectureParts = memoByCode(
   async (code: string): Promise<{ groups: DiagramObject[]; services: DiagramObject[] }> => {
     try {
       await mermaid.parse(code);
-      const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
+      const diagram = await diagramFromText(code);
       if (diagram.type !== 'architecture') return { groups: [], services: [] };
       const db = diagram.db as Db;
       const parts = (name: string) =>

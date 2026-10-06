@@ -47,13 +47,61 @@ test.describe('Layout card', () => {
     await editPage.start(urlFor(chain));
     await editPage.checkTextInView('Ship');
     await page.getByTestId(TID.layoutCard).click();
-    await page.getByTestId(TID.layoutEngineElk).click();
+    await page.getByTestId(TID.layoutEngineDagre).click();
     await page.getByTestId(`${TID.layoutSpacing}-compact`).click();
     await expect
       .poll(async () => JSON.parse((await stored(page)).mermaid ?? '{}') as Record<string, unknown>)
-      .toMatchObject({ flowchart: { nodeSpacing: 25, rankSpacing: 30 }, layout: 'elk' });
+      .toMatchObject({ flowchart: { nodeSpacing: 25, rankSpacing: 30 }, layout: 'dagre' });
     await editPage.checkTextInView('Ship');
   });
+
+  // The extent of the node positions in the diagram's own coordinates (unaffected by pan/zoom).
+  const extent = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => {
+      const points = [...document.querySelectorAll('#view .node')].map((node) => {
+        const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(
+          node.getAttribute('transform') ?? ''
+        );
+        const [x, y] = [Number(match?.[1]), Number(match?.[2])];
+        return { x, y };
+      });
+      const span = (key: 'x' | 'y') =>
+        Math.max(...points.map((p) => p[key])) - Math.min(...points.map((p) => p[key]));
+      return { count: points.length, height: span('y'), width: span('x') };
+    });
+
+  const branching =
+    'A[Start] --> B{Check}\n  B --> C[Approve]\n  B --> D[Reject]\n  C --> E[Order] --> F[Ship]\n  D --> G[Notify]\n  G --> F';
+  for (const [name, code] of [
+    ['flowchart', `flowchart TD\n  ${branching}`],
+    [
+      'state diagram',
+      'stateDiagram-v2\n  [*] --> Draft\n  Draft --> Review\n  Draft --> Hold\n  Review --> Approved\n  Hold --> Approved\n  Approved --> Closed\n  Closed --> [*]'
+    ]
+  ] as const) {
+    test(`the engine and spacing change the ${name} picture`, async ({ editPage, page }) => {
+      await editPage.start(urlFor(code));
+      await editPage.checkTextInView(name === 'flowchart' ? 'Notify' : 'Closed');
+      await expect.poll(async () => (await extent(page)).count).toBeGreaterThan(5);
+      await page.getByTestId(TID.layoutCard).click();
+      const elk = await extent(page);
+
+      await page.getByTestId(TID.layoutEngineDagre).click();
+      await expect
+        .poll(async () => JSON.stringify(await extent(page)))
+        .not.toBe(JSON.stringify(elk));
+      const standard = await extent(page);
+      await page.getByTestId(`${TID.layoutSpacing}-wide`).click();
+      await expect
+        .poll(async () => (await extent(page)).height)
+        .toBeGreaterThan(standard.height + 40);
+      await page.getByTestId(`${TID.layoutSpacing}-compact`).click();
+      await expect.poll(async () => (await extent(page)).height).toBeLessThan(standard.height);
+
+      await page.getByTestId(TID.layoutEngineElk).click();
+      await expect.poll(async () => JSON.stringify(await extent(page))).toBe(JSON.stringify(elk));
+    });
+  }
 
   test('explains when a diagram has no direction', async ({ editPage, page }) => {
     await editPage.start(urlFor('architecture-beta\n  service a(tabler:server)[Server]'));
@@ -61,5 +109,22 @@ test.describe('Layout card', () => {
     await page.getByTestId(TID.layoutCard).click();
     await expect(page.getByText(t('layout.directionUnsupported'))).toBeVisible();
     await expect(page.getByTestId(TID.layoutDirectionLR)).toHaveCount(0);
+  });
+
+  test('gives each diagram type its own reason, not the architecture one', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('pie title Pets\n  "Dogs": 3\n  "Cats": 2'));
+    await editPage.checkTextInView('Dogs');
+    await page.getByTestId(TID.layoutCard).click();
+    await expect(page.getByText(t('layout.directionUnsupported.pie'))).toBeVisible();
+    await expect(page.getByText(t('layout.directionUnsupported.architecture'))).toHaveCount(0);
+
+    await editPage.start(urlFor('kanban\n  todo[Todo]\n    t1[Write]\n  done[Done]'));
+    await editPage.checkTextInView('Write');
+    await page.getByTestId(TID.layoutCard).click();
+    await expect(page.getByText(t('layout.directionUnsupported.kanban'))).toBeVisible();
+    await expect(page.getByText(t('layout.directionUnsupported.pie'))).toHaveCount(0);
   });
 });

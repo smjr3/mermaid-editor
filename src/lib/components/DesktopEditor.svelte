@@ -1,3 +1,7 @@
+<script lang="ts" module>
+  let editorInstances = 0;
+</script>
+
 <script lang="ts">
   import type { EditorProps } from '$/types';
   import { env } from '$/util/env';
@@ -50,15 +54,20 @@
     applyEditorTheme(mode.current);
   });
 
+  // Local: a path per editor instance, so swapping the panes (which mounts the new editor
+  // before the old one is disposed) does not create a second model with the same URI.
+  // The config schema matches on the file name, which stays config.json.
+  editorInstances += 1;
+  const instance = editorInstances;
   const jsonModel = monaco.editor.createModel(
     '',
     'json',
-    monaco.Uri.parse('internal://config.json')
+    monaco.Uri.parse(`internal://editor/${instance}/config.json`)
   );
   const mermaidModel = monaco.editor.createModel(
     '',
     'mermaid',
-    monaco.Uri.parse('internal://mermaid.mmd')
+    monaco.Uri.parse(`internal://editor/${instance}/mermaid.mmd`)
   );
 
   const renderAIPromptGutterGlyphIcon = () => {
@@ -122,15 +131,19 @@
       throw new Error('divEl is undefined');
     }
 
+    // Local: the config schema is fetched from the docs site for completions; an
+    // offline build keeps validation without it (MERMAID_OFFLINE).
     monaco.json.jsonDefaults.setDiagnosticsOptions({
       validate: true,
-      enableSchemaRequest: true,
-      schemas: [
-        {
-          fileMatch: ['config.json'],
-          uri: `${env.docsUrl}/schemas/config.schema.json`
-        }
-      ]
+      enableSchemaRequest: !env.isOffline,
+      schemas: env.isOffline
+        ? []
+        : [
+            {
+              fileMatch: ['config.json'],
+              uri: `${env.docsUrl}/schemas/config.schema.json`
+            }
+          ]
     });
 
     initEditor(monaco);
@@ -155,7 +168,10 @@
 
     editor.onDidChangeModelContent(({ isFlush }) => {
       const newText = editor?.getValue();
-      if (!newText || currentText === newText || isFlush || isUpdatingFromState) {
+      // Local (error recovery): an emptied editor is passed on too, so the notice says the
+      // code is empty and offers the last valid state, rather than the old code living on
+      // unseen (still drawn, still edited by the tools, and back after a reload).
+      if (newText === undefined || currentText === newText || isFlush || isUpdatingFromState) {
         return;
       }
       currentText = newText;

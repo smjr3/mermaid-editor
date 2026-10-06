@@ -4,9 +4,19 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import type { MessageKey } from '$/i18n/messages';
-  import { initialValues, type Action, type AddSpec, type Values } from '$/util/addActions';
+  import {
+    checkAdd,
+    initialValues,
+    type Action,
+    type AddSpec,
+    type Field,
+    type Values
+  } from '$/util/addActions';
+  import { displayName } from '$/util/displayName';
   import type { DiagramObject } from '$/util/mermaid';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { codeHealth } from '$/util/codeHealth.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
 
   // Local: the Add card for the diagram types listed in addActions.ts — one form
   // per action, built from the action's fields.
@@ -14,7 +24,7 @@
 
   let parts = $state<Record<string, DiagramObject[]>>({});
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void spec.parts(code).then((found) => {
@@ -39,7 +49,20 @@
     };
   };
 
-  const run = (action: Action) => {
+  // Some actions only make sense for some diagrams (the first topic of an empty mindmap).
+  const shown = $derived(spec.actions.filter((action) => action.when?.(parts) ?? true));
+
+  // A connection is named from the two ids it joins (`c1 → c3`); say what they are called.
+  const friendlyName = (action: Action, current: Values, name: string) => {
+    const from = action.fields.find((field) => field.key === 'from');
+    const to = action.fields.find((field) => field.key === 'to');
+    if (!from || !to || name !== `${current.from} → ${current.to}`) return name;
+    const called = (field: Field, id: string) =>
+      (parts[field.source ?? ''] ?? []).find((part) => part.id === id)?.label.trim() || id;
+    return `${called(from, current.from)} → ${called(to, current.to)}`;
+  };
+
+  const run = async (action: Action) => {
     const current = { ...(values[action.id] ?? initialValues(action)) };
     // A choice the diagram no longer has (the part was deleted in the code) is no choice.
     for (const field of action.fields) {
@@ -47,18 +70,28 @@
       const known = (parts[field.source ?? ''] ?? []).some(({ id }) => id === current[field.key]);
       if (!known) current[field.key] = '';
     }
-    const result = action.apply(inputState.code, current);
+    const before = inputState.code;
+    const result = action.apply(before, current);
     if ('error' in result) {
       message = t(result.error);
       return;
     }
+    // Written only if mermaid still reads it as the same type of diagram.
+    if (!(await checkAdd(before, result.code)) || inputState.code !== before) {
+      // Local: broken code is only added to when that makes it parse (the first topic
+      // of an empty mindmap); otherwise say why (codeHealth.svelte.ts).
+      message = codeHealth.broken ? t('recover.blocked') : t('add.breaks');
+      return;
+    }
     updateCode(result.code, { updateDiagram: true });
-    message = t('add.done', { name: result.name });
+    message = result.done
+      ? t(result.done)
+      : t('add.done', { name: friendlyName(action, current, result.name) });
     // Clear what was typed; keep the choices, then apply what should follow.
     const cleared = Object.fromEntries(
       action.fields.map((field) => [
         field.key,
-        field.kind === 'text' ? '' : (current[field.key] ?? '')
+        field.kind === 'text' || field.reset ? (field.initial ?? '') : (current[field.key] ?? '')
       ])
     );
     values = { ...values, [action.id]: cleared };
@@ -73,14 +106,13 @@
   const optionLabel = (label: MessageKey, option: string) => t(`${label}.${option}` as MessageKey);
   const selectClass =
     'h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-sm text-foreground';
-  // A line number is not a name worth showing (mindmap, kanban, timeline).
-  const name = (part: DiagramObject) =>
-    part.label.trim() === part.id || /^\d+$/.test(part.id)
-      ? part.label
-      : `${part.label} (${part.id})`;
+  // A line number is not a name worth showing (mindmap, kanban, timeline); an id only
+  // tells apart two parts that show the same text (displayName.ts).
+  const name = (part: DiagramObject, all: DiagramObject[]) =>
+    /^L?\d+$/.test(part.id) ? part.label : displayName(part.label, part.id, all);
 </script>
 
-{#each spec.actions as action (action.id)}
+{#each shown as action (action.id)}
   {@const current = values[action.id] ?? initialValues(action)}
   <div class="flex flex-col gap-1">
     <span class="font-semibold">{t(action.title)}</span>
@@ -98,14 +130,17 @@
             {/each}
           </select>
         {:else if field.kind === 'item'}
+          <!-- A choice that is needed says so: the add says what is missing if it is left. -->
           <select
             class={selectClass}
             value={current[field.key]}
+            required={!field.optional}
+            aria-required={!field.optional}
             data-testid={testID(action, field.key)}
             onchange={(event) => set(action, field.key, event.currentTarget.value)}>
-            <option value="">{field.optional ? t('add.none') : ''}</option>
+            <option value="">{field.optional ? t('add.none') : t('add.choosePlaceholder')}</option>
             {#each parts[field.source ?? ''] ?? [] as part (part.id)}
-              <option value={part.id}>{name(part)}</option>
+              <option value={part.id}>{name(part, parts[field.source ?? ''] ?? [])}</option>
             {/each}
           </select>
         {:else}
@@ -115,12 +150,12 @@
             value={current[field.key]}
             data-testid={testID(action, field.key)}
             oninput={(event) => set(action, field.key, event.currentTarget.value)}
-            onkeydown={(event) => event.key === 'Enter' && run(action)} />
+            onkeydown={(event) => event.key === 'Enter' && void run(action)} />
         {/if}
       </label>
     {/each}
     <div>
-      <Button size="sm" data-testid={testID(action, 'button')} onclick={() => run(action)}
+      <Button size="sm" data-testid={testID(action, 'button')} onclick={() => void run(action)}
         >{t(action.button)}</Button>
     </div>
   </div>

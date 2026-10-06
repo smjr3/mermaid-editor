@@ -131,9 +131,12 @@
     "@fsegurai/codemirror-theme-vscode-dark": "^6.2.8",
     "@fsegurai/codemirror-theme-vscode-light": "^6.2.8",
     "@iconify-json/carbon": "^1.2.28",
+    "@iconify-json/clarity": "^1.2.4",
     "@iconify-json/devicon": "^1.2.68",
+    "@iconify-json/eos-icons": "^1.2.4",
     "@iconify-json/flat-color-icons": "^1.2.3",
     "@iconify-json/fluent": "^1.2.59",
+    "@iconify-json/fluent-color": "^1.2.21",
     "@iconify-json/lucide": "^1.2.139",
     "@iconify-json/simple-icons": "^1.2.98",
     "@iconify-json/tabler": "^1.2.41",
@@ -169,11 +172,15 @@
   "overrides": {
     "monaco-editor": {
       "dompurify": "3.4.16"
+    },
+    "mermaid": {
+      "katex": "0.18.11"
     }
   },
   "pnpm": {
     "overrides": {
-      "monaco-editor>dompurify": "3.4.16"
+      "monaco-editor>dompurify": "3.4.16",
+      "mermaid>katex": "0.18.11"
     },
     "onlyBuiltDependencies": [
       "deasync",

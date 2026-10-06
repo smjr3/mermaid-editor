@@ -1,5 +1,7 @@
+import { messages } from '$/i18n/messages';
 import { describe, expect, it } from 'vitest';
 import {
+  directionUnsupportedKey,
   getDirection,
   getLayoutOptions,
   pickDirection,
@@ -86,17 +88,17 @@ describe('viewBoxSize', () => {
 });
 
 describe('getLayoutOptions / setLayoutOptions', () => {
-  it('defaults to the standard engine and spacing', () => {
-    expect(getLayoutOptions('{}')).toEqual({ engine: 'dagre', spacing: 'normal' });
+  it("defaults to ELK, which is mermaid 12's own default, and normal spacing", () => {
+    expect(getLayoutOptions('{}')).toEqual({ engine: 'elk', spacing: 'normal' });
   });
 
-  it('switches the engine to ELK and back, keeping the rest of the config', () => {
-    const elk = setLayoutOptions('{"theme":"dark"}', { engine: 'elk', spacing: 'normal' });
-    expect(JSON.parse(elk)).toEqual({ layout: 'elk', theme: 'dark' });
-    expect(getLayoutOptions(elk).engine).toBe('elk');
-    expect(JSON.parse(setLayoutOptions(elk, { engine: 'dagre', spacing: 'normal' }))).toEqual({
-      theme: 'dark'
-    });
+  it('asks for the standard engine by name and ELK by leaving the key out', () => {
+    const dagre = setLayoutOptions('{"theme":"dark"}', { engine: 'dagre', spacing: 'normal' });
+    expect(JSON.parse(dagre)).toEqual({ layout: 'dagre', theme: 'dark' });
+    expect(getLayoutOptions(dagre).engine).toBe('dagre');
+    const elk = JSON.parse(setLayoutOptions(dagre, { engine: 'elk', spacing: 'normal' }));
+    expect(elk).toEqual({ theme: 'dark' });
+    expect(getLayoutOptions('{"layout":"elk"}').engine).toBe('elk');
   });
 
   it('sets node and rank spacing for the diagrams that use them', () => {
@@ -109,11 +111,39 @@ describe('getLayoutOptions / setLayoutOptions', () => {
     expect(parsed.state).toEqual({ nodeSpacing: 25, rankSpacing: 30 });
     expect(getLayoutOptions(compact).spacing).toBe('compact');
     const normal = JSON.parse(setLayoutOptions(compact, { engine: 'dagre', spacing: 'normal' }));
-    expect(normal).toEqual({ flowchart: { curve: 'basis' } });
+    expect(normal).toEqual({ flowchart: { curve: 'basis' }, layout: 'dagre' });
   });
 
   it('leaves an unparsable config alone', () => {
     expect(setLayoutOptions('{oops', { engine: 'elk', spacing: 'wide' })).toBe('{oops');
-    expect(getLayoutOptions('{oops')).toEqual({ engine: 'dagre', spacing: 'normal' });
+    expect(getLayoutOptions('{oops')).toEqual({ engine: 'elk', spacing: 'normal' });
+  });
+});
+
+describe('directionUnsupportedKey', () => {
+  it.each([
+    ['architecture-beta\n  service a(server)[A]', 'architecture'],
+    ['pie\n  "a": 1', 'pie'],
+    ['gantt\n  title T', 'gantt'],
+    ['kanban\n  todo[Todo]', 'kanban'],
+    ['sequenceDiagram\n  A->>B: hi', 'sequence'],
+    ['---\ntitle: x\n---\nmindmap\n  root', 'mindmap'],
+    ['timeline\n  2021 : A', 'timeline']
+  ])('explains %j with its own reason', (code, type) => {
+    expect(directionUnsupportedKey(code)).toBe(`layout.directionUnsupported.${type}`);
+  });
+  it('uses the general sentence for other types', () => {
+    expect(directionUnsupportedKey('journey\n  title x')).toBe('layout.directionUnsupported');
+  });
+  it('mentions R/L/T/B in the architecture reason only', () => {
+    for (const catalogue of Object.values(messages)) {
+      for (const [key, text] of Object.entries(catalogue)) {
+        if (key.startsWith('layout.directionUnsupported')) {
+          expect(text.includes('R/L/T/B'), key).toBe(
+            key.endsWith('.architecture') && catalogue === messages.en
+          );
+        }
+      }
+    }
   });
 });

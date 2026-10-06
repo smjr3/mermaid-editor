@@ -9,9 +9,10 @@
 
   // Local: undo / redo for the diagram code, whichever editor or card changed
   // it (undoStack.svelte.ts). Every code change passes through the input
-  // state, so this is where the history sees it.
+  // state, so this is where the history sees it. A tool's change (written with
+  // `updateDiagram`, unlike typing in the editor) is a step of its own at once.
   $effect(() => {
-    codeHistory.record(inputState.code);
+    codeHistory.record(inputState.code, { immediate: inputState.updateDiagram });
   });
 </script>
 

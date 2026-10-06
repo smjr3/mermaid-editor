@@ -1,22 +1,39 @@
 <script lang="ts">
+  import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { editorFocus } from '$/util/editorFocus.svelte';
-  import ShowIcon from '~icons/material-symbols/keyboard-arrow-up-rounded';
-  import HideIcon from '~icons/material-symbols/keyboard-arrow-down-rounded';
+  import { swapPanes } from '$/util/toolsPane.svelte';
+  import LeftCloseIcon from '~icons/material-symbols/left-panel-close-outline-rounded';
+  import RightCloseIcon from '~icons/material-symbols/right-panel-close-outline-rounded';
+  import SwapIcon from '~icons/material-symbols/swap-horiz-rounded';
 
-  // Local: the bar above the tool cards hides them ("focus on code") or brings
-  // them back; it stays at the bottom of the column while they are hidden.
-  const label = $derived(editorFocus.value ? t('editor.showTools') : t('editor.focus'));
+  // Local: the header of the tools pane (desktop): its title, the button that swaps
+  // the tools and the code to the other sides (toolsPane.svelte.ts), and the button
+  // that collapses the pane to its icon rail (EditorRail kind="tools").
+  let { oncollapse, side }: { oncollapse: () => void; side: 'left' | 'right' } = $props();
+  const CloseIcon = $derived(side === 'left' ? LeftCloseIcon : RightCloseIcon);
 </script>
 
-<button
-  type="button"
-  class="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-  data-testid={TID.editorFocusToggle}
-  aria-expanded={!editorFocus.value}
-  title={label}
-  onclick={() => (editorFocus.value = !editorFocus.value)}>
-  <span>{label}</span>
-  {#if editorFocus.value}<ShowIcon />{:else}<HideIcon />{/if}
-</button>
+<div class="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1">
+  <span class="text-sm font-semibold">{t('tools.title')}</span>
+  <div class="flex items-center gap-1">
+    <Button
+      variant="ghost"
+      size="sm"
+      data-testid={TID.swapPanesButton}
+      title={t('tools.swapPanes')}
+      aria-label={t('tools.swapPanes')}
+      onclick={swapPanes}>
+      <SwapIcon />
+    </Button>
+    <Button
+      variant="ghost"
+      size="sm"
+      data-testid={TID.toolsPaneToggle}
+      title={t('tools.hidePane')}
+      aria-label={t('tools.hidePane')}
+      onclick={oncollapse}>
+      <CloseIcon />
+    </Button>
+  </div>
+</div>

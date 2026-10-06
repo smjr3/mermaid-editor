@@ -34,28 +34,35 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   （`docs-dev/FEATURE-FLAGS.md`）。PNG / SVG の書き出しはブラウザ内で描画するので使えます
 - **システム構成図のアイコン**。サーバー・データベース・ルーター・スイッチ・ファイアウォール・
   ロードバランサー・端末などのアイコンを `prefix:name` の形で図に使えます（例: `service fw(tabler:firewall-check)[FW]`）。
-  OSS のアイコン集 9 種（tabler、lucide、carbon、fluent、flat-color-icons、mdi と、ロゴ集の logos、
+  OSS のアイコン集 12 種（tabler、lucide、carbon、fluent、flat-color-icons、mdi、ネットワーク・データセンター機器の
+  clarity、Kubernetes・DNS・プロキシなどの eos-icons、Microsoft 365 風カラーの fluent-color と、ロゴ集の logos、
   simple-icons、devicon）をサイトに同梱し、外部からは取得しません（例: `logos:aws-lambda`）。
   ロゴを置けない環境では `MERMAID_BUNDLE_LOGOS=false` でロゴを外してビルドできます。
   AWS・Azure・Google Cloud の公式アイコンは、ビルド時に各社のサイトから取り込めます
   （`MERMAID_FETCH_ICON_PACKS`）。リポジトリと npm パッケージにはアイコンのデータを含めていません。
-  画面左の「アイコン」から SVG ファイルを取り込むこともできます（`docs-dev/ICONS.md`）。
+  画面右の「アイコン」から SVG ファイルを取り込むこともできます（`docs-dev/ICONS.md`）。
   「サンプル図」の「System Architecture」に例があります
-- **レイアウトの調整**。画面左の「レイアウト」で、図の向き（上→下・左→右・画面に合わせる）、配置方式（標準・ELK）、
+- **レイアウトの調整**。画面右の「レイアウト」で、図の向き（上→下・左→右・画面に合わせる）、配置方式（標準・ELK）、
   間隔（詰める・標準・広く）を切り替えられます。結果は図のコードと設定に書き込まれるので、共有リンクでも同じ形で表示されます
-- **配色**。画面左の「配色」で、テーマ、線の色、スイムレーン（フローチャートのグループ）ごとの色、
+- **配色**。画面右の「配色」で、テーマ、線の色、スイムレーン（フローチャートのグループ）ごとの色、
   ノード・状態・クラス・エンティティ・要件・ブロック・C4 要素ごとの色、矢印ごとの色（一覧か図のクリックで選択）を
   選べます。用意された色のほか好きな色も選べ、選んだ色は次から色ボタンに並びます。色ボタンは `MERMAID_COLOR_PRESETS` で
   会社の色などに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
-- **レーン・ノードの追加**。画面左の「追加」で、名前を入れてボタンを押すだけでレーンやノード（入れるレーンと
+- **デザインテーマ**。「配色」の「テーマ」で、図全体の見た目を 12 種類から選べます（標準、モダン、ネオン、サイバー、
+  パステル、ミニマル／モノクロ、ビジネス、サンセット、フォレスト、ダーク・グラス、和、ハイコントラスト）。色・線・フォントを
+  まとめて切り替え、共有リンク・SVG / PNG の書き出しにもそのまま残ります。コマンドパレットからも「テーマ: ネオン」のように選べます
+- **レーン・ノードの追加**。画面右の「追加」で、名前を入れてボタンを押すだけでレーンやノード（入れるレーンと
   矢印の元、形も選べます）をコードに書き足せます。「つなぐ」で既にある2つのノードを矢印でつなげます。アーキテクチャ図では、グループ・サービス（アイコン、入れるグループ、
   つなぐ元と置く位置を選択）・接続を追加できます。シーケンス図・状態図・クラス図・ER図・マインドマップ・ガントチャート・
   円グラフ・カンバン・タイムライン・C4図・ブロック図でも、それぞれの要素（登場人物とメッセージ、タスクなど）を追加できます
 - **使い方の案内**。画面右上の「使い方」で、各機能の使い方をまとめた画面が開きます
-- **左側の表示切り替え**。エディタ上部のボタンで左側をアイコンだけの細い列にでき、アイコンを押すとその項目を開いて戻ります。
-  ツールの上にある「ツールを隠す」で、下のツールを隠してコードを広く使えます
+- **3 つの画面とたたみ方**。左にコード、中央に図、右にツール（レイアウト・追加・編集・配色・アイコン・サンプル図・操作）が並びます。
+  コードの上部とツールの上部のボタンで、それぞれをアイコンだけの細い列にたためます。アイコンを押すとその項目を開いて戻ります。
+  コードを書かない人はコードを、コードだけ書く人はツールをたたむと広く使えます
 - **アイコンを探して入れる**。「アイコン」で名前を検索すると絵が一覧で出て、クリックするとコードのカーソル位置に
-  `logos:aws-lambda` のような名前が入ります。「大きく表示」で広い画面から名前付きで選ぶこともできます。
+  `logos:aws-lambda` のような名前が入ります。名前が分からなくても「一覧から選ぶ」で、分類（サーバー・ストレージ、
+  ネットワーク機器、セキュリティ、Microsoft 365、AWS / Azure / Google Cloud など 12 種）ごと、または
+  アイコン集をまるごと 200 個ずつ見て選べます。「大きく表示」で広い画面から名前付きで選ぶこともできます。
   緑の印は Mermaid 標準のアイコン（GitLab などでも表示）、橙の印は拡張アイコン（このエディタだけで表示）です
 - **HTML で書き出し**。「操作」の「HTML」で、図を入れた HTML ファイルを保存できます（ネットなしで開け、元のコードも入ります）。
   「HTMLタグをコピー」は、Wiki やメールなどに貼れる `<img>` タグ1つを作ります。どちらもアイコンごと図に入っています
@@ -66,7 +73,8 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   書き換えます（ラベルの文字やメッセージは変えません）。同じ語を順に選ぶ Ctrl+D、すべて選ぶ
   Ctrl+Shift+L、Alt+クリックでの複数カーソルも使えます
 - **設定のリセット**。「設定」タブの「設定をリセット」で、壊れた設定を初期状態に戻せます（図のコードは残ります）
-- デスクトップでは、エディタと図の表示を固定の 2 画面に分け、境目をドラッグして幅を変えられます
+- デスクトップでは、コード・図・ツールを固定の 3 画面に分け、境目をドラッグして幅を変えられます（幅はブラウザに保存）。
+  拡大・縮小、手描き風、グリッド、ライト / ダーク、言語の切り替えは図の上の 1 本のツールバーにまとめています
 - ライト / ダークそれぞれで WCAG AA を満たすアクセントカラー（`docs-dev/THEME.md`）
 - Windows でもビルドできるスクリプト構成（`docs-dev/CROSS-PLATFORM.md`）
 
@@ -113,13 +121,14 @@ npm run build
 ビルド時の環境変数（`MERMAID_` で始まるもの）で挙動を変えられます。既定値は `.env` にあり、
 ローカルでは `.env.local` にコピーして上書きします。
 
-| 変数                                                  | 既定    | 内容                                                                         |
-| ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------- |
-| `MERMAID_LOCALE`                                      | `ja`    | UI の標準言語（`ja` / `en`）。閲覧者が画面で選んだ言語はこれより優先されます |
-| `MERMAID_IS_ENABLED_*`                                | `false` | Mermaid Chart リンク、AI 機能、コミュニティリンクの有効化                    |
-| `MERMAID_RENDERER_URL` / `MERMAID_KROKI_RENDERER_URL` | 空      | 外部レンダラー（mermaid.ink / Kroki）の URL。空なら連携を無効化              |
-| `MERMAID_BUNDLE_LOGOS`                                | `true`  | `false` でロゴのアイコン集を同梱しない                                       |
-| `MERMAID_FETCH_ICON_PACKS`                            | 空      | ビルド時に取り込む各社アイコン（`gcp=<zip の URL>` など）                    |
+| 変数                                                  | 既定    | 内容                                                                                             |
+| ----------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `MERMAID_LOCALE`                                      | `ja`    | UI の標準言語（`ja` / `en`）。閲覧者が画面で選んだ言語はこれより優先されます                     |
+| `MERMAID_IS_ENABLED_*`                                | `false` | Mermaid Chart リンク、AI 機能、コミュニティリンクの有効化                                        |
+| `MERMAID_RENDERER_URL` / `MERMAID_KROKI_RENDERER_URL` | 空      | 外部レンダラー（mermaid.ink / Kroki）の URL。空なら連携を無効化                                  |
+| `MERMAID_BUNDLE_LOGOS`                                | `true`  | `false` でロゴのアイコン集を同梱しない                                                           |
+| `MERMAID_FETCH_ICON_PACKS`                            | 空      | ビルド時に取り込む各社アイコン（`gcp=<zip の URL>` など）                                        |
+| `MERMAID_OFFLINE`                                     | `true`  | サイトから外部へ通信しない（設定の補完用スキーマ取得、SVG 内の CDN 参照、Gist 読み込みを無効化） |
 
 全体は `docs-dev/FEATURE-FLAGS.md` を参照してください。
 
@@ -191,7 +200,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 
 - Includes upstream's editor feature set as of 2.0.67, rendering with `mermaid` `^12.1.0` —
   including swimlane diagrams (`swimlane-beta`), with swimlane examples in the sample panel.
-- Nine bundled OSS icon packs for system diagrams, logo sets included (e.g.
+- Twelve bundled OSS icon packs for system diagrams — network and data-centre gear (`clarity`),
+  Kubernetes and DNS/proxy concepts (`eos-icons`) and Microsoft's colour Fluent icons
+  (`fluent-color`) among them — logo sets included (e.g.
   `service fw(tabler:firewall-check)[FW]`, `logos:aws-lambda`), loaded from the site, never a
   CDN; `MERMAID_BUNDLE_LOGOS=false` leaves the logos out. Vendor architecture icon sets (AWS,
   Azure, Google Cloud) are imported from the vendor at build time
@@ -203,6 +214,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   subgraph) and per object — node, state, class, entity, requirement, block or C4 element (picked from a list or
   by clicking it) and per arrow; any colour can be picked, and picked colours are offered again. The
   colour buttons can be a company palette (`MERMAID_COLOR_PRESETS`).
+- Twelve named diagram themes in the Colours card (standard, modern, neon, cyber, pastel, minimal, business,
+  sunset, forest, dark glass, Japanese traditional, high contrast) — plain mermaid config, kept by shared
+  links and the SVG/PNG exports, also offered in the command palette.
 - An "Add" card adds a lane, or a node (box, decision, …) in a lane joined from another node, or an arrow
   between two nodes, without writing the syntax;
   for architecture diagrams it adds groups, services (icon, group, side to join on) and connections,
@@ -210,7 +224,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   their own forms (participants and messages, tasks, topics, …).
 - A "How to use" button in the header opens a short guide to the tools.
 - The editor column collapses to an icon rail, and a bar hides the tool cards. An icon picker
-  searches the packs and inserts the clicked icon's name at the cursor. In dark mode, lines are
+  searches the packs, or lets you browse twelve hand-picked categories (servers, network
+  equipment, security, Microsoft 365, AWS / Azure / Google Cloud, …) or a whole pack 200 icons a
+  page, and inserts the clicked icon's name at the cursor. In dark mode, lines are
   drawn brighter and light-themed diagrams get a light grey background.
 - HTML export: a standalone page (works offline, keeps the source) or one self-contained `<img>`
   tag to paste anywhere, icons included. "Export for GitLab" saves an SVG and copies Markdown that

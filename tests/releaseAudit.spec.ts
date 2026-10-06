@@ -51,7 +51,9 @@ test.describe('Editor column', () => {
       .poll(() =>
         page.evaluate(() =>
           Object.entries(localStorage).some(
-            ([key, value]) => key.startsWith('paneforge:') && value.includes('"layout":[0,')
+            // The code pane is last by default (tools | diagram | code), first after a swap.
+            ([key, value]) =>
+              key.startsWith('paneforge:') && /"layout":\[(0,|[^\]]*,0\])/.test(value)
           )
         )
       )
@@ -99,7 +101,11 @@ test.describe('Icon picker', () => {
     );
     await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
     await page.getByTestId(TID.iconPickerSearch).fill('server');
+    // The cursor on a line of its own: a name written mid-line would break the diagram,
+    // and the picker takes such an insertion back (qaFindings.spec.ts).
     await editPage.editor.getByText('A --> B').click();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
     await page.getByTestId(TID.iconPickerResults).getByRole('button').first().click();
     await expect(page.getByTestId(TID.iconPickerMessage)).toContainText(
       t('icons.pickStandardArchitectureOnly')
@@ -192,8 +198,10 @@ test.describe('Layout card', () => {
     await editPage.checkTextInView('B');
     await page.getByTestId(TID.layoutCard).click();
     await editPage.typeInEditor('\n  C -->');
+    // The code has a mistake: the card says so instead of trying (errorRecovery.spec.ts).
+    await expect(page.getByTestId(TID.diagramErrorNotice)).toBeVisible({ timeout: 10_000 });
     await page.getByTestId(TID.layoutFit).click();
-    await expect(page.getByTestId(TID.layoutMessage)).toHaveText(t('layout.fitFailed'));
+    await expect(page.getByTestId(TID.layoutMessage)).toHaveText(t('recover.blocked'));
   });
 });
 
@@ -203,7 +211,8 @@ test.describe('English UI', () => {
     await page.getByTestId(TID.localeToggleButton).click();
     await expect(page.getByTestId(TID.layoutCard)).toContainText('Layout');
     await expect(page.getByTestId(TID.iconPacksCard)).toContainText('Icons');
-    await expect(page.getByTestId(TID.editorFocusToggle)).toContainText('Hide the tools');
+    await expect(page.getByTestId(TID.toolsPane)).toContainText('Tools');
+    await expect(page.getByTestId(TID.toolsPaneToggle)).toHaveAttribute('title', 'Hide the tools');
     await page.getByTestId(TID.actionsCard).click();
     await expect(page.getByTestId(TID.exportGitLab)).toContainText('Export for GitLab');
   });

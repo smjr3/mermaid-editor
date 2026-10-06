@@ -13,10 +13,17 @@ export class PanZoomState {
 
   public isPanEnabled: boolean;
   public onPanZoomChange?: (pan: Point, zoom: number) => void;
+  /** Local: a one-off change (a zoom button, a fit) is complete; no more of it follows. */
+  public onPanZoomSettled?: () => void;
 
   constructor() {
     this.isPanEnabled = true;
-    this.resizeObserver = new ResizeObserver(() => {
+    this.resizeObserver = new ResizeObserver((entries) => {
+      // Local: a diagram that was just removed (the panes swapped, which remounts the
+      // view) reports a zero size; zooming it throws "matrix is not invertible".
+      if (entries.every(({ contentRect }) => contentRect.width === 0 && contentRect.height === 0)) {
+        return;
+      }
       this.resize();
       if (!this.isDirty) {
         this.reset();
@@ -142,10 +149,12 @@ export class PanZoomState {
 
   public zoomIn() {
     this.pzoom?.zoomIn();
+    this.onPanZoomSettled?.();
   }
 
   public zoomOut() {
     this.pzoom?.zoomOut();
+    this.onPanZoomSettled?.();
   }
 
   public reset() {
@@ -153,5 +162,6 @@ export class PanZoomState {
     // Zoom out a bit to avoid overlap with the toolbar
     this.pzoom?.zoom(0.875);
     this.isDirty = false;
+    this.onPanZoomSettled?.();
   }
 }

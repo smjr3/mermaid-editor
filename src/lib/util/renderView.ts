@@ -1,10 +1,14 @@
 import type { MermaidConfig } from 'mermaid';
 import { Svg2Roughjs } from 'svg2roughjs';
+import { hazardMessage, renderHazard } from './codeError';
 import { render as renderDiagram } from './mermaid';
+import { presetBackground } from './themePresets';
 
 export interface PlacedDiagram {
   diagramType?: string;
   graphDiv?: SVGSVGElement;
+  /** Local: rendered, but not placed because `shouldPlace` said a newer picture is shown. */
+  stale?: boolean;
 }
 
 /**
@@ -20,6 +24,7 @@ export const renderAndPlaceDiagram = async ({
   config,
   container,
   rough,
+  shouldPlace,
   viewId
 }: {
   code: string;
@@ -27,13 +32,31 @@ export const renderAndPlaceDiagram = async ({
   /** Must have an `id` — Svg2Roughjs addresses the container by CSS selector. */
   container: HTMLDivElement;
   rough: boolean;
+  /** Local: asked once the SVG is ready; false leaves the container as it is. */
+  shouldPlace?: () => boolean;
   viewId: string;
 }): Promise<PlacedDiagram> => {
   const containerSelector = `#${container.id}`;
   delete container.dataset.processed;
-  const { svg, bindFunctions, diagramType } = await renderDiagram(config, code, viewId);
+  // Local (error recovery): code that would hang the page while drawing is refused.
+  const hazard = renderHazard(code);
+  if (hazard) throw new Error(hazardMessage(hazard));
+  let rendered;
+  try {
+    rendered = await renderDiagram(config, code, viewId);
+  } catch (error) {
+    // Local (error recovery): mermaid leaves its scratch element (`#d<id>`, or the
+    // sandbox iframe `#i<id>`) in the page when drawing fails part-way.
+    document.querySelector(`#d${viewId}`)?.remove();
+    document.querySelector(`#i${viewId}`)?.remove();
+    throw error;
+  }
+  const { svg, bindFunctions, diagramType } = rendered;
   if (svg.length === 0) {
     return { diagramType };
+  }
+  if (shouldPlace && !shouldPlace()) {
+    return { diagramType, stale: true };
   }
   container.innerHTML = svg;
   let graphDiv = document.querySelector<SVGSVGElement>(`#${viewId}`);
@@ -56,6 +79,9 @@ export const renderAndPlaceDiagram = async ({
     sketch.setAttribute('width', '100%');
     sketch.setAttribute('viewBox', `0 0 ${width} ${height}`);
     sketch.style.maxWidth = '100%';
+    // Local: the sketch drops the diagram's <style>, so a theme preset's background goes inline.
+    const fill = presetBackground(config as Record<string, unknown>);
+    if (fill) sketch.style.backgroundColor = fill;
     graphDiv = sketch;
   } else {
     graphDiv.setAttribute('height', '100%');

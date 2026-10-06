@@ -5,6 +5,7 @@
   import { TID } from '$/constants';
   import { locale, t } from '$/i18n';
   import { helpContent } from '$/util/helpContent';
+  import { startGuide } from '$/util/onboarding.svelte';
   import HelpIcon from '~icons/material-symbols/help-outline-rounded';
 
   // Local: a "How to use" button that opens a short guide to the editor's tools.
@@ -55,5 +56,14 @@
         </ul>
       </section>
     </div>
+    <Button
+      size="sm"
+      variant="outline"
+      class="self-start"
+      data-testid={TID.guideRestart}
+      onclick={() => {
+        open = false;
+        startGuide();
+      }}>{t('guide.restart')}</Button>
   </Dialog.Content>
 </Dialog.Root>

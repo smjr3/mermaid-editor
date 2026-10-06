@@ -10,6 +10,8 @@
 
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import CommandPalette from '$/components/CommandPalette.svelte';
+  import GuideTour from '$/components/GuideTour.svelte';
   import HelpButton from '$/components/HelpButton.svelte';
   import MainMenu from '$/components/MainMenu.svelte';
   import { Button } from '$/components/ui/button';
@@ -82,19 +84,18 @@
   </div>
 {/if}
 
-<nav class="z-50 flex p-4 sm:p-6">
+<nav class="z-50 flex items-center px-4 py-2 sm:px-6">
   <div class="flex flex-1 items-center gap-2">
     <MainMenu />
     <a href={resolve('/', {})} class="whitespace-nowrap text-accent">
-      {#if !mobileToggle}
-        Mermaid
-      {/if}
-      Live Editor
+      {t(mobileToggle ? 'nav.appTitleShort' : 'nav.appTitle')}
     </a>
   </div>
   <!-- Local: the guide to the editor, on every page and screen size. -->
   <div class="flex items-center">
+    <CommandPalette />
     <HelpButton />
+    <GuideTour />
   </div>
   <div
     id="menu"

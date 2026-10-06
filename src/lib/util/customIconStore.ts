@@ -54,15 +54,23 @@ export const listIconPacks = async (): Promise<IconifyJSON[]> => {
   });
 };
 
+/** Fired on `window` when a pack is imported or removed, so the view draws the diagram again. */
+export const ICON_PACKS_CHANGED = 'mermaid-editor:icon-packs-changed';
+const announce = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(ICON_PACKS_CHANGED));
+};
+
 export const saveIconPack = async (pack: IconifyJSON): Promise<void> => {
   await run('readwrite', (store) => store.put(pack));
   register(pack);
+  announce();
 };
 
 export const deleteIconPack = async (prefix: string): Promise<void> => {
   await run('readwrite', (store) => store.delete(prefix));
   // Leave an empty pack behind so the deleted icons stop rendering without a reload.
   register({ icons: {}, prefix });
+  announce();
 };
 
 /** Register the stored packs; resolves (never rejects) once done, so rendering can wait for it. */

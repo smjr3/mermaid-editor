@@ -10,6 +10,8 @@ export const env = {
   isEnabledAiFeatures: import.meta.env.MERMAID_IS_ENABLED_AI_FEATURES === 'true',
   isEnabledCommunityLinks: import.meta.env.MERMAID_IS_ENABLED_COMMUNITY_LINKS === 'true',
   isEnabledMermaidChartLinks: import.meta.env.MERMAID_IS_ENABLED_MERMAID_CHART_LINKS === 'true',
+  // Local: no request leaves the site (schema download, SVG stylesheet, gist/URL loading).
+  isOffline: import.meta.env.MERMAID_OFFLINE === 'true',
   krokiRendererUrl: import.meta.env.MERMAID_KROKI_RENDERER_URL ?? '',
   locale: import.meta.env.MERMAID_LOCALE,
   privacyPolicyUrl: import.meta.env.MERMAID_PRIVACY_POLICY_URL ?? '',

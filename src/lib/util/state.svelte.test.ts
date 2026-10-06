@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearDefaultThemeConfig,
   defaultState,
+  flushHash,
+  initURLSubscription,
   inputState,
   loadState,
   replaceInputState,
@@ -15,6 +17,7 @@ import {
   validatedState,
   verifyState
 } from './state.svelte';
+import { deserializeState } from './serde';
 import { applyThemePreset } from './themePresets';
 
 // Runs `body` inside an effect and reports how often the effect (re-)runs.
@@ -88,6 +91,23 @@ describe('update functions persist input state', () => {
     verifyState();
     expect(inputState.panZoom).toBe(true);
     expect(readStoredState().panZoom).toBe(true);
+  });
+});
+
+describe('the URL hash', () => {
+  it('carries the latest input state once flushed, before any validation lands', () => {
+    initURLSubscription();
+    updateCode('flowchart TD\n  F[Flushed before the reload]');
+    flushHash();
+    const hash = location.hash.slice(1);
+    expect(deserializeState(hash).code).toBe('flowchart TD\n  F[Flushed before the reload]');
+  });
+
+  it('is flushed when the page is about to unload', () => {
+    initURLSubscription();
+    updateCode('flowchart TD\n  U[Unloading]');
+    window.dispatchEvent(new Event('pagehide'));
+    expect(deserializeState(location.hash.slice(1)).code).toBe('flowchart TD\n  U[Unloading]');
   });
 });
 

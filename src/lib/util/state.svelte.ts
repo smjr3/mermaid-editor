@@ -166,6 +166,7 @@ const typingPause = () => (lastParseMs < 50 ? 0 : Math.min(150, lastParseMs));
 const persistAndProcess = (): void => {
   const snapshot = $state.snapshot(input) as State;
   writeJSON(CODE_STORE_KEY, snapshot);
+  updateHash?.(serializeState(snapshot));
   const ticket = processing.next();
   const run = () => {
     processTimer = undefined;
@@ -182,7 +183,6 @@ const persistAndProcess = (): void => {
       syncManagedTheme(processed.diagramType);
       if (!processing.isLatest(ticket)) return;
       validatedCurrent = processed;
-      updateHash?.(processed.serialized);
     });
   };
   clearTimeout(processTimer);
@@ -441,11 +441,29 @@ export const replaceInputState = (next: State): void => {
   });
 };
 
+// Local: the hash follows the input state, not the validated one — validation
+// waits behind a render, so for a large diagram it lands seconds after the edit,
+// and a reload in between (the language toggle, F5) would bring the old diagram
+// back. Writes stay debounced; `flushHash` writes at once, and the page does so
+// itself before it unloads.
+let hashDebounce: ReturnType<typeof debounce<(serialized: string) => void>> | undefined;
+
+/** Write the current input state into the URL hash now (before a reload). */
+export const flushHash = (): void => {
+  if (!hashDebounce) return;
+  hashDebounce.cancel();
+  const snapshot = untrack(() => $state.snapshot(input) as State);
+  history.replaceState(undefined, '', `#${serializeState(snapshot)}`);
+};
+
 export const initURLSubscription = (): void => {
-  updateHash = debounce((serialized: string) => {
+  hashDebounce = debounce((serialized: string) => {
     history.replaceState(undefined, '', `#${serialized}`);
   }, 250);
+  updateHash = (serialized) => hashDebounce?.(serialized);
   updateHash(validatedCurrent.serialized);
+  window.removeEventListener('pagehide', flushHash);
+  window.addEventListener('pagehide', flushHash);
 };
 
 export const verifyState = (): void => {

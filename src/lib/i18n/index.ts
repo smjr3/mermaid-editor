@@ -47,13 +47,19 @@ export const t = createTranslator(locale);
  * leave some in the old language. The diagram survives, because the editor
  * state is already persisted to localStorage and the URL.
  */
-export function switchLocale(next: Locale): void {
+/**
+ * Store the choice and reload. `beforeReload` runs once the choice is stored
+ * and the reload is certain: the editor passes `flushHash`, so the diagram
+ * comes back from a URL that carries the last edit, not a lagging one.
+ */
+export function switchLocale(next: Locale, beforeReload?: () => void): void {
   try {
     localStorage.setItem(storageKey, next);
   } catch {
     // Nothing would change after a reload, so do not reload.
     return;
   }
+  beforeReload?.();
   location.reload();
 }
 

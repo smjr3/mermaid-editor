@@ -3,6 +3,7 @@
   import * as Dialog from '$/components/ui/dialog';
   import { TID } from '$/constants';
   import { locale, switchLocale, t } from '$/i18n';
+  import { flushHash } from '$/util/state.svelte';
   import { nextLocale } from '$/i18n/translate';
   import { searchCommands, type Command, type CommandAction } from '$/util/commands';
   import { startGuide } from '$/util/onboarding.svelte';
@@ -54,7 +55,7 @@
         break;
       }
       case 'locale': {
-        switchLocale(nextLocale(locale));
+        switchLocale(nextLocale(locale), flushHash);
         break;
       }
       case 'help': {

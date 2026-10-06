@@ -103,6 +103,21 @@ describe('nextLocale', () => {
   });
 });
 
+describe('switchLocale', () => {
+  it('runs the hook after storing the choice and before it reloads', async () => {
+    const order: string[] = [];
+    const reload = vi.fn(() => order.push('reload'));
+    vi.stubGlobal('location', { ...location, reload });
+    const fresh = await import('./index');
+    const next = nextLocale(locale);
+    fresh.switchLocale(next, () => order.push(`hook:${localStorage.getItem('locale')}`));
+    expect(order).toEqual([`hook:${next}`, 'reload']);
+    vi.unstubAllGlobals();
+    localStorage.clear();
+    vi.resetModules();
+  });
+});
+
 describe('the app locale', () => {
   afterEach(() => {
     localStorage.clear();

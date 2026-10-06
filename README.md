@@ -114,6 +114,7 @@ npm install
 npm run build
 ```
 
+`node scripts/update-from-registry.mjs --version <x.y.z> --dir <dir>` は、プライベートレジストリやミラーを含め Windows でもこの手順を一括で実行します。
 詳しくは `docs-dev/PACKAGING.md` を参照してください。
 
 ### 設定
@@ -236,7 +237,8 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 - Mermaid Chart links, AI features, community links and third-party renderer integrations are
   switched off by default (`docs-dev/FEATURE-FLAGS.md`); local PNG/SVG export still works.
 - Requires Node.js >= 24.16.0; use pnpm for development (`pnpm install`, `pnpm dev`,
-  `pnpm build` → `docs/`). See `docs-dev/PACKAGING.md` to build from the npm package.
+  `pnpm build` → `docs/`). See `docs-dev/PACKAGING.md` to build from the npm package;
+  `node scripts/update-from-registry.mjs` does it in one step, on Windows too.
 - MIT licensed, inheriting upstream's MIT license (Copyright (c) 2020 - 2023 Knut Sveidqvist);
   see `LICENSE`, `NOTICE` and `THIRD-PARTY-LICENSES.md`. Imported from upstream commit
   `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (version 2.0.67); the procedure for following

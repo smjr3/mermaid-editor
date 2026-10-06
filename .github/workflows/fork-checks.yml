@@ -60,3 +60,42 @@ jobs:
           # Resolve without installing: the lockfile is all npm audit needs.
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm audit --omit=dev
+
+  build-from-package:
+    # scripts/update-from-registry.mjs against the public registry, on the platform
+    # it exists for. First thing in this repository to run on a Windows runner
+    # (docs-dev/CROSS-PLATFORM.md). No browser tests, no cache.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+
+      - name: Unit tests for the script
+        run: node --test scripts/update-from-registry.node-test.mjs
+
+      - name: Download, extract, install and build 0.2.1
+        run: node scripts/update-from-registry.mjs --version 0.2.1 --dir "${{ runner.temp }}/me"
+
+      - name: Assert the four outputs
+        shell: node {0}
+        run: |
+          const { existsSync } = require('node:fs');
+          const { join } = require('node:path');
+          const docs = join(process.env.RUNNER_TEMP, 'me', 'docs');
+          const missing = ['index.html', 'edit.html', 'view.html', '_app'].filter(
+            (name) => !existsSync(join(docs, name))
+          );
+          if (missing.length > 0) {
+            console.error(`missing in ${docs}: ${missing.join(', ')}`);
+            process.exit(1);
+          }
+          console.log(`all present in ${docs}`);

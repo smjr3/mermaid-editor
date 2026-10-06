@@ -89,6 +89,43 @@ When downloading through JFrog or another internal registry, that registry must 
 contain all transitive dependencies as well as this package. The first install can otherwise
 fail even when `@smjr3/mermaid-editor` itself is available.
 
+## Rebuilding the site from the published package with the script
+
+`scripts/update-from-registry.mjs` does the flow above in one command, with Node and npm
+only (no `tar`, `curl`, `rm` or `cp`), so it runs unchanged on Windows, Linux and macOS:
+
+```sh
+node scripts/update-from-registry.mjs --version 0.2.2 --registry https://registry.example.com/npm/ --dir mermaid-editor-build
+```
+
+Options: `--version <x.y.z|latest>` (default `latest`), `--registry <url>` (default: npm's
+configured registry), `--dir <path>` (default `./mermaid-editor-build`), `--no-build`
+(download and extract only) and `--keep-lock` (keep an existing `package-lock.json` and use
+`npm ci`, as "Reproducible installs" below recommends; without it the lockfile is deleted
+and `npm install` resolves afresh). It runs `npm pack`, unpacks the tarball with a small
+built-in reader, runs `npm install` and `npm run build` in the target, checks that `docs/`
+holds `index.html`, `edit.html`, `view.html` and `_app/`, and prints a summary. A failure
+prints one line naming the step and the command and exits non-zero. Copy the file out of
+this repository (or `npm pack` it from the package: `scripts/` is published) and run it
+anywhere Node >= 24 is installed.
+
+Windows notes: commands go through the shell so that `npm` resolves to `npm.cmd`, paths with
+spaces are quoted, and the temporary directory comes from `os.tmpdir()`. The usual cause of
+`ENOENT` in a hand-written update script is spawning `npm` (a `.cmd` file on Windows) without a
+shell, or calling `tar`/`rm`/`cp`, none of which is guaranteed there. CI proves the script on
+`windows-latest` and `ubuntu-latest` (job `build-from-package` in
+`.github/workflows/fork-checks.yml`).
+
+The script never handles credentials. For a private registry or mirror, put them in
+the user's `.npmrc` (or the project's, next to where you run the script):
+
+```ini
+@smjr3:registry=https://registry.example.com/npm/
+//registry.example.com/npm/:_authToken=<token>
+```
+
+With the scope mapped, `--registry` can be omitted; passing it overrides the mapping.
+
 ## Reproducible installs
 
 npm always removes a root `pnpm-lock.yaml` from a package tarball. Therefore, the first

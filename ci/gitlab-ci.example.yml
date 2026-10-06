@@ -1,9 +1,13 @@
-# GitLab Pages deployment.
+# Example: publish the editor as a static site with GitLab Pages.
+#
+# This is a template, not an active pipeline. To use it, copy it to `.gitlab-ci.yml` at the
+# root of the repository you build from and adjust the variables.
 #
 # The job below targets a Linux Docker executor. The `script` steps themselves
 # are platform-neutral — they run Node, never a shell builtin — so the same
 # steps work unchanged on a Windows runner; see the Windows section at the
-# bottom for the two keys that differ.
+# bottom for the two keys that differ. Any other static host works too: run
+# `pnpm build` and publish the generated `docs/` directory.
 
 image: node:24.16.0
 
@@ -65,8 +69,8 @@ pages:
 #   pages: true
 #
 # ---------------------------------------------------------------------------
-# Alternative: build the published npm package obtained through an internal
-# registry. Enable this job instead of the source-based `pages` job above, and
+# Alternative: build the published npm package obtained through a private npm
+# registry or mirror. Enable this job instead of the source-based `pages` job above, and
 # define the masked CI variables NPM_REGISTRY_URL and NPM_TOKEN. Keep the
 # package version pinned.
 #

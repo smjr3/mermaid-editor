@@ -247,7 +247,7 @@ What changed:
 
 Nothing is known to be broken in WebKit. It is simply not exercised, so it is not claimed
 — which is the honest form of the audit's "browser-specific exclusions include a reason".
-The deployment this fork serves is Windows-centric; Safari is not on the path.
+The primary target is Windows desktop browsers; Safari is not on the path.
 
 **Open item — WebKit coverage.** The audit asks an exclusion to carry a tracking issue as
 well as a reason. This repository tracks its findings in this document rather than in the
@@ -256,7 +256,7 @@ reviewing environment held no credentials to file them. So the exclusion is reco
 with the condition that reopens it rather than an open-ended "someday":
 
 > Reopen if any of these becomes true — a request to support Safari, a macOS or iOS user
-> of this deployment, or a WebKit-only defect reported by a user. The work is one more
+> of a deployment, or a WebKit-only defect reported by a user. The work is one more
 > project in `playwright.config.ts` mirroring the `firefox` one, plus a row in the
 > README's supported-browser table.
 
@@ -364,7 +364,7 @@ not take Monaco back below 0.57.0.
 ## Follow-up — the npm install path bypassed the overrides (2026-09-28)
 
 The overrides above were written as `pnpm.overrides`, which npm ignores. The published package
-is installed with `npm install` (`PACKAGING.md`, the npm-based job in `.gitlab-ci.yml`), so that
+is installed with `npm install` (`PACKAGING.md`, the npm-based job in `ci/gitlab-ci.example.yml`), so that
 path still resolved `chevrotain`'s `lodash-es@4.17.23`: an `npm install` of the packed tarball
 followed by `npm audit --omit=dev` reported **5 high** advisories, while `pnpm audit --prod` in
 this repository reported none. (The removed Monaco override had the same gap while it existed.)

@@ -1,11 +1,11 @@
 /**
  * Convert a folder of SVG files into an Iconify JSON icon pack, so a deployment
  * can host icons it may not redistribute in this repository — a vendor's
- * official architecture icons, an in-house set — next to the site:
+ * official architecture icons, your own set — next to the site:
  *
  *   node scripts/svg-to-iconify.js <svg-folder> <prefix> <output.json>
  *
- * e.g. in the GitLab Pages job, after `pnpm build:pages`:
+ * e.g. in a static-site build job, after `pnpm build:pages`:
  *
  *   node scripts/svg-to-iconify.js azure-icons azure public/icon-packs/azure.json
  *

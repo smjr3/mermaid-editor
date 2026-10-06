@@ -1,5 +1,5 @@
 /**
- * Move the built site to the directory GitLab Pages publishes from.
+ * Move the built site to `public/`, the directory GitLab Pages (and some other static hosts) publish from.
  *
  * SvelteKit's adapter-static writes to `docs/` (see svelte.config.js), while
  * GitLab Pages serves `public/`. CI used to bridge that with `mv docs public`,

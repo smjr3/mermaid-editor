@@ -1,6 +1,6 @@
 # Running the build on Linux and Windows
 
-The production runner may be Windows, so every step the build and deploy path
+The build may run on Windows as well as Linux, so every step the build and publish path
 takes has to behave identically on both. The rule this repository follows is:
 **every step CI invokes directly is either a package-manager invocation or a Node
 script** — no shell builtins, no Unix-only commands, no shell operators beyond
@@ -29,7 +29,7 @@ GitLab Pages serves `public/`; `mv` does not exist on cmd.exe, whereas Node's
 `renameSync` behaves the same everywhere. The script also removes a stale
 `public/` first, because CI workspaces are reused.
 
-`.gitlab-ci.yml` carries a commented Windows variant. Only two keys differ:
+`ci/gitlab-ci.example.yml` carries a commented Windows variant. Only two keys differ:
 `image:` applies to Linux Docker executors only, so a Windows shell runner drops
 it and takes Node from the runner itself, plus a `tags:` entry to select that
 runner.
@@ -102,7 +102,7 @@ This is the one place the rule at the top of this document is bent. `||` and
 parenthesised groups are valid in cmd.exe as well as in POSIX shells, so the chain
 should work — but "should" is doing real work in that sentence, and unlike the rest
 of this document it is **not backed by an execution**. Running `pnpm install` once
-on the Windows runner settles it; until then treat the postinstall path as the
+on a Windows machine settles it; until then treat the postinstall path as the
 weakest Windows claim here.
 
 `scripts/postinstall.js`, a Node wrapper an earlier version of this work routed
@@ -182,7 +182,7 @@ active entry point:
   three, because it removes the shell rather than relying on it.
 - **`scripts/prepare-pages.js`** — `renameSync` and `rmSync` are platform-neutral.
 
-**Run the pipeline once on the real runner before relying on it.**
+**Run the pipeline once on a real Windows runner before relying on it.**
 
 `scripts/update-from-registry.mjs` (see `PACKAGING.md`) is the first path in this repository
 executed on a Windows runner: job `build-from-package` in `fork-checks.yml` runs it on

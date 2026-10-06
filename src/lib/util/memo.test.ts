@@ -23,4 +23,16 @@ describe('memoByCode', () => {
     expect(await Promise.all([cached('x'), cached('x')])).toEqual([1, 1]);
     expect(compute).toHaveBeenCalledTimes(1);
   });
+
+  it('does not remember a failure', async () => {
+    const compute = vi
+      .fn<(code: string) => Promise<number>>()
+      .mockRejectedValueOnce(new Error('not yet'))
+      .mockResolvedValue(2);
+    const cached = memoByCode(compute);
+    await expect(cached('x')).rejects.toThrow('not yet');
+    expect(await cached('x')).toBe(2);
+    expect(await cached('x')).toBe(2);
+    expect(compute).toHaveBeenCalledTimes(2);
+  });
 });

@@ -5,14 +5,15 @@
   import { t } from '$/i18n';
   import { addArchEdge, addArchGroup, addArchService, type Placement } from '$/util/diagramEdit';
   import { architectureParts, type DiagramObject } from '$/util/mermaid';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
 
   // Local: the Add card for architecture diagrams — groups, services joined on a
   // chosen side, and edges between services (diagramEdit.ts).
   let groups = $state<DiagramObject[]>([]);
   let services = $state<DiagramObject[]>([]);
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void architectureParts(code).then((found) => {

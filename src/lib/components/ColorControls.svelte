@@ -43,7 +43,8 @@
     type DiagramObjects
   } from '$/util/mermaid';
   import { persisted } from '$/util/persist.svelte';
-  import { inputState, updateCode, updateConfig, validatedState } from '$/util/state.svelte';
+  import { inputState, updateCode, updateConfig } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
 
   // Local: the theme, the line colour, and lane, object and edge colours
@@ -80,7 +81,7 @@
   let selected = $state('');
   let selectedEdge = $state(0);
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void Promise.all([diagramObjects(code), diagramEdges(code)]).then(([found, foundEdges]) => {

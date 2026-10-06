@@ -57,9 +57,12 @@ export const render = async (
   };
 };
 
-export const parse = async (code: string) => {
+// Local: remembered per code. The store re-validates on every update, including pan,
+// zoom and editor-mode changes that leave the code as it was; a large diagram's parse
+// then ran dozens of times a second while panning.
+export const parse = memoByCode(async (code: string) => {
   return await mermaid.parse(code);
-};
+}, 16);
 
 // mermaid keeps `#35;` / `#quot;` entity codes as placeholders in what it parsed.
 const namedEntities: Record<string, string> = {

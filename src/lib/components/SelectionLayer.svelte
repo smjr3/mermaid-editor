@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { settledState } from '$/util/settledState.svelte';
   import DiagramContextMenu from '$/components/DiagramContextMenu.svelte';
   import SelectionToolbar from '$/components/SelectionToolbar.svelte';
   import { TID } from '$/constants';
@@ -15,7 +16,6 @@
   } from '$/util/selection.svelte';
   import { isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
-  import { validatedState } from '$/util/state.svelte';
 
   // Local: "click the diagram, then change it". Sits over the diagram in the view
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
@@ -26,7 +26,7 @@
 
   // The lists for the last valid code.
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     void model.sync(code);
   });

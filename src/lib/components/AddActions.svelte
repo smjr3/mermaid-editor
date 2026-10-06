@@ -12,7 +12,8 @@
     type Values
   } from '$/util/addActions';
   import type { DiagramObject } from '$/util/mermaid';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
 
   // Local: the Add card for the diagram types listed in addActions.ts — one form
   // per action, built from the action's fields.
@@ -20,7 +21,7 @@
 
   let parts = $state<Record<string, DiagramObject[]>>({});
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void spec.parts(code).then((found) => {

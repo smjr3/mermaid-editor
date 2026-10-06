@@ -43,7 +43,8 @@
     type EditObjects
   } from '$/util/diagramModify';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
 
   // Local: rename and delete objects, and relabel, reverse, restyle and delete
@@ -64,7 +65,7 @@
   let selectedEdge = $state(0);
   let message = $state('');
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void Promise.all([editableObjects(code), editableEdges(code)]).then(([found, foundEdges]) => {

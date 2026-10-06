@@ -5,6 +5,8 @@ import { render as renderDiagram } from './mermaid';
 export interface PlacedDiagram {
   diagramType?: string;
   graphDiv?: SVGSVGElement;
+  /** Local: rendered, but not placed because `shouldPlace` said a newer picture is shown. */
+  stale?: boolean;
 }
 
 /**
@@ -20,6 +22,7 @@ export const renderAndPlaceDiagram = async ({
   config,
   container,
   rough,
+  shouldPlace,
   viewId
 }: {
   code: string;
@@ -27,6 +30,8 @@ export const renderAndPlaceDiagram = async ({
   /** Must have an `id` — Svg2Roughjs addresses the container by CSS selector. */
   container: HTMLDivElement;
   rough: boolean;
+  /** Local: asked once the SVG is ready; false leaves the container as it is. */
+  shouldPlace?: () => boolean;
   viewId: string;
 }): Promise<PlacedDiagram> => {
   const containerSelector = `#${container.id}`;
@@ -34,6 +39,9 @@ export const renderAndPlaceDiagram = async ({
   const { svg, bindFunctions, diagramType } = await renderDiagram(config, code, viewId);
   if (svg.length === 0) {
     return { diagramType };
+  }
+  if (shouldPlace && !shouldPlace()) {
+    return { diagramType, stale: true };
   }
   container.innerHTML = svg;
   let graphDiv = document.querySelector<SVGSVGElement>(`#${viewId}`);

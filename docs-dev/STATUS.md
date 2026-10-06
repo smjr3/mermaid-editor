@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **258**.
+  every locally changed path — currently **263**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -597,6 +597,56 @@ in English on purpose — they are keys into `@mermaid-js/examples`.
 - **Finding 1** (dependency advisories) is resolved. The Monaco-specific DOMPurify override that
   closed it has since been removed again: Monaco 0.57.0 depends on the patched
   `dompurify@3.4.15` itself. The production audit reports zero advisories.
+
+**Performance guards (unreleased).** "Rendering sometimes becomes extremely slow" was measured in
+a production build (Chromium, typing into Monaco, every sample plus a 200-node/300-edge
+flowchart, an 8-lane swimlane and a 30-service architecture diagram with icons from six packs)
+and had five causes, each fixed:
+
+- **Every edit queued its own render**, one after another (`View.svelte` chained a promise per
+  state), and a render over 150 ms deferred the next by a second (`autoSync.ts`). A 20-key
+  burst drew up to 20 pictures and a "slow" diagram waited over a second for every change.
+  Now `renderScheduler.ts`: renders never overlap, a typed change waits 100 ms (more after a
+  slow render, at most 300 ms), only the newest state is drawn, and a finished render is not
+  placed if the code changed meanwhile or a newer picture is already shown. A button's edit,
+  a config or theme change renders at once.
+- **Pan and zoom re-parsed the diagram on every mouse move** (each move wrote the store, which
+  re-validates): one drag-and-wheel gesture on the 200-node flowchart blocked the page for
+  16 s. The store write is debounced (200 ms) and `parse` is remembered per code.
+- **The tool cards parsed on every key.** All three tool tabs stay mounted, and the cards and the
+  selection layer read the diagram through mermaid (often `parse` and `getDiagramFromText`):
+  about seven parses per key, several hundred ms per key on a 100-node flowchart. They now read
+  `settledState` (typing paused 250 ms, a button's edit at once, pan/zoom not at all). Typed code
+  is also validated after a pause when the last parse took over 50 ms.
+- **Stale validations could be published**: mermaid's parse waits for a running render, so an
+  older result could arrive after a newer edit and put old code back into the editor. Only
+  the newest validation is published (`createLatestGuard`).
+- **Two renders on every load**: the diagram stored from last time was drawn before the linked
+  one (which also loaded ELK for a sequence diagram), and the managed theme was set after
+  the first render. The view skips the unvalidated state and the theme is synced before publishing.
+
+Measured before → after (ms; one machine, shared with other jobs, so ±30 %): picture after
+opening a link, 2,600–6,700 → 950–1,700 for the samples, 12,200 → 6,300 for the 200-node
+flowchart; one key on a sample that counted as "slow" (Class, ER, Requirement, Swimlane,
+Architecture, Office Network) 1,100–1,250 → 160–450; a 20-key burst drew 20 pictures for most
+samples → 1, with 0.5–3.9 s of long tasks → under 0.2 s; one key on the 100-node flowchart 1,680 → 1,300
+and on the 200-node one 9,500 → 3,000. Fast samples now take 100–300 ms per key instead of
+30–150: the price of not drawing every key. Not slow, verified: History auto-save (once a
+minute, not per key), the URL hash (debounced), Monaco's error markers, hovering and
+selection (no handler walks the SVG on mouse move; the selected outline costs ~4 ms a second),
+the icon picker and unknown-icon check (no pack loads at startup; the check waits 800 ms),
+memory across 220 edits (heap, DOM nodes and listeners flat), svg-pan-zoom set-up. Still slow,
+and why: mermaid's own flowchart parse (its `getConfig` deep-copies the config for every node:
+~200 ms for 200 nodes, run by the validation, the render and once more by the cards after a
+pause) and layout — a 200-node flowchart takes 2–3 s to draw with ELK or dagre alike; the
+hand-drawn mode adds svg2roughjs on top. A cold load fetches ~6.9 MB of JS (Monaco 4 MB of it;
+icon packs, ELK and ZenUML load only when a diagram needs them).
+
+`tests/performance.spec.ts` guards it: typing into a 100-node flowchart shows the picture
+within 5 s of the last key, a 20-key burst ends in exactly one picture (`data-render-count` on
+`#view`), panning and zooming draw nothing, an older large render never replaces a newer
+picture, and fast typing during a slow render is never undone in the editor.
+`renderScheduler.test.ts` covers the scheduler, the guard and the settler.
 
 ## What is open
 

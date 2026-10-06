@@ -149,6 +149,26 @@ resolved it, so PNG export hung without downloading. mermaid 12 renders the ER s
 in about 150 ms, which made `actions.spec.ts` "should download png and svg" fail about
 half the time. If upstream fixes this themselves, take their version and drop ours.
 
+### Render scheduling (performance)
+
+| Path                                                        | Local change                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/View.svelte`                            | Renders through `createRenderScheduler` instead of a promise chain of every state; no longer calls `recordRenderTime`; debounces pan/zoom store writes; skips the pre-validation state; `data-render-count`; redraws when an icon pack is imported or removed |
+| `src/lib/util/renderView.ts`                                | `shouldPlace` option: a finished render is dropped instead of placed when it says no                                                                                                                                                                          |
+| `src/lib/util/state.svelte.ts`                              | Publishes only the newest validation (`createLatestGuard`), syncs the managed theme before publishing, validates typed code after a pause when parsing is slow                                                                                                |
+| `src/lib/util/mermaid.ts`, `src/lib/util/memo.ts`           | `parse` is remembered per code; `memoByCode` forgets failures                                                                                                                                                                                                 |
+| `src/lib/util/renderScheduler.ts`, `settledState.svelte.ts` | Added. The scheduler, the guard and the settler; the tool cards and the selection layer read `settledState` instead of `validatedState`                                                                                                                       |
+
+Upstream queues a render for every state and, after a render over 150 ms, defers the next
+one by a second (`autoSync.ts`). Measured in a production build, a burst of typing queued up
+to twenty renders, a slow diagram waited over a second for every change, and a pan of a
+200-node flowchart re-parsed it on every mouse move (16 s of blocked main thread). `autoSync.ts`
+itself is unchanged: `View` still calls `shouldRefreshView()` (always true now, since nothing
+records a slow render) so `waitForRender()` keeps working for PNG export, and resolves it with
+`markViewCurrent()` when the scheduler is idle. On a merge, keep upstream's `View.svelte`
+markup and re-apply the scheduler effect; `STATUS.md` → "Performance guards" lists the
+measurements and `tests/performance.spec.ts` the guards.
+
 ### Swimlane samples and business templates
 
 | Path                                | Local change                                                                                                                                                                                            |
@@ -649,6 +669,9 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/newDiagram.ts`                           |
 | Added    | `src/lib/util/onboarding.svelte.ts`                    |
 | Modified | `src/lib/util/panZoom.ts`                              |
+| Added    | `src/lib/util/renderScheduler.test.ts`                 |
+| Added    | `src/lib/util/renderScheduler.ts`                      |
+| Modified | `src/lib/util/renderView.ts`                           |
 | Added    | `src/lib/util/selection.svelte.ts`                     |
 | Added    | `src/lib/util/selection.test.ts`                       |
 | Added    | `src/lib/util/selectionActions.test.ts`                |
@@ -657,6 +680,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/selectionKeys.ts`                        |
 | Added    | `src/lib/util/selectionModel.svelte.ts`                |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
+| Added    | `src/lib/util/settledState.svelte.ts`                  |
 | Added    | `src/lib/util/standardIcons.test.ts`                   |
 | Added    | `src/lib/util/standardIcons.ts`                        |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
@@ -713,6 +737,7 @@ modifications as if they were local customizations.
 | Added    | `tests/newDiagram.spec.ts`                             |
 | Added    | `tests/offline.spec.ts`                                |
 | Added    | `tests/onboarding.spec.ts`                             |
+| Added    | `tests/performance.spec.ts`                            |
 | Added    | `tests/releaseAudit.spec.ts`                           |
 | Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/selection.spec.ts`                              |

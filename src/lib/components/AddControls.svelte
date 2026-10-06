@@ -20,7 +20,8 @@
   } from '$/util/diagramEdit';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
   import { templateNotice } from '$/util/templateNotice.svelte';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
 
   // Local: add a lane, or a node (in a lane, joined from another node), without
@@ -31,7 +32,7 @@
   const groups = $derived(listGroups(inputState.code));
   let nodes = $state<DiagramObject[]>([]);
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void diagramObjects(code).then((found) => {

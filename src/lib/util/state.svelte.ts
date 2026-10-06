@@ -13,6 +13,7 @@ import {
 } from './errorHandling';
 import { darkVariantOf, getDefaultTheme, isManagedTheme, parse } from './mermaid';
 import { readJSON, writeJSON } from './persist.svelte';
+import { createLatestGuard } from './renderScheduler';
 import { findUnsafeConfigPaths, stripConfigPaths } from './sanitize';
 import { deserializeState, pakoSerde, serializeState } from './serde';
 import { errorDebug, formatJSON, getUTMSource, MCBaseURL } from './util';
@@ -116,14 +117,49 @@ let updateHash: ((serialized: string) => void) | undefined;
 // publishing the result to `validatedState` (and the URL hash, once
 // initURLSubscription has run). Only called from update(), which suppresses
 // dependency tracking.
+// Local: validation is asynchronous (mermaid's parse waits for a render in progress),
+// so results can arrive after a newer edit. Only the newest is published: an older one
+// would put stale code back into the editor and the view. A result whose managed theme
+// is about to change is not published either; the update that changes it is, so the
+// diagram is not drawn twice on load or on a change of diagram type.
+// Typed code (an update that changes the code without `updateDiagram`) is validated
+// once typing pauses, when parsing is slow: mermaid's parse of a 200-node flowchart
+// takes a couple of hundred milliseconds, and running it for every key blocked the
+// typing itself. The pause follows the last parse (none under 50 ms, at most 150 ms),
+// so a small diagram is validated at once. Everything else is validated at once.
+const processing = createLatestGuard();
+let processTimer: ReturnType<typeof setTimeout> | undefined;
+let lastProcessedCode: string | undefined;
+let lastParseMs = 0;
+const typingPause = () => (lastParseMs < 50 ? 0 : Math.min(150, lastParseMs));
 const persistAndProcess = (): void => {
   const snapshot = $state.snapshot(input) as State;
   writeJSON(CODE_STORE_KEY, snapshot);
-  void processState(snapshot).then((processed) => {
-    validatedCurrent = processed;
-    updateHash?.(processed.serialized);
-    syncManagedTheme(processed.diagramType);
-  });
+  const ticket = processing.next();
+  const run = () => {
+    processTimer = undefined;
+    lastProcessedCode = snapshot.code;
+    const started = performance.now();
+    void processState(snapshot).then((processed) => {
+      lastParseMs = performance.now() - started;
+      if (!processing.isLatest(ticket)) return;
+      syncManagedTheme(processed.diagramType);
+      if (!processing.isLatest(ticket)) return;
+      validatedCurrent = processed;
+      updateHash?.(processed.serialized);
+    });
+  };
+  clearTimeout(processTimer);
+  const typed =
+    !snapshot.updateDiagram &&
+    lastProcessedCode !== undefined &&
+    snapshot.code !== lastProcessedCode;
+  const pause = typed ? typingPause() : 0;
+  if (pause > 0) {
+    processTimer = setTimeout(run, pause);
+  } else {
+    run();
+  }
 };
 
 // The single mutation gateway: every update function funnels its writes

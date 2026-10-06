@@ -310,7 +310,8 @@
               <SelectionLayer host={viewHost} />
               <!-- Local: what is wrong with the code and the way back (codeHealth.svelte.ts). -->
               <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex justify-center">
-                <div class="pointer-events-auto w-full max-w-xl">
+                <!-- data-selection-avoid: the mini toolbar keeps clear of it. -->
+                <div class="pointer-events-auto w-full max-w-xl" data-selection-avoid>
                   <CodeErrorNotice testID={TID.diagramErrorNotice} />
                 </div>
               </div>

@@ -13,6 +13,8 @@ export class PanZoomState {
 
   public isPanEnabled: boolean;
   public onPanZoomChange?: (pan: Point, zoom: number) => void;
+  /** Local: a one-off change (a zoom button, a fit) is complete; no more of it follows. */
+  public onPanZoomSettled?: () => void;
 
   constructor() {
     this.isPanEnabled = true;
@@ -147,10 +149,12 @@ export class PanZoomState {
 
   public zoomIn() {
     this.pzoom?.zoomIn();
+    this.onPanZoomSettled?.();
   }
 
   public zoomOut() {
     this.pzoom?.zoomOut();
+    this.onPanZoomSettled?.();
   }
 
   public reset() {
@@ -158,5 +162,6 @@ export class PanZoomState {
     // Zoom out a bit to avoid overlap with the toolbar
     this.pzoom?.zoom(0.875);
     this.isDirty = false;
+    this.onPanZoomSettled?.();
   }
 }

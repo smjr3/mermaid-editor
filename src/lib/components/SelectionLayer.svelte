@@ -16,6 +16,7 @@
   import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { settledState } from '$/util/settledState.svelte';
+  import type { Rect } from '$/util/toolbarPlacement';
   import { untrack } from 'svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
 
@@ -103,6 +104,30 @@
   // something is selected, so panning, zooming and re-rendering keep the outline on it.
   let box = $state<{ x: number; y: number; width: number; height: number } | undefined>();
   let placed: Selected | undefined;
+  // The panels over the diagram the mini toolbar keeps clear of (the notice shown while
+  // the code is broken, marked `data-selection-avoid`); written only when they move.
+  let panels = $state<Rect[]>([]);
+  const followPanels = (hostRect: DOMRect) => {
+    const next = [...(host?.querySelectorAll('[data-selection-avoid]') ?? [])]
+      .map((element) => element.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+      .map((rect) => ({
+        height: rect.height,
+        width: rect.width,
+        x: rect.left - hostRect.left,
+        y: rect.top - hostRect.top
+      }));
+    const same =
+      next.length === panels.length &&
+      next.every(
+        (rect, index) =>
+          Math.abs(rect.x - panels[index].x) <= 0.5 &&
+          Math.abs(rect.y - panels[index].y) <= 0.5 &&
+          Math.abs(rect.width - panels[index].width) <= 0.5 &&
+          Math.abs(rect.height - panels[index].height) <= 0.5
+      );
+    if (!same) panels = next;
+  };
   $effect(() => {
     const selected = selection.current;
     // Read so a new render or list re-finds the element.
@@ -142,6 +167,7 @@
           box = next;
         }
       }
+      if (hostRect) followPanels(hostRect);
       frame = requestAnimationFrame(follow);
     };
     // Not called here: what it reads must not become this effect's dependencies.
@@ -315,7 +341,11 @@
 {/if}
 
 {#if box && selection.current && host && !menu}
-  <SelectionToolbar {box} hostWidth={host.clientWidth} hostHeight={host.clientHeight} />
+  <SelectionToolbar
+    {box}
+    avoid={panels}
+    hostWidth={host.clientWidth}
+    hostHeight={host.clientHeight} />
 {/if}
 
 {#if menu}

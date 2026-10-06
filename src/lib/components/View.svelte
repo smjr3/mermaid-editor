@@ -34,23 +34,30 @@
   // Set up panZoom state observer to update the store when pan/zoom changes
   // Local: a drag or a wheel fires this many times a second, and every store update
   // is persisted, serialised and re-validated; the store only needs where it ended.
+  // A button, a fit or a newly placed picture is one change: stored at once, so the
+  // store never lags behind what is shown.
+  let unstored: Pick<State, 'pan' | 'zoom'> | undefined;
+  const store = debounce((pan: State['pan'], zoom: number) => {
+    unstored = undefined;
+    updateCodeStore({ pan, zoom });
+  }, 200);
   const setupPanZoomObserver = () => {
-    const store = debounce(
-      (pan: State['pan'], zoom: number) => updateCodeStore({ pan, zoom }),
-      200
-    );
     panZoomState.onPanZoomChange = (pan, zoom) => {
+      unstored = { pan, zoom };
       store(pan, zoom);
     };
+    panZoomState.onPanZoomSettled = () => store.flush();
     return () => store.flush();
   };
 
   const handlePanZoom = (state: State, graphDiv: SVGSVGElement) => {
     try {
-      panZoomState.updateElement(graphDiv, state);
+      // A gesture not stored yet is where the user left the view, not the state's.
+      panZoomState.updateElement(graphDiv, unstored ?? state);
     } catch (error) {
       console.error('PanZoom error:', error);
     }
+    store.flush();
   };
 
   const handleStateChange = async (state: ValidatedState, token = 0) => {

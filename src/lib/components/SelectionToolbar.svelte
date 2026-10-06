@@ -8,6 +8,7 @@
   import type { EdgeStyle } from '$/util/diagramModify';
   import { requestRename, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
+  import { toolbarPlacement, type Rect } from '$/util/toolbarPlacement';
   import { showTab } from '$/util/toolsPane.svelte';
   import { openCard } from '$/util/uiBus';
   import { tick, untrack } from 'svelte';
@@ -28,27 +29,26 @@
   // (selectionModel.svelte.ts), the same functions as the Edit and Colours cards;
   // a control the diagram type has no edit for is left out.
   let {
+    avoid = [],
     box,
     hostWidth,
     hostHeight
   }: {
-    box: { x: number; y: number; width: number; height: number };
+    avoid?: Rect[];
+    box: Rect;
     hostWidth: number;
     hostHeight: number;
   } = $props();
 
   let width = $state(0);
   let height = $state(0);
-  const gap = 10;
-  const left = $derived(
-    Math.max(4, Math.min(box.x + box.width / 2 - width / 2, hostWidth - width - 4))
+  // Above the selection, below it when there is no room above, and clear of the notice
+  // over the diagram (toolbarPlacement.ts).
+  const placement = $derived(
+    toolbarPlacement({ avoid, box, hostHeight, hostWidth, size: { height, width } })
   );
-  // Above the selection; below it when there is no room above.
-  const top = $derived.by(() => {
-    const above = box.y - height - gap;
-    if (above >= 4) return above;
-    return Math.min(box.y + box.height + gap, Math.max(4, hostHeight - height - 4));
-  });
+  const left = $derived(placement.left);
+  const top = $derived(placement.top);
 
   let open = $state<'color' | 'icon' | undefined>();
   // The inline rename is open while `selection.renaming` is set (here, F2, a double

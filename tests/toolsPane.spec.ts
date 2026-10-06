@@ -15,6 +15,7 @@ const stored = (page: Page) =>
     () =>
       JSON.parse(localStorage.getItem('codeStore') ?? '{}') as {
         grid?: boolean;
+        pan?: { x: number; y: number };
         rough?: boolean;
         zoom?: number;
       }
@@ -292,6 +293,84 @@ test.describe('Diagram toolbar', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', other);
     await page.getByTestId(TID.localeToggleButton).click();
     await expect(page.locator('html')).not.toHaveAttribute('lang', other);
+  });
+
+  test('keeps a zoom, a fit and a drag across a reload', async ({ editPage, page }) => {
+    await editPage.start(flowchart);
+    await editPage.checkTextInView('Start');
+    const transform = () =>
+      page.locator('#view svg .svg-pan-zoom_viewport').first().getAttribute('transform');
+    // `matrix(a,b,c,d,e,f)` as numbers: a restored view agrees to a few decimals, not to the digit.
+    const numbers = (matrix: string | null) => (matrix?.match(/-?[\d.]+/g) ?? []).map(Number);
+    const expectSameView = async (expected: string | null) => {
+      await expect
+        .poll(async () => numbers(await transform()).map((n) => Math.round(n * 1000)))
+        .toEqual(numbers(expected).map((n) => Math.round(n * 1000)));
+    };
+    // The URL hash carries the pan and zoom too, and follows the store after a
+    // short debounce; a reload before it catches up would restore the old view.
+    const reload = async (urlBefore: string) => {
+      await expect.poll(() => page.url()).not.toBe(urlBefore);
+      // …and has stopped changing (the editor rewrites it once more after a load).
+      await expect
+        .poll(async () => {
+          const seen = page.url();
+          await page.waitForTimeout(400);
+          return page.url() === seen;
+        })
+        .toBe(true);
+      await page.reload();
+      await editPage.checkTextInView('Start');
+    };
+    // The pane layout settles a moment after the first picture (the samples card
+    // opens and the view resizes), so take the fitted view once it stops moving.
+    const settledTransform = async () => {
+      await expect
+        .poll(async () => {
+          const seen = await transform();
+          await page.waitForTimeout(400);
+          return (await transform()) === seen;
+        })
+        .toBe(true);
+      return transform();
+    };
+    await settledTransform();
+
+    let url = page.url();
+    await page.getByTestId(TID.zoomInButton).click();
+    await page.getByTestId(TID.zoomInButton).click();
+    const zoomed = (await stored(page)).zoom ?? 0;
+    expect(zoomed).toBeGreaterThan(1);
+    await reload(url);
+    await expect.poll(async () => (await stored(page)).zoom).toBeCloseTo(zoomed, 3);
+
+    await page.getByTestId(TID.zoomOutButton).click();
+    await expect.poll(async () => (await stored(page)).zoom ?? 0).toBeLessThan(zoomed);
+    const zoomedOut = await settledTransform();
+    url = page.url();
+    await page.getByTestId(TID.resetViewButton).click();
+    await expect.poll(async () => (await stored(page)).zoom).toBeCloseTo(0.875, 3);
+    const refitted = await settledTransform();
+    expect(refitted).not.toBe(zoomedOut);
+    await reload(url);
+    await expectSameView(refitted);
+
+    await settledTransform();
+    const fittedPan = (await stored(page)).pan;
+    url = page.url();
+    const box = await editPage.view.boundingBox();
+    if (!box) throw new Error('view missing');
+    // Off the nodes, so the drag pans rather than selects.
+    await page.mouse.move(box.x + 20, box.y + box.height - 20);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 80, box.y + box.height - 60, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(transform).not.toBe(refitted);
+    const panned = await transform();
+    // A drag is stored once it ends (debounced), not on every move.
+    await expect.poll(async () => (await stored(page)).pan).not.toEqual(fittedPan);
+    await reload(url);
+    await expectSameView(panned);
   });
 });
 

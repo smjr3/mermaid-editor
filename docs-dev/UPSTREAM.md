@@ -675,6 +675,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/newDiagram.test.ts`                      |
 | Added    | `src/lib/util/newDiagram.ts`                           |
 | Added    | `src/lib/util/onboarding.svelte.ts`                    |
+| Added    | `src/lib/util/panZoom.test.ts`                         |
 | Modified | `src/lib/util/panZoom.ts`                              |
 | Added    | `src/lib/util/renderScheduler.test.ts`                 |
 | Added    | `src/lib/util/renderScheduler.ts`                      |
@@ -705,6 +706,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/templateThumbnails.ts`                   |
 | Added    | `src/lib/util/themePresets.test.ts`                    |
 | Added    | `src/lib/util/themePresets.ts`                         |
+| Added    | `src/lib/util/toolbarPlacement.test.ts`                |
+| Added    | `src/lib/util/toolbarPlacement.ts`                     |
 | Added    | `src/lib/util/toolsPane.svelte.ts`                     |
 | Added    | `src/lib/util/toolsPane.test.ts`                       |
 | Added    | `src/lib/util/uiBus.ts`                                |

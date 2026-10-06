@@ -194,8 +194,10 @@ test.describe('Layout card', () => {
     await editPage.checkTextInView('B');
     await page.getByTestId(TID.layoutCard).click();
     await editPage.typeInEditor('\n  C -->');
+    // The code has a mistake: the card says so instead of trying (errorRecovery.spec.ts).
+    await expect(page.getByTestId(TID.diagramErrorNotice)).toBeVisible({ timeout: 10_000 });
     await page.getByTestId(TID.layoutFit).click();
-    await expect(page.getByTestId(TID.layoutMessage)).toHaveText(t('layout.fitFailed'));
+    await expect(page.getByTestId(TID.layoutMessage)).toHaveText(t('recover.blocked'));
   });
 });
 

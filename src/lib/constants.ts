@@ -199,6 +199,7 @@ export const TID = {
   selectionShape: 'selection-shape',
   selectionSize: 'selection-size',
   selectionToolbar: 'selection-toolbar',
+  selectionWarning: 'selection-warning',
   shareButton: 'share-button',
   swapPanesButton: 'swap-panes-button',
   tableAddRow: 'table-add-row',

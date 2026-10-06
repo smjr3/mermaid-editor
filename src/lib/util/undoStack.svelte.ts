@@ -67,9 +67,19 @@ export const createCodeHistory = ({ apply, delay = 500, limit = 100 }: CodeHisto
     get canUndo() {
       return index > 0 || pending !== undefined;
     },
-    /** Called with the input state's code whenever it changes. */
-    record(code: string) {
+    /**
+     * Called with the input state's code whenever it changes. `immediate` marks a
+     * change made in one go by a tool (a card, the selection toolbar, the table):
+     * it becomes its own step at once, after any typing still pending, so two tool
+     * edits in quick succession are undone one at a time.
+     */
+    record(code: string, { immediate = false }: { immediate?: boolean } = {}) {
       if (index < 0) {
+        commit(code);
+        return;
+      }
+      if (immediate) {
+        flush();
         commit(code);
         return;
       }

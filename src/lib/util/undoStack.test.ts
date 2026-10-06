@@ -48,6 +48,31 @@ describe('codeHistory', () => {
     expect(history.canRedo).toBe(false);
   });
 
+  it('keeps each tool edit as its own step, however quickly they follow', () => {
+    // A colour then bold from the mini toolbar, 100 ms apart: two steps, not one.
+    history.record('a');
+    history.record('a+colour', { immediate: true });
+    vi.advanceTimersByTime(100);
+    history.record('a+colour+bold', { immediate: true });
+    expect(history.canRedo).toBe(false);
+    history.undo();
+    expect(apply).toHaveBeenLastCalledWith('a+colour');
+    history.record('a+colour');
+    history.undo();
+    expect(apply).toHaveBeenLastCalledWith('a');
+  });
+
+  it('closes pending typing before a tool edit', () => {
+    history.record('a');
+    history.record('ab');
+    history.record('ab+tool', { immediate: true });
+    history.undo();
+    expect(apply).toHaveBeenLastCalledWith('ab');
+    history.record('ab');
+    history.undo();
+    expect(apply).toHaveBeenLastCalledWith('a');
+  });
+
   it('coalesces rapid changes into one entry', () => {
     history.record('a');
     history.record('ab');

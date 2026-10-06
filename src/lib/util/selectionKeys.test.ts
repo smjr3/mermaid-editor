@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTypingTarget, keyCommand } from './selectionKeys';
+import { historyCommand, isTypingTarget, keyCommand } from './selectionKeys';
 
 const node = { id: 'A', type: 'node' } as const;
 const edge = { index: 0, type: 'edge' } as const;
@@ -60,5 +60,25 @@ describe('isTypingTarget', () => {
       '<div class="monaco-editor"><span id="in"></span></div><div id="out"></div>';
     expect(isTypingTarget(document.querySelector('#in'))).toBe(true);
     expect(isTypingTarget(document.querySelector('#out'))).toBe(false);
+  });
+});
+
+describe('historyCommand', () => {
+  // Ctrl+Z after deleting with the Delete key must step back, wherever focus is
+  // outside a text field (the code editor has its own undo).
+  it('maps Ctrl/⌘+Z to undo and Ctrl+Y or Ctrl/⌘+Shift+Z to redo, with or without a selection', () => {
+    expect(historyCommand({ ctrlKey: true, key: 'z' }, false)).toBe('undo');
+    expect(historyCommand({ key: 'z', metaKey: true }, false)).toBe('undo');
+    expect(historyCommand({ ctrlKey: true, key: 'Z', shiftKey: true }, false)).toBe('redo');
+    expect(historyCommand({ key: 'z', metaKey: true, shiftKey: true }, false)).toBe('redo');
+    expect(historyCommand({ ctrlKey: true, key: 'y' }, false)).toBe('redo');
+  });
+
+  it('leaves the keys to a field, the code editor, IME composition and other shortcuts', () => {
+    expect(historyCommand({ ctrlKey: true, key: 'z' }, true)).toBeUndefined();
+    expect(historyCommand({ ctrlKey: true, isComposing: true, key: 'z' }, false)).toBeUndefined();
+    expect(historyCommand({ key: 'z' }, false)).toBeUndefined();
+    expect(historyCommand({ altKey: true, ctrlKey: true, key: 'z' }, false)).toBeUndefined();
+    expect(historyCommand({ ctrlKey: true, key: 'c' }, false)).toBeUndefined();
   });
 });

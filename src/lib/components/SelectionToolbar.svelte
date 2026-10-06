@@ -6,7 +6,7 @@
   import { textSizeChoices, type TextSize } from '$/util/colors';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
   import type { EdgeStyle } from '$/util/diagramModify';
-  import { endRename, requestRename, selection, startConnect } from '$/util/selection.svelte';
+  import { requestRename, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { showTab } from '$/util/toolsPane.svelte';
   import { untrack } from 'svelte';
@@ -52,23 +52,27 @@
   let open = $state<'color' | 'icon' | undefined>();
   // The inline rename is open while `selection.renaming` is set (here, F2, a double
   // click, the menu or a new node), so it survives this toolbar being re-created.
+  // The text being typed lives in the model's draft (selectionModel.svelte.ts), so a
+  // click on another node or the canvas still applies it to the object it was for.
   const renaming = $derived(selection.renaming && !model.object?.noRename);
-  let name = $state('');
+  let form: HTMLFormElement | undefined = $state();
   let input: HTMLInputElement | undefined = $state();
   $effect(() => {
     void selection.current;
     if (!renaming || !input) return;
     const field = input;
     untrack(() => {
-      name = model.label;
+      model.startDraft();
       open = undefined;
+      field.value = model.draft?.name ?? '';
       field.focus();
       field.select();
     });
   });
-  const commit = async () => {
-    endRename();
-    if (name.trim() !== model.label) await model.rename(name);
+  // Leaving the field for anything but its own ✓ and ✕ applies what was typed.
+  const onblur = (event: FocusEvent) => {
+    if (event.relatedTarget instanceof Node && form?.contains(event.relatedTarget)) return;
+    void model.commitDraft();
   };
 
   // Another selection closes what was open.
@@ -101,22 +105,26 @@
   bind:offsetHeight={height}>
   {#if renaming}
     <form
+      bind:this={form}
       class="flex items-center gap-1"
       onsubmit={(event) => {
         event.preventDefault();
-        void commit();
+        void model.commitDraft();
       }}>
       <input
         bind:this={input}
-        bind:value={name}
         class="h-8 w-48 rounded-md border border-input bg-background px-2 text-sm"
         aria-label={model.edge ? t('sel.label') : t('sel.name')}
         data-testid={TID.selectionRename}
+        oninput={(event) => {
+          if (model.draft) model.draft.name = event.currentTarget.value;
+        }}
+        {onblur}
         onkeydown={(event) => {
           if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
-            endRename();
+            model.cancelDraft();
           }
         }} />
       <button
@@ -130,7 +138,7 @@
         class={button}
         title={t('sel.cancel')}
         aria-label={t('sel.cancel')}
-        onclick={endRename}><CloseIcon /></button>
+        onclick={model.cancelDraft}><CloseIcon /></button>
     </form>
   {:else}
     <div class="flex flex-wrap items-center gap-0.5">

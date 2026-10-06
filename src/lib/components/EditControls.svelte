@@ -43,6 +43,7 @@
     type EditObjects
   } from '$/util/diagramModify';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
+  import { reverseDuplicates } from '$/util/selectionActions';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
 
@@ -533,8 +534,18 @@
                     size="sm"
                     variant="outline"
                     data-testid={TID.editEdgeReverse}
-                    onclick={() => onEdge((k, e) => reverseEdge(inputState.code, k, e))}
-                    >{t('edit.edgeReverse')}</Button>
+                    onclick={() => {
+                      // Turning it round must not repeat the arrow already going the other way.
+                      if (
+                        kind !== 'sequence' &&
+                        edge &&
+                        reverseDuplicates(edges?.items ?? [], edge)
+                      ) {
+                        message = t('sel.reverseDuplicate');
+                        return;
+                      }
+                      onEdge((k, e) => reverseEdge(inputState.code, k, e));
+                    }}>{t('edit.edgeReverse')}</Button>
                 {/if}
                 <Button
                   size="sm"

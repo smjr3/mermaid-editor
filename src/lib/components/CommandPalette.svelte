@@ -110,6 +110,8 @@
       // Before Monaco, which would take Ctrl+K as the start of a chord.
       event.preventDefault();
       event.stopPropagation();
+      // Not over another dialog (the help, a template form): one dialog at a time.
+      if (!open && document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       query = '';
       open = !open;
     }

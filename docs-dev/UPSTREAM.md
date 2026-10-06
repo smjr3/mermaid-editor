@@ -692,6 +692,7 @@ modifications as if they were local customizations.
 | Added    | `tests/commandPalette.spec.ts`                         |
 | Modified | `tests/configMigration.spec.ts`                        |
 | Added    | `tests/configReset.spec.ts`                            |
+| Added    | `tests/contradictions.spec.ts`                         |
 | Modified | `tests/diagramUpdate.spec.ts`                          |
 | Added    | `tests/editControls.spec.ts`                           |
 | Added    | `tests/editorAiGlyph.spec.ts`                          |
@@ -707,9 +708,11 @@ modifications as if they were local customizations.
 | Added    | `tests/iconImport.spec.ts`                             |
 | Added    | `tests/iconLicenses.spec.ts`                           |
 | Added    | `tests/iconPacks.spec.ts`                              |
+| Added    | `tests/invariants.ts`                                  |
 | Added    | `tests/layout.spec.ts`                                 |
 | Modified | `tests/loadSite.spec.ts`                               |
 | Added    | `tests/locale.spec.ts`                                 |
+| Added    | `tests/monkey.spec.ts`                                 |
 | Added    | `tests/newDiagram.spec.ts`                             |
 | Added    | `tests/offline.spec.ts`                                |
 | Added    | `tests/onboarding.spec.ts`                             |

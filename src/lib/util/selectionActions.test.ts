@@ -15,7 +15,8 @@ import {
   canConnect,
   colorSyntaxFor,
   connect,
-  neighbour
+  neighbour,
+  reverseDuplicates
 } from './selectionActions';
 
 const objectsOf = async (code: string) => (await editableObjects(code))?.items ?? [];
@@ -195,5 +196,17 @@ describe('addStandalone', () => {
   it('has nothing for the types without one', () => {
     expect(addStandalone('pie\n  "a" : 1', 'pie', [], 'x')).toBeUndefined();
     expect(addStandalone('x', undefined, [], 'x')).toBeUndefined();
+  });
+});
+
+describe('reverseDuplicates', () => {
+  it('spots a reversal that would repeat an arrow the diagram already has', async () => {
+    const code = 'flowchart TD\n  C --> D\n  D --> C\n  A -->|yes| B\n  B --> A';
+    const edges = (await editableEdges(code))?.items ?? [];
+    expect(edges).toHaveLength(4);
+    // C → D turned round is D → C, which is there already.
+    expect(reverseDuplicates(edges, edges[0])).toBe(true);
+    // A -yes-> B turned round keeps its label, and B → A has none.
+    expect(reverseDuplicates(edges, edges[2])).toBe(false);
   });
 });

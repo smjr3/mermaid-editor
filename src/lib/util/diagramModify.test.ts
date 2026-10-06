@@ -83,6 +83,13 @@ describe('flowchart objects', () => {
     await expect(typeOf(renamed ?? '')).resolves.toBe('flowchart-v2');
   });
 
+  it('renames every definition of a node given its text twice, keeping each shape', async () => {
+    // mermaid draws the last definition's text; renaming only the first did nothing visible.
+    const twice = 'flowchart TD\n  B["Old"]\n  B(Other) --> D\n  D --> B';
+    const renamed = renameObject(twice, 'flowchart', await object(twice, 'B'), 'New');
+    expect(renamed).toBe('flowchart TD\n  B["New"]\n  B("New") --> D\n  D --> B');
+  });
+
   it('renames a lane title', async () => {
     const renamed = renameObject(lanes, 'flowchart', await object(lanes, 'Shop'), 'Online shop');
     expect(renamed).toContain('  subgraph Shop ["Online shop"]');

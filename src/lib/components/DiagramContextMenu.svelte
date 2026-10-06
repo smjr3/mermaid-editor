@@ -49,8 +49,16 @@
     const outside = (event: PointerEvent) => {
       if (!(event.target instanceof Node) || !menu?.contains(event.target)) onclose();
     };
+    // A wheel zooms the diagram under the menu, which would then point at nothing.
+    const wheel = (event: WheelEvent) => {
+      if (!(event.target instanceof Node) || !menu?.contains(event.target)) onclose();
+    };
     document.addEventListener('pointerdown', outside, true);
-    return () => document.removeEventListener('pointerdown', outside, true);
+    document.addEventListener('wheel', wheel, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', outside, true);
+      document.removeEventListener('wheel', wheel, { capture: true });
+    };
   });
   const onkeydown = (event: KeyboardEvent) => {
     const list = items();

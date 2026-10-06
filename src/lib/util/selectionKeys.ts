@@ -55,6 +55,21 @@ export const keyCommand = (
   }
 };
 
+/**
+ * Ctrl/⌘+Z (undo) and Ctrl+Y or Ctrl/⌘+Shift+Z (redo) for the diagram code's
+ * history (undoStack.svelte.ts), when focus is not in a field or the code editor,
+ * which keep their own. Without this, a node deleted with the Delete key could not
+ * be brought back from the keyboard.
+ */
+export const historyCommand = (event: KeyInput, typing: boolean): 'undo' | 'redo' | undefined => {
+  if (typing || event.isComposing || event.altKey) return undefined;
+  if (!event.ctrlKey && !event.metaKey) return undefined;
+  const key = event.key.toLowerCase();
+  if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
+  if (key === 'y' && !event.shiftKey) return 'redo';
+  return undefined;
+};
+
 interface TargetLike {
   tagName?: string;
   isContentEditable?: boolean;

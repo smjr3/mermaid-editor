@@ -13,9 +13,10 @@
     selection,
     type Selected
   } from '$/util/selection.svelte';
-  import { isTypingTarget, keyCommand } from '$/util/selectionKeys';
+  import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { validatedState } from '$/util/state.svelte';
+  import { codeHistory } from '$/util/undoStack.svelte';
 
   // Local: "click the diagram, then change it". Sits over the diagram in the view
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
@@ -158,6 +159,9 @@
     if (!element) return;
     const onDown = (event: PointerEvent) => {
       downAt = { x: event.clientX, y: event.clientY };
+      // The diagram's pan/zoom keeps focus where it is, so the rename field would
+      // not notice the click: apply what was typed before the click selects anything.
+      if (selection.renaming && !inOwnUi(event.target)) void model.commitDraft();
     };
     const onClick = (event: MouseEvent) => {
       if (inOwnUi(event.target)) return;
@@ -236,7 +240,15 @@
         event.preventDefault();
         return;
       }
-      const command = keyCommand(event, selection.current, isTypingTarget(event.target as Element));
+      const typing = isTypingTarget(event.target as Element);
+      // Ctrl+Z / Ctrl+Y outside the fields: the diagram's undo, selection or not.
+      const history = historyCommand(event, typing);
+      if (history) {
+        event.preventDefault();
+        codeHistory[history]();
+        return;
+      }
+      const command = keyCommand(event, selection.current, typing);
       if (!command) return;
       event.preventDefault();
       switch (command) {
@@ -286,6 +298,16 @@
     role="status"
     data-selection-ui>
     {t('sel.connecting')}
+  </div>
+{/if}
+
+{#if model.warning}
+  <div
+    class="absolute bottom-2 left-1/2 z-20 max-w-[90%] -translate-x-1/2 rounded-md border bg-card px-3 py-1 text-sm shadow"
+    role="status"
+    data-selection-ui
+    data-testid={TID.selectionWarning}>
+    {model.warning}
   </div>
 {/if}
 

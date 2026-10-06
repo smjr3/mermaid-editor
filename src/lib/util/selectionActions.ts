@@ -163,6 +163,19 @@ export const connect = (
   return action ? runAction(code, kind, action, { from, to })?.code : undefined;
 };
 
+/**
+ * Whether turning `edge` round would draw an arrow the diagram already has — the
+ * same ends the other way and the same label — leaving two identical arrows.
+ */
+export const reverseDuplicates = (edges: EditEdge[], edge: EditEdge): boolean =>
+  edges.some(
+    (other) =>
+      other.index !== edge.index &&
+      other.from === edge.to &&
+      other.to === edge.from &&
+      other.label.trim() === edge.label.trim()
+  );
+
 /** The node the first arrow out of `id` leads to, or into it comes from. */
 export const neighbour = (
   edges: EditEdge[],

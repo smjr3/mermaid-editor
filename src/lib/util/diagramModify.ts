@@ -545,7 +545,8 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
     );
     return lines;
   }
-  // The first statement that gives the node a shape, else its first mention.
+  // Every statement that gives the node a shape (mermaid draws the last one's
+  // text, so all of them change), else its first mention.
   const flow = flowLines(lines);
   const refs = flow.flatMap(({ chains, index }) =>
     chains.flatMap((chain) =>
@@ -555,15 +556,18 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
         .map((node) => ({ index, node }))
     )
   );
-  const target = refs.find(({ node }) => hasShape(node)) ?? refs[0];
-  if (!target) {
+  const shaped = refs.filter(({ node }) => hasShape(node));
+  const targets = shaped.length > 0 ? shaped : refs.slice(0, 1);
+  if (targets.length === 0) {
     append(lines, [`  ${object.id}[${quoted(label)}]`]);
     return lines;
   }
-  // The same text may occur twice on the line; the replacement keeps the node's id, so once is enough.
-  lines[target.index] = lines[target.index].replace(target.node.text, () =>
-    relabelNode(target.node, label)
-  );
+  // The same text may occur twice on the line; the replacement keeps the node's id, so once each is enough.
+  for (const target of targets) {
+    lines[target.index] = lines[target.index].replace(target.node.text, () =>
+      relabelNode(target.node, label)
+    );
+  }
   return lines;
 };
 

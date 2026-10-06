@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **258**.
+  every locally changed path — currently **261**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -482,6 +482,29 @@ their own pick-by-click, unchanged (another change is adding table editors to th
 "この後に追加", Enter/Tab/Delete/arrows, the menu's delete, colour and "ノードを追加", an arrow's
 reverse and style, "ここから矢印", the panel, a state diagram) and the unit tests of the five
 selection files.
+
+**Contradictory operations (unreleased).** A pass that used the tools out of order and against each
+other (connect what is connected, undo from the keyboard after deleting with it, click away
+mid-rename, open one dialog over another, rapid clicks, table and colour abuse) fixed: Ctrl+Z / Ctrl+Y
+(⌘Z, ⌘⇧Z) now undo and redo the diagram when focus is outside a field and the code editor
+(`historyCommand`, `selectionKeys.ts`); two tool edits in quick succession are two undo steps, not one
+(a change written with `updateDiagram` is recorded at once, `undoStack.svelte.ts`); "ここから矢印" and the
+Add card's Connect refuse an arrow that is already there (the card allows it with another label), and
+turning an arrow round onto its opposite is refused (`reverseDuplicates`); a name typed in the inline
+rename is applied when the user clicks another node, the canvas or the tools (the draft lives in the
+selection model, `commitDraft`), while Escape and ✕ still discard it; an empty name says so; refusals
+from the mini toolbar show over the diagram (`TID.selectionWarning`), not only in the 直す panel; an
+edit computed from code that changed while mermaid checked it is dropped instead of overwriting the
+newer code; Ctrl+K does not open the palette over another dialog; the right-click menu closes when the
+wheel zooms the diagram under it; renaming a flowchart node defined with text in two statements changes
+both (mermaid draws the last). `tests/contradictions.spec.ts` covers each; `tests/invariants.ts` holds
+the checks run after every step (parses, drawn, no console errors, one dialog, no empty dropdown, no
+added duplicate or dangling lines, undo and redo exact), shared with `tests/monkey.spec.ts`, a seeded
+random-action test (60 actions in CI; `MONKEY_ACTIONS=300 MONKEY_SEEDS=1,2,3` locally). Left open: a
+node's shape and icon change only its first definition when it has two; deleting the only gantt task
+leaves an empty chart that mermaid draws with `NaN` lines; `swimlane-beta LR` draws lane titles left
+of mermaid's viewBox, so the first column of titles is cut off at the view's edge; selection does not
+work in hand-drawn mode (the redrawn SVG has no ids).
 
 **Dark mode (0.2.0).** In dark mode, the dark themes
 render with near-white lines unless the user set `lineColor`, and a diagram in a light theme

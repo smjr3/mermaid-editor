@@ -67,9 +67,18 @@ import {
   colorSyntaxFor,
   connect,
   neighbour,
+  reverseDuplicates,
   type Added
 } from './selectionActions';
-import { clearSelection, requestRename, select, selection } from './selection.svelte';
+import {
+  clearSelection,
+  endRename,
+  requestRename,
+  sameSelection,
+  select,
+  selection,
+  type Selected
+} from './selection.svelte';
 import { inputState, updateCode } from './state.svelte';
 
 class SelectionModel {
@@ -79,6 +88,18 @@ class SelectionModel {
   edges = $state<EditEdges | undefined>();
   colourable = $state<string[]>([]);
   message = $state('');
+  /**
+   * Why the last edit was refused, shown over the diagram for a few seconds: the
+   * panel's `message` is out of sight while the user works in the mini toolbar.
+   */
+  warning = $state('');
+  private warningTimer: ReturnType<typeof setTimeout> | undefined;
+  /**
+   * The inline rename's text and what it renames, kept here rather than in the
+   * toolbar so that clicking elsewhere (another node, the canvas, the tools) can
+   * still apply it to the object it was typed for.
+   */
+  draft = $state<{ target: Selected; name: string } | undefined>();
 
   kind = $derived(this.objects?.kind);
   object = $derived.by((): EditObject | undefined => {
@@ -146,15 +167,27 @@ class SelectionModel {
     this.message = t(key, params);
   }
 
+  /** A refusal: in the panel, and over the diagram for a few seconds. */
+  private warn(key: MessageKey, params?: Record<string, string>) {
+    this.say(key, params);
+    this.warning = this.message;
+    clearTimeout(this.warningTimer);
+    this.warningTimer = setTimeout(() => (this.warning = ''), 4000);
+  }
+
   /** Applies an edit if mermaid still accepts the result as the same type of diagram. */
   private async apply(next: string | undefined, done: string): Promise<boolean> {
     const code = inputState.code;
     if (next === undefined || next === code || !(await checkEdit(code, next))) {
-      this.say('edit.breaks');
+      this.warn('edit.breaks');
       return false;
     }
+    // The code changed while mermaid checked the edit (a second click, a keystroke):
+    // the edit was made from the old code, so writing it would drop that change.
+    if (inputState.code !== code) return false;
     updateCode(next, { updateDiagram: true });
     this.message = done;
+    this.warning = '';
     return true;
   }
 
@@ -163,12 +196,57 @@ class SelectionModel {
     if (next !== inputState.code) updateCode(next, { updateDiagram: true });
   }
 
-  rename = async (name: string) => {
-    const { kind, object, edge } = this;
+  /** What a selection names in the current lists. */
+  private resolve(target: Selected | undefined) {
+    return {
+      edge: target?.type === 'edge' ? this.edges?.items[target.index] : undefined,
+      object:
+        target?.type === 'node' ? this.objects?.items.find(({ id }) => id === target.id) : undefined
+    };
+  }
+
+  /** The text an object or arrow shows, as the rename field starts with it. */
+  private labelOf(target: Selected | undefined): string {
+    const { object, edge } = this.resolve(target);
+    return object ? object.label.trim() || object.id : (edge?.label ?? '');
+  }
+
+  /** Opens the inline rename's draft on the selection. */
+  startDraft = () => {
+    const target = selection.current;
+    this.draft = target && { name: this.labelOf(target), target };
+  };
+
+  /** Closes the inline rename without applying it. */
+  cancelDraft = () => {
+    this.draft = undefined;
+    endRename();
+  };
+
+  /**
+   * Applies the inline rename to the object it was opened on, if its text changed;
+   * from Enter, the ✓ button, or a click elsewhere. Applied once, however many of
+   * those arrive.
+   */
+  commitDraft = async () => {
+    const draft = this.draft;
+    this.draft = undefined;
+    if (sameSelection(selection.current, draft?.target)) endRename();
+    if (!draft || draft.name.trim() === this.labelOf(draft.target)) return;
+    await this.rename(draft.name, draft.target);
+  };
+
+  rename = async (name: string, target: Selected | undefined = selection.current) => {
+    const { kind } = this;
+    const { object, edge } = this.resolve(target);
     const text = name.trim();
     if (!kind) return;
     if (object) {
-      if (!text || object.noRename) return;
+      if (object.noRename) return;
+      if (!text) {
+        this.warn('sel.emptyName');
+        return;
+      }
       await this.apply(
         renameObject(inputState.code, kind, object, text),
         t('edit.renamed', { name: text })
@@ -296,7 +374,12 @@ class SelectionModel {
 
   reverse = async () => {
     const { kind, edge } = this;
-    if (kind && edge) await this.apply(reverseEdge(inputState.code, kind, edge), t('edit.updated'));
+    if (!kind || !edge) return;
+    if (kind !== 'sequence' && reverseDuplicates(this.edges?.items ?? [], edge)) {
+      this.warn('sel.reverseDuplicate');
+      return;
+    }
+    await this.apply(reverseEdge(inputState.code, kind, edge), t('edit.updated'));
   };
   setEdgeStyle = async (style: EdgeStyle) => {
     const { kind, edge } = this;
@@ -364,6 +447,12 @@ class SelectionModel {
     if (!kind || !from || from === to) return;
     const name = (id: string) =>
       this.objects?.items.find((item) => item.id === id)?.label.trim() || id;
+    // A second identical arrow draws nothing new (sequence messages may repeat).
+    if (kind !== 'sequence' && this.edges?.items.some((e) => e.from === from && e.to === to)) {
+      this.warn('sel.alreadyConnected', { from: name(from), to: name(to) });
+      select({ id: to, type: 'node' });
+      return;
+    }
     const done = await this.apply(
       connect(inputState.code, kind, from, to),
       t('sel.connected', { from: name(from), to: name(to) })

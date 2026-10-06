@@ -18,6 +18,7 @@
     nodeShapes,
     type NodeShape
   } from '$/util/diagramEdit';
+  import { editableEdges } from '$/util/diagramModify';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
   import { templateNotice } from '$/util/templateNotice.svelte';
   import { inputState, updateCode, validatedState } from '$/util/state.svelte';
@@ -30,12 +31,17 @@
   const spec = $derived(specFor(inputState.code));
   const groups = $derived(listGroups(inputState.code));
   let nodes = $state<DiagramObject[]>([]);
+  // The arrows there are, so the same arrow is not added twice.
+  let edges = $state<{ from: string; to: string; label: string }[]>([]);
   $effect(() => {
     const { code, error } = validatedState.current;
     if (error) return;
     let stale = false;
     void diagramObjects(code).then((found) => {
       if (!stale) nodes = found?.kind === 'flowchart' ? found.items : [];
+    });
+    void editableEdges(code).then((found) => {
+      if (!stale) edges = found?.kind === 'flowchart' ? found.items : [];
     });
     return () => {
       stale = true;
@@ -84,6 +90,15 @@
     const known = (id: string) => nodes.some((node) => node.id === id);
     if (!known(edgeFrom) || !known(edgeTo)) {
       message = t('add.choose');
+      return;
+    }
+    // A second arrow between the same nodes only makes sense with another label.
+    const text = edgeLabel.trim();
+    const same = ({ from, to, label }: { from: string; to: string; label: string }) =>
+      from === edgeFrom && to === edgeTo && (!text || label.trim() === text);
+    if (edges.some(same)) {
+      const name = (id: string) => nodes.find((node) => node.id === id)?.label.trim() || id;
+      message = t('sel.alreadyConnected', { from: name(edgeFrom), to: name(edgeTo) });
       return;
     }
     updateCode(addEdge(inputState.code, { from: edgeFrom, label: edgeLabel, to: edgeTo }), {

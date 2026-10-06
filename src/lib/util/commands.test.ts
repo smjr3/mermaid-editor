@@ -1,6 +1,7 @@
 import { TID } from '$/constants';
 import { describe, expect, it } from 'vitest';
 import { commands, scoreCommand, searchCommands } from './commands';
+import { isThemePresetId, themePresets } from './themePresets';
 
 const ids = (query: string) => searchCommands(query).map(({ id }) => id);
 
@@ -43,12 +44,31 @@ describe('command registry', () => {
       const { target } = command;
       if (target.kind === 'card') {
         for (const id of [target.card, target.focus, target.click]) {
-          if (id) expect(testIds.has(id), `${command.id}: ${id}`).toBe(true);
+          // A theme card's id is the picker's id plus the preset's.
+          const known = id?.startsWith(`${TID.colorsThemePreset}-`)
+            ? isThemePresetId(id.slice(TID.colorsThemePreset.length + 1))
+            : id && testIds.has(id);
+          if (id) expect(known, `${command.id}: ${id}`).toBe(true);
         }
       } else {
         expect(target.action, command.id).toBeTruthy();
       }
     }
+  });
+});
+
+describe('theme commands', () => {
+  it('lists every named theme as 「テーマ: …」 pressing its card in the Colours card', () => {
+    for (const { id } of themePresets) {
+      const command = commands.find((entry) => entry.id === `theme-${id}`);
+      expect(command?.target).toEqual({
+        card: TID.colorsCard,
+        click: `${TID.colorsThemePreset}-${id}`,
+        kind: 'card'
+      });
+    }
+    expect(commands.find(({ id }) => id === 'theme-neon')?.ja).toBe('テーマ: ネオン');
+    expect(ids('ネオン')[0]).toBe('theme-neon');
   });
 });
 

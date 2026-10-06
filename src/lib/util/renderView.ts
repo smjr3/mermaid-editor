@@ -1,6 +1,7 @@
 import type { MermaidConfig } from 'mermaid';
 import { Svg2Roughjs } from 'svg2roughjs';
 import { render as renderDiagram } from './mermaid';
+import { presetBackground } from './themePresets';
 
 export interface PlacedDiagram {
   diagramType?: string;
@@ -64,6 +65,9 @@ export const renderAndPlaceDiagram = async ({
     sketch.setAttribute('width', '100%');
     sketch.setAttribute('viewBox', `0 0 ${width} ${height}`);
     sketch.style.maxWidth = '100%';
+    // Local: the sketch drops the diagram's <style>, so a theme preset's background goes inline.
+    const fill = presetBackground(config as Record<string, unknown>);
+    if (fill) sketch.style.backgroundColor = fill;
     graphDiv = sketch;
   } else {
     graphDiv.setAttribute('height', '100%');

@@ -253,8 +253,8 @@ describe('template forms', () => {
       tasks[0].days = '4';
       tasks[1].start = '';
       const code = generate(template, values);
-      expect(code).toMatch(/要件ヒアリング\s*:done, task1, 2026-05-01, 4d/);
-      expect(code).toMatch(/要件定義書の作成\s*:done, task2, after task1, \d+d/);
+      expect(code).toMatch(/要件ヒアリング\s*:done, t1, 2026-05-01, 4d/);
+      expect(code).toMatch(/要件定義書の作成\s*:done, t2, after t1, \d+d/);
     });
 
     it('falls back to the project start for a bad date and to one day for bad days', async () => {
@@ -263,7 +263,7 @@ describe('template forms', () => {
       tasks[0].start = 'あした';
       tasks[0].days = '-3';
       const code = generate(template, values);
-      expect(code).toMatch(/task1, 2026-04-01, 1d/);
+      expect(code).toMatch(/t1, 2026-04-01, 1d/);
       await expect(typeOf(code)).resolves.toBe('gantt');
     });
   });

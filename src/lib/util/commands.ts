@@ -8,7 +8,8 @@
  * (optionally with a control to focus or click, by data-testid), or an action.
  */
 import { TID } from '$/constants';
-import type { MessageKey } from '$/i18n/messages';
+import { messages, type MessageKey } from '$/i18n/messages';
+import { themePresets } from './themePresets';
 
 export type CommandAction =
   'guide' | 'help' | 'history' | 'locale' | 'redo' | 'share' | 'theme' | 'undo';
@@ -253,6 +254,16 @@ export const commands: Command[] = [
     target: card(TID.iconPacksCard, { focus: TID.unknownIcons })
   }
 ];
+
+// Local: one entry per named theme (themePresets.ts), 「テーマ: ネオン」, pressing its card.
+const themeCommands: Command[] = themePresets.map(({ id, name }) => ({
+  en: `Theme: ${messages.en[name]}`,
+  id: `theme-${id}`,
+  ja: `テーマ: ${messages.ja[name]}`,
+  keywords: ['theme', 'design', 'style', 'look', 'テーマ', 'デザイン', '配色', id],
+  target: card(TID.colorsCard, { click: `${TID.colorsThemePreset}-${id}` })
+}));
+commands.push(...themeCommands);
 
 const normalize = (text: string): string =>
   text.normalize('NFKC').toLowerCase().replaceAll(/\s+/g, '');

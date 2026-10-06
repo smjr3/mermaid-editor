@@ -310,6 +310,8 @@ test.describe('Edit card', () => {
     await field('block', 'kind').selectOption('alt');
     await field('block', 'text').fill('承認する');
     await field('block', 'after').selectOption({ label: 'A → B: 申請' });
+    // An empty frame on purpose (the form's default wraps a message, as an empty one draws badly).
+    await field('block', 'wrap').selectOption('after');
     await field('block', 'button').click();
     await expect
       .poll(() => stored(page))

@@ -48,6 +48,9 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
   ノード・状態・クラス・エンティティ・要件・ブロック・C4 要素ごとの色、矢印ごとの色（一覧か図のクリックで選択）を
   選べます。用意された色のほか好きな色も選べ、選んだ色は次から色ボタンに並びます。色ボタンは `MERMAID_COLOR_PRESETS` で
   会社の色などに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
+- **デザインテーマ**。「配色」の「テーマ」で、図全体の見た目を 12 種類から選べます（標準、モダン、ネオン、サイバー、
+  パステル、ミニマル／モノクロ、ビジネス、サンセット、フォレスト、ダーク・グラス、和、ハイコントラスト）。色・線・フォントを
+  まとめて切り替え、共有リンク・SVG / PNG の書き出しにもそのまま残ります。コマンドパレットからも「テーマ: ネオン」のように選べます
 - **レーン・ノードの追加**。画面右の「追加」で、名前を入れてボタンを押すだけでレーンやノード（入れるレーンと
   矢印の元、形も選べます）をコードに書き足せます。「つなぐ」で既にある2つのノードを矢印でつなげます。アーキテクチャ図では、グループ・サービス（アイコン、入れるグループ、
   つなぐ元と置く位置を選択）・接続を追加できます。シーケンス図・状態図・クラス図・ER図・マインドマップ・ガントチャート・
@@ -211,6 +214,9 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   subgraph) and per object — node, state, class, entity, requirement, block or C4 element (picked from a list or
   by clicking it) and per arrow; any colour can be picked, and picked colours are offered again. The
   colour buttons can be a company palette (`MERMAID_COLOR_PRESETS`).
+- Twelve named diagram themes in the Colours card (standard, modern, neon, cyber, pastel, minimal, business,
+  sunset, forest, dark glass, Japanese traditional, high contrast) — plain mermaid config, kept by shared
+  links and the SVG/PNG exports, also offered in the command palette.
 - An "Add" card adds a lane, or a node (box, decision, …) in a lane joined from another node, or an arrow
   between two nodes, without writing the syntax;
   for architecture diagrams it adds groups, services (icon, group, side to join on) and connections,

@@ -665,7 +665,8 @@ const gantt: TemplateForm = {
       const phase = ganttText(row.section ?? '');
       if (phase && phase !== section) lines.push(`    section ${phase}`);
       if (phase) section = phase;
-      const id = `task${index + 1}`;
+      // Not `task1`…: mermaid names a task without an id that way, and a clash draws NaN.
+      const id = `t${index + 1}`;
       const start = (row.start ?? '').trim();
       const when = datePattern.test(start) ? start : previous ? `after ${previous}` : firstStart;
       const days = Math.min(Math.max(Number.parseInt(row.days ?? '', 10) || 1, 1), 9999);
@@ -673,8 +674,7 @@ const gantt: TemplateForm = {
       lines.push(`        ${ganttText(row.name)} :${status}${id}, ${when}, ${days}d`);
       previous = id;
     });
-    if (tasks.length === 0)
-      lines.push('    section 作業', `        作業 :task1, ${firstStart}, 5d`);
+    if (tasks.length === 0) lines.push('    section 作業', `        作業 :t1, ${firstStart}, 5d`);
     return setTitle(lines.join('\n'), titleText(values));
   },
   id: 'gantt',

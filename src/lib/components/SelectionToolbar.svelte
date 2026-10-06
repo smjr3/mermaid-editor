@@ -9,7 +9,8 @@
   import { endRename, requestRename, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { showTab } from '$/util/toolsPane.svelte';
-  import { untrack } from 'svelte';
+  import { openCard } from '$/util/uiBus';
+  import { tick, untrack } from 'svelte';
   import AddIcon from '~icons/material-symbols/add-circle-outline-rounded';
   import ConnectIcon from '~icons/material-symbols/arrow-right-alt-rounded';
   import CheckIcon from '~icons/material-symbols/check-rounded';
@@ -63,7 +64,9 @@
       name = model.label;
       open = undefined;
       field.focus();
-      field.select();
+      // Select after the new value reached the field: setting it moves the caret to
+      // the end, and typing a new name would then be appended to the old one.
+      void tick().then(() => field.select());
     });
   });
   const commit = async () => {
@@ -81,6 +84,9 @@
   const more = () => {
     document.querySelector<HTMLElement>(`[data-testid="${TID.toolsRailExpand}"]`)?.click();
     showTab('fix');
+    // On a phone (the only place with the 編集/表示 switch) the tools are on its other side;
+    // openCard shows that side and opens the Edit card.
+    if (document.querySelector('#editorMode')) void openCard(TID.editCard);
   };
   const button =
     'flex size-8 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted aria-pressed:bg-muted';

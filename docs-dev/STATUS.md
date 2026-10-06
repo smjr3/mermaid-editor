@@ -759,6 +759,9 @@ patched `3.4.16` — twice, because the package is built with both package manag
 `pnpm.overrides` (`monaco-editor>dompurify`) for this repository and a nested npm `overrides`
 for the published tarball, which consumers install with `npm install`; see
 `QUALITY-AUDIT-2026-08-31.md`. Remove both once a Monaco release depends on `dompurify >=3.4.16`.
+The same pattern covers `katex`: mermaid 12.1.0 depends on `katex@0.16.x`, which a low
+advisory (GHSA-238p-pmpm-9mq7, prototype pollution) covers, so `mermaid>katex` is overridden to
+`0.18.11` in both places. Remove it once mermaid depends on `katex >=0.18.2`.
 (The earlier `lodash-es` override is gone: mermaid 12.1.0 moved to chevrotain 13, which no longer
 pulls in the vulnerable `lodash-es`.)
 

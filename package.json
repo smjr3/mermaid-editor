@@ -172,11 +172,15 @@
   "overrides": {
     "monaco-editor": {
       "dompurify": "3.4.16"
+    },
+    "mermaid": {
+      "katex": "0.18.11"
     }
   },
   "pnpm": {
     "overrides": {
-      "monaco-editor>dompurify": "3.4.16"
+      "monaco-editor>dompurify": "3.4.16",
+      "mermaid>katex": "0.18.11"
     },
     "onlyBuiltDependencies": [
       "deasync",

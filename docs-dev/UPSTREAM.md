@@ -108,8 +108,8 @@ rather than an addition, but the local value adds `overrides` with `monaco-edito
 override and brings the production audit advisory back.
 
 The top-level `overrides` (added) is the same fix for npm, which ignores `pnpm.overrides`.
-It is what protects the published tarball, built with `npm install` in the internal
-pipeline. Keep the two in step: an override added to one belongs in the other.
+It is what protects the published tarball, built with `npm install` by anyone
+rebuilding from the package. Keep the two in step: an override added to one belongs in the other.
 
 `monaco-editor` must not go below **0.57.0**. It is pinned exactly; 0.57.0 was the
 first release that depended on a DOMPurify patched for the advisories known at the time
@@ -216,13 +216,13 @@ and the variables are in `docs-dev/FEATURE-FLAGS.md`; what matters at merge time
 | `src/routes/(app)/edit/+page.svelte`                                                                                                  | Wraps `<EnhancedEditsButton>` in the same guard                                                                                                                                                                                  |
 | `src/lib/components/Navbar.svelte`                                                                                                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                                                                                                                                               |
 | `src/lib/components/MainMenu.svelte`                                                                                                  | Spreads the Discord "Community" entry in conditionally                                                                                                                                                                           |
-| `.env`                                                                                                                                | Sets the organisational defaults                                                                                                                                                                                                 |
+| `.env`                                                                                                                                | Sets this fork's defaults                                                                                                                                                                                                        |
 | `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts`                                                                                 | Assert the configured behaviour rather than upstream's                                                                                                                                                                           |
 
 These are additive guards, not rewrites: the guarded markup is upstream's own. On a
 conflict, take upstream's version of the inner content and re-apply the surrounding
 `{#if}`. Do **not** resolve by dropping the guard — that silently re-enables an AI or
-promotional surface in an organisational build.
+promotional surface in a build that keeps them off.
 
 If upstream introduces a new promotional, AI or outbound-link surface, it arrives
 unguarded and will not be caught by a merge conflict. After each merge, re-check the
@@ -294,7 +294,7 @@ selection layer is.
 
 ### Cross-platform guards
 
-The production runner may be Windows, so the build and deploy path uses only
+The build may run on Windows, so the build and publish path uses only
 package-manager invocations and Node scripts — never a shell builtin or a
 Unix-only command. Details in `docs-dev/CROSS-PLATFORM.md`; at merge time:
 
@@ -314,7 +314,7 @@ generated site into the tracked `static/` directory. If a merge drops that line,
 CI starts committing its own output.
 
 Should upstream reintroduce a shell-only step in `postinstall` or a CI script,
-it will merge cleanly and only fail on the Windows runner. Re-read
+it will merge cleanly and only fail on a Windows machine. Re-read
 `docs-dev/CROSS-PLATFORM.md` after a merge that touches `package.json` scripts.
 
 ### Theme changes
@@ -388,16 +388,16 @@ local component replaces them (the two floating toolbars).
 
 | Path                                                                                             | Why it is gone                                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/deploy.yml`                                                                   | Publishes to GitHub Pages; this fork deploys through GitLab Pages (`.gitlab-ci.yml`).                                                                                                                                                     |
+| `.github/workflows/deploy.yml`                                                                   | Publishes to GitHub Pages; this fork publishes no site itself; `ci/gitlab-ci.example.yml` is a template for GitLab Pages.                                                                                                                 |
 | `.github/workflows/docker-publish.yml`                                                           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it would publish for real rather than failing on upstream's.                                                            |
 | `.github/workflows/close-broken-link-issues.yml`                                                 | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                         |
 | `.github/workflows/update-browserlist.yml`                                                       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                    |
 | `.github/workflows/release-pr.yml`                                                               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                               |
 | `netlify.toml`                                                                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                            |
-| `CNAME`, `.nojekyll`                                                                             | GitHub Pages settings (the `mermaid.live` custom domain, Jekyll opt-out); this fork is served by GitLab Pages.                                                                                                                            |
+| `CNAME`, `.nojekyll`                                                                             | GitHub Pages settings (the `mermaid.live` custom domain, Jekyll opt-out); this fork does not ship a hosting configuration.                                                                                                                |
 | `.github/FUNDING.yml`                                                                            | `github: [sidharthv96, knsv]` — renders a "Sponsor this project" button on this repository that pays the upstream maintainers.                                                                                                            |
 | `SECURITY.md`                                                                                    | Tells reporters to e-mail `security@mermaid.live`, which would send vulnerability reports about this deployment to upstream.                                                                                                              |
-| `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore`                                | This fork ships an npm package built into a static site for GitLab Pages and never builds or publishes a container. With `docker-publish.yml` gone nothing validated them either, so they could only rot.                                 |
+| `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore`                                | This fork ships an npm package built into a static site and never builds or publishes a container. With `docker-publish.yml` gone nothing validated them either, so they could only rot.                                                  |
 | `bin/beta-release`, `bin/fix-path`, `bin/update-monaco.js`                                       | mermaid.live release helpers (publish into `mermaid-js/docs`, rewrite its paths, refresh Monaco CDN tags `src/app.html` no longer has). No script calls them.                                                                             |
 | `renovate.json`, `.github/dependabot.disabled.yml`                                               | Upstream's dependency bots, targeting `develop`. No bot is installed here; dependency updates are done by hand as recorded in `STATUS.md`.                                                                                                |
 | `src/lib/components/SyncRoughToolbar.svelte`, `src/lib/components/VersionSecurityToolbar.svelte` | Replaced by `DiagramToolbar.svelte`, the one bar above the diagram. Kept as dead files they would take upstream's changes silently; deleted, a change upstream makes to them surfaces as a conflict to port into `DiagramToolbar.svelte`. |
@@ -508,7 +508,7 @@ modifications as if they were local customizations.
 | Modified | `.github/workflows/tests.yml`                          |
 | Deleted  | `.github/workflows/update-browserlist.yml`             |
 | Modified | `.gitignore`                                           |
-| Added    | `.gitlab-ci.yml`                                       |
+| Added    | `ci/gitlab-ci.example.yml`                             |
 | Modified | `.husky/pre-commit`                                    |
 | Deleted  | `.nojekyll`                                            |
 | Added    | `.upstream-version.json`                               |

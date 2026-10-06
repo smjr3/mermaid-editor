@@ -4,7 +4,7 @@ import { toBase64 } from 'js-base64';
  * Local: HTML export (HtmlExport.svelte). The diagram is already rendered SVG
  * with its icons inlined, so both forms work anywhere, offline, without this
  * editor or mermaid: a standalone page, or a single <img> tag to paste into a
- * wiki, an intranet page or an e-mail.
+ * wiki, a private page or an e-mail.
  */
 
 const escapeHtml = (value: string): string =>

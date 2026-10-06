@@ -47,7 +47,7 @@ Mermaid 記法で図を書いてその場でプレビューできるエディタ
 - **配色**。画面右の「配色」で、テーマ、線の色、スイムレーン（フローチャートのグループ）ごとの色、
   ノード・状態・クラス・エンティティ・要件・ブロック・C4 要素ごとの色、矢印ごとの色（一覧か図のクリックで選択）を
   選べます。用意された色のほか好きな色も選べ、選んだ色は次から色ボタンに並びます。色ボタンは `MERMAID_COLOR_PRESETS` で
-  会社の色などに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
+  ブランドカラーなどに差し替えられます。色はコードに `style` 文として書き込むので、共有リンクでもそのまま再現されます
 - **デザインテーマ**。「配色」の「テーマ」で、図全体の見た目を 12 種類から選べます（標準、モダン、ネオン、サイバー、
   パステル、ミニマル／モノクロ、ビジネス、サンセット、フォレスト、ダーク・グラス、和、ハイコントラスト）。色・線・フォントを
   まとめて切り替え、共有リンク・SVG / PNG の書き出しにもそのまま残ります。コマンドパレットからも「テーマ: ネオン」のように選べます
@@ -214,7 +214,7 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
 - A "Colours" card picks the theme, the line colour and a colour per swimlane lane (or flowchart
   subgraph) and per object — node, state, class, entity, requirement, block or C4 element (picked from a list or
   by clicking it) and per arrow; any colour can be picked, and picked colours are offered again. The
-  colour buttons can be a company palette (`MERMAID_COLOR_PRESETS`).
+  colour buttons can be a brand palette (`MERMAID_COLOR_PRESETS`).
 - Twelve named diagram themes in the Colours card (standard, modern, neon, cyber, pastel, minimal, business,
   sunset, forest, dark glass, Japanese traditional, high contrast) — plain mermaid config, kept by shared
   links and the SVG/PNG exports, also offered in the command palette.

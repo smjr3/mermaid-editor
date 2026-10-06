@@ -87,12 +87,12 @@ the packs its diagram names.
   dependencies (`package.json`); whoever builds the site downloads them from npm, under the
   licences their authors publish them with. Publishing this project is therefore not a
   redistribution of the icons.
-- **The built site does contain them** — the organisation that builds and hosts it distributes
+- **The built site does contain them** — whoever builds and hosts it distributes
   them to its users. The licences above allow that (MIT/ISC/Apache-2.0 need their notice to
   travel with the site, which `NOTICE` and `THIRD-PARTY-LICENSES.md` do; CC0 needs nothing).
 - **A licence covers the artwork, not the trademark it shows.** Showing a product's logo in an
-  architecture diagram to name that product is the use logo owners generally accept, but an
-  organisation whose policy forbids hosting third-party marks builds with
+  architecture diagram to name that product is the use logo owners generally accept, but a
+  site whose policy forbids hosting third-party marks builds with
   `MERMAID_BUNDLE_LOGOS=false`: the three logo sets drop out of the build, and the brand icons
   mixed into the generic sets (`tabler:brand-*`, `mdi:microsoft-azure`, …) are removed when the
   pack loads (`isBrandIcon`).
@@ -118,7 +118,7 @@ architecture-beta
   service sql(gcp:cloud-sql)[Cloud SQL]
 ```
 
-This way the organisation that builds the site downloads the icons from the vendor itself,
+This way whoever builds the site downloads the icons from the vendor itself,
 under the terms it accepts, and hosts them only on its own site. Icon names come from file
 names: AWS's `Arch_`/`Res_` prefixes and size and Light/Dark suffixes and Azure's
 `12345-icon-service-` prefix are dropped (`Arch_Amazon-EC2_64.svg` → `aws:amazon-ec2`), and of
@@ -141,7 +141,7 @@ A prefix that clashes with a bundled one is ignored.
 ## 3. Packs the deployment hosts (`MERMAID_ICON_PACKS`)
 
 A build-time variable of comma-separated `prefix=url` pairs. Each pack is fetched on first use;
-relative URLs resolve against the site, so a pack can sit next to it on GitLab Pages:
+relative URLs resolve against the site, so a pack can sit next to it on a static host such as GitLab Pages:
 
 ```
 MERMAID_ICON_PACKS='azure=./icon-packs/azure.json,corp=./icon-packs/corp.json'
@@ -156,8 +156,8 @@ come from file names, and Azure's `12345-icon-service-` prefix is dropped):
 node scripts/svg-to-iconify.js <svg-folder> <prefix> <output.json>
 ```
 
-In the GitLab Pages job — the deployer downloads the vendor's icon archive, having accepted its
-terms, and publishes it only on the internal site:
+In a GitLab Pages job (an example; any build job works) — the site's builder downloads the vendor's icon archive, having accepted its
+terms, and publishes it only on that site:
 
 ```yaml
 pages:
@@ -171,7 +171,7 @@ pages:
     - node scripts/svg-to-iconify.js azure-icons azure public/icon-packs/azure.json
 ```
 
-`.gitlab-ci.yml` carries the same lines, commented.
+`ci/gitlab-ci.example.yml` carries the same lines, commented.
 
 ## 4. Packs a user imports
 

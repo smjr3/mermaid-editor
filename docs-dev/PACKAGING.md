@@ -60,7 +60,7 @@ A version can be published only once; npm rejects a second publish of the same v
 
 To publish from a workstation instead, authenticate with `npm login` and run
 `npm publish --access public`. `package.json` already sets `publishConfig.access` to
-`public`, which a public scoped package requires. For a private internal registry, confirm
+`public`, which a public scoped package requires. For a private registry, confirm
 its scoped-package and access-policy settings first. Do not publish as part of a test.
 
 ## Rebuild the static site from the package
@@ -85,7 +85,7 @@ and a top-level `overrides` that npm applies when the tarball is installed. With
 entry, `npm install` of the tarball resolves Monaco's vulnerable `dompurify@3.4.15`
 even though this repository's pnpm audit is clean.
 
-When downloading through JFrog or another internal registry, that registry must proxy or
+When downloading through a private registry or mirror, that registry must proxy or
 contain all transitive dependencies as well as this package. The first install can otherwise
 fail even when `@smjr3/mermaid-editor` itself is available.
 

@@ -2,7 +2,7 @@ import { t, test } from './test';
 
 test.describe('Error display tests', () => {
   // Upstream shows an AI Repair button beside a Code-tab syntax error, which links
-  // out to Mermaid Chart. This fork disables AI affordances for organisational use
+  // out to Mermaid Chart. This fork disables AI affordances by default
   // (MERMAID_IS_ENABLED_AI_FEATURES / MERMAID_IS_ENABLED_MERMAID_CHART_LINKS), so the
   // error itself must still surface while the AI affordance stays away.
   test('should report a Code tab syntax error without offering AI Repair', async ({ editPage }) => {

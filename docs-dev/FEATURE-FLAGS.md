@@ -1,4 +1,4 @@
-# Feature flags for organisational use
+# Feature flags: promotional, AI and external-service surfaces
 
 This fork ships with upstream's promotional, AI and community features switched off,
 and with external diagram rendering disabled. Nothing is deleted: every one of these
@@ -6,7 +6,7 @@ is an environment variable, so the behaviour is a build-time setting rather than
 code fork, and re-enabling any of it is a one-line change with no merge cost.
 
 The defaults live in `.env`. Override them per environment (`.env.local` locally, CI
-variables in GitLab) — see `docs-dev/GITLAB-PAGES.md` for the deployment side.
+variables in your CI system) — see `docs-dev/GITLAB-PAGES.md` for one example of the hosting side.
 
 ## What is off, and what turns it back on
 
@@ -21,7 +21,7 @@ variables in GitLab) — see `docs-dev/GITLAB-PAGES.md` for the deployment side.
 | `MERMAID_BUNDLE_LOGOS`                   | `true`       | — (added here)        | `false` leaves the logo icon sets (`logos`, `simple-icons`, `devicon`) out of the build and strips brand icons from the generic sets (`docs-dev/ICONS.md`)                                                                                                                                                                                           |
 | `MERMAID_FETCH_ICON_PACKS`               | empty        | — (added here)        | Build time only: `prefix=zip` pairs of vendor icon sets that `pnpm build` downloads and bundles (`scripts/fetch-icon-packs.js`, `docs-dev/ICONS.md`)                                                                                                                                                                                                 |
 | `MERMAID_ICON_PACKS`                     | empty        | — (added here)        | Extra icon packs the deployment hosts, as `prefix=url` pairs; fetched from those URLs on first use. Empty means bundled packs only (`docs-dev/ICONS.md`)                                                                                                                                                                                             |
-| `MERMAID_COLOR_PRESETS`                  | empty        | — (added here)        | The Colours card's colour buttons, as comma-separated border colours (e.g. a company palette); each gets a light fill. Empty keeps the built-in eight. Users can still pick any colour                                                                                                                                                               |
+| `MERMAID_COLOR_PRESETS`                  | empty        | — (added here)        | The Colours card's colour buttons, as comma-separated border colours (e.g. a brand palette); each gets a light fill. Empty keeps the built-in eight. Users can still pick any colour                                                                                                                                                                 |
 | `MERMAID_ANALYTICS_URL`                  | empty        | empty                 | Usage analytics. Already empty upstream, so nothing is sent either way                                                                                                                                                                                                                                                                               |
 | `MERMAID_OFFLINE`                        | `true`       | — (added here)        | `true` makes the site request nothing outside itself: no config-schema download (the config editor loses completions, keeps validation), no Font Awesome stylesheet line in exported SVGs, and `?code=`/`?config=`/gist loading only from this site or `data:` URLs (`assertFetchAllowed` in `util.ts`). Links that open other sites on a click stay |
 
@@ -55,8 +55,8 @@ Gone, because each needs an external renderer:
 - The Kroki button.
 - The "Copy Markdown" field, which embedded a `mermaid.ink` image URL.
 
-To keep image links while staying inside the network, point the variables at
-internally hosted mermaid.ink and Kroki instances rather than re-enabling the public
+To keep image links while staying inside a restricted network, point the variables at
+mermaid.ink and Kroki instances you host rather than re-enabling the public
 ones.
 
 ## Remaining external calls
@@ -92,4 +92,4 @@ assert the configured behaviour instead of being skipped:
   error is still reported to the user while no AI affordance appears.
 
 Re-enabling a flag will therefore fail these two tests, which is intended: they encode
-the organisational guarantee. Update them together with the flag.
+the guarantee that these surfaces stay off. Update them together with the flag.

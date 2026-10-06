@@ -63,7 +63,7 @@ describe('t', () => {
 });
 
 describe('resolveLocale', () => {
-  it('uses the organisational default when MERMAID_LOCALE is unset', () => {
+  it('uses the build default when MERMAID_LOCALE is unset', () => {
     expect(resolveLocale(undefined)).toBe(defaultLocale);
   });
 

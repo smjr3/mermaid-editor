@@ -9,7 +9,7 @@ mermaid 12.1.0, and the editor, layout and icon features below.
 ## What this is
 
 `@smjr3/mermaid-editor` is a fork of [mermaid-live-editor](https://github.com/mermaid-js/mermaid-live-editor),
-imported at upstream **2.0.67** and last merged from upstream commit `a70ed76` (2026-09-30), customised for internal organisational use.
+imported at upstream **2.0.67** and last merged from upstream commit `a70ed76` (2026-09-30), customised for general, privacy-conscious use (promotional, AI and external-service surfaces off by default).
 
 The standing constraints, which shape almost every decision recorded here:
 
@@ -21,20 +21,20 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
   every locally changed path — currently **293**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
-  (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
+  (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 
 ## The documents
 
 | Document                      | What it covers                                                                                                                           |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `UPSTREAM.md`                 | How the vendor branch works, how to merge an upstream update, the per-area conflict guidance, and the inventory of locally changed paths |
-| `FEATURE-FLAGS.md`            | Which surfaces are switched off for organisational use and by which variable                                                             |
+| `FEATURE-FLAGS.md`            | Which surfaces are switched off by default and by which variable                                                                         |
 | `CROSS-PLATFORM.md`           | Why the build runs on Windows as well as Linux, and what is reasoned rather than executed                                                |
 | `THEME.md`                    | The accent palette per mode with measured contrast, and why the dark `--accent-foreground` must not be reverted                          |
 | `ICONS.md`                    | The bundled icon packs and logos, build-time vendor sets, hosted and user-imported packs, redistribution, and sanitising                 |
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
-| `GITLAB-PAGES.md`             | The GitLab Pages deployment path                                                                                                         |
+| `GITLAB-PAGES.md`             | A GitLab Pages publishing example                                                                                                        |
 | `QUALITY-AUDIT-2026-08-31.md` | An external portability audit, its three findings, and a follow-up for each recording how it was resolved                                |
 
 ## What is delivered
@@ -45,7 +45,7 @@ All of this is on `master`.
 licensing and attribution in place, npm packaging verified by an actual tarball → install →
 rebuild round trip, GitLab Pages build verified twice in one workspace.
 
-**Organisational surfaces off by default** (`FEATURE-FLAGS.md`). Mermaid Chart links, AI
+**Promotional, AI and external-service surfaces off by default** (`FEATURE-FLAGS.md`). Mermaid Chart links, AI
 features and community links are switched off by environment variable; `MERMAID_RENDERER_URL`
 and `MERMAID_KROKI_RENDERER_URL` are emptied, which closes every path that would put diagram
 source into a third-party URL. Local PNG/SVG export still works — it renders in the browser.
@@ -55,7 +55,7 @@ Nothing was deleted, so an upstream merge keeps their markup and re-applies the 
 merely untested: `mv docs public` in CI, a `postinstall` chain that used `true` as a command,
 and the absence of `.gitattributes`. The Windows half is reasoned from mechanism — there is
 no Windows host in the development environment — and that document says so and asks for one
-real run on the runner.
+real run on a Windows runner.
 
 **Unused files removed.** Upstream's release and hosting helpers, container files, dependency-bot
 configs, `SECURITY.md` (which pointed reporters at mermaid.live) and 13 dev dependencies that
@@ -670,7 +670,7 @@ and an icon pack, a config-tab visit and an SVG export, and expects none to leav
 **HTML export (0.2.0)** (`src/lib/util/htmlExport.ts`). The actions card downloads the diagram
 as a standalone HTML page (rendered afresh, icons inlined, the mermaid source in a `<details>`,
 nothing loaded from the network) or copies it as one self-contained `<img>` tag (SVG data URI) to
-paste into wikis, intranet pages or e-mail, where mermaid or this editor's icon packs are
+paste into wikis, private pages or e-mail, where mermaid or this editor's icon packs are
 unavailable. "Export for GitLab" saves the diagram as an SVG and copies Markdown that shows it,
 links back to the editor and keeps the source in a collapsed plain-text block (not a mermaid
 block, which GitLab would render without the icons). Known limit: Font Awesome icons (`fa:`) are
@@ -831,7 +831,7 @@ installing or picks up an advisory.
 
 **WebKit coverage.** Safari is a documented exclusion, not a silent gap — nothing is known to
 be broken there, it simply is not exercised, so it is not claimed. Reopen if any of these
-becomes true: a request to support Safari, a macOS or iOS user of this deployment, or a
+becomes true: a request to support Safari, a macOS or iOS user of a deployment, or a
 WebKit-only defect reported by a user.
 
 ## Repository conventions worth knowing before changing anything

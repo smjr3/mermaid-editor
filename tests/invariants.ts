@@ -157,7 +157,16 @@ export const assertInvariants = async (
     return found(code).filter((line) => !old.includes(line));
   };
   expect(added(danglingReferences), `dangling style/click lines${where}`).toEqual([]);
-  if (duplicates) expect(added(duplicatedLines), `duplicated lines${where}`).toEqual([]);
+  // A tool edit must not duplicate a line; a sample, a template or a new diagram
+  // replaces the code wholesale, and a sample (the railroad ones) can repeat lines.
+  const lines = (text: string) => text.split('\n').filter((line) => line.trim());
+  const replaced =
+    before === undefined ||
+    lines(before)[0] !== lines(code)[0] ||
+    lines(code).filter((line) => lines(before).includes(line)).length < lines(code).length / 2;
+  if (duplicates && !replaced) {
+    expect(added(duplicatedLines), `duplicated lines${where}`).toEqual([]);
+  }
 
   if (checkUndo && before !== undefined && before !== code) {
     const undo = page.getByTestId(TID.undoButton);

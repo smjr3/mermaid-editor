@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-10-05**, including the 0.2.0 and 0.2.1 work: the upstream merge of `a70ed76`,
+Accurate as of **2026-10-06**, including the 0.2.0, 0.2.1 and 0.2.2 work: the upstream merge of `a70ed76`,
 mermaid 12.1.0, and the editor, layout and icon features below.
 
 ## What this is
@@ -153,7 +153,7 @@ kept when the fill changes (the dark default is written only when none is set). 
 colour only (`$fontColor`), and the card says bold and size are unavailable there; the types with
 no `style` statement show the existing "nothing to colour" note.
 
-**Diagram themes (unreleased)** (`src/lib/util/themePresets.ts`). The Colours card opens with a grid
+**Diagram themes (0.2.2)** (`src/lib/util/themePresets.ts`). The Colours card opens with a grid
 of twelve named themes (テーマ), each a card with its name, five colour dots and a two-line description,
 the current one ringed and ticked; the old row of mermaid's built-in themes stays under it as
 "mermaid の組み込みテーマ". 標準（mermaid 既定） is the default and is the absence of a preset: the
@@ -205,7 +205,7 @@ or, for indentation-based types, from the lines past front matter. The all-diagr
 every action on every matching sample; it found front matter being read as the header (kanban,
 mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
 Journey, XY, quadrant, sankey, git graph, packet and ZenUML have forms too (see "Chart types from zero" below); radar, treemap, Venn and the other newer types have none.
-**What is inside objects (unreleased, after 0.2.2)** (`src/lib/util/diagramDetails.ts`). The Add card
+**What is inside objects (0.2.2)** (`src/lib/util/diagramDetails.ts`). The Add card
 also fills objects in: a class attribute or method with visibility (+ - # ~ or none), type or
 return type and parameters, written last in the class body (`-total: Money`, `+pay(x) bool`) or, for
 a class without a body, as an `X : +Type name` statement (mermaid rejects a second colon there); an
@@ -256,7 +256,7 @@ zero"; the other newer types have no edit forms. Every edit is applied only if m
 diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
 every sample. Ids in Japanese (申請者, 営業) are listed and edited like any other in flowcharts, swimlanes, ER and C4 diagrams, and the Colours and Add cards accept them too; mermaid's state, class, requirement and block grammars reject a non-ASCII id in a `style` statement, so those cards leave such ids out (`unicodeIds` in `mermaid.ts`).
 
-**Edit card: inside objects and more types (unreleased, after 0.2.2).** Choosing a class lists its
+**Edit card: inside objects and more types (0.2.2).** Choosing a class lists its
 attributes and methods (from its bodies and `X : …` statements), choosing an ER entity its
 attributes; each can be changed (visibility, name, type, parameters; type, name, key, comment) or
 deleted, and an attribute keeps how it was written (`Type name` or `name: Type`). Composite states
@@ -287,7 +287,7 @@ two placeholders named in Japanese, ASCII ids) after a confirm, unless the code 
 an unchanged starter. Every starter parses as its type and gives the Add card actions (unit test);
 the all-diagram check runs every feature over the starters too.
 
-**Chart types from zero (unreleased)** (`src/lib/util/chartEdit.ts`). The seven types the QA pass found
+**Chart types from zero (0.2.2)** (`src/lib/util/chartEdit.ts`). The seven types the QA pass found
 could not be made without writing code each have a starter, Add forms, Edit card operations and, where
 they are lists, the table editor; every write is plain mermaid and every form says in Japanese what is
 missing. User journey: step (section, satisfaction 1–5, people) and section; rename, delete (a section
@@ -313,7 +313,7 @@ flow) is not offered. Unit tests `chartEdit.test.ts`; the all-diagram check comp
 mermaid's own count and edits every object of every sample; `tests/qaFindings2.spec.ts` drives each type
 in the browser.
 
-**Second QA pass (unreleased).** Besides the chart types above: the history opens as a sheet over the
+**Second QA pass (0.2.2).** Besides the chart types above: the history opens as a sheet over the
 code pane (`+page.svelte`), so the diagram keeps its width (it was squeezed to ~215px at 1280px) — no
 longer a resizable fourth pane; a click selects a swimlane lane (its cluster id is unprefixed), an
 architecture group (its box has no fill, so a click inside is found by position, smallest box first),
@@ -329,7 +329,7 @@ Japanese names that wrap to two lines instead of being cut short (`sampleNames.t
 helper). Left for later: the rename delay (performance work elsewhere), mobile tabs, the packet loading
 state, and click-selection for the seven chart types.
 
-**From a template, by form (unreleased).** "From a template…" sits under "New diagram…" in the
+**From a template, by form (0.2.2).** "From a template…" sits under "New diagram…" in the
 Samples card and opens a dialog listing the nine business templates, each with a one-line
 description and a preview (`TemplateForms.svelte`). The previews are each template's default
 diagram rendered by mermaid once per theme when the dialog first opens, one after another, and
@@ -381,7 +381,7 @@ mentions it, which is how the card reads the current lane. For an architecture s
 icon (mermaid's standard ones are offered first and written without a prefix) or move it to another
 group. A node with an icon keeps the icon's shape, so the shape list is hidden for it.
 
-**Table editor (unreleased)** (`src/lib/util/tableEdit.ts`, `TableEditor.svelte`). Business users
+**Table editor (0.2.2)** (`src/lib/util/tableEdit.ts`, `TableEditor.svelte`). Business users
 think of the list-like types as tables, so the Edit card ends with "表で編集": gantt tasks (section,
 task, start, days, status — not started, done, in progress, critical, milestone, or the combination
 a task already has — and "after task"), kanban cards (column, card, assignee, priority), timeline
@@ -450,7 +450,7 @@ The buttons are disabled when there is nothing to undo or redo, and the history 
 the diagram is loaded, so opening a shared link offers no step back to what the browser held before.
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
-**A mistake in the code never leaves you stuck (unreleased)** (`src/lib/util/codeHealth.svelte.ts`,
+**A mistake in the code never leaves you stuck (0.2.2)** (`src/lib/util/codeHealth.svelte.ts`,
 `codeError.ts`, `stateGuard.ts`, `CodeErrorNotice.svelte`). Users reported that once the code had a
 syntax error the tools stopped working and there was no way back. Now, while the code does not parse:
 the diagram keeps the last picture that rendered, faded; a notice over the diagram and at the top of the
@@ -484,7 +484,7 @@ quoted), gantt task names starting with a keyword such as `click` (now in 「」
 of these; "Create" in the template dialog also checks the result. `tests/errorRecovery.spec.ts` (15
 journeys, each also failing on any uncaught page error) and the unit tests of the files above.
 
-**Three panes and one toolbar (unreleased, after 0.2.1).** On desktop (640px and wider) the editor is three panes:
+**Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
 people start from the left, and most of this fork's users build diagrams with the tools, so the
@@ -549,7 +549,7 @@ except that the same bar sits above the diagram, without the zoom buttons, as be
 (the tabs, header test ids opening their section and tab, the rail mapping, the accordion),
 `tests/editorPanes.spec.ts`, `tests/fixedLayout.spec.ts`.
 
-**Selection: click the diagram, then change it (unreleased).** The diagram itself is now where
+**Selection: click the diagram, then change it (0.2.2).** The diagram itself is now where
 editing starts. A click on a drawn object (node, lane, state, class, entity, participant, service,
 group, topic, kanban card, timeline item, gantt task, requirement, block, C4 element) or an arrow
 selects it — one selection (`selection.svelte.ts`); a dashed outline, drawn as an overlay rather
@@ -593,7 +593,7 @@ their own pick-by-click, unchanged (another change is adding table editors to th
 reverse and style, "ここから矢印", the panel, a state diagram) and the unit tests of the five
 selection files.
 
-**Contradictory operations (unreleased).** A pass that used the tools out of order and against each
+**Contradictory operations (0.2.2).** A pass that used the tools out of order and against each
 other (connect what is connected, undo from the keyboard after deleting with it, click away
 mid-rename, open one dialog over another, rapid clicks, table and colour abuse) fixed: Ctrl+Z / Ctrl+Y
 (⌘Z, ⌘⇧Z) now undo and redo the diagram when focus is outside a field and the code editor
@@ -686,7 +686,7 @@ search was cleared mid-load; HTML/GitLab exports of a broken diagram failed sile
 standard icon into a non-architecture diagram gave no warning; the AWS logo sample stayed in a
 logos-off build. Firefox is covered only by CI's `@smoke` run.
 
-**Export presets (unreleased)** (`src/lib/util/exportPresets.ts`). For pasting into PowerPoint, Word, Excel
+**Export presets (0.2.2)** (`src/lib/util/exportPresets.ts`). For pasting into PowerPoint, Word, Excel
 or e-mail, the Actions card has a preset (as is, PowerPoint 16:9 = 1920x1080, 4:3 = 1440x1080, A4 landscape
 1123x794, A4 portrait 794x1123, square 1080x1080, all at 1x), a background (white, transparent, the site
 theme colour) and a scale (1x to 3x, default 2x). The diagram is scaled to fit inside the canvas, centred, with
@@ -732,7 +732,7 @@ ones under a Japanese name (`sampleNames.ts`) and English keeps the catalogue's.
   closed it has since been removed again: Monaco 0.57.0 depends on the patched
   `dompurify@3.4.15` itself. The production audit reports zero advisories.
 
-**Performance guards (unreleased).** "Rendering sometimes becomes extremely slow" was measured in
+**Performance guards (0.2.2).** "Rendering sometimes becomes extremely slow" was measured in
 a production build (Chromium, typing into Monaco, every sample plus a 200-node/300-edge
 flowchart, an 8-lane swimlane and a 30-service architecture diagram with icons from six packs)
 and had five causes, each fixed:

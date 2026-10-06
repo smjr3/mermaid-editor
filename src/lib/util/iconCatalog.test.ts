@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { checkIcons, iconRefsIn, loadPack, packNames, replaceIconRef } from './iconCatalog';
+import {
+  checkIcons,
+  editDistance,
+  iconRefsIn,
+  loadPack,
+  packNames,
+  replaceIconRef,
+  suggestIcons
+} from './iconCatalog';
+
+describe('editDistance', () => {
+  it('counts insertions, deletions, substitutions and swaps of neighbours', () => {
+    expect(editDistance('server', 'server')).toBe(0);
+    expect(editDistance('servr', 'server')).toBe(1);
+    expect(editDistance('sevrer', 'server')).toBe(1);
+    expect(editDistance('srvr', 'server')).toBe(2);
+    expect(editDistance('cloud', 'server')).toBeGreaterThan(2);
+  });
+});
+
+describe('suggestIcons, misspelt names', () => {
+  it('finds a near name in the same pack first', { timeout: 60_000 }, async () => {
+    expect((await suggestIcons('tabler:servr'))[0]).toBe('tabler:server');
+    expect((await suggestIcons('tabler:databse'))[0]).toBe('tabler:database');
+  });
+});
 
 const arch = `architecture-beta
   group aws(logos:aws)[AWS]

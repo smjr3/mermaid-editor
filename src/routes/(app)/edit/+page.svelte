@@ -188,7 +188,7 @@
     {/if}
   </Navbar>
 
-  <div class="flex flex-1 flex-col overflow-hidden" bind:clientWidth={width}>
+  <div class="relative flex flex-1 flex-col overflow-hidden" bind:clientWidth={width}>
     <div
       class={[
         'flex size-full',
@@ -320,17 +320,6 @@
                 </div>{/if}
             </div>
           </Resizable.Pane>
-          {#if isHistoryOpen}
-            <Resizable.Handle withHandle class="hidden sm:flex" />
-            <Resizable.Pane
-              id="pane-history"
-              order={3}
-              minSize={15}
-              defaultSize={30}
-              class="hidden h-full grow flex-col sm:flex sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0">
-              <History />
-            </Resizable.Pane>
-          {/if}
           {#if !codeLeft}
             <Resizable.Handle withHandle />
             {@render codePane(4)}
@@ -347,6 +336,19 @@
           onopen={codeLeft ? openToolsFromRail : openCodeFromRail} />
       {/if}
     </div>
+    {#if isHistoryOpen && !isMobile}
+      <!-- Local: the history is a sheet over the code pane rather than a fourth pane, so
+           the diagram keeps its width (a pane squeezed it to a sliver at 1280px). -->
+      <aside
+        class={[
+          'absolute inset-y-0 z-30 flex w-96 max-w-[45%] flex-col border-border bg-card shadow-xl sm:border-t [&_.card]:rounded-none [&_.card]:border-0',
+          codeSide === 'right' ? 'right-0 border-l' : 'left-0 border-r'
+        ]}
+        aria-label={t('editor.historyToggle')}
+        data-testid={TID.historyPanel}>
+        <History />
+      </aside>
+    {/if}
   </div>
 </div>
 

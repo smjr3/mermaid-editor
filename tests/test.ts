@@ -1,5 +1,6 @@
 import { C, TID } from '$/constants';
 import { createTranslator, resolveLocale } from '$/i18n/translate';
+import { sampleNameKeys } from '$/util/sampleNames';
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
 
@@ -72,12 +73,9 @@ export class EditorPage {
 
   // The Samples card shows a few catalogue keys under a translated name (Preset.svelte).
   async loadSampleDiagram(diagramName: string) {
-    const shown: Record<string, string> = {
-      'Entity Relationship': t('preset.name.er'),
-      Packet: t('preset.name.packet'),
-      XY: t('preset.name.xy')
-    };
-    await this.page.getByText(shown[diagramName] ?? diagramName, { exact: true }).click();
+    // The card shows the common groups under a name of their own (sampleNames.ts).
+    const key = sampleNameKeys[diagramName];
+    await this.page.getByText(key ? t(key) : diagramName, { exact: true }).click();
   }
 
   /**

@@ -205,18 +205,20 @@ describe('composite states', () => {
     expect(parts?.plain.map(({ id }) => id)).toEqual(['Idle', 'Work']);
     expect(parts?.states.map(({ id }) => id)).toEqual(['[*]', 'Idle', 'Work', 'Busy']);
   });
-  it('adds an empty composite state, then a state inside it', async () => {
+  it('adds a composite state with a placeholder inside, then a state inside it', async () => {
+    // mermaid draws an empty composite state as its label alone ("negative height").
     const empty = await run(code, 'composite', { name: '確認中' });
     if ('error' in empty) throw new Error();
-    expect(empty.code).toBe(`${code}\n  state "確認中" as g1 {\n  }`);
+    expect(empty.code).toBe(`${code}\n  state "確認中" as g1 {\n    state "内容" as s1\n  }`);
     expect(empty.follow).toEqual({ parent: 'g1' });
     const inner = await run(empty.code, 'state', { from: 'Idle', name: 'Check', parent: 'g1' });
     if ('error' in inner) throw new Error();
-    expect(inner.code.split('\n').slice(-4)).toEqual([
+    expect(inner.code.split('\n').slice(-5)).toEqual([
       '  state "確認中" as g1 {',
-      '    state "Check" as s1',
+      '    state "内容" as s1',
+      '    state "Check" as s2',
       '  }',
-      '  Idle --> s1'
+      '  Idle --> s2'
     ]);
   });
   it('puts a chosen state inside the new composite, right after its first mention', async () => {

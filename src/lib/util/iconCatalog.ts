@@ -82,6 +82,34 @@ export interface UnknownIcon {
 
 const nameOf = (ref: string): string => ref.slice(ref.indexOf(':') + 1);
 
+/**
+ * The edit distance between two names, counting a swap of neighbouring letters as
+ * one edit (optimal string alignment, the restricted Damerau-Levenshtein distance).
+ */
+export const editDistance = (a: string, b: string): number => {
+  const rows = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        rows[i][j] = Math.min(rows[i][j], rows[i - 2][j - 2] + 1);
+    }
+  }
+  return rows[a.length][b.length];
+};
+
+/** A pack's icon names within two edits of `name` (and of a similar length), nearest first. */
+const nearNames = (pack: SearchablePack, name: string): string[] =>
+  Object.keys(pack.icons)
+    .filter((candidate) => Math.abs(candidate.length - name.length) <= 2)
+    .map((candidate) => ({ candidate, distance: editDistance(name, candidate) }))
+    .filter(({ distance }) => distance <= 2)
+    .sort((a, b) => a.distance - b.distance || a.candidate.localeCompare(b.candidate))
+    .map(({ candidate }) => candidate);
+
 /** Suggestions for a reference: icons named like it, across every pack. */
 export const suggestIcons = async (ref: string, limit = 8): Promise<string[]> => {
   const name = nameOf(ref);
@@ -117,7 +145,22 @@ export const suggestIcons = async (ref: string, limit = 8): Promise<string[]> =>
     ...new Set([...firstPassPacks, ...(known.includes(prefix) ? [prefix] : [])])
   ].filter((pack) => known.includes(pack));
   const firstPacks = [...(await Promise.all(first.map(loadPack))), ...(await importedPacks())];
-  search(firstPacks.filter((pack): pack is SearchablePack => pack !== undefined));
+  const loadedFirst = firstPacks.filter((pack): pack is SearchablePack => pack !== undefined);
+  search(loadedFirst);
+  // Nothing by name: a misspelling (`tabler:servr`), so names a letter or two away,
+  // in the pack the reference names first.
+  if (found.length === 0) {
+    const own = loadedFirst.filter((pack) => pack.prefix === prefix);
+    for (const pack of [...own, ...loadedFirst.filter((other) => !own.includes(other))]) {
+      for (const near of nearNames(pack, name)) {
+        const id = pack.prefix === standardPrefix ? near : `${pack.prefix}:${near}`;
+        if (!seen.has(id) && found.length < limit) {
+          seen.add(id);
+          found.push(id);
+        }
+      }
+    }
+  }
   if (found.length >= 3) return found;
   for (const pack of known.filter((candidate) => !first.includes(candidate))) {
     await idle();

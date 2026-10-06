@@ -1,5 +1,5 @@
 import { TID } from '$/constants';
-import { localSamples } from '$/util/localSamples';
+import { localExamples, localSamples } from '$/util/localSamples';
 import { diagramData } from '@mermaid-js/examples';
 import { readFileSync } from 'node:fs';
 import { expect, t, test } from './test';
@@ -18,6 +18,9 @@ const samples = [
     }))
   ),
   ...Object.entries(localSamples).flatMap(([name, list]) =>
+    list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
+  ),
+  ...Object.entries(localExamples).flatMap(([name, list]) =>
     list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
   ),
   { code: zenuml, name: 'ZenUML: Order' }

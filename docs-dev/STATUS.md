@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **284**.
+  every locally changed path — currently **285**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -204,7 +204,7 @@ and joined from another; relationship) and block (block, arrow). Lists come from
 or, for indentation-based types, from the lines past front matter. The all-diagram check runs
 every action on every matching sample; it found front matter being read as the header (kanban,
 mindmap, the flowchart/architecture Add and lane colours) and class labels with `:` or `"`.
-Quadrant, XY and the other chart types have no add forms.
+Journey, XY, quadrant, sankey, git graph, packet and ZenUML have forms too (see "Chart types from zero" below); radar, treemap, Venn and the other newer types have none.
 **What is inside objects (unreleased, after 0.2.2)** (`src/lib/util/diagramDetails.ts`). The Add card
 also fills objects in: a class attribute or method with visibility (+ - # ~ or none), type or
 return type and parameters, written last in the class body (`-total: Money`, `+pay(x) bool`) or, for
@@ -249,8 +249,10 @@ have no text), sequence participants (an undeclared one is declared in its place
 stays), mindmap topics (not the centre), kanban columns and cards, timeline periods and events.
 Arrows: flowchart/swimlane in full; state (label, reverse, delete), class (plus solid/dotted and
 arrowhead), ER (plus solid/dotted), sequence (plus solid/dotted; `+`/`-` activations stay paired),
-architecture (reverse, arrowhead, delete). Git, journey and the chart types other than pie
-have no edit forms. Every edit is applied only if mermaid still parses the result as the same
+architecture (reverse, arrowhead, delete), C4 relationships (label, reverse, delete; the
+technology after the label is kept) and block arrows (label, reverse, arrowhead, delete). Journey,
+XY, quadrant, sankey, git graph, packet and ZenUML are edited as described under "Chart types from
+zero"; the other newer types have no edit forms. Every edit is applied only if mermaid still parses the result as the same
 diagram type; the all-diagram check renames and deletes every object and runs every arrow edit on
 every sample. Ids in Japanese (申請者, 営業) are listed and edited like any other in flowcharts, swimlanes, ER and C4 diagrams, and the Colours and Add cards accept them too; mermaid's state, class, requirement and block grammars reject a non-ASCII id in a `style` statement, so those cards leave such ids out (`unicodeIds` in `mermaid.ts`).
 
@@ -276,13 +278,56 @@ goes, since mermaid rejects it). The all-diagram check changes and deletes every
 property field through each option, and runs every Add action with each choice option.
 
 **From zero, UI only.** For someone who cannot write mermaid. "New diagram…" at the top of the
-Samples card (open by default, so the first thing in the tool stack) offers 14 types — flowchart,
-swimlane, architecture, sequence, state, class, ER, gantt, mindmap, kanban, timeline, pie, C4, block
+Samples card (open by default, so the first thing in the tool stack) offers 21 types — flowchart,
+swimlane, architecture, sequence, state, class, ER, gantt, mindmap, kanban, timeline, pie, C4, block,
+user journey, XY chart, quadrant chart, sankey, git graph, packet and ZenUML
 — each with a one-line description, plus an optional title and, where the type has one, a direction;
 "Create" replaces the code with a minimal starter (`src/lib/util/newDiagram.ts`: a header and one or
 two placeholders named in Japanese, ASCII ids) after a confirm, unless the code is empty, a sample or
 an unchanged starter. Every starter parses as its type and gives the Add card actions (unit test);
 the all-diagram check runs every feature over the starters too.
+
+**Chart types from zero (unreleased)** (`src/lib/util/chartEdit.ts`). The seven types the QA pass found
+could not be made without writing code each have a starter, Add forms, Edit card operations and, where
+they are lists, the table editor; every write is plain mermaid and every form says in Japanese what is
+missing. User journey: step (section, satisfaction 1–5, people) and section; rename, delete (a section
+with or keeping its steps), score and people; table of steps (section moves a step). XY chart: axes
+(horizontal items, titles, vertical range) and series (bar or line, name, values); the axes and each
+series are objects (title, items or range, kind, values); table of series. Quadrant chart: point (x, y in
+0–1) and axis/quadrant names; points renamed, moved, deleted, quadrants renamed, axis ends changed;
+table of points; text that is not plain words is quoted (mermaid's quadrant lexer rejects `(`, `:` …).
+Sankey: flow (from, to, amount); names renamed everywhere or deleted with their flows, amounts changed;
+table of flows. **mermaid's sankey lexer reads ASCII only** (quoted or not), so a Japanese name is refused
+with that reason, the starter's names are English, and the type picker says so. Git graph: commit (name,
+branch, tag, look), branch (from a branch; a Japanese name is quoted — mermaid rejects it bare), merge
+(adds the `checkout` it needs) and switch; branches and commits renamed (checkouts, merges and
+cherry-picks follow) or deleted — a delete drops what mermaid would then refuse (a merge with nothing to
+merge, a cherry-pick of a commit that is gone; `repairGit`). Packet: field (name, width in bits) after the
+last; rename, width, delete and reorder renumber the following fields, which mermaid requires to be
+contiguous (`+n` fields keep their form). ZenUML: participant (person, database or plain; one word, so
+spaces become `_`) and message `A->B: text`; participants renamed everywhere or deleted with their
+messages. Packet and ZenUML titles are their own `title` statement (`diagramTitle.ts`). The Samples card
+gains a Japanese example in each of these groups but sankey (`localExamples` in `localSamples.ts`, appended
+after the group's own default). A delete that would leave a diagram mermaid cannot read (the last sankey
+flow) is not offered. Unit tests `chartEdit.test.ts`; the all-diagram check compares each table with
+mermaid's own count and edits every object of every sample; `tests/qaFindings2.spec.ts` drives each type
+in the browser.
+
+**Second QA pass (unreleased).** Besides the chart types above: the history opens as a sheet over the
+code pane (`+page.svelte`), so the diagram keeps its width (it was squeezed to ~215px at 1280px) — no
+longer a resizable fourth pane; a click selects a swimlane lane (its cluster id is unprefixed), an
+architecture group (its box has no fill, so a click inside is found by position, smallest box first),
+a sequence message (by the text beside its line, or by the line's order when texts repeat), an ER
+relationship or any arrow within a few pixels of its line, and a C4 relationship by its text
+(`diagramPick.ts`, `SelectionLayer.svelte`); a composite state made by the Add card has a 「内容」 state
+inside (mermaid draws an empty one as its label alone); a misspelt icon (`tabler:servr`) gets the names
+within two edits in the same pack first (`editDistance`, `iconCatalog.ts`); internal ids are shown only
+to tell apart two objects with the same text (`displayName.ts`: selection panel, the new context menu
+header, Edit/Add/Colours/table lists); an unnamed participant, state, class, entity, element, block or
+card is called 参加者3, 状態3 … ; required Add choices say 「（選んでください）」; the common sample groups have
+Japanese names that wrap to two lines instead of being cut short (`sampleNames.ts`, shared with the e2e
+helper). Left for later: the rename delay (performance work elsewhere), mobile tabs, the packet loading
+state, and click-selection for the seven chart types.
 
 **From a template, by form (unreleased).** "From a template…" sits under "New diagram…" in the
 Samples card and opens a dialog listing the nine business templates, each with a one-line
@@ -669,11 +714,12 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **778 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **995 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
-original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
-in English on purpose — they are keys into `@mermaid-js/examples`.
+original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay
+the catalogue's English names (they are keys into `@mermaid-js/examples`); the card shows the common
+ones under a Japanese name (`sampleNames.ts`) and English keeps the catalogue's.
 
 **The audit's three findings each have a follow-up** (`QUALITY-AUDIT-2026-08-31.md`), but
 "followed up" is not the same as "finished" and the difference matters:
@@ -822,7 +868,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 2,707 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 2,999 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

@@ -35,6 +35,7 @@
     type TextSize,
     type ThemeChoice
   } from '$/util/colors';
+  import { displayName } from '$/util/displayName';
   import { env } from '$/util/env';
   import {
     diagramEdges,
@@ -405,9 +406,11 @@
           class="h-9 rounded-md border border-input bg-background px-1 text-sm text-foreground">
           {#each items as object (object.id)}
             <option value={object.id}
-              >{getObjectColor(inputState.code, object.id, syntax)
-                ? '● '
-                : ''}{object.label}{object.label === object.id ? '' : ` (${object.id})`}</option>
+              >{getObjectColor(inputState.code, object.id, syntax) ? '● ' : ''}{displayName(
+                object.label,
+                object.id,
+                items
+              )}</option>
           {/each}
         </select>
         {#if selectedItem}

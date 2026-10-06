@@ -296,3 +296,97 @@ export const localSamples: Record<string, SampleExample[]> = {
     }
   ]
 };
+
+/**
+ * Japanese examples added to groups the card already has (`Preset.svelte` appends
+ * them to the group's list, so the group's own first example stays the default):
+ * one per chart type that can now be made from zero (chartEdit.ts). Sankey has
+ * none: mermaid's sankey reads ASCII names only.
+ */
+export const localExamples: Record<string, SampleExample[]> = {
+  Git: [
+    {
+      code: `gitGraph
+  commit id: "初版"
+  branch "開発"
+  commit id: "画面を追加"
+  commit id: "テスト"
+  checkout main
+  commit id: "誤字の修正"
+  merge "開発" tag: "v1.0"
+  branch "修正"
+  commit id: "不具合の修正"
+  checkout main
+  merge "修正" tag: "v1.0.1"`,
+      title: 'リリースの流れ（日本語）'
+    }
+  ],
+  Packet: [
+    {
+      code: `packet-beta
+  title 社員カードのデータ形式
+  0-7: "形式バージョン"
+  8-23: "部署コード"
+  24-55: "社員番号"
+  56-63: "チェックサム"`,
+      title: '社員カードのデータ形式（日本語）'
+    }
+  ],
+  Quadrant: [
+    {
+      code: `quadrantChart
+  title 業務改善の優先度
+  x-axis 効果が小さい --> 効果が大きい
+  y-axis 手間が大きい --> 手間が小さい
+  quadrant-1 すぐ取り組む
+  quadrant-2 計画して進める
+  quadrant-3 後回し
+  quadrant-4 見直す
+  請求書の電子化: [0.8, 0.7]
+  会議の削減: [0.6, 0.9]
+  基幹システム刷新: [0.9, 0.2]
+  書類の整理: [0.2, 0.8]`,
+      title: '業務改善の優先度（日本語）'
+    }
+  ],
+  'User Journey': [
+    {
+      code: `journey
+  title 経費精算の体験
+  section 申請
+    領収書を集める: 2: 申請者
+    申請書を入力する: 3: 申請者
+  section 承認
+    内容を確認する: 4: 上長
+    差戻しに対応する: 1: 申請者, 上長
+  section 支払
+    振込を受け取る: 5: 申請者`,
+      title: '経費精算の体験（日本語）'
+    }
+  ],
+  XY: [
+    {
+      code: `xychart-beta
+  title "月別の売上と目標"
+  x-axis "月" ["4月", "5月", "6月", "7月", "8月", "9月"]
+  y-axis "売上（万円）" 0 --> 500
+  bar "売上" [220, 260, 310, 280, 350, 420]
+  line "目標" [250, 270, 300, 320, 340, 360]`,
+      title: '月別の売上と目標（日本語）'
+    }
+  ],
+  ZenUML: [
+    {
+      code: `zenuml
+  title 注文の受付
+  @Actor 顧客
+  受付システム
+  @Database 在庫DB
+  顧客->受付システム: 注文する
+  受付システム->在庫DB: 在庫を確認する
+  在庫DB->受付システム: 在庫あり
+  受付システム->顧客: 注文を受け付けました`,
+      title: '注文の受付（日本語）'
+    }
+  ]
+};

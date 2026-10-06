@@ -132,6 +132,7 @@ export const TID = {
   helpDialog: 'help-dialog',
   helpSection: 'help-section',
   historyCard: 'history-card',
+  historyPanel: 'history-panel',
   historyRevisionsTab: 'history-revisions-tab',
   iconBrowseCount: 'icon-browse-count',
   iconBrowseGrid: 'icon-browse-grid',

@@ -4,7 +4,7 @@
  * starters (newDiagram.ts). Front matter is plain mermaid, so a shared link and
  * mermaid.live show the same title. Other front-matter keys (`config:`) stay.
  * Timeline and C4 diagrams draw no front-matter title, so theirs is their own
- * `title …` statement after the header.
+ * `title …` statement after the header, as are packet and ZenUML diagrams'.
  */
 import { headerIndex, oneLine } from './addActions';
 import { headerLine, splitLines } from './diagramEdit';
@@ -13,9 +13,10 @@ import { headerLine, splitLines } from './diagramEdit';
 // (tests/newDiagram.spec.ts). Mindmap, kanban, architecture and block diagrams
 // accept the front matter but draw no title, so the Layout card says so instead.
 const shownPattern =
-  /^\s*(?:flowchart-elk|flowchart|graph|swimlane-beta|sequenceDiagram|stateDiagram(?:-v2)?|classDiagram(?:-v2)?|erDiagram|gantt|pie|timeline|C4(?:Context|Container|Component|Dynamic|Deployment)|requirementDiagram|journey|gitGraph|xychart(?:-beta)?|quadrantChart)\b/;
+  /^\s*(?:flowchart-elk|flowchart|graph|swimlane-beta|sequenceDiagram|stateDiagram(?:-v2)?|classDiagram(?:-v2)?|erDiagram|gantt|pie|timeline|C4(?:Context|Container|Component|Dynamic|Deployment)|requirementDiagram|journey|gitGraph|xychart(?:-beta)?|quadrantChart|packet(?:-beta)?|zenuml)\b/;
 // The types whose title is a statement of their own.
-const statementPattern = /^\s*(?:timeline|C4(?:Context|Container|Component|Dynamic|Deployment))\b/;
+const statementPattern =
+  /^\s*(?:timeline|C4(?:Context|Container|Component|Dynamic|Deployment)|packet(?:-beta)?|zenuml)\b/;
 const titleStatement = /^(\s*)title\s+(.*?)\s*$/;
 // `#` and `;` end the statement in both grammars.
 const statementText = (text: string) => oneLine(text).replaceAll('#', '＃');

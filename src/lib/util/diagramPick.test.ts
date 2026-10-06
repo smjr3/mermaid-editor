@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EditEdge, EditKind, EditObject } from './diagramModify';
-import { pickTarget, type PickElement } from './diagramPick';
+import { containing, pickTarget, type PickElement } from './diagramPick';
 
 const el = (fields: Partial<PickElement>): PickElement => ({
   cls: '',
@@ -180,5 +180,77 @@ describe('pickTarget', () => {
       id: 'T3',
       type: 'node'
     });
+  });
+});
+
+describe('lanes, groups, messages and relationships', () => {
+  it('finds a swimlane lane by its own unprefixed id', () => {
+    const ctx = context('flowchart', [
+      { id: 'n1', label: '作業1' },
+      { group: true, id: 'Lane1', label: '担当者' }
+    ]);
+    expect(
+      pickTarget(
+        [
+          el({ cls: 'swimlane-body' }),
+          el({ cls: 'cluster swimlane', dataId: 'Lane1', id: 'Lane1' })
+        ],
+        ctx
+      )
+    ).toEqual({ id: 'Lane1', type: 'node' });
+    // An unprefixed id that is not a lane is not picked by the lane rule.
+    expect(pickTarget([el({ cls: 'cluster', id: 'n1' })], ctx)).toEqual({ id: 'n1', type: 'node' });
+    expect(pickTarget([el({ cls: 'cluster', id: 'other' })], ctx)).toBeUndefined();
+  });
+
+  it('finds a sequence message by the text beside its line, or by the line order', () => {
+    const ctx = context(
+      'sequence',
+      [
+        { id: 'p1', label: '利用者' },
+        { id: 'p2', label: 'システム' }
+      ],
+      [
+        edge(0, 'p1', 'p2', { label: '依頼' }),
+        edge(1, 'p2', 'p1', { label: 'OK' }),
+        edge(2, 'p1', 'p2', { label: 'OK' })
+      ]
+    );
+    expect(pickTarget([el({ cls: 'messageLine0', edgeText: '依頼' })], ctx)).toEqual({
+      index: 0,
+      type: 'edge'
+    });
+    expect(pickTarget([el({ cls: 'messageLine1', edgeText: 'OK', order: 2 })], ctx)).toEqual({
+      index: 2,
+      type: 'edge'
+    });
+    expect(pickTarget([el({ cls: 'messageLine1', edgeText: 'OK' })], ctx)).toBeUndefined();
+  });
+
+  it('finds an ER relationship by its path and a C4 relationship by its text', () => {
+    const er = context('er', [], [edge(0, 'e1', 'e2')]);
+    expect(
+      pickTarget([el({ cls: 'relationshipLine', dataId: 'id_entity-e1-0_entity-e2-1_0' })], er)
+    ).toEqual({ index: 0, type: 'edge' });
+    const c4 = context(
+      'c4',
+      [
+        { id: 'el1', label: '利用者' },
+        { id: 'el2', label: 'システム' }
+      ],
+      [edge(0, 'el1', 'el2', { label: '使う' })]
+    );
+    expect(pickTarget([el({ edgeText: '使う' })], c4)).toEqual({ index: 0, type: 'edge' });
+  });
+
+  it('orders the boxes around a point from the smallest', () => {
+    const boxes = [
+      { height: 100, left: 0, top: 0, width: 100 },
+      { height: 20, left: 10, top: 10, width: 20 },
+      { height: 10, left: 200, top: 200, width: 10 }
+    ];
+    expect(containing(boxes, 15, 15)).toEqual([1, 0]);
+    expect(containing(boxes, 50, 50)).toEqual([0]);
+    expect(containing(boxes, 500, 5)).toEqual([]);
   });
 });

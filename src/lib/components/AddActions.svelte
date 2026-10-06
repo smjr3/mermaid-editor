@@ -12,6 +12,7 @@
     type Field,
     type Values
   } from '$/util/addActions';
+  import { displayName } from '$/util/displayName';
   import type { DiagramObject } from '$/util/mermaid';
   import { codeHealth } from '$/util/codeHealth.svelte';
   import { inputState, updateCode } from '$/util/state.svelte';
@@ -105,11 +106,10 @@
   const optionLabel = (label: MessageKey, option: string) => t(`${label}.${option}` as MessageKey);
   const selectClass =
     'h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-sm text-foreground';
-  // A line number is not a name worth showing (mindmap, kanban, timeline).
-  const name = (part: DiagramObject) =>
-    part.label.trim() === part.id || /^\d+$/.test(part.id)
-      ? part.label
-      : `${part.label} (${part.id})`;
+  // A line number is not a name worth showing (mindmap, kanban, timeline); an id only
+  // tells apart two parts that show the same text (displayName.ts).
+  const name = (part: DiagramObject, all: DiagramObject[]) =>
+    /^L?\d+$/.test(part.id) ? part.label : displayName(part.label, part.id, all);
 </script>
 
 {#each shown as action (action.id)}
@@ -130,14 +130,17 @@
             {/each}
           </select>
         {:else if field.kind === 'item'}
+          <!-- A choice that is needed says so: the add says what is missing if it is left. -->
           <select
             class={selectClass}
             value={current[field.key]}
+            required={!field.optional}
+            aria-required={!field.optional}
             data-testid={testID(action, field.key)}
             onchange={(event) => set(action, field.key, event.currentTarget.value)}>
-            <option value="">{field.optional ? t('add.none') : ''}</option>
+            <option value="">{field.optional ? t('add.none') : t('add.choosePlaceholder')}</option>
             {#each parts[field.source ?? ''] ?? [] as part (part.id)}
-              <option value={part.id}>{name(part)}</option>
+              <option value={part.id}>{name(part, parts[field.source ?? ''] ?? [])}</option>
             {/each}
           </select>
         {:else}

@@ -12,6 +12,14 @@
 import { messages, type MessageKey } from '$/i18n/messages';
 import mermaid from 'mermaid';
 import { blockEnd, nodeLabel, nodeLines, specFor, splitMeta, type Values } from './addActions';
+import {
+  addChartRow,
+  afterChartMove,
+  chartHeaders,
+  chartTableKinds,
+  readChartTable,
+  setChartCell
+} from './chartEdit';
 import { headerIndex, indentOf, isContent, oneLine } from './codeText';
 import {
   addEntityAttribute,
@@ -32,7 +40,10 @@ import { deleteObject, renameObject, type EditKind, type EditObject } from './di
 import { memoByCode } from './memo';
 import { decodeEntities, diagramFromText, type DiagramObject } from './mermaid';
 
-export type TableKind = 'gantt' | 'kanban' | 'timeline' | 'pie' | 'er';
+type ChartTableKind = 'journey' | 'xychart' | 'quadrant' | 'sankey' | 'packet';
+export type TableKind = 'gantt' | 'kanban' | 'timeline' | 'pie' | 'er' | ChartTableKind;
+const isChartTable = (kind: TableKind): kind is ChartTableKind =>
+  (chartTableKinds as string[]).includes(kind);
 
 export interface TableOption {
   value: string;
@@ -69,7 +80,12 @@ const headers: [TableKind, RegExp][] = [
   ['kanban', /^\s*kanban\b/],
   ['timeline', /^\s*timeline\b/],
   ['pie', /^\s*pie\b/],
-  ['er', /^\s*erDiagram\b/]
+  ['er', /^\s*erDiagram\b/],
+  // Local: the list-like chart types (chartEdit.ts).
+  ...(chartHeaders.filter(([kind]) => (chartTableKinds as string[]).includes(kind)) as [
+    TableKind,
+    RegExp
+  ][])
 ];
 
 /** The table's kind for the code's diagram type, from its header line. */
@@ -635,8 +651,15 @@ const insertLines = (code: string, added: string[]) => {
 export const readTable = (code: string, entity?: string): TableModel | undefined => {
   const kind = tableKind(code);
   if (!kind) return undefined;
+  if (isChartTable(kind)) {
+    const table = readChartTable(code, kind);
+    return table ? { kind, ...table } : undefined;
+  }
   const { lines } = splitLines(code);
-  const tables: Record<TableKind, () => Omit<TableModel, 'kind'> | undefined> = {
+  const tables: Record<
+    Exclude<TableKind, ChartTableKind>,
+    () => Omit<TableModel, 'kind'> | undefined
+  > = {
     er: () => {
       const chosen = entity ?? firstEntity(lines);
       return chosen ? erTable(lines, chosen) : undefined;
@@ -714,6 +737,7 @@ export const setCell = (
   const model = readTable(code, entity);
   const target = model?.rows[row];
   if (!model || !target || target.cells[key] === value) return undefined;
+  if (isChartTable(model.kind)) return setChartCell(code, model.kind, target, key, value);
   switch (model.kind) {
     case 'gantt':
       return ganttCell(code, target, key, value);
@@ -731,6 +755,7 @@ export const setCell = (
 /** The code with a row added last (gantt: in the last or the named section; kanban: in the first or the named column). */
 export const addRow = (code: string, values: Values, entity?: string): string | undefined => {
   const kind = tableKind(code);
+  if (kind && isChartTable(kind)) return addChartRow(code, kind, values);
   switch (kind) {
     case 'gantt':
       return addGantt(code, values);
@@ -783,6 +808,7 @@ export const moveRow = (
     ...reindent(a, aIndent, bIndent)
   );
   if (model.kind === 'gantt') keepFirstStart(lines, start);
+  if (isChartTable(model.kind)) return afterChartMove(model.kind, lines).join(eol);
   return lines.join(eol);
 };
 

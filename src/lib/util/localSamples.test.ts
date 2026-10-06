@@ -1,6 +1,6 @@
 import mermaid from 'mermaid';
 import { describe, expect, it, vi } from 'vitest';
-import { businessTemplatesName, localSamples } from './localSamples';
+import { businessTemplatesName, localExamples, localSamples } from './localSamples';
 import { getSampleDiagrams } from './mermaid';
 
 describe('localSamples', () => {
@@ -83,6 +83,37 @@ describe('localSamples', () => {
       expect(upstream, name).not.toHaveProperty(name);
     }
   });
+});
+
+describe('localExamples', () => {
+  const expected: Record<string, string> = {
+    Git: 'gitGraph',
+    Packet: 'packet',
+    Quadrant: 'quadrantChart',
+    'User Journey': 'journey',
+    XY: 'xychart',
+    ZenUML: 'zenuml'
+  };
+
+  it('adds a Japanese example to groups the card already has', () => {
+    expect(Object.keys(localExamples).sort()).toEqual(Object.keys(expected).sort());
+    // Every group but ZenUML (added by the card itself) comes from @mermaid-js/examples.
+    const groups = Object.keys(getSampleDiagrams());
+    for (const name of Object.keys(localExamples).filter((key) => key !== 'ZenUML'))
+      expect(groups, name).toContain(name);
+  });
+
+  it.each(Object.entries(localExamples))(
+    '%s parses as its type, in Japanese',
+    async (name, list) => {
+      for (const { code, title } of list) {
+        await expect(mermaid.parse(code), title).resolves.toMatchObject({
+          diagramType: expected[name]
+        });
+        expect(code, title).toMatch(/[぀-ヿ一-鿿]/);
+      }
+    }
+  );
 });
 
 describe('localSamples without logos', () => {

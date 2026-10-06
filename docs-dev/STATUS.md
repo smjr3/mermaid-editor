@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **267**.
+  every locally changed path — currently **278**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -405,6 +405,40 @@ The buttons are disabled when there is nothing to undo or redo, and the history 
 the diagram is loaded, so opening a shared link offers no step back to what the browser held before.
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
 
+**A mistake in the code never leaves you stuck (unreleased)** (`src/lib/util/codeHealth.svelte.ts`,
+`codeError.ts`, `stateGuard.ts`, `CodeErrorNotice.svelte`). Users reported that once the code had a
+syntax error the tools stopped working and there was no way back. Now, while the code does not parse:
+the diagram keeps the last picture that rendered, faded; a notice over the diagram and at the top of the
+tools pane (so it is seen with the code pane folded) says in plain Japanese which line is wrong — "3
+行目が途中で終わっています", "1 行目が図の種類で始まっていません", "コードが空です" — and offers
+**"直前の正しい状態に戻す"**, which puts back the last code that parsed (or, for a diagram that parsed but
+failed to draw, the last one drawn) as one more undo step, so Undo brings the change back; with nothing
+valid since the page opened it offers "見本の図から始める" instead. The line is found from mermaid's
+own excerpt, with front matter and `%%` comments taken out as mermaid does (upstream's
+longest-common-substring guess pointed at the line before whenever the excerpt spanned two lines); the
+Monaco squiggle uses the same line. The tool lists stay those of the last valid code, but every tool
+that edits the code (Add, Edit, Colours, Layout's direction and title, the table editor, the unknown-icon
+replacement, the selection's toolbar, panel, menu and keys) refuses while the code is broken and says
+why (`editsBlocked`) — applying an edit to the broken code could not be checked, and applying it to the
+last valid code would throw away what was typed. Whole-diagram replacements (a sample, a new diagram, a
+template, a history entry) stay available as ways out; so do the config-only settings. The tools that
+wrote straight into the code (Add, Colours, Layout, unknown icons, the selection's colours) now check
+the result with mermaid first (`applyToolEdit`), like the Edit card. A broken config gets its own notice
+with "設定をリセット". A diagram that parses but fails to draw (an invalid gantt date, a circular
+sankey link) is reported too, and mermaid's half-drawn scratch element is removed (`renderView.ts`).
+A composite state that refers to itself (`state A { A --> B }`) is reported instead of drawn: mermaid
+overflows the stack on it and the tab stops responding — and, the code being saved, again on every
+reload (`renderHazard`). A stored or linked state is taken field by field (`stateGuard.ts`): a
+`codeStore` without `rough` (as old saves have) used to leave the page white, and a link whose code was
+not text threw in every card; a linked config that is not JSON now costs the link its config, not its
+diagram. An emptied editor is passed on (upstream kept the old code unseen, still drawn and edited by the
+tools). Found and fixed at the source while testing: the Add card's "Connect" label with `]`, `(` or
+`{` (now quoted), an empty node, lane, group or service name, `"` or `'` in an architecture name,
+mindmap and kanban names with brackets or quotes (they lost them and could leave an empty line; now
+quoted), gantt task names starting with a keyword such as `click` (now in 「」), and templates with any
+of these; "Create" in the template dialog also checks the result. `tests/errorRecovery.spec.ts` (15
+journeys, each also failing on any uncaught page error) and the unit tests of the files above.
+
 **Three panes and one toolbar (unreleased, after 0.2.1).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
@@ -612,7 +646,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **808 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **778 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -677,7 +711,11 @@ icon packs, ELK and ZenUML load only when a diagram needs them).
 within 5 s of the last key, a 20-key burst ends in exactly one picture (`data-render-count` on
 `#view`), panning and zooming draw nothing, an older large render never replaces a newer
 picture, and fast typing during a slow render is never undone in the editor.
-`renderScheduler.test.ts` covers the scheduler, the guard and the settler.
+`renderScheduler.test.ts` covers the scheduler, the guard and the settler. With the error recovery
+(`codeHealth.svelte.ts`) both hold: the cards read `settledState` and still refuse edits through
+`applyToolEdit`/`editsBlocked` while the code is broken (that check reads the validated state,
+not the settled one); an error state is a validation like any other, so the newest one is
+always published, and `lastValid` is updated by every valid result, published or not.
 
 A related delay, found in exploratory QA: after Enter, Tab or 「この後に追加」 on a selected node,
 the new node's name field appeared only once the edit had been checked, the lists re-read and
@@ -758,7 +796,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 2,551 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 2,707 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

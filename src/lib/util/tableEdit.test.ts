@@ -193,12 +193,12 @@ describe('cell edits', () => {
   it('renames a kanban card and sets and clears its assignee and priority, keeping its ticket', async () => {
     let code = await parsed(kanban, setCell(kanban, 2, 'card', '描画[改善]'));
     expect(code).toContain(
-      "renderer[描画改善]@{ assigned: '山田', priority: 'High', ticket: 2038 }"
+      "renderer[\"描画[改善]\"]@{ assigned: '山田', priority: 'High', ticket: 2038 }"
     );
     code = await parsed(code, setCell(code, 2, 'assignee', "佐藤, 'B'"));
     expect(column(readTable(code), 'assignee')[2]).toBe('佐藤、 B');
     code = await parsed(code, setCell(code, 2, 'priority', ''));
-    expect(code).toContain("renderer[描画改善]@{ assigned: '佐藤、 B', ticket: 2038 }");
+    expect(code).toContain('renderer["描画[改善]"]@{ assigned: \'佐藤、 B\', ticket: 2038 }');
     code = await parsed(code, setCell(code, 0, 'priority', 'Very High'));
     expect(code).toContain("docs[資料作成]@{ priority: 'Very High' }");
     code = await parsed(code, setCell(code, 1, 'priority', ''));

@@ -1,5 +1,6 @@
 import type { MermaidConfig } from 'mermaid';
 import { Svg2Roughjs } from 'svg2roughjs';
+import { hazardMessage, renderHazard } from './codeError';
 import { render as renderDiagram } from './mermaid';
 import { presetBackground } from './themePresets';
 
@@ -37,7 +38,20 @@ export const renderAndPlaceDiagram = async ({
 }): Promise<PlacedDiagram> => {
   const containerSelector = `#${container.id}`;
   delete container.dataset.processed;
-  const { svg, bindFunctions, diagramType } = await renderDiagram(config, code, viewId);
+  // Local (error recovery): code that would hang the page while drawing is refused.
+  const hazard = renderHazard(code);
+  if (hazard) throw new Error(hazardMessage(hazard));
+  let rendered;
+  try {
+    rendered = await renderDiagram(config, code, viewId);
+  } catch (error) {
+    // Local (error recovery): mermaid leaves its scratch element (`#d<id>`, or the
+    // sandbox iframe `#i<id>`) in the page when drawing fails part-way.
+    document.querySelector(`#d${viewId}`)?.remove();
+    document.querySelector(`#i${viewId}`)?.remove();
+    throw error;
+  }
+  const { svg, bindFunctions, diagramType } = rendered;
   if (svg.length === 0) {
     return { diagramType };
   }

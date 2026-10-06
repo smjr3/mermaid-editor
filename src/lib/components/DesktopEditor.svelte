@@ -168,7 +168,10 @@
 
     editor.onDidChangeModelContent(({ isFlush }) => {
       const newText = editor?.getValue();
-      if (!newText || currentText === newText || isFlush || isUpdatingFromState) {
+      // Local (error recovery): an emptied editor is passed on too, so the notice says the
+      // code is empty and offers the last valid state, rather than the old code living on
+      // unseen (still drawn, still edited by the tools, and back after a reload).
+      if (newText === undefined || currentText === newText || isFlush || isUpdatingFromState) {
         return;
       }
       currentText = newText;

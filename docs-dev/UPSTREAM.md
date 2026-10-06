@@ -557,6 +557,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/AiTools.svelte`                    |
 | Added    | `src/lib/components/ArchitectureAdd.svelte`            |
 | Modified | `src/lib/components/Card/Card.svelte`                  |
+| Added    | `src/lib/components/CodeErrorNotice.svelte`            |
 | Added    | `src/lib/components/ColorControls.svelte`              |
 | Added    | `src/lib/components/ColorSwatches.svelte`              |
 | Added    | `src/lib/components/CommandPalette.svelte`             |
@@ -606,6 +607,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
+| Modified | `src/lib/types.d.ts`                                   |
 | Added    | `src/lib/util/addActions.test.ts`                      |
 | Added    | `src/lib/util/addActions.ts`                           |
 | Added    | `src/lib/util/aiCollection.svelte.ts`                  |
@@ -616,6 +618,10 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/architectureLabels.ts`                   |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
 | Modified | `src/lib/util/autoSync.ts`                             |
+| Added    | `src/lib/util/codeError.test.ts`                       |
+| Added    | `src/lib/util/codeError.ts`                            |
+| Added    | `src/lib/util/codeHealth.svelte.ts`                    |
+| Added    | `src/lib/util/codeHealth.test.ts`                      |
 | Added    | `src/lib/util/codeText.ts`                             |
 | Added    | `src/lib/util/colors.test.ts`                          |
 | Added    | `src/lib/util/colors.ts`                               |
@@ -672,6 +678,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/panZoom.ts`                              |
 | Added    | `src/lib/util/renderScheduler.test.ts`                 |
 | Added    | `src/lib/util/renderScheduler.ts`                      |
+| Added    | `src/lib/util/renderView.test.ts`                      |
 | Modified | `src/lib/util/renderView.ts`                           |
 | Added    | `src/lib/util/selection.svelte.ts`                     |
 | Added    | `src/lib/util/selection.test.ts`                       |
@@ -686,6 +693,9 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/standardIcons.ts`                        |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
+| Added    | `src/lib/util/stateGuard.test.ts`                      |
+| Added    | `src/lib/util/stateGuard.ts`                           |
+| Added    | `src/lib/util/stateLoad.test.ts`                       |
 | Added    | `src/lib/util/svgToIconify.test.ts`                    |
 | Added    | `src/lib/util/tableEdit.test.ts`                       |
 | Added    | `src/lib/util/tableEdit.ts`                            |
@@ -725,6 +735,7 @@ modifications as if they were local customizations.
 | Added    | `tests/editorPanes.spec.ts`                            |
 | Modified | `tests/embed.spec.ts`                                  |
 | Modified | `tests/errorDisplay.spec.ts`                           |
+| Added    | `tests/errorRecovery.spec.ts`                          |
 | Added    | `tests/exportPresets.spec.ts`                          |
 | Added    | `tests/fixedLayout.spec.ts`                            |
 | Added    | `tests/help.spec.ts`                                   |

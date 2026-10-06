@@ -134,6 +134,26 @@ describe('template forms', () => {
       expect(code).not.toContain('<b>');
     });
 
+    // Local (error recovery): a text box holding only a bracket or a quote, or a
+    // keyword of the diagram's grammar, generated code that did not parse.
+    it.each([']', '[ ]', '"', 'click', 'Click here', 'section', '(', '{}'])(
+      'still parses with %j in every text box',
+      async (text) => {
+        const values = defaultValues(template);
+        for (const field of template.fields) {
+          if (field.kind === 'text') values[field.key] = text;
+          if (field.kind === 'list') {
+            for (const row of rows(values, field.key)) {
+              for (const column of field.columns) {
+                if (column.kind === 'text' && !column.pattern) row[column.key] = text;
+              }
+            }
+          }
+        }
+        await expect(typeOf(generate(template, values))).resolves.toBe(expectedType[template.id]);
+      }
+    );
+
     it('generated defaults count as replaceable template code', () => {
       const code = generate(template, defaultValues(template));
       expect(isTemplateCode(code)).toBe(true);

@@ -28,7 +28,8 @@ export const headerLine = (code: string): string => {
 export const canAdd = (code: string): boolean => header.test(headerLine(code));
 
 // A title in quotes; a quote inside would end it, so it becomes mermaid's entity.
-const quoted = (text: string) => `"${text.replaceAll('"', '#quot;')}"`;
+// Local: an empty label (`n1[""]`) does not parse; a space draws the same empty box.
+const quoted = (text: string) => `"${text.replaceAll('"', '#quot;') || ' '}"`;
 
 /** The first `<prefix><n>` that does not appear anywhere in the code. */
 export const freshId = (code: string, prefix: string) => {
@@ -112,7 +113,14 @@ export const addEdge = (
   const { eol, lines } = splitLines(code);
   // `|…|` holds the label; a pipe inside would end it.
   const text = label?.replaceAll('|', '/').trim();
-  const arrow = text ? `-->|${text.replaceAll('"', '#quot;')}|` : '-->';
+  const escaped = text?.replaceAll('"', '#quot;');
+  // Local: brackets and the like end an unquoted label (`-->|]|` does not parse), so
+  // such a label is quoted.
+  const arrow = escaped
+    ? /[[\](){}<>@*]/.test(escaped)
+      ? `-->|"${escaped}"|`
+      : `-->|${escaped}|`
+    : '-->';
   lines.splice(insertionIndex(lines), 0, `  ${from} ${arrow} ${to}`);
   return lines.join(eol);
 };
@@ -133,11 +141,13 @@ const sides: Record<Placement, [string, string]> = {
 };
 
 // `[…]` ends the title; any icon name a pack could hold, else the standard server.
-const archLabel = (text: string) =>
+const archLabel = (text: string, fallback: string) =>
   text
     .replaceAll(/[[\]\r\n]+/g, ' ')
+    .replaceAll('"', '”')
+    .replaceAll("'", '’')
     .replaceAll(/\s+/g, ' ')
-    .trim();
+    .trim() || fallback;
 const archIcon = (icon: string) => (/^[\w-]+(?::[\w-]+)?$/.test(icon) ? icon : 'server');
 
 /** The code with lines added after its last statement. */
@@ -158,7 +168,7 @@ export const addArchGroup = (
   { icon, label, parent }: { icon: string; label: string; parent?: string }
 ): { code: string; id: string } => {
   const id = freshId(code, 'grp');
-  const statement = `  group ${id}(${archIcon(icon)})[${archLabel(label)}]${parent ? ` in ${parent}` : ''}`;
+  const statement = `  group ${id}(${archIcon(icon)})[${archLabel(label, id)}]${parent ? ` in ${parent}` : ''}`;
   return { code: append(code, [statement]), id };
 };
 
@@ -181,7 +191,7 @@ export const addArchService = (
   }
 ): { code: string; id: string } => {
   const id = freshId(code, 'svc');
-  const statement = `  service ${id}(${archIcon(icon)})[${archLabel(label)}]${group ? ` in ${group}` : ''}`;
+  const statement = `  service ${id}(${archIcon(icon)})[${archLabel(label, id)}]${group ? ` in ${group}` : ''}`;
   return { code: append(code, [statement, ...(from ? [edge(from, id, place, arrow)] : [])]), id };
 };
 

@@ -43,6 +43,7 @@
     type EditObjects
   } from '$/util/diagramModify';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
+  import { editsBlocked } from '$/util/codeHealth.svelte';
   import { inputState, updateCode } from '$/util/state.svelte';
   import { settledState } from '$/util/settledState.svelte';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
@@ -151,6 +152,11 @@
 
   /** Applies the edit if mermaid still accepts the result as the same kind of diagram. */
   const apply = async (next: string | undefined, done: string) => {
+    // Local: the lists are the last valid code's; the broken code cannot be checked.
+    if (editsBlocked()) {
+      message = t('recover.blocked');
+      return;
+    }
     const code = inputState.code;
     if (next === undefined || next === code) {
       message = t('edit.breaks');

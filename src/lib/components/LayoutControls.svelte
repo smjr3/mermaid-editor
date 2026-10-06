@@ -18,7 +18,8 @@
   } from '$/util/layout';
   import { getTitle, setTitle, titleShown } from '$/util/diagramTitle';
   import { render } from '$/util/mermaid';
-  import { inputState, updateCode, updateConfig } from '$/util/state.svelte';
+  import { applyToolEdit, editsBlocked } from '$/util/codeHealth.svelte';
+  import { inputState, updateConfig } from '$/util/state.svelte';
   import type { MermaidConfig } from 'mermaid';
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
 
@@ -33,14 +34,25 @@
   let message = $state('');
   let busy = $state(false);
 
-  const applyDirection = (next: Direction) => {
+  // Local: code changes are checked, and refused while the code has an error
+  // (codeHealth.svelte.ts); the config-only options below stay available.
+  const refusal = (result: string) =>
+    result === 'blocked' ? t('recover.blocked') : result === 'refused' ? t('edit.breaks') : '';
+  const applyDirection = async (next: Direction): Promise<boolean> => {
     message = '';
-    updateCode(setDirection(inputState.code, next), { resetPanZoom: true, updateDiagram: true });
+    const result = await applyToolEdit(setDirection(inputState.code, next), {
+      resetPanZoom: true
+    });
+    message = refusal(result);
+    return result === 'applied' || result === 'unchanged';
   };
 
-  const applyTitle = (next: string) => {
-    updateCode(setTitle(inputState.code, next), { updateDiagram: true });
-    message = t(next.trim() ? 'layout.titleDone' : 'layout.titleRemoved');
+  const applyTitle = async (next: string) => {
+    const result = await applyToolEdit(setTitle(inputState.code, next));
+    message =
+      result === 'applied'
+        ? t(next.trim() ? 'layout.titleDone' : 'layout.titleRemoved')
+        : refusal(result);
   };
 
   const applyOptions = (next: Partial<LayoutOptions>) => {
@@ -69,6 +81,11 @@
 
   // Draws the diagram both ways and keeps the one that shows largest in the view.
   const fitToView = async () => {
+    // Local: the broken code cannot be drawn either way (codeHealth.svelte.ts).
+    if (editsBlocked()) {
+      message = t('recover.blocked');
+      return;
+    }
     busy = true;
     message = '';
     try {
@@ -77,8 +94,9 @@
       const [tb, lr] = [await measure('TB'), await measure('LR')];
       if (!tb || !lr) throw new Error('no size');
       const chosen = pickDirection({ LR: lr, TB: tb }, size);
-      applyDirection(chosen);
-      message = t(chosen === 'LR' ? 'layout.fitChoseLR' : 'layout.fitChoseTB');
+      if (await applyDirection(chosen)) {
+        message = t(chosen === 'LR' ? 'layout.fitChoseLR' : 'layout.fitChoseTB');
+      }
     } catch {
       message = t('layout.fitFailed');
     } finally {

@@ -4,6 +4,7 @@
   import AddControls from '$/components/AddControls.svelte';
   import AiTools from '$/components/AiTools.svelte';
   import Card from '$/components/Card/Card.svelte';
+  import CodeErrorNotice from '$/components/CodeErrorNotice.svelte';
   import DiagramToolbar from '$/components/DiagramToolbar.svelte';
   import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
   import Editor from '$/components/Editor.svelte';
@@ -246,6 +247,7 @@
             </Card>
 
             {#if isMobile}
+              <CodeErrorNotice testID={TID.toolsErrorNotice} />
               <div class="group flex flex-wrap justify-between gap-4">
                 {@render tools()}
               </div>
@@ -306,6 +308,12 @@
               <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
               <!-- Local: click the diagram to select, then change it (SelectionLayer). -->
               <SelectionLayer host={viewHost} />
+              <!-- Local: what is wrong with the code and the way back (codeHealth.svelte.ts). -->
+              <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex justify-center">
+                <div class="pointer-events-auto w-full max-w-xl">
+                  <CodeErrorNotice testID={TID.diagramErrorNotice} />
+                </div>
+              </div>
               {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
                   <EnhancedEditsButton />
                 </div>{/if}

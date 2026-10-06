@@ -34,7 +34,7 @@ import {
   type GanttTask
 } from './diagramDetails';
 import { requirementName } from './codeText';
-import { headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
+import { freshId, headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
 import { memoByCode } from './memo';
 import {
   decodeEntities,
@@ -1369,10 +1369,26 @@ const renameLine = (lines: string[], line: number, label: string) => {
   // A kanban card's `@{ … }` metadata stays as it is.
   const [head, meta] = splitMeta(lines[line]);
   const match = shapedLine.exec(head);
+  const indent = /^\s*/.exec(lines[line])?.[0] ?? '';
+  const raw = oneLine(label).trim();
+  // Local (error recovery): a name with brackets or quotes used to lose them, which
+  // left "(" or "]" as an empty line and broke the diagram. Such a name is quoted
+  // instead, in the node's own brackets — or in `[…]`, under an id, for a plain line.
+  if (/[()[\]{}"]/.test(raw)) {
+    const text = `"${raw.replaceAll('"', '#quot;')}"`;
+    if (match) {
+      lines[line] = `${match[1]}${match[2]}${match[3]}${text}${match[5]}${meta}`;
+    } else {
+      const old = head.trim();
+      const id = /^[\p{L}\p{N}_-]+$/u.test(old) ? old : freshId(lines.join('\n'), 'n');
+      lines[line] = `${indent}${id}[${text}]${meta}`;
+    }
+    return lines;
+  }
   const text = plainText(label);
   lines[line] = match
     ? `${match[1]}${match[2]}${match[3]}${text}${match[5]}${meta}`
-    : `${/^\s*/.exec(lines[line])?.[0] ?? ''}${text}`;
+    : `${indent}${text}`;
   return lines;
 };
 

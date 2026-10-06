@@ -134,6 +134,8 @@ export const nodeLabel = (line: string) =>
     .replace(/^[\w-]+(?=[([{)])/, '')
     .replaceAll(/^[([{)]+|[)\]}(]+$/g, '')
     .replaceAll(/^"|"$/g, '')
+    // Local: a quoted name keeps its quotes as mermaid's entity (see renameLine).
+    .replaceAll('#quot;', '"')
     .trim();
 
 /** Adds a child under the node on line `parent`, after its last descendant. */

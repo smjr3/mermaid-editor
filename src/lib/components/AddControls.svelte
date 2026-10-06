@@ -4,6 +4,7 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import type { MessageKey } from '$/i18n/messages';
   import { listGroups } from '$/util/colors';
   import AddActions from '$/components/AddActions.svelte';
   import ArchitectureAdd from '$/components/ArchitectureAdd.svelte';
@@ -20,7 +21,8 @@
   } from '$/util/diagramEdit';
   import { diagramObjects, type DiagramObject } from '$/util/mermaid';
   import { templateNotice } from '$/util/templateNotice.svelte';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { applyToolEdit, type ToolEditResult } from '$/util/codeHealth.svelte';
+  import { inputState, validatedState } from '$/util/state.svelte';
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
 
   // Local: add a lane, or a node (in a lane, joined from another node), without
@@ -54,18 +56,25 @@
   let edgeLabel = $state('');
   let message = $state('');
 
-  const apply = (code: string, name: string) => {
-    updateCode(code, { updateDiagram: true });
-    message = t('add.done', { name });
+  // Local: checked and refused while the code has an error (codeHealth.svelte.ts).
+  const said: Record<Exclude<ToolEditResult, 'applied'>, MessageKey> = {
+    blocked: 'recover.blocked',
+    refused: 'add.breaks',
+    unchanged: 'add.breaks'
   };
-  const onAddLane = () => {
+  const apply = async (code: string, name: string): Promise<boolean> => {
+    const result = await applyToolEdit(code);
+    message = result === 'applied' ? t('add.done', { name }) : t(said[result]);
+    return result === 'applied';
+  };
+  const onAddLane = async () => {
     const name = laneName.trim() || t(`add.${word}Default`);
     const { code, id } = addLane(inputState.code, name);
-    apply(code, name);
+    if (!(await apply(code, name))) return;
     laneName = '';
     lane = id;
   };
-  const onAddNode = () => {
+  const onAddNode = async () => {
     const name = nodeName.trim() || t('add.nodeDefault');
     // A lane or node deleted in the code may still be chosen here.
     const { code, id } = addNode(inputState.code, {
@@ -74,21 +83,25 @@
       lane: groups.some((group) => group.id === lane) ? lane : undefined,
       shape
     });
-    apply(code, name);
+    if (!(await apply(code, name))) return;
     nodeName = '';
     // The next node most likely follows this one.
     from = id;
   };
 
-  const onAddEdge = () => {
+  const onAddEdge = async () => {
     const known = (id: string) => nodes.some((node) => node.id === id);
     if (!known(edgeFrom) || !known(edgeTo)) {
       message = t('add.choose');
       return;
     }
-    updateCode(addEdge(inputState.code, { from: edgeFrom, label: edgeLabel, to: edgeTo }), {
-      updateDiagram: true
-    });
+    const result = await applyToolEdit(
+      addEdge(inputState.code, { from: edgeFrom, label: edgeLabel, to: edgeTo })
+    );
+    if (result !== 'applied') {
+      message = t(said[result]);
+      return;
+    }
     message = t('add.arch.edgeDone');
     edgeLabel = '';
   };

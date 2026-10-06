@@ -70,6 +70,7 @@ import {
   type Added
 } from './selectionActions';
 import { clearSelection, requestRename, select, selection } from './selection.svelte';
+import { applyToolEdit, editsBlocked } from './codeHealth.svelte';
 import { inputState, updateCode } from './state.svelte';
 
 class SelectionModel {
@@ -148,6 +149,11 @@ class SelectionModel {
 
   /** Applies an edit if mermaid still accepts the result as the same type of diagram. */
   private async apply(next: string | undefined, done: string): Promise<boolean> {
+    // Local: the lists are the last valid code's; the broken code cannot be checked.
+    if (editsBlocked()) {
+      this.say('recover.blocked');
+      return false;
+    }
     const code = inputState.code;
     if (next === undefined || next === code || !(await checkEdit(code, next))) {
       this.say('edit.breaks');
@@ -160,7 +166,11 @@ class SelectionModel {
 
   /** A colour or text style: written straight in, as the Colours card does. */
   private style(next: string) {
-    if (next !== inputState.code) updateCode(next, { updateDiagram: true });
+    // Local: checked, and refused while the code has an error (codeHealth.svelte.ts).
+    void applyToolEdit(next).then((result) => {
+      if (result === 'blocked') this.say('recover.blocked');
+      else if (result === 'refused') this.say('edit.breaks');
+    });
   }
 
   rename = async (name: string) => {

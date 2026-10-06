@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { State, ValidatedState } from '$/types';
   import { markViewCurrent, recordRenderTime, shouldRefreshView } from '$/util/autoSync';
+  import { drawFailed, drawn } from '$/util/codeHealth.svelte';
   import { PanZoomState } from '$/util/panZoom';
   import { renderAndPlaceDiagram } from '$/util/renderView';
   import { updateCodeStore, validatedState } from '$/util/state.svelte';
@@ -91,12 +92,16 @@
           view.parentElement.scrollTop = scroll;
         }
         error = false;
+        // Local: what "revert" goes back to when a later diagram cannot be drawn.
+        drawn(code);
       } else if (manualUpdate) {
         manualUpdate = false;
       }
     } catch (error_) {
       console.error('view fail', error_);
       error = true;
+      // Local: say so (CodeErrorNotice) instead of leaving a faded picture unexplained.
+      drawFailed();
     }
     const renderTime = Date.now() - startTime;
     saveStatistics({ code, diagramType, isRough: state.rough, renderTime });

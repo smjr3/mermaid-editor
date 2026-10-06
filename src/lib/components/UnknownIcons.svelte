@@ -3,7 +3,8 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { checkIcons, replaceIconRef, type UnknownIcon } from '$/util/iconCatalog';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { applyToolEdit } from '$/util/codeHealth.svelte';
+  import { inputState, validatedState } from '$/util/state.svelte';
 
   // Local: the icon names in the code that no pack provides (an AI's guess,
   // a typo), each with a choice of existing names and a button to swap it in.
@@ -33,7 +34,8 @@
   const replace = (ref: string) => {
     const to = choice[ref];
     if (!to) return;
-    updateCode(replaceIconRef(inputState.code, ref, to), { updateDiagram: true });
+    // Local: checked, and refused while the code has an error (codeHealth.svelte.ts).
+    void applyToolEdit(replaceIconRef(inputState.code, ref, to));
   };
 
   const selectClass =

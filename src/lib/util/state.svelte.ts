@@ -5,6 +5,7 @@ import { resolve } from '$app/paths';
 import { debounce, get as lodashGet } from 'lodash-es';
 import type { MermaidConfig } from 'mermaid';
 import { untrack } from 'svelte';
+import { errorLineOf, hazardMessage, renderHazard } from './codeError';
 import { env } from './env';
 import {
   extractErrorLineText,
@@ -15,6 +16,7 @@ import { darkVariantOf, getDefaultTheme, isManagedTheme, parse } from './mermaid
 import { readJSON, writeJSON } from './persist.svelte';
 import { findUnsafeConfigPaths, stripConfigPaths } from './sanitize';
 import { deserializeState, pakoSerde, serializeState } from './serde';
+import { normalizeState, storedState } from './stateGuard';
 import { errorDebug, formatJSON, getUTMSource, MCBaseURL } from './util';
 
 export { defaultState };
@@ -30,7 +32,9 @@ const CODE_STORE_KEY = 'codeStore';
 
 // The single mutable input state; only update() below may write to it.
 // The fallback is cloned so mutations never write through to defaultState.
-const input = $state<State>(readJSON(CODE_STORE_KEY, { ...defaultState }));
+// Local: what is stored is checked field by field (stateGuard.ts) — a stored
+// state without `rough`, or with a code that is not text, left the page white.
+const input = $state<State>(storedState(readJSON<unknown>(CODE_STORE_KEY, null), defaultState));
 
 // inputState is shared externally when exporting via URL, History, etc.
 // It is reactive for reads; the read-only type keeps writes inside this
@@ -55,10 +59,17 @@ let lastDiagramType = '';
 
 const processState = async (state: State) => {
   const processed = validatedStateOf(state, '');
+  // Local: which part failed — the code (the tools then work from the last valid
+  // code, see codeHealth.svelte.ts) or only the config.
+  let codeParsed = false;
   // No changes should be done to fields part of `state`.
   try {
     processed.serialized = serializeState(state);
     const { diagramType } = await parse(state.code);
+    // Local: code mermaid parses but would hang the page while drawing (codeError.ts).
+    const hazard = renderHazard(state.code, diagramType);
+    if (hazard) throw new Error(hazardMessage(hazard));
+    codeParsed = true;
     processed.diagramType = diagramType;
     if (lastDiagramType === 'zenuml' && diagramType !== lastDiagramType) {
       // Temp Hack to refresh page after displaying ZenUML.
@@ -67,14 +78,21 @@ const processState = async (state: State) => {
     lastDiagramType = diagramType;
     JSON.parse(state.mermaid);
   } catch (error) {
-    processed.error = error as Error;
+    // Local: mermaid can throw something that is not an Error (a string, an object).
+    processed.error = error instanceof Error ? error : new Error(String(error));
+    processed.errorKind = codeParsed ? 'config' : 'code';
     errorDebug();
     console.error(error);
     if (error && typeof error === 'object' && 'hash' in error) {
       try {
         let errorString = processed.error.toString();
         const errorLineText = extractErrorLineText(errorString);
-        const realLineNumber = findMostRelevantLineNumber(errorLineText, state.code);
+        // Local: the line found from mermaid's excerpt (codeError.ts) first; upstream's
+        // longest-common-substring guess picked the line before when the excerpt
+        // spanned two lines.
+        const realLineNumber =
+          errorLineOf(errorString, state.code) ??
+          findMostRelevantLineNumber(errorLineText, state.code);
 
         let first_line: number, last_line: number, first_column: number, last_column: number;
         try {
@@ -112,6 +130,21 @@ const processState = async (state: State) => {
 // Replaces the old URL-hash store subscription; assigned by initURLSubscription.
 let updateHash: ((serialized: string) => void) | undefined;
 
+// Local: the last code mermaid parsed, which the tools and the "revert to the last
+// valid state" action fall back on while the code has an error (codeHealth.svelte.ts).
+let lastValidCode = $state.raw<string | undefined>(undefined);
+export const lastValid = {
+  get code(): string | undefined {
+    return lastValidCode;
+  }
+};
+
+// Local: a validation that finishes after a newer one was published must not
+// overwrite it. (Every result up to the newest is still published in order, so the
+// picture and the last valid code follow the typing.)
+let latestValidation = 0;
+let latestPublished = 0;
+
 // Persist the current input state and asynchronously re-validate it,
 // publishing the result to `validatedState` (and the URL hash, once
 // initURLSubscription has run). Only called from update(), which suppresses
@@ -119,7 +152,11 @@ let updateHash: ((serialized: string) => void) | undefined;
 const persistAndProcess = (): void => {
   const snapshot = $state.snapshot(input) as State;
   writeJSON(CODE_STORE_KEY, snapshot);
+  const validation = ++latestValidation;
   void processState(snapshot).then((processed) => {
+    if (validation < latestPublished) return;
+    latestPublished = validation;
+    if (processed.errorKind !== 'code') lastValidCode = processed.code;
     validatedCurrent = processed;
     updateHash?.(processed.serialized);
     syncManagedTheme(processed.diagramType);
@@ -227,8 +264,15 @@ export const loadState = (data: string): void => {
   update((state) => {
     let next: State;
     try {
-      next = deserializeState(data);
-      next.mermaid = sanitizeConfig(next.mermaid || defaultState.mermaid);
+      // Local: a link holds whatever JSON it was given; only a real state is applied.
+      next = normalizeState(deserializeState(data), $state.snapshot(state) as State);
+      try {
+        next.mermaid = sanitizeConfig(next.mermaid || defaultState.mermaid);
+      } catch (error) {
+        // Local: a config that is not JSON costs the link its config, not its diagram.
+        console.error('Linked config ignored', error);
+        next.mermaid = defaultState.mermaid;
+      }
     } catch (error) {
       next = $state.snapshot(state) as State;
       if (data) {
@@ -349,6 +393,8 @@ export const resetConfig = (): void => {
 // Replaces the whole input state (e.g. when restoring a history entry),
 // dropping keys the next state does not define.
 export const replaceInputState = (next: State): void => {
+  // Local: a history entry is stored JSON too; take only a well-formed state from it.
+  next = storedState(next, defaultState);
   update((state) => {
     for (const key of Object.keys(state)) {
       if (!(key in next)) {

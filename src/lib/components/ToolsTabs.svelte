@@ -2,6 +2,7 @@
   import Actions from '$/components/Actions.svelte';
   import AddControls from '$/components/AddControls.svelte';
   import AiTools from '$/components/AiTools.svelte';
+  import CodeErrorNotice from '$/components/CodeErrorNotice.svelte';
   import ColorControls from '$/components/ColorControls.svelte';
   import EditControls from '$/components/EditControls.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
@@ -90,6 +91,8 @@
       </button>
     {/each}
   </div>
+  <!-- Local: a code error and the way back, above whichever tab is open (codeHealth.svelte.ts). -->
+  <CodeErrorNotice testID={TID.toolsErrorNotice} compact />
   <div
     bind:this={strip}
     bind:clientWidth={width}

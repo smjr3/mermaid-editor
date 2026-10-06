@@ -657,13 +657,13 @@ and had five causes, each fixed:
   the first render. The view skips the unvalidated state and the theme is synced before publishing.
 
 Measured before → after (ms; one machine, shared with other jobs, so ±30 %): picture after
-opening a link, 2,600–6,700 → 950–1,700 for the samples, 12,200 → 6,300 for the 200-node
-flowchart; one key on a sample that counted as "slow" (Class, ER, Requirement, Swimlane,
-Architecture, Office Network) 1,100–1,250 → 160–450; a 20-key burst drew 20 pictures for most
-samples → 1, with 0.5–3.9 s of long tasks → under 0.2 s; one key on the 100-node flowchart 1,680 → 1,300
-and on the 200-node one 9,500 → 3,000. Fast samples now take 100–300 ms per key instead of
-30–150: the price of not drawing every key. Not slow, verified: History auto-save (once a
-minute, not per key), the URL hash (debounced), Monaco's error markers, hovering and
+opening a link, 2,600–6,700 → 1,000–1,900 for the samples, 12,200 → 3,800 for the 200-node
+flowchart; one key on a sample that counted as "slow" (Class, ER, Swimlane, Architecture,
+Office Network) 1,100–1,260 → 200–400; a 20-key burst drew up to 20 pictures → 1 for every
+case, with 0.9–5.9 s of long tasks → under 0.25 s; one key on the 100-node flowchart 1,680 →
+1,280, on the 200-node one 9,500 → 2,600, on the 30-service architecture 1,230 → 400. Fast
+samples now take 130–300 ms per key instead of 25–220: the price of not drawing every key.
+Not slow, verified: History auto-save (once a minute, not per key), the URL hash (debounced), Monaco's error markers, hovering and
 selection (no handler walks the SVG on mouse move; the selected outline costs ~4 ms a second),
 the icon picker and unknown-icon check (no pack loads at startup; the check waits 800 ms),
 memory across 220 edits (heap, DOM nodes and listeners flat), svg-pan-zoom set-up. Still slow,
@@ -678,6 +678,14 @@ within 5 s of the last key, a 20-key burst ends in exactly one picture (`data-re
 `#view`), panning and zooming draw nothing, an older large render never replaces a newer
 picture, and fast typing during a slow render is never undone in the editor.
 `renderScheduler.test.ts` covers the scheduler, the guard and the settler.
+
+A related delay, found in exploratory QA: after Enter, Tab or 「この後に追加」 on a selected node,
+the new node's name field appeared only once the edit had been checked, the lists re-read and
+the diagram redrawn (0.4–1.8 s), because the toolbar holding it waited for the new node's
+element; keys typed meanwhile were lost and a final Enter added another node. The field now
+opens at once on the name the node will get (`selectionModel.draftLabel`), the toolbar stays
+put until the new node is drawn, and a name confirmed before the node exists is applied once it
+does (`pendingAdd`). `tests/selection.spec.ts` types straight after Enter and Tab.
 
 ## What is open
 
@@ -750,7 +758,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 2,522 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 2,551 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

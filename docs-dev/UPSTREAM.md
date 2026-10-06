@@ -298,13 +298,14 @@ The production runner may be Windows, so the build and deploy path uses only
 package-manager invocations and Node scripts — never a shell builtin or a
 Unix-only command. Details in `docs-dev/CROSS-PLATFORM.md`; at merge time:
 
-| Path                       | Local change                                                                                        |
-| -------------------------- | --------------------------------------------------------------------------------------------------- |
-| `.gitattributes`           | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF |
-| `scripts/prepare-pages.js` | Added. Replaces `mv docs public` in CI                                                              |
-| `vite.embed.config.js`     | Adds `publicDir: false`                                                                             |
-| `package.json`             | `build:pages` and `dev:force` point at local scripts; `postinstall` guards with `node -e` inline    |
-| `.gitignore`               | Ignores `/public`                                                                                   |
+| Path                               | Local change                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `.gitattributes`                   | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF                  |
+| `scripts/prepare-pages.js`         | Added. Replaces `mv docs public` in CI                                                                               |
+| `scripts/update-from-registry.mjs` | Added. Downloads the package from a registry, extracts it in pure Node, installs and builds; proven on Windows by CI |
+| `vite.embed.config.js`             | Adds `publicDir: false`                                                                                              |
+| `package.json`                     | `build:pages` and `dev:force` point at local scripts; `postinstall` guards with `node -e` inline                     |
+| `.gitignore`                       | Ignores `/public`                                                                                                    |
 
 `publicDir: false` is load-bearing, not tidying. That config has no SvelteKit
 plugin, so Vite defaults `publicDir` to `public` while its `outDir` is `static`.
@@ -547,6 +548,8 @@ modifications as if they were local customizations.
 | Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/svg-to-iconify.d.ts`                          |
 | Added    | `scripts/svg-to-iconify.js`                            |
+| Added    | `scripts/update-from-registry.mjs`                     |
+| Added    | `scripts/update-from-registry.node-test.mjs`           |
 | Added    | `scripts/update-upstream.sh`                           |
 | Modified | `src/app.css`                                          |
 | Modified | `src/app.html`                                         |

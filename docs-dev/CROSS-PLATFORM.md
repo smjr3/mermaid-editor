@@ -183,3 +183,9 @@ active entry point:
 - **`scripts/prepare-pages.js`** — `renameSync` and `rmSync` are platform-neutral.
 
 **Run the pipeline once on the real runner before relying on it.**
+
+`scripts/update-from-registry.mjs` (see `PACKAGING.md`) is the first path in this repository
+executed on a Windows runner: job `build-from-package` in `fork-checks.yml` runs it on
+`windows-latest`. It exercises `npm.cmd` resolution, quoting and the tarball's `npm install`
+(including `postinstall`), so a green run also settles part of the `postinstall` question
+above for the published package, though not the pnpm path.

@@ -153,6 +153,10 @@ test.describe('Contradictory and out-of-order operations', () => {
   }) => {
     await node(page, 'B').click({ button: 'right' });
     await expect(page.getByTestId(TID.contextMenu)).toBeVisible();
+    // Over the diagram, away from the menu (which now opens under the pointer).
+    const view = await page.locator('#view').boundingBox();
+    if (!view) throw new Error('view missing');
+    await page.mouse.move(view.x + 30, view.y + view.height - 30);
     await page.mouse.wheel(0, 200);
     await expect(page.getByTestId(TID.contextMenu)).toBeHidden();
     await assertInvariants(page, errors, { label: 'menu + wheel' });

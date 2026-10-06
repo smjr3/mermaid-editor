@@ -9,6 +9,7 @@
   import { textSizeChoices, type TextSize } from '$/util/colors';
   import type { DetailField } from '$/util/diagramDetails';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
+  import { displayName } from '$/util/displayName';
   import type { EdgeStyle } from '$/util/diagramModify';
   import { clearSelection, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
@@ -43,10 +44,12 @@
     const key = `${label}.${option}`;
     return key in messages.en ? t(key as MessageKey) : option;
   };
-  const shown = (label: string, id: string) => {
-    const text = label.trim();
-    return text === id || text === '' ? id : `${text} (${id})`;
-  };
+  // The id only tells apart two objects that show the same text (displayName.ts).
+  const shown = (
+    label: string,
+    id: string,
+    all: { id: string; label: string }[] = model.objects?.items ?? []
+  ) => displayName(label, id, all);
   const choice = (active: boolean) => (active ? 'default' : 'outline');
   const selectClass =
     'h-9 min-w-0 w-full rounded-md border border-input bg-background px-1 text-sm text-foreground';
@@ -63,7 +66,7 @@
         {#if field.kind === 'item'}
           <option value="">{t('add.none')}</option>
           {#each field.choices ?? [] as option (option.id)}
-            <option value={option.id}>{shown(option.label, option.id)}</option>
+            <option value={option.id}>{shown(option.label, option.id, field.choices ?? [])}</option>
           {/each}
         {:else}
           {#each field.options ?? [] as option (option)}

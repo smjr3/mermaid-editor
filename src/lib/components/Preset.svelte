@@ -1,13 +1,13 @@
 <script lang="ts">
   import { defaultState, TID } from '$/constants';
   import { t } from '$/i18n';
-  import type { MessageKey } from '$/i18n/messages';
   import Card from '$/components/Card/Card.svelte';
   import { Button, buttonVariants } from '$/components/ui/button';
   import * as Popover from '$/components/ui/popover';
   import NewDiagram from '$/components/NewDiagram.svelte';
-  import { businessTemplatesName, localSamples } from '$/util/localSamples';
+  import { businessTemplatesName, localExamples, localSamples } from '$/util/localSamples';
   import { getSampleDiagrams, type SampleExample } from '$/util/mermaid';
+  import { sampleNameKeys } from '$/util/sampleNames';
   import { updateCode } from '$lib/util/state.svelte';
   import { logEvent } from '$lib/util/stats';
   import { cn } from '$lib/utils';
@@ -48,6 +48,10 @@
   };
 
   const samples = { ...getSampleDiagrams(), ...extras, ...localSamples };
+  // Local: Japanese examples join their group's list, after its own default.
+  for (const [name, list] of Object.entries(localExamples)) {
+    samples[name] = [...(samples[name] ?? []), ...list];
+  }
   // Local: what "New diagram" may replace without asking.
   const sampleCodes = [
     defaultState.code,
@@ -73,14 +77,9 @@
     'Mindmap'
   ];
 
-  // The group names are mermaid's catalogue keys; these are shown under another name.
-  const displayNames: Record<string, MessageKey> = {
-    'Entity Relationship': 'preset.name.er',
-    Packet: 'preset.name.packet',
-    XY: 'preset.name.xy'
-  };
+  // The group names are mermaid's catalogue keys; the common ones are shown in Japanese.
   const shownName = (sample: string) => {
-    const key = displayNames[sample];
+    const key = sampleNameKeys[sample];
     return key ? t(key) : sample;
   };
 
@@ -100,7 +99,7 @@
   icon={{ component: ShapesIcon }}>
   <NewDiagram samples={sampleCodes} />
   <!-- Local: a grid that fits the width (no sideways scroll); on desktop the open card
-       is the only scroll, so the list is not boxed in. -->
+       is the only scroll, so the list is not boxed in. A long name wraps to two lines. -->
   <div
     class="grid h-fit max-h-52 grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-2 overflow-y-auto p-2 sm:max-h-none sm:overflow-visible">
     {#each diagramOrder as sample (sample)}
@@ -110,7 +109,7 @@
           size="sm"
           title={shownName(sample)}
           class={cn(
-            'block min-w-0 flex-grow truncate normal-case',
+            'line-clamp-2 block h-auto min-h-8 min-w-0 flex-grow py-1 leading-tight break-words whitespace-normal normal-case',
             examples.length > 1 && 'rounded-r-none'
           )}
           onclick={() => loadSampleDiagram(sample, examples[0])}>
@@ -122,7 +121,7 @@
               aria-label={t('preset.chooseExample', { sample: shownName(sample) })}
               class={cn(
                 buttonVariants({ size: 'sm' }),
-                'rounded-l-none border-l border-primary-foreground/30 px-0.5 [&_svg]:size-5'
+                'h-auto rounded-l-none border-l border-primary-foreground/30 px-0.5 [&_svg]:size-5'
               )}>
               <ChevronDownIcon />
             </Popover.Trigger>

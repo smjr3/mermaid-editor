@@ -5,6 +5,7 @@
   import { t } from '$/i18n';
   import type { MessageKey } from '$/i18n/messages';
   import { addArchEdge, addArchGroup, addArchService, type Placement } from '$/util/diagramEdit';
+  import { displayName } from '$/util/displayName';
   import { architectureParts, type DiagramObject } from '$/util/mermaid';
   import { applyToolEdit, type ToolEditResult } from '$/util/codeHealth.svelte';
   import { inputState } from '$/util/state.svelte';
@@ -101,8 +102,7 @@
   const selectClass =
     'h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-sm text-foreground';
   const labelClass = 'w-24 shrink-0 text-xs text-muted-foreground';
-  const name = (item: DiagramObject) =>
-    item.label === item.id ? item.label : `${item.label} (${item.id})`;
+  const name = (item: DiagramObject) => displayName(item.label, item.id, [...groups, ...services]);
 </script>
 
 {#snippet iconOptions()}

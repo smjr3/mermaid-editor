@@ -9,6 +9,7 @@
   import AddActions from '$/components/AddActions.svelte';
   import ArchitectureAdd from '$/components/ArchitectureAdd.svelte';
   import { specFor } from '$/util/addActions';
+  import { displayName } from '$/util/displayName';
   import {
     addEdge,
     addLane,
@@ -176,8 +177,7 @@
           <select bind:value={from} class={selectClass} data-testid={TID.addNodeFrom}>
             <option value="">{t('add.noArrow')}</option>
             {#each nodes as node (node.id)}
-              <option value={node.id}
-                >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+              <option value={node.id}>{displayName(node.label, node.id, nodes)}</option>
             {/each}
           </select>
         </div>
@@ -190,8 +190,7 @@
             <select bind:value={edgeFrom} class={selectClass} data-testid={TID.addEdgeFrom}>
               <option value=""></option>
               {#each nodes as node (node.id)}
-                <option value={node.id}
-                  >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+                <option value={node.id}>{displayName(node.label, node.id, nodes)}</option>
               {/each}
             </select>
           </div>
@@ -200,8 +199,7 @@
             <select bind:value={edgeTo} class={selectClass} data-testid={TID.addEdgeTo}>
               <option value=""></option>
               {#each nodes as node (node.id)}
-                <option value={node.id}
-                  >{node.label}{node.label === node.id ? '' : ` (${node.id})`}</option>
+                <option value={node.id}>{displayName(node.label, node.id, nodes)}</option>
               {/each}
             </select>
           </div>

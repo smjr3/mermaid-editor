@@ -17,6 +17,7 @@
     type DetailField
   } from '$/util/diagramDetails';
   import { headerLine } from '$/util/diagramEdit';
+  import { displayName } from '$/util/displayName';
   import {
     checkEdit,
     deleteEdge,
@@ -233,10 +234,9 @@
   const choice = (active: boolean) => (active ? 'default' : 'outline');
   const selectClass =
     'h-9 min-w-0 w-full rounded-md border border-input bg-background px-1 text-sm text-foreground';
-  const shown = (label: string, id: string) => {
-    const text = label.trim();
-    return text === id || text === '' ? id : `${label} (${id})`;
-  };
+  // The id only tells apart two objects that show the same text (displayName.ts).
+  const shown = (label: string, id: string, all: { id: string; label: string }[] = items) =>
+    displayName(label, id, all);
 </script>
 
 {#snippet detailField(
@@ -266,7 +266,7 @@
         onchange={(event) => set(event.currentTarget.value)}>
         <option value="">{t('add.none')}</option>
         {#each field.choices ?? [] as choice (choice.id)}
-          <option value={choice.id}>{shown(choice.label, choice.id)}</option>
+          <option value={choice.id}>{shown(choice.label, choice.id, field.choices ?? [])}</option>
         {/each}
       </select>
     {:else}

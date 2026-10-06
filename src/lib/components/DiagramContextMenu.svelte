@@ -3,6 +3,7 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { nodeShapes } from '$/util/diagramEdit';
+  import { displayName } from '$/util/displayName';
   import type { EdgeStyle } from '$/util/diagramModify';
   import { requestRename, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
@@ -99,6 +100,19 @@
       data-testid={`${TID.contextMenuItem}-fit`}
       onclick={() => run(fit)}>{t('sel.fit')}</button>
   {:else}
+    {#if model.object || model.edge}
+      <div
+        class="truncate px-2 py-1 text-xs text-muted-foreground"
+        data-testid={`${TID.contextMenu}-name`}>
+        {model.edge
+          ? `${t('sel.edge')} ${model.edge.title}`
+          : displayName(
+              model.object?.label ?? '',
+              model.object?.id ?? '',
+              model.objects?.items ?? []
+            )}
+      </div>
+    {/if}
     {#if (model.object && !model.object.noRename) || (model.edge && model.edges?.can.label)}
       <button
         type="button"

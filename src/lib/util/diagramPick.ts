@@ -16,7 +16,12 @@
  *   requirement `<from>-<to>-<n>`, block `<svg>-<n>-<from>-<to>`, state `edge<n>` (the
  *   n-th transition)
  * - sequence: a participant's shapes carry `data-id="<participant>"`; a message is
- *   recognised by its text
+ *   recognised by its text (on its line too), or by the line's order when the text is
+ *   not unique
+ * - C4 relationships: a `<line>` and its `<text>` without ids, recognised by the text
+ * - lanes and groups: a swimlane lane is `<g class="cluster swimlane" id="<lane id>">`,
+ *   unprefixed; an architecture group's rect has no fill, so a click inside it lands
+ *   on the canvas and is found by position (`containing`, SelectionLayer.svelte)
  * - mindmap: `<svg>-node_<n>`, the n-th topic; timeline: a `node-<n>` shape, the n-th
  *   period or event; kanban: `<svg>-<card or column id>`; gantt: `<svg>-<task id>` and
  *   `<svg>-<task id>-text`, recognised by the task's name
@@ -35,6 +40,12 @@ export interface PickElement {
   text: string;
   /** The id of the first descendant that has one (a timeline node's shape). */
   childId?: string;
+  /** The text of the arrow this element draws, when the text is beside it (a sequence
+   *  message's or a C4 relationship's line, or the text next to that line). */
+  edgeText?: string;
+  /** A sequence message line: its place among the message lines drawn, when that count
+   *  matches the arrows listed. */
+  order?: number;
 }
 
 export interface PickContext {
@@ -84,11 +95,16 @@ const pickEdge = (element: PickElement, context: PickContext): number | undefine
     if (n !== undefined && Number(n) < edges.length) return Number(n);
   }
   // A label: the arrow whose text it is, when only one has that text.
-  if (/\b(?:edgeLabel|messageText)\b/.test(element.cls)) {
-    const text = plain(element.text);
+  const labelled =
+    element.edgeText ??
+    (/\b(?:edgeLabel|messageText)\b/.test(element.cls) ? element.text : undefined);
+  if (labelled !== undefined) {
+    const text = plain(labelled);
     const matches = edges.filter(({ label }) => text && plain(label) === text);
     if (matches.length === 1) return matches[0].index;
   }
+  if (kind === 'sequence' && element.order !== undefined && element.order < edges.length)
+    return edges[element.order].index;
   return undefined;
 };
 
@@ -137,10 +153,32 @@ const pickNode = (element: PickElement, context: PickContext): string | undefine
       const text = plain(element.text);
       return objects.find(({ group, label }) => !group && text && plain(label) === text)?.id;
     }
-    default:
+    default: {
+      // A lane or group: a swimlane's carries its own id, without the svg's prefix.
+      const cluster = /\bcluster\b/.test(element.cls) ? (element.dataId ?? element.id) : '';
+      if (cluster && ids.includes(cluster)) return cluster;
       return pickedObject(element.id, svgId, ids);
+    }
   }
 };
+
+export interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** The boxes that hold the point, smallest first, by their index (a lane in a lane: the inner one). */
+export const containing = (boxes: Box[], x: number, y: number): number[] =>
+  boxes
+    .map((box, index) => ({ area: box.width * box.height, box, index }))
+    .filter(
+      ({ box }) =>
+        x >= box.left && x <= box.left + box.width && y >= box.top && y <= box.top + box.height
+    )
+    .sort((a, b) => a.area - b.area)
+    .map(({ index }) => index);
 
 /** The object or arrow under a click: `path` is the target and its ancestors, innermost first. */
 export const pickTarget = (path: PickElement[], context: PickContext): Selected | undefined => {

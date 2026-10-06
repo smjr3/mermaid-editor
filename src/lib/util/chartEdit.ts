@@ -811,8 +811,11 @@ const quadText = (text: string | undefined) =>
 const unquote = (text: string) => text.replace(/^"(.*)"$/, '$1');
 /** Quadrant text as written: plain words as they are, anything else in quotes. */
 const quadWord = (text: string) => (/^[\p{L}\p{N} _]+$/u.test(text) ? text : `"${text}"`);
+// `low --> high`; a plain search rather than a regex, which CodeQL reads as HTML-comment parsing.
 const axisEnds = (rest: string) => {
-  const [low, high = ''] = rest.split(/\s*-->\s*/);
+  const arrow = rest.indexOf('-->');
+  const low = arrow === -1 ? rest : rest.slice(0, arrow);
+  const high = arrow === -1 ? '' : rest.slice(arrow + 3);
   return { high: unquote(high.trim()), low: unquote(low.trim()) };
 };
 const renderQuadAxis = (indent: string, which: string, low: string, high: string) =>

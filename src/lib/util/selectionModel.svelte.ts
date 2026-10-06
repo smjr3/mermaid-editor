@@ -79,6 +79,7 @@ import {
   selection,
   type Selected
 } from './selection.svelte';
+import { applyToolEdit, editsBlocked } from './codeHealth.svelte';
 import { inputState, updateCode } from './state.svelte';
 
 class SelectionModel {
@@ -99,7 +100,13 @@ class SelectionModel {
    * toolbar so that clicking elsewhere (another node, the canvas, the tools) can
    * still apply it to the object it was typed for.
    */
-  draft = $state<{ target: Selected; name: string } | undefined>();
+  draft = $state<{ target: Selected | 'adding'; name: string } | undefined>();
+  /** The name a node being added will show, while its rename is already open. */
+  draftLabel = $state<string | undefined>();
+  /** Resolves (true when it worked) once a node being added is in the code and selected. */
+  pendingAdd: Promise<boolean> | undefined;
+  /** The node the last addition made, which a rename opened while adding it renames. */
+  private lastAdded: string | undefined;
 
   kind = $derived(this.objects?.kind);
   object = $derived.by((): EditObject | undefined => {
@@ -177,6 +184,11 @@ class SelectionModel {
 
   /** Applies an edit if mermaid still accepts the result as the same type of diagram. */
   private async apply(next: string | undefined, done: string): Promise<boolean> {
+    // Local: the lists are the last valid code's; the broken code cannot be checked.
+    if (editsBlocked()) {
+      this.warn('recover.blocked');
+      return false;
+    }
     const code = inputState.code;
     if (next === undefined || next === code || !(await checkEdit(code, next))) {
       this.warn('edit.breaks');
@@ -193,7 +205,11 @@ class SelectionModel {
 
   /** A colour or text style: written straight in, as the Colours card does. */
   private style(next: string) {
-    if (next !== inputState.code) updateCode(next, { updateDiagram: true });
+    // Local: checked, and refused while the code has an error (codeHealth.svelte.ts).
+    void applyToolEdit(next).then((result) => {
+      if (result === 'blocked') this.warn('recover.blocked');
+      else if (result === 'refused') this.warn('edit.breaks');
+    });
   }
 
   /** What a selection names in the current lists. */
@@ -211,8 +227,12 @@ class SelectionModel {
     return object ? object.label.trim() || object.id : (edge?.label ?? '');
   }
 
-  /** Opens the inline rename's draft on the selection. */
+  /** Opens the inline rename's draft on the selection, or on the node being added. */
   startDraft = () => {
+    if (this.draftLabel !== undefined) {
+      this.draft = { name: this.draftLabel, target: 'adding' };
+      return;
+    }
     const target = selection.current;
     this.draft = target && { name: this.labelOf(target), target };
   };
@@ -231,9 +251,20 @@ class SelectionModel {
   commitDraft = async () => {
     const draft = this.draft;
     this.draft = undefined;
-    if (sameSelection(selection.current, draft?.target)) endRename();
-    if (!draft || draft.name.trim() === this.labelOf(draft.target)) return;
-    await this.rename(draft.name, draft.target);
+    if (!draft) {
+      endRename();
+      return;
+    }
+    if (draft.target === 'adding' || sameSelection(selection.current, draft.target)) endRename();
+    let target = draft.target;
+    if (target === 'adding') {
+      // Typed while the node was still being added: rename it once it is there.
+      if (this.pendingAdd && !(await this.pendingAdd)) return;
+      if (!this.lastAdded) return;
+      target = { id: this.lastAdded, type: 'node' };
+    }
+    if (draft.name.trim() === this.labelOf(target)) return;
+    await this.rename(draft.name, target);
   };
 
   rename = async (name: string, target: Selected | undefined = selection.current) => {
@@ -403,16 +434,43 @@ class SelectionModel {
       this.say('edit.breaks');
       return;
     }
-    if (!(await this.apply(result.code, t('sel.added', { name: result.name })))) return;
-    let id = result.id;
-    if (!id) {
-      const after = (await editableObjects(result.code))?.items ?? [];
-      id = addedObject(before, after, result.name)?.id;
+    // The rename opens at once, on the name the new node gets: checking the code,
+    // reading the new lists and redrawing take from a fraction of a second to a few
+    // seconds, and keys typed meanwhile (and a final Enter, which would add yet another
+    // node) must land in the field. `pendingAdd` tells the field's commit to wait.
+    if (editsBlocked()) {
+      this.say('recover.blocked');
+      return;
     }
-    if (id) {
-      await this.sync(result.code);
-      select({ id, type: 'node' });
+    const openedEarly = !selection.renaming && selection.current !== undefined;
+    if (openedEarly) {
+      this.draftLabel = result.name;
       requestRename();
+    }
+    let done: (added: boolean) => void = () => undefined;
+    this.pendingAdd = new Promise((resolve) => (done = resolve));
+    let ok = false;
+    try {
+      if (!(await this.apply(result.code, t('sel.added', { name: result.name })))) return;
+      let id = result.id;
+      if (!id) {
+        const after = (await editableObjects(result.code))?.items ?? [];
+        id = addedObject(before, after, result.name)?.id;
+      }
+      if (id) {
+        await this.sync(result.code);
+        this.lastAdded = id;
+        select({ id, type: 'node' }, { keepRename: true });
+        // Nothing was selected to open it on (a node added on the empty canvas).
+        if (!openedEarly) requestRename();
+        ok = true;
+      }
+    } finally {
+      // A rename the add could not carry over is closed.
+      if (!ok && this.draftLabel !== undefined) endRename();
+      this.draftLabel = undefined;
+      this.pendingAdd = undefined;
+      done(ok);
     }
   }
 

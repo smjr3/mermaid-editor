@@ -16,7 +16,9 @@ export const selection = $state<{
   current: Selected | undefined;
   connectFrom: string | undefined;
   renaming: boolean;
-}>({ connectFrom: undefined, current: undefined, renaming: false });
+  /** Counts the times the rename opened, so the field starts afresh each time. */
+  renameSession: number;
+}>({ connectFrom: undefined, current: undefined, renameSession: 0, renaming: false });
 
 export const sameSelection = (a: Selected | undefined, b: Selected | undefined): boolean =>
   a?.type === b?.type &&
@@ -26,10 +28,17 @@ export const sameSelection = (a: Selected | undefined, b: Selected | undefined):
       ? a.index === (b as { index: number }).index
       : true);
 
-export const select = (next: Selected | undefined): void => {
+/**
+ * Selects `next`. Another selection closes the inline rename, unless `keepRename`: a
+ * node just added has its rename open before it exists (selectionModel's `added`).
+ */
+export const select = (
+  next: Selected | undefined,
+  { keepRename = false }: { keepRename?: boolean } = {}
+): void => {
   if (!sameSelection(selection.current, next)) {
     selection.current = next;
-    selection.renaming = false;
+    if (!keepRename) selection.renaming = false;
   }
   selection.connectFrom = undefined;
 };
@@ -38,7 +47,9 @@ export const clearSelection = (): void => select(undefined);
 
 /** Opens the inline rename of the selection (F2, double click, the menu). */
 export const requestRename = (): void => {
-  if (selection.current) selection.renaming = true;
+  if (!selection.current || selection.renaming) return;
+  selection.renaming = true;
+  selection.renameSession += 1;
 };
 
 /** "ここから矢印": the next node clicked is joined from the selected one. */

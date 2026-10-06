@@ -3,7 +3,9 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { checkEdit } from '$/util/diagramModify';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { editsBlocked } from '$/util/codeHealth.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
   import {
     addRow,
     deleteRow,
@@ -31,7 +33,7 @@
 
   // The table comes from the last valid code, through mermaid's parse.
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     const chosen = entity;
     if (!tableKind(code)) {
       model = undefined;
@@ -51,6 +53,11 @@
 
   /** Applies the change if mermaid still accepts it; false when it was refused. */
   const apply = async (next: string | undefined, done: string): Promise<boolean> => {
+    // Local: the table is the last valid code's; the broken code cannot be checked.
+    if (editsBlocked()) {
+      message = t('recover.blocked');
+      return false;
+    }
     const code = inputState.code;
     if (next === undefined || next === code || !(await checkEdit(code, next))) {
       message = t('edit.breaks');

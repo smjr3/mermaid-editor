@@ -44,7 +44,9 @@
   } from '$/util/diagramModify';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
   import { reverseDuplicates } from '$/util/selectionActions';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { editsBlocked } from '$/util/codeHealth.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
 
   // Local: rename and delete objects, and relabel, reverse, restyle and delete
@@ -65,7 +67,7 @@
   let selectedEdge = $state(0);
   let message = $state('');
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void Promise.all([editableObjects(code), editableEdges(code)]).then(([found, foundEdges]) => {
@@ -151,6 +153,11 @@
 
   /** Applies the edit if mermaid still accepts the result as the same kind of diagram. */
   const apply = async (next: string | undefined, done: string) => {
+    // Local: the lists are the last valid code's; the broken code cannot be checked.
+    if (editsBlocked()) {
+      message = t('recover.blocked');
+      return;
+    }
     const code = inputState.code;
     if (next === undefined || next === code) {
       message = t('edit.breaks');

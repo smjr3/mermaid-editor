@@ -149,6 +149,26 @@ resolved it, so PNG export hung without downloading. mermaid 12 renders the ER s
 in about 150 ms, which made `actions.spec.ts` "should download png and svg" fail about
 half the time. If upstream fixes this themselves, take their version and drop ours.
 
+### Render scheduling (performance)
+
+| Path                                                        | Local change                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/View.svelte`                            | Renders through `createRenderScheduler` instead of a promise chain of every state; no longer calls `recordRenderTime`; debounces pan/zoom store writes; skips the pre-validation state; `data-render-count`; redraws when an icon pack is imported or removed |
+| `src/lib/util/renderView.ts`                                | `shouldPlace` option: a finished render is dropped instead of placed when it says no                                                                                                                                                                          |
+| `src/lib/util/state.svelte.ts`                              | Publishes only the newest validation (`createLatestGuard`), syncs the managed theme before publishing, validates typed code after a pause when parsing is slow                                                                                                |
+| `src/lib/util/mermaid.ts`, `src/lib/util/memo.ts`           | `parse` is remembered per code; `memoByCode` forgets failures                                                                                                                                                                                                 |
+| `src/lib/util/renderScheduler.ts`, `settledState.svelte.ts` | Added. The scheduler, the guard and the settler; the tool cards and the selection layer read `settledState` instead of `validatedState`                                                                                                                       |
+
+Upstream queues a render for every state and, after a render over 150 ms, defers the next
+one by a second (`autoSync.ts`). Measured in a production build, a burst of typing queued up
+to twenty renders, a slow diagram waited over a second for every change, and a pan of a
+200-node flowchart re-parsed it on every mouse move (16 s of blocked main thread). `autoSync.ts`
+itself is unchanged: `View` still calls `shouldRefreshView()` (always true now, since nothing
+records a slow render) so `waitForRender()` keeps working for PNG export, and resolves it with
+`markViewCurrent()` when the scheduler is idle. On a merge, keep upstream's `View.svelte`
+markup and re-apply the scheduler effect; `STATUS.md` → "Performance guards" lists the
+measurements and `tests/performance.spec.ts` the guards.
+
 ### Swimlane samples and business templates
 
 | Path                                | Local change                                                                                                                                                                                            |
@@ -238,6 +258,7 @@ taking upstream's version and re-adding those lines.
 | `src/lib/components/NewDiagram.svelte`, `src/lib/util/newDiagram.ts`                                                                                | Added. "New diagram" at the top of the Samples card: a type picker (14 types, a one-line description each), an optional title and a direction; replaces the code with a minimal starter with Japanese placeholders, asking first unless the code is a sample or an unchanged starter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `src/lib/components/TemplateForms.svelte`, `src/lib/util/templateForms.ts`, `src/lib/util/templateThumbnails.ts`                                    | Added. "Create from a template" under "New diagram": a dialog listing the nine business templates with a rendered preview each; a form per template (text, choices, lists of rows) whose generator writes the diagram; mounted by one line in `NewDiagram.svelte`. Tests `templateForms.test.ts`, `tests/templateForms.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `src/lib/components/TableEditor.svelte`, `src/lib/util/tableEdit.ts`                                                                                | Added. "Edit as a table" at the end of the Edit card: gantt tasks, kanban cards, timeline periods, pie slices and an ER entity's attributes as rows with inline cells, add/delete/move rows, kanban column moves and TSV paste from Excel; writes through `diagramDetails.ts`, `diagramModify.ts` and `addActions.ts` where they can. Mounted by one line (plus its import) at the end of `EditControls.svelte`. Tests `tableEdit.test.ts`, the all-diagram check, `tests/tableEditor.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `src/lib/util/themePresets.ts`                                                                                                                      | Added. The named diagram themes (テーマ) of the Colours card and the command palette: `theme: "base"` + `themeVariables` + a marked `themeCSS` per preset; "standard" hands the theme back to the managed family. `mermaid.ts` paints a preset's background (`renderView.ts` copies it onto the rough sketch, `Actions.svelte` uses it for exports). Tests `themePresets.test.ts`, `tests/themePresets.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `src/lib/util/diagramTitle.ts`                                                                                                                      | Added. Sets, changes and removes the diagram title — front matter `title:`, or the `title` statement of timeline and C4, which ignore front matter — from the Layout card's title field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `src/lib/components/IconChooser.svelte`, `src/lib/util/iconCatalog.ts`                                                                              | Added. A small icon search in the Edit card over every pack the editor knows (standard, bundled, build-time, hosted, imported), for a flowchart node's or an architecture service's icon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `src/lib/components/HelpButton.svelte`, `src/lib/util/helpContent.ts`                                                                               | Added. The "How to use" button in the header (Navbar) and its guide dialog; the guide text per language                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -536,6 +557,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/AiTools.svelte`                    |
 | Added    | `src/lib/components/ArchitectureAdd.svelte`            |
 | Modified | `src/lib/components/Card/Card.svelte`                  |
+| Added    | `src/lib/components/CodeErrorNotice.svelte`            |
 | Added    | `src/lib/components/ColorControls.svelte`              |
 | Added    | `src/lib/components/ColorSwatches.svelte`              |
 | Added    | `src/lib/components/CommandPalette.svelte`             |
@@ -585,6 +607,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/i18n/index.ts`                                |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
+| Modified | `src/lib/types.d.ts`                                   |
 | Added    | `src/lib/util/addActions.test.ts`                      |
 | Added    | `src/lib/util/addActions.ts`                           |
 | Added    | `src/lib/util/aiCollection.svelte.ts`                  |
@@ -595,6 +618,10 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/architectureLabels.ts`                   |
 | Added    | `src/lib/util/autoSync.test.ts`                        |
 | Modified | `src/lib/util/autoSync.ts`                             |
+| Added    | `src/lib/util/codeError.test.ts`                       |
+| Added    | `src/lib/util/codeError.ts`                            |
+| Added    | `src/lib/util/codeHealth.svelte.ts`                    |
+| Added    | `src/lib/util/codeHealth.test.ts`                      |
 | Added    | `src/lib/util/codeText.ts`                             |
 | Added    | `src/lib/util/colors.test.ts`                          |
 | Added    | `src/lib/util/colors.ts`                               |
@@ -649,6 +676,10 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/newDiagram.ts`                           |
 | Added    | `src/lib/util/onboarding.svelte.ts`                    |
 | Modified | `src/lib/util/panZoom.ts`                              |
+| Added    | `src/lib/util/renderScheduler.test.ts`                 |
+| Added    | `src/lib/util/renderScheduler.ts`                      |
+| Added    | `src/lib/util/renderView.test.ts`                      |
+| Modified | `src/lib/util/renderView.ts`                           |
 | Added    | `src/lib/util/selection.svelte.ts`                     |
 | Added    | `src/lib/util/selection.test.ts`                       |
 | Added    | `src/lib/util/selectionActions.test.ts`                |
@@ -657,10 +688,14 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/selectionKeys.ts`                        |
 | Added    | `src/lib/util/selectionModel.svelte.ts`                |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
+| Added    | `src/lib/util/settledState.svelte.ts`                  |
 | Added    | `src/lib/util/standardIcons.test.ts`                   |
 | Added    | `src/lib/util/standardIcons.ts`                        |
 | Modified | `src/lib/util/state.svelte.test.ts`                    |
 | Modified | `src/lib/util/state.svelte.ts`                         |
+| Added    | `src/lib/util/stateGuard.test.ts`                      |
+| Added    | `src/lib/util/stateGuard.ts`                           |
+| Added    | `src/lib/util/stateLoad.test.ts`                       |
 | Added    | `src/lib/util/svgToIconify.test.ts`                    |
 | Added    | `src/lib/util/tableEdit.test.ts`                       |
 | Added    | `src/lib/util/tableEdit.ts`                            |
@@ -668,6 +703,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/templateForms.ts`                        |
 | Added    | `src/lib/util/templateNotice.svelte.ts`                |
 | Added    | `src/lib/util/templateThumbnails.ts`                   |
+| Added    | `src/lib/util/themePresets.test.ts`                    |
+| Added    | `src/lib/util/themePresets.ts`                         |
 | Added    | `src/lib/util/toolsPane.svelte.ts`                     |
 | Added    | `src/lib/util/toolsPane.test.ts`                       |
 | Added    | `src/lib/util/uiBus.ts`                                |
@@ -699,6 +736,7 @@ modifications as if they were local customizations.
 | Added    | `tests/editorPanes.spec.ts`                            |
 | Modified | `tests/embed.spec.ts`                                  |
 | Modified | `tests/errorDisplay.spec.ts`                           |
+| Added    | `tests/errorRecovery.spec.ts`                          |
 | Added    | `tests/exportPresets.spec.ts`                          |
 | Added    | `tests/fixedLayout.spec.ts`                            |
 | Added    | `tests/help.spec.ts`                                   |
@@ -716,6 +754,8 @@ modifications as if they were local customizations.
 | Added    | `tests/newDiagram.spec.ts`                             |
 | Added    | `tests/offline.spec.ts`                                |
 | Added    | `tests/onboarding.spec.ts`                             |
+| Added    | `tests/performance.spec.ts`                            |
+| Added    | `tests/qaFindings.spec.ts`                             |
 | Added    | `tests/releaseAudit.spec.ts`                           |
 | Added    | `tests/renameSymbol.spec.ts`                           |
 | Added    | `tests/selection.spec.ts`                              |
@@ -725,6 +765,7 @@ modifications as if they were local customizations.
 | Added    | `tests/templates.spec.ts`                              |
 | Modified | `tests/test.ts`                                        |
 | Added    | `tests/textStyle.spec.ts`                              |
+| Added    | `tests/themePresets.spec.ts`                           |
 | Added    | `tests/toolsPane.spec.ts`                              |
 | Added    | `tests/toolsTabs.spec.ts`                              |
 | Added    | `tests/undo.spec.ts`                                   |

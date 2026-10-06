@@ -71,7 +71,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'colours',
       items: [
-        'Theme and line colour for the whole diagram.',
+        'Theme: twelve designs for the whole diagram (modern, neon, pastel, business, high contrast, …). Standard follows light and dark mode; the others stay as chosen and go into shared links and exports.',
+        'Line colour for the whole diagram, and mermaid’s built-in themes under the theme cards.',
         'Colours per lane, per shape (node, state, class, entity, …) and per arrow: choose from the list, or click it in the picture.',
         'Text per shape: bold, font size and text colour; C4 elements take a text colour only.',
         '"Any colour" picks freely; colours you picked are offered again next time.'
@@ -116,7 +117,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it, Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears. The ? in the "Selected" panel lists them.',
         'The button at the top of the code or of the tools folds that side to a row of icons; click an icon to open it again. Fold the code away if you only use the tools, or the tools if you only write code. The ⇄ button above the tools swaps the sides (code on the left, as on mermaid.live); this browser remembers it.',
         'The sun / moon button in the bar above the picture switches dark mode; the Config tab holds the mermaid settings.',
-        'An error shows in red with its line; Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
+        'When the code has a mistake, a notice over the picture says which line, and the picture stays as it last was. "Revert to the last valid state" puts that code back (Undo brings your change back again); the tools wait until the code is fixed. Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
         'The undo / redo arrows above the code take back the last change, including what the Add, Colours and Layout cards wrote.'
       ],
       title: 'Tips'
@@ -181,7 +182,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'colours',
       items: [
-        'テーマと線の色で、図全体の見た目を変えられます。',
+        'テーマ：モダン・ネオン・パステル・ビジネス・ハイコントラストなど 12 種類のデザインから、図全体の見た目を選べます。標準はライト/ダークモードに合わせて切り替わり、ほかのテーマは選んだまま共有リンクや書き出しにも残ります。',
+        '線の色で図全体の線を変えられます。テーマの下には mermaid の組み込みテーマもあります。',
         'レーン・図形（ノード・状態・クラス・エンティティなど）・矢印ごとに色を付けられます。一覧から選ぶか、図をクリックして選びます。',
         '図形ごとに文字を太字にしたり、文字サイズや文字の色を変えられます（C4 の要素は文字の色のみ）。',
         '「自由に選ぶ」で好きな色を選べ、選んだ色は次から色の丸に並びます。'
@@ -226,7 +228,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '図形を選択中のキー操作（入力中でないとき）：Enter で次のノードを追加（名前を入れて Enter）、Tab で横に分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。「選択中」の ? にも一覧があります。',
         'コードやツールの上部のボタンで、その側をアイコンだけにたためます。アイコンを押すと元に戻ります。ツールだけ使うならコードを、コードだけ書くならツールをたたむと広く使えます。ツールの上の ⇄ ボタンで左右を入れ替えられます（mermaid.live と同じくコードを左に）。この設定はブラウザに記憶されます。',
         '図の上のバーにある太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
-        'エラーは赤字で行番号とともに出ます。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
+        'コードに誤りがあると、図の上のお知らせに何行目かが出て、図は直前の正しい状態のまま残ります。「直前の正しい状態に戻す」でそのコードに戻せます（「元に戻す」で変更前に戻ることもできます）。コードが直るまでツールは変更しません。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
         'コードの上にある「元に戻す」「やり直す」の矢印で、直前の変更を取り消せます。「追加」「色」「レイアウト」で書き込んだ内容も戻せます。'
       ],
       title: '便利な操作と困ったとき'

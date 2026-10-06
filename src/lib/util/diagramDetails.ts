@@ -8,7 +8,7 @@
  * same type of diagram (`checkEdit`).
  */
 import type { MessageKey } from '$/i18n/messages';
-import { headerIndex, indentOf, oneLine } from './codeText';
+import { ganttSafe, headerIndex, indentOf, oneLine } from './codeText';
 import { splitLines } from './diagramEdit';
 import type { EditObject } from './diagramModify';
 import type { DiagramObject } from './mermaid';
@@ -520,9 +520,9 @@ export const renderGanttTask = ({ end, id, indent, name, start, tags }: GanttTas
 
 /** A task name: one line, without the colon, `#` and `;` that end it. */
 export const ganttName = (text: string, fallback: string) =>
-  oneLine(text).replaceAll(/[:#;]/g, ' ').replaceAll(/\s+/g, ' ').trim() || fallback;
+  ganttSafe(oneLine(text).replaceAll(/[:#;]/g, ' ').replaceAll(/\s+/g, ' ').trim() || fallback);
 
-const freshTaskId = (lines: string[]) => {
+export const freshTaskId = (lines: string[]) => {
   const used = new Set(ganttTasks(lines).map(({ id }) => id));
   let n = 1;
   while (used.has(`t${n}`)) n++;

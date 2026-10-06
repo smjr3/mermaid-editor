@@ -36,6 +36,7 @@
     type Rect
   } from '$/util/exportPresets';
   import { persisted } from '$/util/persist.svelte';
+  import { presetBackground } from '$/util/themePresets';
   import { toBase64 } from 'js-base64';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
@@ -79,6 +80,13 @@
   } as const;
 
   const themeColour = () => window.getComputedStyle(document.body).getPropertyValue('--background');
+  // Local: a theme preset's own background (themePresets.ts) replaces white or the site
+  // colour, so a dark design is not framed in white; "transparent" drops it as well.
+  const diagramFill = $derived(presetBackground(inputState.mermaid));
+  const exportFill = (): null | string => {
+    if (background === 'transparent') return diagramFill ? 'transparent' : null;
+    return diagramFill ?? backgroundFill(background, themeColour());
+  };
 
   /** Size of the rendered diagram: its viewBox, or its box (rough mode has width/height 100%). */
   const getContentSize = (svg: Element) => {
@@ -243,7 +251,7 @@ ${stylesheet}${svgString}`);
     }
 
     // Transparent: nothing is filled, so the PNG keeps its alpha channel.
-    const fill = backgroundFill(background, themeColour());
+    const fill = exportFill();
     if (fill) {
       context.fillStyle = fill;
       context.fillRect(0, 0, canvas.width, canvas.height);
@@ -258,7 +266,7 @@ ${stylesheet}${svgString}`);
       console.error('The diagram could not be drawn as an image');
       updateCodeStore({ panZoom: true });
     });
-    image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, layout.draw.width, layout.draw.height, null)}`;
+    image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, layout.draw.width, layout.draw.height, diagramFill ? fill : null)}`;
     // Fallback to set panZoom to true after 2 seconds
     // This is a workaround for the case when the image is not loaded
     setTimeout(() => {
@@ -322,7 +330,7 @@ ${stylesheet}${svgString}`);
   };
 
   const onDownloadSVG = () => {
-    const fill = backgroundFill(background, themeColour());
+    const fill = exportFill();
     let wrap: Parameters<typeof getBase64SVG>[4];
     if (preset !== 'asis') {
       const svg = document.querySelector<HTMLElement>('#container svg');
@@ -368,7 +376,13 @@ ${stylesheet}${svgString}`);
   // The one-line note under the buttons: what the files will be.
   const presetSizeText = (value: Exclude<ExportPreset, 'asis'>, factor = 1) =>
     `${PRESET_SIZES[value].width * factor}×${PRESET_SIZES[value].height * factor}`;
-  const noteBackground = $derived(t(NOTE_BACKGROUNDS[background]));
+  const noteBackground = $derived(
+    t(
+      diagramFill && background !== 'transparent'
+        ? 'actions.noteDiagramBackground'
+        : NOTE_BACKGROUNDS[background]
+    )
+  );
   const pngNote = $derived.by(() => {
     let size: string;
     if (preset !== 'asis') {

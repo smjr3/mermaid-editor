@@ -134,6 +134,26 @@ describe('template forms', () => {
       expect(code).not.toContain('<b>');
     });
 
+    // Local (error recovery): a text box holding only a bracket or a quote, or a
+    // keyword of the diagram's grammar, generated code that did not parse.
+    it.each([']', '[ ]', '"', 'click', 'Click here', 'section', '(', '{}'])(
+      'still parses with %j in every text box',
+      async (text) => {
+        const values = defaultValues(template);
+        for (const field of template.fields) {
+          if (field.kind === 'text') values[field.key] = text;
+          if (field.kind === 'list') {
+            for (const row of rows(values, field.key)) {
+              for (const column of field.columns) {
+                if (column.kind === 'text' && !column.pattern) row[column.key] = text;
+              }
+            }
+          }
+        }
+        await expect(typeOf(generate(template, values))).resolves.toBe(expectedType[template.id]);
+      }
+    );
+
     it('generated defaults count as replaceable template code', () => {
       const code = generate(template, defaultValues(template));
       expect(isTemplateCode(code)).toBe(true);
@@ -253,8 +273,8 @@ describe('template forms', () => {
       tasks[0].days = '4';
       tasks[1].start = '';
       const code = generate(template, values);
-      expect(code).toMatch(/要件ヒアリング\s*:done, task1, 2026-05-01, 4d/);
-      expect(code).toMatch(/要件定義書の作成\s*:done, task2, after task1, \d+d/);
+      expect(code).toMatch(/要件ヒアリング\s*:done, t1, 2026-05-01, 4d/);
+      expect(code).toMatch(/要件定義書の作成\s*:done, t2, after t1, \d+d/);
     });
 
     it('falls back to the project start for a bad date and to one day for bad days', async () => {
@@ -263,7 +283,7 @@ describe('template forms', () => {
       tasks[0].start = 'あした';
       tasks[0].days = '-3';
       const code = generate(template, values);
-      expect(code).toMatch(/task1, 2026-04-01, 1d/);
+      expect(code).toMatch(/t1, 2026-04-01, 1d/);
       await expect(typeOf(code)).resolves.toBe('gantt');
     });
   });

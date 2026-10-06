@@ -12,6 +12,8 @@ import {
   addEntityAttribute,
   attributeKeys,
   closingBrace,
+  ensureTaskId,
+  freshTaskId,
   ganttDate,
   ganttName,
   ganttStatuses,
@@ -38,11 +40,14 @@ export interface Field {
   source?: string;
   /** May be left empty (item: "none"). */
   optional?: boolean;
+  /** A choice that goes back to `initial` after an add, instead of carrying over to the next one. */
+  reset?: boolean;
   initial?: string;
 }
 
 export type Values = Record<string, string>;
-export type ActionResult = { code: string; name: string; follow?: Values } | { error: MessageKey };
+export type ActionResult =
+  { code: string; name: string; follow?: Values; done?: MessageKey } | { error: MessageKey };
 
 export interface Action {
   id: string;
@@ -129,6 +134,8 @@ export const nodeLabel = (line: string) =>
     .replace(/^[\w-]+(?=[([{)])/, '')
     .replaceAll(/^[([{)]+|[)\]}(]+$/g, '')
     .replaceAll(/^"|"$/g, '')
+    // Local: a quoted name keeps its quotes as mermaid's entity (see renameLine).
+    .replaceAll('#quot;', '"')
     .trim();
 
 /** Adds a child under the node on line `parent`, after its last descendant. */
@@ -331,14 +338,19 @@ const sequence: AddSpec = {
       apply: (code, values) => {
         const kind = values.kind in blockDefaults ? values.kind : 'alt';
         const text = sequenceText(values.text) || blockDefaults[kind];
-        const at = values.after ? Number(values.after) : Number.NaN;
-        const message = Number.isInteger(at) && messageLine.test(splitLines(code).lines[at] ?? '');
-        // Around the chosen message; or empty, after it (or first inside a chosen block).
+        const { lines } = splitLines(code);
+        const chosen = values.after ? Number(values.after) : Number.NaN;
+        const chosenMessage = Number.isInteger(chosen) && messageLine.test(lines[chosen] ?? '');
+        // An empty frame draws as a garbled column in mermaid, so "around" with no message
+        // chosen takes the last one (the form's default) rather than writing an empty frame.
+        const last = lines.findLastIndex((line) => messageLine.test(line));
+        const at = chosenMessage ? chosen : values.after ? Number.NaN : last;
+        const around = values.wrap === 'around' && Number.isInteger(at) && at >= 0;
+        // Around a message; or empty, after the chosen one (or first inside a chosen block).
         return {
-          code:
-            values.wrap === 'around' && message
-              ? wrapMessage(code, at, `${kind} ${text}`)
-              : insertAfterAnchor(code, [`${kind} ${text}`, 'end'], values.after),
+          code: around
+            ? wrapMessage(code, at, `${kind} ${text}`)
+            : insertAfterAnchor(code, [`${kind} ${text}`, 'end'], values.after),
           name: text
         };
       },
@@ -354,7 +366,7 @@ const sequence: AddSpec = {
         { key: 'text', kind: 'text', label: 'add.seq.blockText', optional: true },
         { key: 'after', kind: 'item', label: 'add.f.after', optional: true, source: 'messages' },
         {
-          initial: 'after',
+          initial: 'around',
           key: 'wrap',
           kind: 'choice',
           label: 'add.seq.blockWrap',
@@ -733,7 +745,7 @@ const gantt: AddSpec = {
   actions: [
     {
       apply: (code, values) => {
-        const name = ganttName(values.name, 'Task');
+        const name = ganttName(values.name, '作業');
         const least = values.milestone === 'yes' ? 0 : 1;
         const asked = Math.round(Number(values.days));
         const days = Number.isFinite(asked) && asked >= least ? asked : Math.max(least, 1);
@@ -744,7 +756,23 @@ const gantt: AddSpec = {
         // The first task needs a date: mermaid has no task before it to follow.
         if (start === undefined && ganttTasks(lines).length === 0)
           start = ganttDate(code, new Date().toISOString().slice(0, 10));
-        const items = [...taskTags(values), ...(start ? [start] : []), `${days}d`];
+        // mermaid names a task without an id `task1`, `task2`…, and a chart that already has
+        // such an id then draws NaN: give the new task an id of its own, after the last one.
+        let id = '';
+        const last = ganttTasks(lines).at(-1);
+        if (ganttTasks(lines).some((task) => /^task\d+$/.test(task.id))) {
+          if (start === undefined && last) {
+            const before = ensureTaskId(lines, last.line);
+            if (before) start = `after ${before}`;
+          }
+          if (start) id = freshTaskId(lines);
+        }
+        const items = [
+          ...taskTags(values),
+          ...(id ? [id] : []),
+          ...(start ? [start] : []),
+          `${days}d`
+        ];
         const line = `    ${name} : ${items.join(', ')}`;
         const text = lines.join(eol);
         const section = lines.findIndex((row) => sectionLine.exec(row)?.[1] === values.section);
@@ -772,21 +800,24 @@ const gantt: AddSpec = {
           key: 'status',
           kind: 'choice',
           label: 'add.gantt.status',
-          options: ganttStatuses
+          options: ganttStatuses,
+          reset: true
         },
         {
           initial: 'no',
           key: 'crit',
           kind: 'choice',
           label: 'add.gantt.crit',
-          options: ['no', 'yes']
+          options: ['no', 'yes'],
+          reset: true
         },
         {
           initial: 'no',
           key: 'milestone',
           kind: 'choice',
           label: 'add.gantt.milestone',
-          options: ['no', 'yes']
+          options: ['no', 'yes'],
+          reset: true
         }
       ],
       id: 'task',
@@ -794,7 +825,7 @@ const gantt: AddSpec = {
     },
     {
       apply: (code, values) => {
-        const name = ganttName(values.name, 'Section');
+        const name = ganttName(values.name, 'セクション');
         return { code: insert(code, [`  section ${name}`]), follow: { section: name }, name };
       },
       button: 'add.gantt.sectionButton',
@@ -819,7 +850,7 @@ const pie: AddSpec = {
   actions: [
     {
       apply: (code, values) => {
-        const name = noQuotes(values.name) || 'Item';
+        const name = noQuotes(values.name) || '項目';
         const value = Number(values.value);
         if (!Number.isFinite(value) || value < 0) return { error: 'add.pie.badValue' };
         return { code: insert(code, [`    "${name}" : ${value}`]), name };
@@ -843,7 +874,11 @@ const pie: AddSpec = {
         lines[at] = wanted
           ? header.replace(/^(\s*pie)\b/, '$1 showData')
           : header.replace(/^(\s*pie)\s+showData\b/, '$1');
-        return { code: lines.join(eol), name: 'showData' };
+        return {
+          code: lines.join(eol),
+          done: wanted ? 'add.pie.shownDone' : 'add.pie.hiddenDone',
+          name: ''
+        };
       },
       button: 'add.pie.displayButton',
       fields: [

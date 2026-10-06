@@ -18,6 +18,11 @@ export const memoByCode = <T>(
     }
     const result = compute(code);
     cache.set(code, result);
+    // A failure is not remembered: it may come from something other than the code
+    // (a diagram type still registering), and the next call should try again.
+    result.catch(() => {
+      if (cache.get(code) === result) cache.delete(code);
+    });
     if (cache.size > size) cache.delete(cache.keys().next().value as string);
     return result;
   };

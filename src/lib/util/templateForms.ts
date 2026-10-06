@@ -11,6 +11,7 @@
  */
 import type { Locale } from '$/i18n/messages';
 import { oneLine, sequenceText } from './addActions';
+import { ganttSafe } from './codeText';
 import { setTitle } from './diagramTitle';
 
 export interface Label {
@@ -124,13 +125,18 @@ const quoted = (value: string) => `"${oneLine(value).replaceAll('"', '#quot;')}"
 const edgeLabel = (value: string) =>
   oneLine(value).replaceAll('|', '/').replaceAll('"', '#quot;').trim();
 // `[…]` ends an architecture title.
-const archLabel = (value: string) =>
+// Local (error recovery): a quote opens a string there (so it becomes a typographic
+// one), and an empty title does not
+// parse, so a name of only brackets falls back to the id.
+const archLabel = (value: string, fallback: string) =>
   oneLine(value)
     .replaceAll(/[[\]]+/g, ' ')
+    .replaceAll('"', '”')
+    .replaceAll("'", '’')
     .replaceAll(/\s+/g, ' ')
-    .trim();
+    .trim() || fallback;
 const noBrackets = (value: string) => oneLine(value).replaceAll(/[()[\]{}]/g, '');
-const ganttText = (value: string) => oneLine(value).replaceAll(/[:#;]/g, ' ').trim();
+const ganttText = (value: string) => ganttSafe(oneLine(value).replaceAll(/[:#;]/g, ' ').trim());
 const timelineText = (value: string) => oneLine(value).replaceAll(':', '：');
 const titleText = (values: FormValues) => oneLine(text(values, 'title'));
 
@@ -555,13 +561,15 @@ const architecture: TemplateForm = {
     const serviceIds = new Map(services.map((row, index) => [row._id, `svc${index + 1}`]));
     const lines = ['architecture-beta'];
     for (const row of groups) {
-      lines.push(`  group ${groupIds.get(row._id)}(${iconOf(row.icon)})[${archLabel(row.name)}]`);
+      const id = groupIds.get(row._id) ?? '';
+      lines.push(`  group ${id}(${iconOf(row.icon)})[${archLabel(row.name, id)}]`);
     }
     if (groups.length > 0) lines.push('');
     for (const row of services) {
       const group = groupIds.get(row.group ?? '');
+      const id = serviceIds.get(row._id) ?? '';
       lines.push(
-        `  service ${serviceIds.get(row._id)}(${iconOf(row.icon)})[${archLabel(row.name)}]${group ? ` in ${group}` : ''}`
+        `  service ${id}(${iconOf(row.icon)})[${archLabel(row.name, id)}]${group ? ` in ${group}` : ''}`
       );
     }
     if (services.length === 0) lines.push('  service svc1(tabler:server-2)[サーバー]');
@@ -665,7 +673,8 @@ const gantt: TemplateForm = {
       const phase = ganttText(row.section ?? '');
       if (phase && phase !== section) lines.push(`    section ${phase}`);
       if (phase) section = phase;
-      const id = `task${index + 1}`;
+      // Not `task1`…: mermaid names a task without an id that way, and a clash draws NaN.
+      const id = `t${index + 1}`;
       const start = (row.start ?? '').trim();
       const when = datePattern.test(start) ? start : previous ? `after ${previous}` : firstStart;
       const days = Math.min(Math.max(Number.parseInt(row.days ?? '', 10) || 1, 1), 9999);
@@ -673,8 +682,7 @@ const gantt: TemplateForm = {
       lines.push(`        ${ganttText(row.name)} :${status}${id}, ${when}, ${days}d`);
       previous = id;
     });
-    if (tasks.length === 0)
-      lines.push('    section 作業', `        作業 :task1, ${firstStart}, 5d`);
+    if (tasks.length === 0) lines.push('    section 作業', `        作業 :t1, ${firstStart}, 5d`);
     return setTitle(lines.join('\n'), titleText(values));
   },
   id: 'gantt',

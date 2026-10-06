@@ -9,7 +9,8 @@
   import { requestRename, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { showTab } from '$/util/toolsPane.svelte';
-  import { untrack } from 'svelte';
+  import { openCard } from '$/util/uiBus';
+  import { tick, untrack } from 'svelte';
   import AddIcon from '~icons/material-symbols/add-circle-outline-rounded';
   import ConnectIcon from '~icons/material-symbols/arrow-right-alt-rounded';
   import CheckIcon from '~icons/material-symbols/check-rounded';
@@ -54,11 +55,14 @@
   // click, the menu or a new node), so it survives this toolbar being re-created.
   // The text being typed lives in the model's draft (selectionModel.svelte.ts), so a
   // click on another node or the canvas still applies it to the object it was for.
-  const renaming = $derived(selection.renaming && !model.object?.noRename);
+  // A node being added (Enter, Tab, "この後に追加") has its rename open before it exists.
+  const renaming = $derived(
+    selection.renaming && (model.draftLabel !== undefined || !model.object?.noRename)
+  );
   let form: HTMLFormElement | undefined = $state();
   let input: HTMLInputElement | undefined = $state();
   $effect(() => {
-    void selection.current;
+    void selection.renameSession;
     if (!renaming || !input) return;
     const field = input;
     untrack(() => {
@@ -66,7 +70,9 @@
       open = undefined;
       field.value = model.draft?.name ?? '';
       field.focus();
-      field.select();
+      // Select after the new value reached the field: setting it moves the caret to
+      // the end, and typing a new name would then be appended to the old one.
+      void tick().then(() => field.select());
     });
   });
   // Leaving the field for anything but its own ✓ and ✕ applies what was typed.
@@ -85,6 +91,9 @@
   const more = () => {
     document.querySelector<HTMLElement>(`[data-testid="${TID.toolsRailExpand}"]`)?.click();
     showTab('fix');
+    // On a phone (the only place with the 編集/表示 switch) the tools are on its other side;
+    // openCard shows that side and opens the Edit card.
+    if (document.querySelector('#editorMode')) void openCard(TID.editCard);
   };
   const button =
     'flex size-8 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted aria-pressed:bg-muted';

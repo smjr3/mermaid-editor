@@ -18,7 +18,8 @@
   } from '$/util/layout';
   import { getTitle, setTitle, titleShown } from '$/util/diagramTitle';
   import { render } from '$/util/mermaid';
-  import { inputState, updateCode, updateConfig } from '$/util/state.svelte';
+  import { applyToolEdit, editsBlocked } from '$/util/codeHealth.svelte';
+  import { inputState, updateConfig } from '$/util/state.svelte';
   import type { MermaidConfig } from 'mermaid';
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
 
@@ -33,14 +34,25 @@
   let message = $state('');
   let busy = $state(false);
 
-  const applyDirection = (next: Direction) => {
+  // Local: code changes are checked, and refused while the code has an error
+  // (codeHealth.svelte.ts); the config-only options below stay available.
+  const refusal = (result: string) =>
+    result === 'blocked' ? t('recover.blocked') : result === 'refused' ? t('edit.breaks') : '';
+  const applyDirection = async (next: Direction): Promise<boolean> => {
     message = '';
-    updateCode(setDirection(inputState.code, next), { resetPanZoom: true, updateDiagram: true });
+    const result = await applyToolEdit(setDirection(inputState.code, next), {
+      resetPanZoom: true
+    });
+    message = refusal(result);
+    return result === 'applied' || result === 'unchanged';
   };
 
-  const applyTitle = (next: string) => {
-    updateCode(setTitle(inputState.code, next), { updateDiagram: true });
-    message = t(next.trim() ? 'layout.titleDone' : 'layout.titleRemoved');
+  const applyTitle = async (next: string) => {
+    const result = await applyToolEdit(setTitle(inputState.code, next));
+    message =
+      result === 'applied'
+        ? t(next.trim() ? 'layout.titleDone' : 'layout.titleRemoved')
+        : refusal(result);
   };
 
   const applyOptions = (next: Partial<LayoutOptions>) => {
@@ -69,6 +81,11 @@
 
   // Draws the diagram both ways and keeps the one that shows largest in the view.
   const fitToView = async () => {
+    // Local: the broken code cannot be drawn either way (codeHealth.svelte.ts).
+    if (editsBlocked()) {
+      message = t('recover.blocked');
+      return;
+    }
     busy = true;
     message = '';
     try {
@@ -77,8 +94,9 @@
       const [tb, lr] = [await measure('TB'), await measure('LR')];
       if (!tb || !lr) throw new Error('no size');
       const chosen = pickDirection({ LR: lr, TB: tb }, size);
-      applyDirection(chosen);
-      message = t(chosen === 'LR' ? 'layout.fitChoseLR' : 'layout.fitChoseTB');
+      if (await applyDirection(chosen)) {
+        message = t(chosen === 'LR' ? 'layout.fitChoseLR' : 'layout.fitChoseTB');
+      }
     } catch {
       message = t('layout.fitFailed');
     } finally {
@@ -152,38 +170,45 @@
       {/if}
     </div>
 
-    <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('layout.engine')}</span>
-      <div class="flex flex-wrap gap-1">
-        <Button
-          size="sm"
-          variant={choice(options.engine === 'dagre')}
-          data-testid={TID.layoutEngineDagre}
-          onclick={() => applyOptions({ engine: 'dagre' })}>{t('layout.engineDagre')}</Button>
-        <Button
-          size="sm"
-          variant={choice(options.engine === 'elk')}
-          title={t('layout.engineElkHint')}
-          data-testid={TID.layoutEngineElk}
-          onclick={() => applyOptions({ engine: 'elk' })}>{t('layout.engineElk')}</Button>
-      </div>
-    </div>
-
-    <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('layout.spacing')}</span>
-      <div class="flex flex-wrap gap-1">
-        {#each ['compact', 'normal', 'wide'] as const as spacing (spacing)}
+    <!-- Only diagrams laid out by dagre/ELK (the ones with a direction) react to these. -->
+    {#if direction}
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('layout.engine')}</span>
+        <div class="flex flex-wrap gap-1">
           <Button
             size="sm"
-            variant={choice(options.spacing === spacing)}
-            data-testid={`${TID.layoutSpacing}-${spacing}`}
-            onclick={() => applyOptions({ spacing })}>{t(`layout.spacing.${spacing}`)}</Button>
-        {/each}
+            variant={choice(options.engine === 'dagre')}
+            data-testid={TID.layoutEngineDagre}
+            onclick={() => applyOptions({ engine: 'dagre' })}>{t('layout.engineDagre')}</Button>
+          <Button
+            size="sm"
+            variant={choice(options.engine === 'elk')}
+            title={t('layout.engineElkHint')}
+            data-testid={TID.layoutEngineElk}
+            onclick={() => applyOptions({ engine: 'elk' })}>{t('layout.engineElk')}</Button>
+        </div>
       </div>
-      {#if options.engine === 'elk'}
-        <p class="text-muted-foreground">{t('layout.spacingElkNote')}</p>
-      {/if}
-    </div>
+
+      <div class="flex flex-col gap-1">
+        <span class="font-semibold">{t('layout.spacing')}</span>
+        <div class="flex flex-wrap gap-1">
+          {#each ['compact', 'normal', 'wide'] as const as spacing (spacing)}
+            <Button
+              size="sm"
+              variant={choice(options.spacing === spacing)}
+              data-testid={`${TID.layoutSpacing}-${spacing}`}
+              onclick={() => applyOptions({ spacing })}>{t(`layout.spacing.${spacing}`)}</Button>
+          {/each}
+        </div>
+        {#if options.engine === 'elk'}
+          <p class="text-muted-foreground">{t('layout.spacingElkNote')}</p>
+        {/if}
+      </div>
+    {:else}
+      <p class="text-muted-foreground" data-testid={TID.layoutNoEngine}>
+        {t('layout.noEngine')}
+      </p>
+    {/if}
 
     {#if message}
       <p role="status" class="text-muted-foreground" data-testid={TID.layoutMessage}>{message}</p>

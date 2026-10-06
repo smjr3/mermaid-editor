@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **261**.
+  every locally changed path — currently **281**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); also delivered internally through JFrog → internal GitLab → GitLab Pages.
 
@@ -100,7 +100,7 @@ a generic cloud and an AWS example with logos. The packs add about 39 MB to the 
 of it the logo sets, 2.8 MB the three 0.2.2 packs); a page loads only the ones its diagram names.
 
 **Command palette and first-visit guide.** Ctrl+K (⌘K) or the search button in the header opens
-a palette of twenty actions in Japanese with English keywords (`src/lib/util/commands.ts`, a
+a palette of twenty actions (and one per diagram theme) in Japanese with English keywords (`src/lib/util/commands.ts`, a
 registry plus a small scorer; arrow keys, Enter, Escape; Enter that confirms an IME conversion
 is ignored). An entry opens the right tools card and focuses or presses a control by
 `data-testid` (`uiBus.ts` drives the card header click and the tools rail's expand button, so
@@ -152,6 +152,37 @@ leads when no colour does and is dropped again once one does; and a text colour 
 kept when the fill changes (the dark default is written only when none is set). C4 gets the text
 colour only (`$fontColor`), and the card says bold and size are unavailable there; the types with
 no `style` statement show the existing "nothing to colour" note.
+
+**Diagram themes (unreleased)** (`src/lib/util/themePresets.ts`). The Colours card opens with a grid
+of twelve named themes (テーマ), each a card with its name, five colour dots and a two-line description,
+the current one ringed and ticked; the old row of mermaid's built-in themes stays under it as
+"mermaid の組み込みテーマ". 標準（mermaid 既定） is the default and is the absence of a preset: the
+editor manages the theme as before. The other eleven — モダン, ネオン, サイバー, パステル, ミニマル／モノクロ,
+ビジネス（ブルー）, サンセット, フォレスト, ダーク・グラス, 和（わ）, ハイコントラスト — are plain mermaid config:
+`theme: "base"` (which the editor does not manage, so dark/light switching leaves a preset alone), a full
+set of `themeVariables` generated from a small palette per preset (`variablesOf`: flowchart, sequence,
+state, class, ER, gantt, pie, git graph, mindmap/timeline/kanban `cScale*`, quadrant, xy, requirement,
+C4 person, architecture) and a `themeCSS` for what variables cannot do (glow via `drop-shadow`, rounded
+corners via `rx`, line weight, dashed clusters). The CSS starts with `/* theme-preset: <id> */`, which is
+how `presetOf` recognises a preset after a shared link, a reload or a hand-changed line colour.
+Applying a preset replaces the previous theme, variables and CSS as a whole and keeps every other key;
+標準 drops all three. Each preset is also in the command palette as 「テーマ: ネオン」 etc.
+A preset paints its own background: `render` (`mermaid.ts`) adds `#id{background-color}` to the SVG
+instead of the dark site's grey backdrop, `renderView.ts` puts it inline on the hand-drawn sketch (which
+drops the SVG's `<style>`), and the PNG/SVG exports use it in place of white or the site colour
+("transparent" still drops it). Every rule is in the SVG's own `<style>`, so the exported files carry it.
+mermaid limits found while checking every diagram type: `themeCSS` goes through the browser's CSS parser
+and is prefixed with the diagram id, so it cannot style the root `<svg>` itself (hence the injected
+background); `useGradient`/`dropShadow` only apply to the neo look's nodes, so the glow is CSS; ER and
+flowchart edge labels draw a half-transparent box derived from `tertiaryColor` (overridden on
+`.labelBkg`); C4 draws boundaries, relationships and their text in a fixed `#444444` presentation
+attribute (overridden by attribute selectors), and its elements keep mermaid's own blue/grey boxes with
+white text; a `style` statement in the code that sets a fill without a text colour (as some upstream
+samples do) keeps the preset's text colour, which can be light on a dark preset; and CSS cannot make text
+bold without overflow, since mermaid measures labels before the CSS applies (ハイコントラスト uses a larger
+font instead). Unit tests `themePresets.test.ts` and a managed-theme case in `state.svelte.test.ts`;
+`tests/themePresets.spec.ts` (neon colours and glow, SVG and PNG export, reload, shared link, back to
+標準 and dark-mode switching, a phone-width picker driven by the keyboard).
 
 **Add card (0.2.0)** (`src/lib/util/diagramEdit.ts`). For flowcharts and swimlane diagrams: add a
 lane, or a node (box, rounded box, decision diamond, circle or stadium) into a lane, optionally
@@ -373,6 +404,40 @@ either editor's own stack; an undo is applied through `updateCode` and is not it
 The buttons are disabled when there is nothing to undo or redo, and the history starts afresh once
 the diagram is loaded, so opening a shared link offers no step back to what the browser held before.
 Shown on the code tab only. Unit test `undoStack.test.ts`; e2e `tests/undo.spec.ts`.
+
+**A mistake in the code never leaves you stuck (unreleased)** (`src/lib/util/codeHealth.svelte.ts`,
+`codeError.ts`, `stateGuard.ts`, `CodeErrorNotice.svelte`). Users reported that once the code had a
+syntax error the tools stopped working and there was no way back. Now, while the code does not parse:
+the diagram keeps the last picture that rendered, faded; a notice over the diagram and at the top of the
+tools pane (so it is seen with the code pane folded) says in plain Japanese which line is wrong — "3
+行目が途中で終わっています", "1 行目が図の種類で始まっていません", "コードが空です" — and offers
+**"直前の正しい状態に戻す"**, which puts back the last code that parsed (or, for a diagram that parsed but
+failed to draw, the last one drawn) as one more undo step, so Undo brings the change back; with nothing
+valid since the page opened it offers "見本の図から始める" instead. The line is found from mermaid's
+own excerpt, with front matter and `%%` comments taken out as mermaid does (upstream's
+longest-common-substring guess pointed at the line before whenever the excerpt spanned two lines); the
+Monaco squiggle uses the same line. The tool lists stay those of the last valid code, but every tool
+that edits the code (Add, Edit, Colours, Layout's direction and title, the table editor, the unknown-icon
+replacement, the selection's toolbar, panel, menu and keys) refuses while the code is broken and says
+why (`editsBlocked`) — applying an edit to the broken code could not be checked, and applying it to the
+last valid code would throw away what was typed. Whole-diagram replacements (a sample, a new diagram, a
+template, a history entry) stay available as ways out; so do the config-only settings. The tools that
+wrote straight into the code (Add, Colours, Layout, unknown icons, the selection's colours) now check
+the result with mermaid first (`applyToolEdit`), like the Edit card. A broken config gets its own notice
+with "設定をリセット". A diagram that parses but fails to draw (an invalid gantt date, a circular
+sankey link) is reported too, and mermaid's half-drawn scratch element is removed (`renderView.ts`).
+A composite state that refers to itself (`state A { A --> B }`) is reported instead of drawn: mermaid
+overflows the stack on it and the tab stops responding — and, the code being saved, again on every
+reload (`renderHazard`). A stored or linked state is taken field by field (`stateGuard.ts`): a
+`codeStore` without `rough` (as old saves have) used to leave the page white, and a link whose code was
+not text threw in every card; a linked config that is not JSON now costs the link its config, not its
+diagram. An emptied editor is passed on (upstream kept the old code unseen, still drawn and edited by the
+tools). Found and fixed at the source while testing: the Add card's "Connect" label with `]`, `(` or
+`{` (now quoted), an empty node, lane, group or service name, `"` or `'` in an architecture name,
+mindmap and kanban names with brackets or quotes (they lost them and could leave an empty line; now
+quoted), gantt task names starting with a keyword such as `click` (now in 「」), and templates with any
+of these; "Create" in the template dialog also checks the result. `tests/errorRecovery.spec.ts` (15
+journeys, each also failing on any uncaught page error) and the unit tests of the files above.
 
 **Three panes and one toolbar (unreleased, after 0.2.1).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
@@ -604,7 +669,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **732 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **778 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample diagram names stay
@@ -620,6 +685,68 @@ in English on purpose — they are keys into `@mermaid-js/examples`.
 - **Finding 1** (dependency advisories) is resolved. The Monaco-specific DOMPurify override that
   closed it has since been removed again: Monaco 0.57.0 depends on the patched
   `dompurify@3.4.15` itself. The production audit reports zero advisories.
+
+**Performance guards (unreleased).** "Rendering sometimes becomes extremely slow" was measured in
+a production build (Chromium, typing into Monaco, every sample plus a 200-node/300-edge
+flowchart, an 8-lane swimlane and a 30-service architecture diagram with icons from six packs)
+and had five causes, each fixed:
+
+- **Every edit queued its own render**, one after another (`View.svelte` chained a promise per
+  state), and a render over 150 ms deferred the next by a second (`autoSync.ts`). A 20-key
+  burst drew up to 20 pictures and a "slow" diagram waited over a second for every change.
+  Now `renderScheduler.ts`: renders never overlap, a typed change waits 100 ms (more after a
+  slow render, at most 300 ms), only the newest state is drawn, and a finished render is not
+  placed if the code changed meanwhile or a newer picture is already shown. A button's edit,
+  a config or theme change renders at once.
+- **Pan and zoom re-parsed the diagram on every mouse move** (each move wrote the store, which
+  re-validates): one drag-and-wheel gesture on the 200-node flowchart blocked the page for
+  16 s. The store write is debounced (200 ms) and `parse` is remembered per code.
+- **The tool cards parsed on every key.** All three tool tabs stay mounted, and the cards and the
+  selection layer read the diagram through mermaid (often `parse` and `getDiagramFromText`):
+  about seven parses per key, several hundred ms per key on a 100-node flowchart. They now read
+  `settledState` (typing paused 250 ms, a button's edit at once, pan/zoom not at all). Typed code
+  is also validated after a pause when the last parse took over 50 ms.
+- **Stale validations could be published**: mermaid's parse waits for a running render, so an
+  older result could arrive after a newer edit and put old code back into the editor. Only
+  the newest validation is published (`createLatestGuard`).
+- **Two renders on every load**: the diagram stored from last time was drawn before the linked
+  one (which also loaded ELK for a sequence diagram), and the managed theme was set after
+  the first render. The view skips the unvalidated state and the theme is synced before publishing.
+
+Measured before → after (ms; one machine, shared with other jobs, so ±30 %): picture after
+opening a link, 2,600–6,700 → 1,000–1,900 for the samples, 12,200 → 3,800 for the 200-node
+flowchart; one key on a sample that counted as "slow" (Class, ER, Swimlane, Architecture,
+Office Network) 1,100–1,260 → 200–400; a 20-key burst drew up to 20 pictures → 1 for every
+case, with 0.9–5.9 s of long tasks → under 0.25 s; one key on the 100-node flowchart 1,680 →
+1,280, on the 200-node one 9,500 → 2,600, on the 30-service architecture 1,230 → 400. Fast
+samples now take 130–300 ms per key instead of 25–220: the price of not drawing every key.
+Not slow, verified: History auto-save (once a minute, not per key), the URL hash (debounced), Monaco's error markers, hovering and
+selection (no handler walks the SVG on mouse move; the selected outline costs ~4 ms a second),
+the icon picker and unknown-icon check (no pack loads at startup; the check waits 800 ms),
+memory across 220 edits (heap, DOM nodes and listeners flat), svg-pan-zoom set-up. Still slow,
+and why: mermaid's own flowchart parse (its `getConfig` deep-copies the config for every node:
+~200 ms for 200 nodes, run by the validation, the render and once more by the cards after a
+pause) and layout — a 200-node flowchart takes 2–3 s to draw with ELK or dagre alike; the
+hand-drawn mode adds svg2roughjs on top. A cold load fetches ~6.9 MB of JS (Monaco 4 MB of it;
+icon packs, ELK and ZenUML load only when a diagram needs them).
+
+`tests/performance.spec.ts` guards it: typing into a 100-node flowchart shows the picture
+within 5 s of the last key, a 20-key burst ends in exactly one picture (`data-render-count` on
+`#view`), panning and zooming draw nothing, an older large render never replaces a newer
+picture, and fast typing during a slow render is never undone in the editor.
+`renderScheduler.test.ts` covers the scheduler, the guard and the settler. With the error recovery
+(`codeHealth.svelte.ts`) both hold: the cards read `settledState` and still refuse edits through
+`applyToolEdit`/`editsBlocked` while the code is broken (that check reads the validated state,
+not the settled one); an error state is a validation like any other, so the newest one is
+always published, and `lastValid` is updated by every valid result, published or not.
+
+A related delay, found in exploratory QA: after Enter, Tab or 「この後に追加」 on a selected node,
+the new node's name field appeared only once the edit had been checked, the lists re-read and
+the diagram redrawn (0.4–1.8 s), because the toolbar holding it waited for the new node's
+element; keys typed meanwhile were lost and a final Enter added another node. The field now
+opens at once on the name the node will get (`selectionModel.draftLabel`), the toolbar stays
+put until the new node is drawn, and a name confirmed before the node exists is applied once it
+does (`pendingAdd`). `tests/selection.spec.ts` types straight after Enter and Tab.
 
 ## What is open
 
@@ -692,7 +819,7 @@ WebKit-only defect reported by a user.
 
 ## Testing
 
-`pnpm test:unit` (vitest, 2,522 tests) and `pnpm test:e2e` (Playwright).
+`pnpm test:unit` (vitest, 2,707 tests) and `pnpm test:e2e` (Playwright).
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

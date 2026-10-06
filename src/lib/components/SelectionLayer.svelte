@@ -15,7 +15,8 @@
   } from '$/util/selection.svelte';
   import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
-  import { validatedState } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
+  import { untrack } from 'svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
 
   // Local: "click the diagram, then change it". Sits over the diagram in the view
@@ -27,7 +28,7 @@
 
   // The lists for the last valid code.
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     void model.sync(code);
   });
@@ -112,7 +113,9 @@
       return;
     }
     // Another selection starts unplaced; the same one after a render keeps its place.
-    if (!sameSelection(placed, selected)) box = undefined;
+    // A node just added keeps the toolbar (and its open rename field) where it was until
+    // the new node is drawn.
+    if (!sameSelection(placed, selected) && !untrack(() => selection.renaming)) box = undefined;
     placed = selected;
     let element: Element | undefined;
     let frame = 0;

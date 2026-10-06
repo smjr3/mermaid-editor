@@ -651,6 +651,27 @@ describe('mindmap, kanban and timeline', () => {
     );
   });
 
+  // Local (error recovery): brackets and quotes used to be stripped, which left "(" or "]"
+  // as an empty line (a broken mindmap) and a quote unbalanced; such a name is now quoted.
+  it.each(['(', ']', '{', '))', '"', '(x) [y]', 'say "hi"'])(
+    'renames a topic, a card or a column to %j and keeps the diagram parsing',
+    async (name) => {
+      for (const [code, kind, line] of [
+        [mindmap, 'mindmap', 'L1'],
+        [mindmap, 'mindmap', 'L2'],
+        [mindmap, 'mindmap', 'L3'],
+        [kanban, 'kanban', 'L1'],
+        [kanban, 'kanban', 'L2']
+      ] as const) {
+        const renamed = renameObject(code, kind, await object(code, line), name);
+        expect(renamed, `${kind} ${line}`).toBeDefined();
+        await expect(typeOf(renamed ?? '')).resolves.toBe(kind);
+        const items = (await editableObjects(renamed ?? ''))?.items ?? [];
+        expect(items.map(({ label }) => label.trim())).toContain(name);
+      }
+    }
+  );
+
   it("keeps a kanban card's @{ … } metadata when renaming and shows only its text", async () => {
     const meta = [
       "kanban\n  todo[To do]\n    t1[Write blog]@{ priority: 'Low', assigned: 'x' }\n    t2[Test]",

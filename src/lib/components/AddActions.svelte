@@ -9,10 +9,13 @@
     initialValues,
     type Action,
     type AddSpec,
+    type Field,
     type Values
   } from '$/util/addActions';
   import type { DiagramObject } from '$/util/mermaid';
-  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
+  import { codeHealth } from '$/util/codeHealth.svelte';
+  import { inputState, updateCode } from '$/util/state.svelte';
+  import { settledState } from '$/util/settledState.svelte';
 
   // Local: the Add card for the diagram types listed in addActions.ts — one form
   // per action, built from the action's fields.
@@ -20,7 +23,7 @@
 
   let parts = $state<Record<string, DiagramObject[]>>({});
   $effect(() => {
-    const { code, error } = validatedState.current;
+    const { code, error } = settledState.current;
     if (error) return;
     let stale = false;
     void spec.parts(code).then((found) => {
@@ -48,6 +51,16 @@
   // Some actions only make sense for some diagrams (the first topic of an empty mindmap).
   const shown = $derived(spec.actions.filter((action) => action.when?.(parts) ?? true));
 
+  // A connection is named from the two ids it joins (`c1 → c3`); say what they are called.
+  const friendlyName = (action: Action, current: Values, name: string) => {
+    const from = action.fields.find((field) => field.key === 'from');
+    const to = action.fields.find((field) => field.key === 'to');
+    if (!from || !to || name !== `${current.from} → ${current.to}`) return name;
+    const called = (field: Field, id: string) =>
+      (parts[field.source ?? ''] ?? []).find((part) => part.id === id)?.label.trim() || id;
+    return `${called(from, current.from)} → ${called(to, current.to)}`;
+  };
+
   const run = async (action: Action) => {
     const current = { ...(values[action.id] ?? initialValues(action)) };
     // A choice the diagram no longer has (the part was deleted in the code) is no choice.
@@ -64,16 +77,20 @@
     }
     // Written only if mermaid still reads it as the same type of diagram.
     if (!(await checkAdd(before, result.code)) || inputState.code !== before) {
-      message = t('add.breaks');
+      // Local: broken code is only added to when that makes it parse (the first topic
+      // of an empty mindmap); otherwise say why (codeHealth.svelte.ts).
+      message = codeHealth.broken ? t('recover.blocked') : t('add.breaks');
       return;
     }
     updateCode(result.code, { updateDiagram: true });
-    message = t('add.done', { name: result.name });
+    message = result.done
+      ? t(result.done)
+      : t('add.done', { name: friendlyName(action, current, result.name) });
     // Clear what was typed; keep the choices, then apply what should follow.
     const cleared = Object.fromEntries(
       action.fields.map((field) => [
         field.key,
-        field.kind === 'text' ? '' : (current[field.key] ?? '')
+        field.kind === 'text' || field.reset ? (field.initial ?? '') : (current[field.key] ?? '')
       ])
     );
     values = { ...values, [action.id]: cleared };

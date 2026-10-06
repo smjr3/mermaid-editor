@@ -8,7 +8,9 @@
   import { iconLicense } from '$/util/iconLicenses';
   import { locale, t } from '$/i18n';
   import { listIconPacks } from '$/util/customIconStore';
-  import { validatedState } from '$/util/state.svelte';
+  import { parse } from '$/util/mermaid';
+  import { selectionModel } from '$/util/selectionModel.svelte';
+  import { inputState, updateCode, validatedState } from '$/util/state.svelte';
   import { categoryName, iconCategories, iconLabel } from '$/util/iconCategories';
   import { loadPack, packNames } from '$/util/iconCatalog';
   import {
@@ -178,6 +180,15 @@
     page = 0;
   };
 
+  const parses = async (code: string) => {
+    try {
+      await parse(code);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const choose = async (choice: string) => {
     const id = iconReference(choice);
     if (collect) {
@@ -191,7 +202,24 @@
       : validatedState.current.diagramType === 'architecture'
         ? ''
         : ` ${t('icons.pickStandardArchitectureOnly')}`;
+    // A selected node or service takes the icon itself: someone who never writes code
+    // clicks the shape in the diagram, then the icon.
+    if (selectionModel.node || selectionModel.service) {
+      await selectionModel.setIcon(id);
+      message = t('icons.pickApplied', { id, name: selectionModel.label }) + note;
+      onchosen?.();
+      return;
+    }
+    const before = inputState.code;
     if (insertIntoEditor(id)) {
+      // The cursor may sit anywhere (at the end of a line, in a label); a name written
+      // there can break a diagram that was fine, so take it back when it does.
+      const wasValid = await parses(before);
+      if (wasValid && !(await parses(inputState.code))) {
+        updateCode(before, { updateDiagram: true });
+        message = t('icons.pickBroke');
+        return;
+      }
       message = t('icons.pickInserted', { id }) + note;
       onchosen?.();
       return;

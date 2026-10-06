@@ -4,7 +4,9 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { locale, t } from '$/i18n';
+  import { parse } from '$/util/mermaid';
   import { isReplaceable } from '$/util/newDiagram';
+  import { notify } from '$/util/notify';
   import { inputState, updateCode } from '$/util/state.svelte';
   import {
     addRow,
@@ -112,7 +114,15 @@
       !window.confirm(t('template.confirm'))
     )
       return;
-    updateCode(generate(chosen, $state.snapshot(values)), {
+    const next = generate(chosen, $state.snapshot(values));
+    // Local (error recovery): a template must never write code that does not parse.
+    try {
+      await parse(next);
+    } catch {
+      notify(t('template.breaks'));
+      return;
+    }
+    updateCode(next, {
       resetPanZoom: true,
       updateDiagram: true
     });

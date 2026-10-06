@@ -18,13 +18,20 @@ const expectedType: Record<string, string> = {
   er: 'er',
   flowchart: 'flowchart-v2',
   gantt: 'gantt',
+  git: 'gitGraph',
+  journey: 'journey',
   kanban: 'kanban',
   mindmap: 'mindmap',
+  packet: 'packet',
   pie: 'pie',
+  quadrant: 'quadrantChart',
+  sankey: 'sankey',
   sequence: 'sequence',
   state: 'stateDiagram',
   swimlane: 'swimlane',
-  timeline: 'timeline'
+  timeline: 'timeline',
+  xychart: 'xychart',
+  zenuml: 'zenuml'
 };
 
 describe('new diagram starters', () => {
@@ -60,6 +67,8 @@ describe('new diagram starters', () => {
     });
 
     it('names its placeholders in Japanese', () => {
+      // mermaid's sankey lexer reads ASCII only.
+      if (kind.id === 'sankey') return;
       expect(code).toMatch(/[぀-ヿ一-鿿]/);
     });
 

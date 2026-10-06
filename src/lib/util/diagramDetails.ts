@@ -8,6 +8,7 @@
  * same type of diagram (`checkEdit`).
  */
 import type { MessageKey } from '$/i18n/messages';
+import { chartFields, chartKind, setChartFields } from './chartEdit';
 import { ganttSafe, headerIndex, indentOf, oneLine } from './codeText';
 import { splitLines } from './diagramEdit';
 import type { EditObject } from './diagramModify';
@@ -688,6 +689,8 @@ export const objectFields = (
   kind: string,
   object: EditObject
 ): DetailField[] | undefined => {
+  const chart = chartKind(code);
+  if (chart && chart === kind) return chartFields(code, chart, object);
   const { lines } = splitLines(code);
   const line = object.line ?? -1;
   if (kind === 'gantt' && !object.group) {
@@ -710,6 +713,8 @@ export const setObjectFields = (
   object: EditObject,
   values: DetailValues
 ): string | undefined => {
+  const chart = chartKind(code);
+  if (chart && chart === kind) return setChartFields(code, chart, object, values);
   if (object.line === undefined || object.group) return undefined;
   if (kind === 'gantt') return setGanttTask(code, object.line, values);
   if (kind === 'pie') return setPieSlice(code, object.line, values);

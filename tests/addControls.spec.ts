@@ -322,12 +322,13 @@ test.describe('Add card', () => {
   });
 
   test('explains when a diagram has nothing to add from here', async ({ editPage, page }) => {
+    // Quadrant charts have forms now (chartEdit.ts); a radar chart still has none.
     await editPage.start(
       urlFor(
-        'quadrantChart\n  title Reach\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]'
+        'radar-beta\n  axis m["Math"], s["Science"], e["English"]\n  curve a["Reach"]{85, 90, 80}'
       )
     );
-    await editPage.checkTextInView('Reach');
+    await editPage.checkTextInView('Math');
     await page.getByTestId(TID.addCard).click();
     await expect(page.getByText(t('add.unsupported'))).toBeVisible();
   });

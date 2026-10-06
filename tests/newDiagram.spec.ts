@@ -35,7 +35,15 @@ const starterKinds = [
   { id: 'timeline', title: true },
   { id: 'pie', title: true },
   { id: 'c4', title: true },
-  { id: 'block', title: false }
+  { id: 'block', title: false },
+  { id: 'journey', title: true },
+  { id: 'xychart', title: true },
+  { id: 'quadrant', title: true },
+  { id: 'sankey', title: false },
+  { id: 'git', title: true },
+  { id: 'packet', title: true },
+  // Last: leaving a ZenUML diagram reloads the page (state.svelte.ts).
+  { id: 'zenuml', title: true }
 ];
 
 // A placeholder each starter draws, to know its render arrived.
@@ -47,13 +55,20 @@ const placeholder: Record<string, string> = {
   er: '顧客',
   flowchart: '作業',
   gantt: '作業1',
+  git: '最初の版',
+  journey: '出社する',
   kanban: 'タスク1',
   mindmap: 'アイデア1',
+  packet: '送信元ポート',
   pie: '項目A',
+  quadrant: 'タスクA',
+  sankey: 'Sales',
   sequence: '依頼',
   state: '待機中',
   swimlane: '担当者',
-  timeline: '出来事1'
+  timeline: '出来事1',
+  xychart: '4月',
+  zenuml: '注文する'
 };
 
 test.describe('New diagram', () => {

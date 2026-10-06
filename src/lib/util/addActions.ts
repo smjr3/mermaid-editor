@@ -23,6 +23,7 @@ import {
   visibilities,
   type Visibility
 } from './diagramDetails';
+import { chartAddSpecs } from './chartEdit';
 import { headerIndex, indentOf, isContent, oneLine, requirementName } from './codeText';
 import { freshId, splitLines } from './diagramEdit';
 import { memoByCode } from './memo';
@@ -88,6 +89,9 @@ const noQuotes = (text: string) => oneLine(text).replaceAll('"', "'");
 const noBrackets = (text: string) => oneLine(text).replaceAll(/[()[\]{}]/g, '');
 
 const need = (values: Values, ...keys: string[]) => keys.every((key) => values[key]);
+
+/** The name of something added without one: a Japanese word and its id's number (参加者3). */
+const defaultName = (id: string, word: string) => `${word}${id.replace(/^\D+/, '')}`;
 
 const item = (id: string, label: string): DiagramObject => ({
   id,
@@ -243,7 +247,7 @@ const sequence: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'p');
-        const name = sequenceText(values.name) || id;
+        const name = sequenceText(values.name) || defaultName(id, '参加者');
         return {
           code: insert(code, [`  ${values.kind || 'participant'} ${id} as ${name}`]),
           follow: { to: id },
@@ -432,7 +436,7 @@ const state: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 's');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, '状態');
         const declared = intoComposite(code, values.parent || undefined, [
           `state "${name}" as ${id}`
         ]);
@@ -477,11 +481,13 @@ const state: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'g');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, 'グループ');
         const inside = values.inside && values.inside !== '[*]' ? values.inside : '';
+        // An empty composite state draws as its label alone (mermaid logs "negative
+        // height"), so one made empty gets a placeholder state to rename or replace.
         const block = (indent: string) => [
           `${indent}state "${name}" as ${id} {`,
-          ...(inside ? [`${indent}  ${inside}`] : []),
+          inside ? `${indent}  ${inside}` : `${indent}  state "内容" as ${freshId(code, 's')}`,
           `${indent}}`
         ];
         if (!inside) return { code: insert(code, block('  ')), follow: { parent: id }, name };
@@ -523,7 +529,7 @@ const classSpec: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'c');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, 'クラス');
         return { code: insert(code, [`  class ${id}["${name}"]`]), follow: { from: id }, name };
       },
       button: 'add.class.classButton',
@@ -621,7 +627,7 @@ const er: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'e');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, 'エンティティ');
         return { code: insert(code, [`  ${id}["${name}"]`]), follow: { to: id }, name };
       },
       button: 'add.er.entityButton',
@@ -913,7 +919,7 @@ const kanban: AddSpec = {
         const column = Number(values.column);
         if (!values.column || !lines[column]) return { error: 'add.chooseColumn' };
         const id = freshId(code, 'card');
-        const name = noBrackets(values.name) || id;
+        const name = noBrackets(values.name) || defaultName(id, 'カード');
         return { code: addChild(code, column, `${id}[${name}]`), name };
       },
       button: 'add.kanban.cardButton',
@@ -927,7 +933,7 @@ const kanban: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'col');
-        const name = noBrackets(values.name) || id;
+        const name = noBrackets(values.name) || defaultName(id, '列');
         const indent = kanbanColumns(code)[0]?.indent ?? 2;
         const result = insert(code, [`${' '.repeat(indent)}${id}[${name}]`]);
         const index = splitLines(result).lines.findIndex((line) =>
@@ -1022,7 +1028,7 @@ const c4: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'el');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, '要素');
         const description = noQuotes(values.description ?? '');
         const element = `${values.kind || 'System'}(${id}, "${name}"${description ? `, "${description}"` : ''})`;
         const { lines } = splitLines(code);
@@ -1097,7 +1103,7 @@ const c4: AddSpec = {
         );
         if (at === -1) return { error: 'add.c4.chooseElement' };
         const id = freshId(code, 'b');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, '境界');
         const kinds = ['System_Boundary', 'Container_Boundary', 'Enterprise_Boundary', 'Boundary'];
         const kind = kinds.includes(values.kind) ? values.kind : 'System_Boundary';
         const indent = /^\s*/.exec(lines[at])?.[0] ?? '  ';
@@ -1136,7 +1142,7 @@ const block: AddSpec = {
     {
       apply: (code, values) => {
         const id = freshId(code, 'blk');
-        const name = noQuotes(values.name) || id;
+        const name = noQuotes(values.name) || defaultName(id, 'ブロック');
         const lines = [`  ${id}["${name}"]`];
         if (values.from) lines.push(`  ${values.from} --> ${id}`);
         return { code: insert(code, lines), follow: { from: id }, name };
@@ -1342,7 +1348,9 @@ export const addSpecs: AddSpec[] = [
   timeline,
   c4,
   block,
-  requirement
+  requirement,
+  // Local: journey, XY, quadrant, sankey, git graph, packet and ZenUML (chartEdit.ts).
+  ...chartAddSpecs
 ];
 
 /** The Add spec for the code's diagram type, from its header line. */

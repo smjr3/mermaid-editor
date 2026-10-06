@@ -59,7 +59,8 @@ describe('editKind', () => {
     expect(editKind('---\ntitle: x\n---\nflowchart TD\n  A')).toBe('flowchart');
     expect(editKind('sequenceDiagram\n  A->>B: hi')).toBe('sequence');
     expect(editKind('pie\n  "a" : 1')).toBe('pie');
-    expect(editKind('quadrantChart\n  A: [0.1, 0.2]')).toBeUndefined();
+    expect(editKind('quadrantChart\n  A: [0.1, 0.2]')).toBe('quadrant');
+    expect(editKind('radar-beta\n  axis a')).toBeUndefined();
   });
 });
 
@@ -601,6 +602,33 @@ describe('C4 diagrams', () => {
     );
     await expect(typeOf(kept)).resolves.toBe('c4');
   });
+
+  it('relabels, reverses and deletes a relationship, keeping its technology', async () => {
+    const rels = `C4Context
+  Person(a, "Alice")
+  System(s, "Web")
+  System(m, "Mail")
+  Rel(a, s, "uses", "HTTPS")
+  Rel_D(s, m, "sends")
+  BiRel(m, a, "notifies")`;
+    const edges = await editableEdges(rels);
+    expect(edges?.items.map(({ from, label, to }) => [from, to, label])).toEqual([
+      ['a', 's', 'uses'],
+      ['s', 'm', 'sends'],
+      ['m', 'a', 'notifies']
+    ]);
+    expect(edges?.can).toMatchObject({ label: true, reverse: true });
+    const first = await edge(rels, 0);
+    const relabelled = setEdgeLabel(rels, 'c4', first, '閲覧 "する"');
+    expect(relabelled).toContain(`  Rel(a, s, "閲覧 'する'", "HTTPS")`);
+    const reversed = reverseEdge(rels, 'c4', await edge(rels, 1));
+    expect(reversed).toContain('  Rel_D(m, s, "sends")');
+    const gone = deleteEdge(rels, 'c4', first);
+    expect(gone).not.toContain('Rel(a, s');
+    for (const result of [relabelled, reversed, gone]) {
+      await expect(checkEdit(rels, result)).resolves.toBe(true);
+    }
+  });
 });
 
 describe('mindmap, kanban and timeline', () => {
@@ -873,6 +901,25 @@ columns 1
     expect(kept).toContain('\n  A\n  B["Wide"]:2 C\n  space\n');
     expect(kept).not.toContain('ID --> D');
     await expect(typeOf(kept)).resolves.toBe('block');
+  });
+
+  it('labels, reverses, removes the head of and deletes an arrow', async () => {
+    const edges = await editableEdges(code);
+    expect(edges?.items.map(({ from, to }) => `${from}>${to}`)).toEqual(['ID>D', 'C>D']);
+    const second = await edge(code, 1);
+    const labelled = setEdgeLabel(code, 'block', second, '送る');
+    expect(labelled).toContain('  C -- "送る" --> D\n');
+    expect(setEdgeLabel(labelled, 'block', await edge(labelled, 1), '')).toBe(code);
+    const reversed = reverseEdge(code, 'block', second);
+    expect(reversed).toContain('  D --> C\n');
+    const headless = setEdgeHead(code, 'block', second, false);
+    expect(headless).toContain('  C --- D\n');
+    expect((await edge(headless, 1)).head).toBe(false);
+    const gone = deleteEdge(code, 'block', second);
+    expect(gone).not.toContain('C --> D');
+    for (const result of [labelled, reversed, headless, gone]) {
+      await expect(checkEdit(code, result)).resolves.toBe(true);
+    }
   });
 });
 

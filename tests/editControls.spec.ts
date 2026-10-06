@@ -340,12 +340,13 @@ test.describe('Edit card', () => {
   });
 
   test('explains when a diagram cannot be edited from here', async ({ editPage, page }) => {
+    // Quadrant charts are edited here now (chartEdit.ts); a radar chart is not.
     await editPage.start(
       urlFor(
-        'quadrantChart\n  title Reach\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]'
+        'radar-beta\n  axis m["Math"], s["Science"], e["English"]\n  curve a["Reach"]{85, 90, 80}'
       )
     );
-    await editPage.checkTextInView('Reach');
+    await editPage.checkTextInView('Math');
     await page.getByTestId(TID.editCard).click();
     await expect(page.getByText(t('edit.unsupported'))).toBeVisible();
     await expect(page.getByTestId(TID.editObjectSelect)).toHaveCount(0);

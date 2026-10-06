@@ -38,7 +38,7 @@ import {
 } from './diagramModify';
 import { gitlabMarkdown, toImgTag, toStandaloneHtml } from './htmlExport';
 import { getDirection, setDirection } from './layout';
-import { localSamples } from './localSamples';
+import { localExamples, localSamples } from './localSamples';
 import { starter, starterKinds } from './newDiagram';
 import { architectureParts, diagramEdges, diagramObjects } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
@@ -54,6 +54,9 @@ const samples = [
     }))
   ),
   ...Object.entries(localSamples).flatMap(([name, list]) =>
+    list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
+  ),
+  ...Object.entries(localExamples).flatMap(([name, list]) =>
     list.map((example) => ({ code: example.code, name: `${name}: ${example.title}` }))
   ),
   // The New diagram starters, with a title and a direction where they take one.
@@ -278,12 +281,29 @@ describe.each(samples)('$name', ({ code }) => {
       const expected = {
         er: () => entities.find(([id]) => id === entity)?.[1].attributes.length,
         gantt: () => (db.getTasks() as unknown[]).length,
+        journey: () => (db.getTasks() as unknown[]).length,
         kanban: () =>
           ((db.getData() as { nodes: { isGroup: boolean }[] }).nodes ?? []).filter(
             (node) => !node.isGroup
           ).length,
+        // A field crossing a 32-bit row is drawn as two blocks with the same label.
+        packet: () =>
+          (db.getPacket() as { start: number; end: number; label: string }[][])
+            .flat()
+            .filter(
+              (block, i, all) =>
+                !(
+                  i > 0 &&
+                  block.start % 32 === 0 &&
+                  all[i - 1].end + 1 === block.start &&
+                  all[i - 1].label === block.label
+                )
+            ).length,
         pie: () => (db.getSections() as Map<string, number>).size,
-        timeline: () => (db.getTasks() as unknown[]).length
+        quadrant: () => (db.getQuadrantData() as { points: unknown[] }).points.length,
+        sankey: () => (db.getLinks() as unknown[]).length,
+        timeline: () => (db.getTasks() as unknown[]).length,
+        xychart: () => (db.getXYChartData() as { plots: unknown[] }).plots.length
       }[kind]();
       expect(rows.length, entity).toBe(expected);
       for (const [index, row] of rows.entries()) {

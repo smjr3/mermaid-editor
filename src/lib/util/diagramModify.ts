@@ -33,6 +33,13 @@ import {
   renderGanttTask,
   type GanttTask
 } from './diagramDetails';
+import {
+  chartHeaders,
+  chartObjects,
+  deleteChartObject,
+  renameChartObject,
+  type ChartKind
+} from './chartEdit';
 import { requirementName } from './codeText';
 import { freshId, headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
 import { memoByCode } from './memo';
@@ -59,7 +66,8 @@ export type EditKind =
   | 'gantt'
   | 'pie'
   | 'requirement'
-  | 'block';
+  | 'block'
+  | ChartKind;
 
 export interface EditObject {
   id: string;
@@ -126,8 +134,12 @@ const kinds: [EditKind, RegExp][] = [
   ['gantt', /^\s*gantt\b/],
   ['pie', /^\s*pie\b/],
   ['requirement', /^\s*requirementDiagram\b/],
-  ['block', /^\s*block(?:-beta)?\b/]
+  ['block', /^\s*block(?:-beta)?\b/],
+  ...chartHeaders
 ];
+
+const isChart = (kind: EditKind): kind is ChartKind =>
+  chartHeaders.some(([chart]) => chart === kind);
 
 /** The kind of diagram the Edit card handles, or undefined for the others. */
 export const editKind = (code: string): EditKind | undefined =>
@@ -864,8 +876,53 @@ const unpairActivation = (lines: string[], line: number, statement: Statement) =
   }
 };
 
+// C4: `Rel(from, to, "label", …)` and its variants (`Rel_D`, `BiRel`, `Rel_Back`, …);
+// what follows the label (technology, `$tags=…`) is kept as written.
+const c4Syntax: EdgeSyntax = {
+  can: { head: false, label: true, reverse: true, styles: [] },
+  count: (db) => list(read(db, 'getRels')).length,
+  head: () => true,
+  label: (text) => oneLine(text).replaceAll('"', "'"),
+  parse: ([, indent, kind, from, to, label = '', rest = '']) => ({
+    from,
+    indent,
+    label,
+    parts: { kind, rest },
+    to
+  }),
+  pattern:
+    /^(\s*)((?:Bi)?Rel(?:_\w+)?)\(\s*([\p{L}\p{N}_]+)\s*,\s*([\p{L}\p{N}_]+)\s*(?:,\s*"([^"]*)")?\s*(,.*?)?\)\s*$/u,
+  render: ({ from, indent, label, parts, to }) =>
+    `${indent}${parts.kind}(${from}, ${to}, "${label}"${parts.rest ? parts.rest.replace(/^,\s*/, ', ') : ''})`,
+  reverse: (s) => ({ ...s, from: s.to, to: s.from }),
+  style: () => 'solid'
+};
+
+// Block: `a --> b`, `a --- b` (no head) and `a -- "label" --> b`.
+const blockSyntax: EdgeSyntax = {
+  can: { head: true, label: true, reverse: true, styles: [] },
+  count: (db) => list(read(db, 'getEdges')).length,
+  head: ({ parts }) => parts.link !== '---',
+  label: (text) => oneLine(text).replaceAll('"', "'"),
+  parse: ([, indent, from, label = '', link, to]) => ({
+    from,
+    indent,
+    label,
+    parts: { link },
+    to
+  }),
+  pattern: /^(\s*)([\p{L}\p{N}_-]+)\s*(?:--\s*"([^"]*)"\s*)?(-->|---)\s*([\p{L}\p{N}_-]+)\s*$/u,
+  render: ({ from, indent, label, parts, to }) =>
+    `${indent}${from} ${label ? `-- "${label}" ` : ''}${parts.link} ${to}`,
+  reverse: (s) => ({ ...s, from: s.to, to: s.from }),
+  setHead: (s, head) => ({ ...s, parts: { ...s.parts, link: head ? '-->' : '---' } }),
+  style: () => 'solid'
+};
+
 const syntaxes: Partial<Record<EditKind, EdgeSyntax>> = {
   architecture: architectureSyntax,
+  block: blockSyntax,
+  c4: c4Syntax,
   class: classSyntax,
   er: erSyntax,
   sequence: sequenceSyntax,
@@ -1963,6 +2020,14 @@ export const editableObjects = memoByCode(
           }));
         return { items: [...objects.items, ...groups], kind };
       }
+      case 'journey':
+      case 'xychart':
+      case 'quadrant':
+      case 'sankey':
+      case 'git':
+      case 'packet':
+      case 'zenuml':
+        return { items: chartObjects(code, kind), kind };
       default: {
         const objects = await diagramObjects(code);
         return objects ? { items: objects.items, kind } : undefined;
@@ -2059,7 +2124,8 @@ export const renameObject = (
   const text = clean(label);
   if (!text || object.noRename) return undefined;
   const { eol, lines } = splitLines(code);
-  const edited: Record<EditKind, () => string[] | undefined> = {
+  if (isChart(kind)) return renameChartObject(code, kind, object, text);
+  const edited: Record<Exclude<EditKind, ChartKind>, () => string[] | undefined> = {
     architecture: () => renameArch(lines, object.id, text),
     block: () => renameBlock(lines, object.id, text),
     c4: () => renameC4(lines, object.id, text.replaceAll('"', "'")),
@@ -2092,8 +2158,9 @@ export const deleteObject = (
   object: EditObject,
   { keepContents = false }: { keepContents?: boolean } = {}
 ): string => {
+  if (isChart(kind)) return deleteChartObject(code, kind, object, keepContents);
   const { eol, lines } = splitLines(code);
-  const edited: Record<EditKind, () => string[]> = {
+  const edited: Record<Exclude<EditKind, ChartKind>, () => string[]> = {
     architecture: () => deleteArch(lines, object, keepContents),
     block: () => deleteBlock(lines, object, keepContents),
     c4: () =>

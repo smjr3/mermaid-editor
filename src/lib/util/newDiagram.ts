@@ -22,7 +22,14 @@ export type StarterId =
   | 'timeline'
   | 'pie'
   | 'c4'
-  | 'block';
+  | 'block'
+  | 'journey'
+  | 'xychart'
+  | 'quadrant'
+  | 'sankey'
+  | 'git'
+  | 'packet'
+  | 'zenuml';
 
 export interface StarterKind {
   id: StarterId;
@@ -46,7 +53,15 @@ export const starterKinds: StarterKind[] = [
   { direction: false, id: 'timeline', title: true },
   { direction: false, id: 'pie', title: true },
   { direction: false, id: 'c4', title: true },
-  { direction: false, id: 'block', title: false }
+  { direction: false, id: 'block', title: false },
+  { direction: false, id: 'journey', title: true },
+  { direction: false, id: 'xychart', title: true },
+  { direction: false, id: 'quadrant', title: true },
+  // mermaid's sankey draws no title and reads ASCII names only.
+  { direction: false, id: 'sankey', title: false },
+  { direction: false, id: 'git', title: true },
+  { direction: false, id: 'packet', title: true },
+  { direction: false, id: 'zenuml', title: true }
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -91,6 +106,23 @@ const bodies: Record<StarterId, (direction: Direction) => string[]> = {
     `    作業1 : ${today()}, 3d`,
     '    作業2 : 2d'
   ],
+  // Local: the list-like chart types (chartEdit.ts gives them Add and Edit forms).
+  git: () => [
+    'gitGraph',
+    '  commit id: "最初の版"',
+    '  branch develop',
+    '  commit id: "機能を追加"',
+    '  checkout main',
+    '  merge develop tag: "v1.0"'
+  ],
+  journey: () => [
+    'journey',
+    '  section 朝',
+    '    出社する: 4: 自分',
+    '    メールを確認する: 3: 自分',
+    '  section 午後',
+    '    会議に出る: 2: 自分, 上司'
+  ],
   kanban: () => [
     'kanban',
     '  col1[未着手]',
@@ -99,7 +131,26 @@ const bodies: Record<StarterId, (direction: Direction) => string[]> = {
     '  col3[完了]'
   ],
   mindmap: () => ['mindmap', '  root((テーマ))', '    アイデア1', '    アイデア2'],
+  packet: () => [
+    'packet-beta',
+    '  0-15: "送信元ポート"',
+    '  16-31: "宛先ポート"',
+    '  32-63: "シーケンス番号"'
+  ],
   pie: () => ['pie', '  "項目A" : 60', '  "項目B" : 40'],
+  quadrant: () => [
+    'quadrantChart',
+    '  x-axis 緊急度が低い --> 緊急度が高い',
+    '  y-axis 重要度が低い --> 重要度が高い',
+    '  quadrant-1 すぐやる',
+    '  quadrant-2 計画してやる',
+    '  quadrant-3 減らす',
+    '  quadrant-4 任せる',
+    '  タスクA: [0.8, 0.9]',
+    '  タスクB: [0.3, 0.7]'
+  ],
+  // mermaid's sankey lexer reads ASCII only, so these names cannot be Japanese.
+  sankey: () => ['sankey-beta', '', 'Sales,Cost,60', 'Sales,Profit,40'],
   sequence: () => [
     'sequenceDiagram',
     '  participant p1 as 利用者',
@@ -123,7 +174,21 @@ const bodies: Record<StarterId, (direction: Direction) => string[]> = {
     '  end',
     '  n1 --> n2'
   ],
-  timeline: () => ['timeline', '  2026年 : 出来事1', '  2027年 : 出来事2']
+  timeline: () => ['timeline', '  2026年 : 出来事1', '  2027年 : 出来事2'],
+  xychart: () => [
+    'xychart-beta',
+    '  x-axis "月" ["4月", "5月", "6月"]',
+    '  y-axis "売上（万円）" 0 --> 100',
+    '  bar "実績" [40, 55, 70]',
+    '  line "目標" [50, 60, 70]'
+  ],
+  zenuml: () => [
+    'zenuml',
+    '  @Actor 利用者',
+    '  システム',
+    '  利用者->システム: 注文する',
+    '  システム->利用者: 受付完了'
+  ]
 };
 
 /** The starter code for a type, with its title (where shown) and direction (where it has one). */

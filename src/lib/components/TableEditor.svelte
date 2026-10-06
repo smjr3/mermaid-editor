@@ -2,6 +2,8 @@
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import { newChartRow } from '$/util/chartEdit';
+  import { displayName } from '$/util/displayName';
   import { checkEdit } from '$/util/diagramModify';
   import { editsBlocked } from '$/util/codeHealth.svelte';
   import { inputState, updateCode } from '$/util/state.svelte';
@@ -87,9 +89,14 @@
   const newRow: Record<TableKind, () => Record<string, string>> = {
     er: () => ({ name: t('table.newAttribute') }),
     gantt: () => ({ task: t('table.newTask') }),
+    journey: () => newChartRow('journey'),
     kanban: () => ({ card: t('table.newCard') }),
+    packet: () => newChartRow('packet'),
     pie: () => ({ label: t('table.newSlice') }),
-    timeline: () => ({ period: t('table.newPeriod') })
+    quadrant: () => newChartRow('quadrant'),
+    sankey: () => newChartRow('sankey'),
+    timeline: () => ({ period: t('table.newPeriod') }),
+    xychart: () => newChartRow('xychart')
   };
   const onAdd = () => {
     if (!kind) return;
@@ -143,7 +150,7 @@
           onchange={(event) => (entity = event.currentTarget.value)}>
           {#each model.entities as option (option.id)}
             <option value={option.id}
-              >{option.label === option.id ? option.id : `${option.label} (${option.id})`}</option>
+              >{displayName(option.label, option.id, model.entities)}</option>
           {/each}
         </select>
       </label>

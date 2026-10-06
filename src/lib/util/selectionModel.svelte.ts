@@ -69,7 +69,7 @@ import {
   neighbour,
   type Added
 } from './selectionActions';
-import { clearSelection, requestRename, select, selection } from './selection.svelte';
+import { clearSelection, endRename, requestRename, select, selection } from './selection.svelte';
 import { inputState, updateCode } from './state.svelte';
 
 class SelectionModel {
@@ -79,6 +79,10 @@ class SelectionModel {
   edges = $state<EditEdges | undefined>();
   colourable = $state<string[]>([]);
   message = $state('');
+  /** The name a node being added will show, while its rename is already open. */
+  draftLabel = $state<string | undefined>();
+  /** Resolves (true when it worked) once a node being added is in the code and selected. */
+  pendingAdd: Promise<boolean> | undefined;
 
   kind = $derived(this.objects?.kind);
   object = $derived.by((): EditObject | undefined => {
@@ -320,16 +324,38 @@ class SelectionModel {
       this.say('edit.breaks');
       return;
     }
-    if (!(await this.apply(result.code, t('sel.added', { name: result.name })))) return;
-    let id = result.id;
-    if (!id) {
-      const after = (await editableObjects(result.code))?.items ?? [];
-      id = addedObject(before, after, result.name)?.id;
-    }
-    if (id) {
-      await this.sync(result.code);
-      select({ id, type: 'node' });
+    // The rename opens at once, on the name the new node gets: checking the code,
+    // reading the new lists and redrawing take from a fraction of a second to a few
+    // seconds, and keys typed meanwhile (and a final Enter, which would add yet another
+    // node) must land in the field. `pendingAdd` tells the field's commit to wait.
+    const openedEarly = !selection.renaming && selection.current !== undefined;
+    if (openedEarly) {
+      this.draftLabel = result.name;
       requestRename();
+    }
+    let done: (added: boolean) => void = () => undefined;
+    this.pendingAdd = new Promise((resolve) => (done = resolve));
+    let ok = false;
+    try {
+      if (!(await this.apply(result.code, t('sel.added', { name: result.name })))) return;
+      let id = result.id;
+      if (!id) {
+        const after = (await editableObjects(result.code))?.items ?? [];
+        id = addedObject(before, after, result.name)?.id;
+      }
+      if (id) {
+        await this.sync(result.code);
+        select({ id, type: 'node' }, { keepRename: true });
+        // Nothing was selected to open it on (a node added on the empty canvas).
+        if (!openedEarly) requestRename();
+        ok = true;
+      }
+    } finally {
+      // A rename the add could not carry over is closed.
+      if (!ok && this.draftLabel !== undefined) endRename();
+      this.draftLabel = undefined;
+      this.pendingAdd = undefined;
+      done(ok);
     }
   }
 

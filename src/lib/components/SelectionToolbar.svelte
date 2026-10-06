@@ -53,15 +53,18 @@
   let open = $state<'color' | 'icon' | undefined>();
   // The inline rename is open while `selection.renaming` is set (here, F2, a double
   // click, the menu or a new node), so it survives this toolbar being re-created.
-  const renaming = $derived(selection.renaming && !model.object?.noRename);
+  // A node being added (Enter, Tab, "この後に追加") has its rename open before it exists.
+  const renaming = $derived(
+    selection.renaming && (model.draftLabel !== undefined || !model.object?.noRename)
+  );
   let name = $state('');
   let input: HTMLInputElement | undefined = $state();
   $effect(() => {
-    void selection.current;
+    void selection.renameSession;
     if (!renaming || !input) return;
     const field = input;
     untrack(() => {
-      name = model.label;
+      name = model.draftLabel ?? model.label;
       open = undefined;
       field.focus();
       // Select after the new value reached the field: setting it moves the caret to
@@ -71,7 +74,10 @@
   });
   const commit = async () => {
     endRename();
-    if (name.trim() !== model.label) await model.rename(name);
+    const typed = name;
+    // Typed while the node was still being added: rename it once it is there.
+    if (model.pendingAdd && !(await model.pendingAdd)) return;
+    if (typed.trim() !== model.label) await model.rename(typed);
   };
 
   // Another selection closes what was open.

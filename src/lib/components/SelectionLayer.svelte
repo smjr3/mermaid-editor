@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { settledState } from '$/util/settledState.svelte';
   import DiagramContextMenu from '$/components/DiagramContextMenu.svelte';
   import SelectionToolbar from '$/components/SelectionToolbar.svelte';
   import { TID } from '$/constants';
@@ -16,6 +15,8 @@
   } from '$/util/selection.svelte';
   import { isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
+  import { settledState } from '$/util/settledState.svelte';
+  import { untrack } from 'svelte';
 
   // Local: "click the diagram, then change it". Sits over the diagram in the view
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
@@ -111,7 +112,9 @@
       return;
     }
     // Another selection starts unplaced; the same one after a render keeps its place.
-    if (!sameSelection(placed, selected)) box = undefined;
+    // A node just added keeps the toolbar (and its open rename field) where it was until
+    // the new node is drawn.
+    if (!sameSelection(placed, selected) && !untrack(() => selection.renaming)) box = undefined;
     placed = selected;
     let element: Element | undefined;
     let frame = 0;

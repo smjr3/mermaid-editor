@@ -137,6 +137,24 @@ test.describe('Selection', () => {
     await expect.poll(() => code(page)).not.toContain('n3');
   });
 
+  test("typing straight after Enter or Tab lands in the new node's name", async ({ page }) => {
+    // No waiting between the keys: the field opens at once, before the node is in the
+    // code and drawn, and a final Enter names the node instead of adding another.
+    await node(page, 'Middle').click();
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Quick name');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => code(page)).toMatch(/n1\[["']?Quick name["']?\]/);
+    await expect(page.getByTestId(TID.selectionRename)).toBeHidden();
+    expect(await code(page)).not.toContain('n2');
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('Branch');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => code(page)).toMatch(/n2\[["']?Branch["']?\]/);
+    expect(await code(page)).not.toContain('n3');
+  });
+
   test('the right-click menu deletes, and offers "ノードを追加" on the canvas', async ({
     editPage,
     page

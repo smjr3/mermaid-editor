@@ -6,6 +6,7 @@ import { MCBaseURL } from './env';
 import { isOnMermaidAI } from './migration/domainMigration';
 import { silentlySanitizeConfig } from './sanitize';
 import { deserializeState, serializeState } from './serde';
+import { normalizeState } from './stateGuard';
 
 /** Widget chrome appearance — the independent axis from the diagram theme/look. */
 export type EmbedMode = 'dark' | 'light';
@@ -102,7 +103,9 @@ export const resolveEmbedSettings = (url: URL): ResolvedEmbed => {
     }
   } else if (hash) {
     try {
-      baseState = deserializeState(hash);
+      // Local: only a real state, field by field (stateGuard.ts); anything else is
+      // a link that could not be read, as in the editor.
+      baseState = normalizeState(deserializeState(hash), defaultState);
     } catch {
       hashFailed = true;
     }
@@ -141,8 +144,9 @@ export const resolveEmbedSettings = (url: URL): ResolvedEmbed => {
 
   const pan = parsePan(q.get('pan')) ?? baseState?.pan;
   const zoomParam = q.get('zoom');
-  const zoom =
-    zoomParam !== null && Number.isFinite(Number(zoomParam)) ? Number(zoomParam) : baseState?.zoom;
+  // Local: a zoom must be a positive finite number; 0 or less left the diagram invisible.
+  const zoomValue = zoomParam === null ? Number.NaN : Number(zoomParam);
+  const zoom = Number.isFinite(zoomValue) && zoomValue > 0 ? zoomValue : baseState?.zoom;
 
   return { settings: { code, config, controls, grid, look, mode, pan, rough, theme, zoom } };
 };

@@ -1,11 +1,13 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Commands
 
-Uses pnpm (install via `corepack enable pnpm`). Node >= 24 required.
+Uses pnpm (install via `corepack enable pnpm`). Node >= 24.16 required.
 
-- `pnpm dev` — dev server on http://localhost:3000
-- `pnpm build` — production build (static site, output to `docs/`)
+- `pnpm dev` — dev server on http://localhost:3000 (first builds the `<mermaid-embed>` loader `src/embed-loader.ts` into gitignored `static/embed.js` via `vite.embed.config.js`)
+- `pnpm build` — production build (static site, output to `docs/`); also copies legal files and fetches icon packs (`scripts/`) before the embed + SvelteKit builds
 - `pnpm check` — svelte-check type checking
 - `pnpm lint` / `pnpm lint:fix` — prettier + eslint
 - `pnpm test:unit` — vitest in watch mode; `pnpm vitest run` for a single pass
@@ -17,7 +19,8 @@ Gotchas:
 
 - If `.claude/worktrees/` contains repo copies, vitest picks up their test files too — scope with `pnpm vitest run --dir src`.
 - Local Playwright runs can be flaky under parallel workers; retry or use `--workers=1` before assuming a real failure.
-- CI runs lint, check, unit tests, and Playwright (against a production build) on PRs to master.
+- CI runs lint, check, unit tests, and Playwright (against a production build) on PRs to master. Fork-only checks live in `.github/workflows/fork-checks.yml` (upstream's workflows stay untouched).
+- `node scripts/check-local-delta.js` (CI: Fork Checks) fails if the set of paths changed vs upstream no longer matches the inventory in `docs-dev/UPSTREAM.md` / the count in `docs-dev/STATUS.md`. Adding, deleting or first-touching an upstream file means updating those docs; run it last.
 
 ## Architecture
 
@@ -61,6 +64,12 @@ States loaded from URLs pass through `sanitizeConfig` (state.svelte.ts), which d
 - Env vars use the `MERMAID_` prefix (`import.meta.env`), read in `src/lib/util/env.ts`. Defaults in `.env`; copy to `.env.local` for local overrides. These control renderer URL (mermaid.ink), Kroki, analytics, and Mermaid Chart integration.
 - HMR is deliberately disabled — every change triggers a full page reload (see `alwaysFullReload` in `vite.config.js`) because HMR corrupts app state.
 - `vite.config.js` does not configure manual chunks; Rollup's default splitting decides the vendor chunks. (Upstream's CLAUDE.md claims named vendor chunks are pinned there — neither upstream nor this fork has such a setting.)
+
+## Fork conventions
+
+- This is a fork of mermaid-live-editor. Keep the upstream delta small: prefer a feature flag or wrapper over deleting/rewriting upstream code (see `docs-dev/UPSTREAM.md`).
+- Promotional, AI and external-service surfaces are off by default via `MERMAID_IS_ENABLED_*` / emptied renderer URLs in `.env` (`docs-dev/FEATURE-FLAGS.md`). Don't introduce paths that send diagram source to third parties.
+- UI strings go through `t()` from `src/lib/i18n` (default locale `ja`); e2e tests must not depend on translated text (`docs-dev/I18N.md`).
 
 ## Conventions
 

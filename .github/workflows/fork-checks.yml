@@ -82,6 +82,9 @@ jobs:
       - name: Unit tests for the script
         run: node --test scripts/update-from-registry.node-test.mjs
 
+      - name: Unit tests for the vendor icon pack script
+        run: node --test scripts/fetch-icon-packs.node-test.mjs
+
       - name: Download, extract, install and build 0.2.1
         run: node scripts/update-from-registry.mjs --version 0.2.1 --dir "${{ runner.temp }}/me"
 

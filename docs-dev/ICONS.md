@@ -124,7 +124,14 @@ names: AWS's `Arch_`/`Res_` prefixes and size and Light/Dark suffixes and Azure'
 `12345-icon-service-` prefix are dropped (`Arch_Amazon-EC2_64.svg` → `aws:amazon-ec2`), and of
 several variants the largest light one is kept. `<style>` class rules (Google Cloud's icons use
 them) are turned into attributes so icons in one diagram do not restyle each other. Without the
-variable nothing is fetched and an earlier run's packs are kept.
+variable nothing is fetched.
+
+Each run first removes the packs the previous run generated, listed in
+`src/lib/vendor-icons/.fetch-icon-packs.manifest`, so a build without the variable (or with
+other prefixes) carries none of them. A `.json` pack put in that folder by hand is not in the
+manifest and is never removed (unless a configured prefix writes a file of the same name).
+Packs generated before the manifest existed are not known to the script: delete
+`src/lib/vendor-icons/` once by hand.
 
 The download pages and archive URLs, as of 2026-10 (they change with each release; check the
 page and copy the current link):

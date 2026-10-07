@@ -555,6 +555,7 @@ modifications as if they were local customizations.
 | Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/fetch-icon-packs.d.ts`                        |
 | Added    | `scripts/fetch-icon-packs.js`                          |
+| Added    | `scripts/fetch-icon-packs.node-test.mjs`               |
 | Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/svg-to-iconify.d.ts`                          |
 | Added    | `scripts/svg-to-iconify.js`                            |

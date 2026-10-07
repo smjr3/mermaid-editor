@@ -294,10 +294,11 @@ selection layer is.
 
 ### Input hardening (source review of 2026-10-08)
 
-| Path                                                                  | Local change                                                                                                                                                                                                         |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/sanitize.ts`                                            | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                       |
-| `src/lib/components/History/historyState.svelte.ts`, `History.svelte` | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07) |
+| Path                                                                                    | Local change                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/util/sanitize.ts`                                                              | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                                                                     |
+| `src/lib/components/History/historyState.svelte.ts`, `History.svelte`                   | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                               |
+| `src/lib/components/Actions.svelte`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom goes back to its previous value in `finally`; the copy button shows the tick only after success and an error mark otherwise (R10) |
 
 On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
 
@@ -574,6 +575,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/ColorSwatches.svelte`              |
 | Added    | `src/lib/components/CommandPalette.svelte`             |
 | Modified | `src/lib/components/CopyButton.svelte`                 |
+| Added    | `src/lib/components/CopyButton.test.ts`                |
 | Modified | `src/lib/components/CopyInput.svelte`                  |
 | Modified | `src/lib/components/DesktopEditor.svelte`              |
 | Added    | `src/lib/components/DiagramContextMenu.svelte`         |
@@ -682,6 +684,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/iconPacks.ts`                            |
 | Added    | `src/lib/util/iconSearch.test.ts`                      |
 | Added    | `src/lib/util/iconSearch.ts`                           |
+| Added    | `src/lib/util/imageExport.test.ts`                     |
+| Added    | `src/lib/util/imageExport.ts`                          |
 | Added    | `src/lib/util/layout.test.ts`                          |
 | Added    | `src/lib/util/layout.ts`                               |
 | Added    | `src/lib/util/localSamples.test.ts`                    |

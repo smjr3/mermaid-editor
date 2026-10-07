@@ -11,6 +11,7 @@
   import * as ToggleGroup from '$/components/ui/toggle-group';
   import { TID } from '$/constants';
   import { env } from '$/util/env';
+  import { notify } from '$/util/notify';
   import { getDomain } from '$/util/util';
   import { browser } from '$app/environment';
   import { waitForRender } from '$lib/util/autoSync';
@@ -18,6 +19,7 @@
   import { logEvent } from '$lib/util/stats';
   import { version as FAVersion } from '@fortawesome/fontawesome-free/package.json';
   import dayjs from 'dayjs';
+  import { untrack } from 'svelte';
   import { toXmlSvg } from '$/util/htmlExport';
   import {
     backgroundFill,
@@ -37,6 +39,7 @@
   } from '$/util/exportPresets';
   import { persisted } from '$/util/persist.svelte';
   import { presetBackground } from '$/util/themePresets';
+  import { canvasToBlob, copyImageBlob, createPanZoomPause, loadImage } from '$/util/imageExport';
   import { toBase64 } from 'js-base64';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
@@ -44,11 +47,12 @@
 
   const FONT_AWESOME_URL = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/${FAVersion}/css/all.min.css`;
 
+  // Local: settles when the file is saved or the image is on the clipboard (imageExport.ts).
   type Exporter = (
     context: CanvasRenderingContext2D,
     image: HTMLImageElement,
     draw: Rect
-  ) => () => void;
+  ) => Promise<void>;
 
   // Local: office export presets, remembered per browser.
   const presetStore = persisted<ExportPreset>('exportPreset', 'asis');
@@ -222,108 +226,95 @@ ${stylesheet}${svgString}`);
     a.remove();
   };
 
-  const exportImage = async (event: Event, exporter: Exporter) => {
-    updateCodeStore({ panZoom: false });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await waitForRender();
-    const canvas = document.createElement('canvas');
-    const svg = document.querySelector<HTMLElement>('#container svg');
-    if (!svg) {
-      throw new Error('svg not found');
-    }
-
-    const content = getContentSize(svg);
-
-    let layout = computeExportLayout(content, preset, scale);
-    if (preset === 'asis' && imageSizeMode !== 'auto') {
-      const width =
-        imageSizeMode === 'width' ? imageSize : (imageSize * content.width) / content.height;
-      const height =
-        imageSizeMode === 'height' ? imageSize : (imageSize * content.height) / content.width;
-      layout = { draw: { height, width, x: 0, y: 0 }, height, width };
-    }
-    canvas.width = layout.width;
-    canvas.height = layout.height;
-
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('context not found');
-    }
-
-    // Transparent: nothing is filled, so the PNG keeps its alpha channel.
-    const fill = exportFill();
-    if (fill) {
-      context.fillStyle = fill;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    const image = new Image();
-    image.addEventListener('load', () => {
-      exporter(context, image, layout.draw)();
-      updateCodeStore({ panZoom: true });
-    });
-    image.addEventListener('error', () => {
-      console.error('The diagram could not be drawn as an image');
-      updateCodeStore({ panZoom: true });
-    });
-    image.src = `data:image/svg+xml;base64,${getBase64SVG(svg, layout.draw.width, layout.draw.height, diagramFill ? fill : null)}`;
-    // Fallback to set panZoom to true after 2 seconds
-    // This is a workaround for the case when the image is not loaded
-    setTimeout(() => {
-      if (!inputState.panZoom) {
-        updateCodeStore({ panZoom: true });
+  // Local: one promise from the start of the capture to the saved file or the
+  // clipboard write, so the copy button reports the real outcome. Pan/zoom is set
+  // back to what it was in every case, including no diagram and no canvas.
+  const pausePanZoom = createPanZoomPause(
+    () => untrack(() => inputState.panZoom),
+    (panZoom) => updateCodeStore({ panZoom })
+  );
+  const exportImage = (exporter: Exporter): Promise<void> =>
+    pausePanZoom(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await waitForRender();
+      const canvas = document.createElement('canvas');
+      const svg = document.querySelector<HTMLElement>('#container svg');
+      if (!svg) {
+        throw new Error('svg not found');
       }
-    }, 2000);
-    event.stopPropagation();
-    event.preventDefault();
-  };
+
+      const content = getContentSize(svg);
+
+      let layout = computeExportLayout(content, preset, scale);
+      if (preset === 'asis' && imageSizeMode !== 'auto') {
+        const width =
+          imageSizeMode === 'width' ? imageSize : (imageSize * content.width) / content.height;
+        const height =
+          imageSizeMode === 'height' ? imageSize : (imageSize * content.height) / content.width;
+        layout = { draw: { height, width, x: 0, y: 0 }, height, width };
+      }
+      canvas.width = layout.width;
+      canvas.height = layout.height;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('context not found');
+      }
+
+      // Transparent: nothing is filled, so the PNG keeps its alpha channel.
+      const fill = exportFill();
+      if (fill) {
+        context.fillStyle = fill;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const image = await loadImage(
+        `data:image/svg+xml;base64,${getBase64SVG(svg, layout.draw.width, layout.draw.height, diagramFill ? fill : null)}`
+      );
+      await exporter(context, image, layout.draw);
+    });
 
   const downloadImage: Exporter = (context, image, draw) => {
-    return () => {
-      const { canvas } = context;
-      context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
-      simulateDownload(
-        getFileName('png'),
-        canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
-      );
-    };
+    const { canvas } = context;
+    context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
+    simulateDownload(
+      getFileName('png'),
+      canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
+    );
+    return Promise.resolve();
   };
 
   const isClipboardAvailable = (): boolean => {
     return Object.prototype.hasOwnProperty.call(window, 'ClipboardItem');
   };
 
-  const clipboardCopy: Exporter = (context, image, draw) => {
-    return () => {
-      const { canvas } = context;
-      context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
-      canvas.toBlob((blob) => {
-        try {
-          if (!blob) {
-            throw new Error('blob is empty');
-          }
-          void navigator.clipboard.write([
-            new ClipboardItem({
-              [blob.type]: blob
-            })
-          ]);
-        } catch (error) {
-          console.error(error);
-        }
-      });
-    };
+  const clipboardCopy: Exporter = async (context, image, draw) => {
+    const { canvas } = context;
+    context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
+    await copyImageBlob(await canvasToBlob(canvas));
   };
 
+  // A failure is passed on: CopyButton shows it.
   const onCopyClipboard = async (event?: Event) => {
     if (!event) {
       return;
     }
-    await exportImage(event, clipboardCopy);
+    event.stopPropagation();
+    event.preventDefault();
+    await exportImage(clipboardCopy);
     logEvent('copyClipboard');
   };
 
   const onDownloadPNG = async (event: Event) => {
-    await exportImage(event, downloadImage);
+    event.stopPropagation();
+    event.preventDefault();
+    try {
+      await exportImage(downloadImage);
+    } catch (error) {
+      console.error('PNG export failed', error);
+      notify(t('actions.pngFailed'));
+      return;
+    }
     logEvent('download', {
       type: 'png'
     });

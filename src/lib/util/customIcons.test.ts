@@ -85,6 +85,105 @@ describe('sanitizeIconSet', () => {
   });
 });
 
+// R08: what Iconify draws an icon with is kept, validated, through save and reload.
+describe('sanitizeIconSet keeps the drawing data', () => {
+  const pack = {
+    aliases: {
+      flipped: { hFlip: true, parent: 'arrow' },
+      'flipped-again': { parent: 'flipped', vFlip: true },
+      turned: { parent: 'arrow', rotate: 1 }
+    },
+    height: 20,
+    icons: {
+      arrow: {
+        body: '<path d="M1 1"/>',
+        hFlip: true,
+        height: 16,
+        left: -4,
+        rotate: 2,
+        top: 8,
+        vFlip: false,
+        width: 32
+      }
+    },
+    left: 2,
+    prefix: 'vendor',
+    top: -3,
+    width: 20
+  };
+
+  it('keeps per-icon position, size and transforms, and the set defaults', () => {
+    const set = sanitizeIconSet(pack);
+    expect(set.icons.arrow).toEqual({ ...pack.icons.arrow, body: '<path d="M1 1"></path>' });
+    expect(set).toMatchObject({ height: 20, left: 2, top: -3, width: 20 });
+  });
+
+  it('keeps aliases, including one that points at another alias', () => {
+    expect(sanitizeIconSet(pack).aliases).toEqual(pack.aliases);
+  });
+
+  it('is unchanged by a second pass, as when a stored pack is read back', () => {
+    const once = sanitizeIconSet(pack);
+    expect(sanitizeIconSet(structuredClone(once))).toEqual(once);
+  });
+
+  it('drops values that are not valid', () => {
+    const set = sanitizeIconSet({
+      icons: {
+        a: {
+          body: '<path/>',
+          hFlip: 'yes',
+          left: Number.NaN,
+          rotate: 1.5,
+          top: '3',
+          vFlip: 1,
+          width: -2
+        }
+      },
+      left: Number.POSITIVE_INFINITY,
+      prefix: 'p'
+    });
+    expect(Object.keys(set.icons.a)).toEqual(['body']);
+    expect(set).not.toHaveProperty('left');
+  });
+
+  it('drops aliases that lead nowhere, loop, or use prototype keys', () => {
+    const aliases = JSON.parse(
+      '{"ok":{"parent":"a"},"missing":{"parent":"nope"},"loop-a":{"parent":"loop-b"},' +
+        '"loop-b":{"parent":"loop-a"},"no-parent":{},"constructor":{"parent":"a"},' +
+        '"__proto__":{"parent":"a"},"to-proto":{"parent":"constructor"},"a":{"parent":"ok"}}'
+    ) as Record<string, unknown>;
+    const set = sanitizeIconSet({ aliases, icons: { a: { body: '<path/>' } }, prefix: 'p' });
+    expect(set.aliases).toEqual({ ok: { parent: 'a' } });
+    expect(Object.getPrototypeOf(set.aliases)).toBe(Object.prototype);
+  });
+
+  it('drops icons named after prototype keys', () => {
+    const set = sanitizeIconSet({
+      icons: { constructor: { body: '<path/>' }, ok: { body: '<path/>' } },
+      prefix: 'p'
+    });
+    expect(Object.keys(set.icons)).toEqual(['ok']);
+  });
+
+  it('keeps an SVG viewBox origin, negative ones too, through a save and reload', () => {
+    for (const [viewBox, left, top] of [
+      ['10 20 24 24', 10, 20],
+      ['-10 -20 24 24', -10, -20]
+    ] as const) {
+      const built = buildIconSet('corp', [
+        {
+          name: 'Shape.svg',
+          text: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><path d="M1 1"/></svg>`
+        }
+      ]);
+      expect(built.icons.shape).toMatchObject({ height: 24, left, top, width: 24 });
+      const reloaded = sanitizeIconSet(structuredClone(sanitizeIconSet(built)));
+      expect(reloaded.icons.shape).toEqual(built.icons.shape);
+    }
+  });
+});
+
 describe('parseIconPackEnv', () => {
   it('reads prefix=url pairs and skips malformed entries', () => {
     expect(

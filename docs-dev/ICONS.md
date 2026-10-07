@@ -188,3 +188,10 @@ untrusted input, so every body is sanitised with DOMPurify (SVG profile, no `scr
 `foreignObject`, no event handlers or `javascript:` URLs) when the pack is loaded — including
 packs read back from IndexedDB (`src/lib/util/customIcons.ts`). `scripts/svg-to-iconify.js` and
 `scripts/fetch-icon-packs.js` only extract markup; the sanitising happens in the app.
+
+Besides the body, what Iconify draws an icon with is kept, validated: per icon and as pack
+defaults `left`/`top` (finite, negative allowed — an SVG's viewBox origin), `width`/`height`
+(positive), `rotate` (whole quarter turns) and `hFlip`/`vFlip` (booleans); and the pack's
+`aliases`, each only if it leads to one of the pack's icons. Names that are `Object.prototype`
+keys (`constructor`) are refused. A pack therefore draws the same after a reload as when it was
+imported.

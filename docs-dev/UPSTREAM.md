@@ -643,6 +643,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/colors.ts`                               |
 | Added    | `src/lib/util/commands.test.ts`                        |
 | Added    | `src/lib/util/commands.ts`                             |
+| Added    | `src/lib/util/customIconStore.test.ts`                 |
 | Added    | `src/lib/util/customIconStore.ts`                      |
 | Added    | `src/lib/util/customIcons.test.ts`                     |
 | Added    | `src/lib/util/customIcons.ts`                          |
@@ -665,6 +666,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/exportPresets.test.ts`                   |
 | Added    | `src/lib/util/exportPresets.ts`                        |
+| Added    | `src/lib/util/fakeIndexedDB.ts`                        |
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
 | Added    | `src/lib/util/helpContent.test.ts`                     |
 | Added    | `src/lib/util/helpContent.ts`                          |

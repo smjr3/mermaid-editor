@@ -20,6 +20,7 @@
   import { render } from '$/util/mermaid';
   import { applyToolEdit, editsBlocked } from '$/util/codeHealth.svelte';
   import { inputState, updateConfig } from '$/util/state.svelte';
+  import { parseConfigObject } from '$/util/stateGuard';
   import type { MermaidConfig } from 'mermaid';
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
 
@@ -62,7 +63,7 @@
 
   const config = (): MermaidConfig => {
     try {
-      return JSON.parse(inputState.mermaid) as MermaidConfig;
+      return parseConfigObject(inputState.mermaid) as MermaidConfig;
     } catch {
       return {};
     }

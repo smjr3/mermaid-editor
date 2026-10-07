@@ -21,6 +21,19 @@ const configText = (value: unknown): string | undefined => {
 };
 
 /**
+ * The config text as an object. Throws a SyntaxError for text that is not JSON
+ * and a TypeError for JSON whose root is not an object (`null`, a number, a
+ * string, an array), which mermaid and the editor cannot use as a config.
+ */
+export const parseConfigObject = (text: string): Record<string, unknown> => {
+  const value: unknown = JSON.parse(text);
+  if (!isRecord(value)) {
+    throw new TypeError('The config must be a JSON object ({ ... }).');
+  }
+  return value;
+};
+
+/**
  * Whether the value looks like a saved state: an object whose `code` and
  * `mermaid`, where present, are the right type.
  */

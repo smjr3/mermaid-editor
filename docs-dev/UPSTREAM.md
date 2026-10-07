@@ -292,6 +292,14 @@ three panes (code, diagram, tools), their `id`/`order`, the rails and `<DiagramT
 `tests/toolsTabs.spec.ts` fail if the layout is lost; `tests/selection.spec.ts` if the
 selection layer is.
 
+### Input hardening (source review of 2026-10-08)
+
+| Path                       | Local change                                                                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/sanitize.ts` | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06) |
+
+On a conflict, take upstream's version and re-apply the guard; `sanitize.test.ts` fails if it is lost.
+
 ### Cross-platform guards
 
 The build may run on Windows, so the build and publish path uses only
@@ -649,6 +657,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/diagramTitle.ts`                         |
 | Added    | `src/lib/util/displayName.test.ts`                     |
 | Added    | `src/lib/util/displayName.ts`                          |
+| Modified | `src/lib/util/embed.test.ts`                           |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/exportPresets.test.ts`                   |
@@ -690,6 +699,8 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/renderView.ts`                           |
 | Added    | `src/lib/util/sampleNames.test.ts`                     |
 | Added    | `src/lib/util/sampleNames.ts`                          |
+| Modified | `src/lib/util/sanitize.test.ts`                        |
+| Modified | `src/lib/util/sanitize.ts`                             |
 | Added    | `src/lib/util/selection.svelte.ts`                     |
 | Added    | `src/lib/util/selection.test.ts`                       |
 | Added    | `src/lib/util/selectionActions.test.ts`                |

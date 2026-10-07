@@ -151,6 +151,35 @@ describe('resolveEmbedSettings', () => {
   });
 });
 
+// R06: a config whose JSON root is not an object counts as no config.
+describe('resolveEmbedSettings with a config that is not an object', () => {
+  const roots: [string, string][] = [
+    ['null', 'null'],
+    ['a number', '42'],
+    ['a string', '"forest"'],
+    ['an array', '[{"theme":"dark"}]']
+  ];
+  const only = { look: 'classic', securityLevel: 'strict', theme: 'default' };
+
+  it.each(roots)('keeps the diagram when the hash config is %s', (_name, mermaid) => {
+    const { error, settings } = resolveEmbedSettings(
+      embedUrl({ code: 'graph TD\n  Kept-->B', mermaid })
+    );
+    expect(error).toBeUndefined();
+    expect(settings?.code).toBe('graph TD\n  Kept-->B');
+    expect(settings?.config).toEqual(only);
+  });
+
+  it.each(roots)('ignores a ?config= of %s', (_name, config) => {
+    const { error, settings } = resolveEmbedSettings(
+      embedUrl({ code: 'graph TD\n  Kept-->B' }, { config })
+    );
+    expect(error).toBeUndefined();
+    expect(settings?.code).toBe('graph TD\n  Kept-->B');
+    expect(settings?.config).toEqual(only);
+  });
+});
+
 describe('toggleMode', () => {
   it('should flip only the chrome mode', () => {
     const { settings } = resolveEmbedSettings(embedUrl(undefined, { theme: 'dark' }));

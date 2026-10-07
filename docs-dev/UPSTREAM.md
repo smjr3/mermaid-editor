@@ -294,11 +294,12 @@ selection layer is.
 
 ### Input hardening (source review of 2026-10-08)
 
-| Path                                                                                    | Local change                                                                                                                                                                                                                                                       |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/lib/util/sanitize.ts`                                                              | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                                                                     |
-| `src/lib/components/History/historyState.svelte.ts`, `History.svelte`                   | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                               |
-| `src/lib/components/Actions.svelte`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom goes back to its previous value in `finally`; the copy button shows the tick only after success and an error mark otherwise (R10) |
+| Path                                                                                    | Local change                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/sanitize.ts`                                                              | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                                                                                  |
+| `src/lib/components/History/historyState.svelte.ts`, `History.svelte`                   | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                                            |
+| `src/lib/components/Actions.svelte`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom goes back to its previous value in `finally`; the copy button shows the tick only after success and an error mark otherwise (R10)              |
+| `src/lib/util/serde.ts`                                                                 | `deserialize` refuses a link that unpacks (pako, inflated in chunks) or decodes (base64) to more than `MAX_INFLATED_BYTES` (5 MB); the pako bytes are decoded with `TextDecoder` as pako 2.1.0 does, so `serde.compat.test.ts` holds. On an upstream pako upgrade re-check both |
 
 On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
 
@@ -719,6 +720,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/selectionKeys.ts`                        |
 | Added    | `src/lib/util/selectionModel.svelte.ts`                |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
+| Modified | `src/lib/util/serde.test.ts`                           |
+| Modified | `src/lib/util/serde.ts`                                |
 | Added    | `src/lib/util/settledState.svelte.ts`                  |
 | Added    | `src/lib/util/standardIcons.test.ts`                   |
 | Added    | `src/lib/util/standardIcons.ts`                        |

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { serializeState, deserializeState, type SerdeType } from './serde';
+import {
+  deserializeState,
+  MAX_INFLATED_BYTES,
+  pakoSerde,
+  serializeState,
+  type SerdeType
+} from './serde';
 import { defaultState } from './state.svelte';
 import type { State } from '$lib/types';
 
@@ -36,5 +42,43 @@ describe('Serde tests', () => {
       'Unknown serde type: unknown'
     );
     expect(() => deserializeState('unknown:hello')).toThrowError('Unknown serde type: unknown');
+  });
+});
+
+// Local: a link is a few hundred KB at most, but deflate packs repetitive text
+// about 1000:1 — a 265 KB hash unpacked to 200 MB (+500 MB of memory) before
+// this cap. Measured with pako 2.1.0 in Node 24.
+describe('unpacking a link', () => {
+  const stateOfSize = (bytes: number) =>
+    JSON.stringify({ code: `graph TD\n${'A'.repeat(bytes)}`, mermaid: '{}' });
+
+  it('is capped at 5 MB', () => {
+    expect(MAX_INFLATED_BYTES).toBe(5 * 1024 * 1024);
+  });
+
+  it('refuses a pako link that unpacks to more than the cap, with a clear error', () => {
+    const bomb = `pako:${pakoSerde.serialize(stateOfSize(MAX_INFLATED_BYTES + 1))}`;
+    expect(bomb.length).toBeLessThan(20_000);
+    expect(() => deserializeState(bomb)).toThrow(/larger than 5 MB/);
+  });
+
+  it('still reads a large diagram below the cap', () => {
+    const json = stateOfSize(MAX_INFLATED_BYTES - 1024);
+    expect(deserializeState(`pako:${pakoSerde.serialize(json)}`)).toEqual(JSON.parse(json));
+  });
+
+  it('keeps multi-byte text whole across unpacked chunks', () => {
+    const code = `graph TD\n${'図形🙂'.repeat(50_000)}`;
+    const json = JSON.stringify({ code, mermaid: '{}' });
+    expect(pakoSerde.deserialize(pakoSerde.serialize(json))).toBe(json);
+  });
+
+  it('refuses a base64 link that decodes to more than the cap', () => {
+    const big = `base64:${btoa(stateOfSize(MAX_INFLATED_BYTES + 1))}`;
+    expect(() => deserializeState(big)).toThrow(/larger than 5 MB/);
+  });
+
+  it('reports a corrupt pako link as an error', () => {
+    expect(() => deserializeState('pako:AAAA')).toThrow();
   });
 });

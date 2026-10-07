@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **296**.
+  every locally changed path — currently **298**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 
@@ -501,6 +501,16 @@ gitGraph branches), and any rename that leaves fewer objects; a label with the s
 collision. Types without a reader fall back to the lexical scan (`editor.renameTaken`). A refused
 rename is now also shown as a notice: the standalone Monaco editor only logs a rename's
 `rejectReason` to the console, so the existing "breaks"/"invalid" refusals were never seen either.
+R03: a browser that does not save stopped the editor. `readJSON` touched the `localStorage` getter
+outside its `try` (it throws with site data blocked) and `writeJSON` let a `QuotaExceededError`
+escape, which aborted `persistAndProcess` before the URL hash, the validation and the render. Every
+access is guarded now (`persist.svelte.ts`), a failed save leaves the input in memory and the rest
+running, and the user is told once per page (`storage.notSaving`) to copy the link or export before
+closing the tab. With storage blocked the page used to end in a 500 — mode-watcher reads
+`localStorage` as it loads — so `app.html` puts an in-memory stand-in there first, which
+`persist.svelte.ts` counts as not saving. Unit tests inject a throwing getter and a throwing
+`setItem`; `tests/errorRecovery.spec.ts` edits, draws and links a diagram with full and with
+blocked storage.
 
 **Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
@@ -732,7 +742,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1000 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1001 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay

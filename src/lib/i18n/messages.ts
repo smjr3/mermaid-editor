@@ -980,6 +980,8 @@ export const messages = {
     'share.title': 'Share',
     'share.webComponent': 'Web component',
     'share.width': 'Width',
+    'storage.notSaving':
+      'This browser is not saving your work (its storage is full or blocked). You can keep editing, but copy the share link or export the diagram before you close the tab.',
     'table.actions': 'Row actions',
     'table.addRow': 'Add a row',
     'table.col.after': 'After task',
@@ -2041,6 +2043,8 @@ export const messages = {
     'share.title': '共有',
     'share.webComponent': 'Web コンポーネント',
     'share.width': '幅',
+    'storage.notSaving':
+      'このブラウザーには保存できません（保存容量の不足か、サイトデータの保存が許可されていません）。編集はこのまま続けられますが、タブを閉じる前に共有リンクをコピーするか、書き出してください。',
     'table.actions': '行の操作',
     'table.addRow': '行を追加',
     'table.col.after': '前のタスク',

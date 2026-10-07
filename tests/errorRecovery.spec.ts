@@ -1,6 +1,6 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
-import { deflateSync } from 'node:zlib';
+import { deflateSync, inflateSync } from 'node:zlib';
 import { expect, t, test } from './test';
 
 // When the code has a mistake, nobody is left stuck: the last picture stays, a plain
@@ -295,5 +295,68 @@ test.describe('Error recovery: a diagram that cannot be drawn', () => {
     await expect.poll(() => stored(page)).not.toContain('2026-99-99');
     await expect(notice(page)).toBeHidden();
     await editPage.checkTextInView('Plan');
+  });
+});
+
+// R03: a browser that will not save (full storage, blocked site data) must still let
+// the diagram be edited, drawn and shared; it says once that nothing is being saved.
+test.describe('Error recovery: a browser that does not save', () => {
+  test.use({ viewport: { height: 900, width: 1400 } });
+
+  const linkedCode = (url: string) => {
+    const [, data = ''] = /#pako:(.+)$/.exec(url) ?? [];
+    if (!data) return '';
+    const state = JSON.parse(inflateSync(Buffer.from(data, 'base64url')).toString()) as {
+      code?: string;
+    };
+    return (state.code ?? '').replaceAll('\r\n', '\n');
+  };
+  const addLine = async (page: Page) => {
+    await page.locator('.monaco-editor').first().click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type('\n  C --> D[Kept in the link]', { delay: 10 });
+  };
+
+  test('with full storage the diagram is edited, drawn and linked, and it says so once', async ({
+    editPage,
+    page
+  }) => {
+    await page.addInitScript(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key: string, value: string) {
+        if (key === 'codeStore') {
+          throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        }
+        setItem.call(this, key, value);
+      };
+    });
+    await editPage.start(urlFor(flow));
+    await editPage.checkTextInView('Middle');
+    await addLine(page);
+    await editPage.checkTextInView('Kept in the link');
+    await expect.poll(() => linkedCode(page.url())).toContain('D[Kept in the link]');
+    await expect(page.getByText(t('storage.notSaving'))).toHaveCount(1);
+  });
+
+  test('with blocked storage the page opens, draws and follows the edits', async ({
+    editPage,
+    page
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('The operation is insecure.', 'SecurityError');
+        }
+      });
+    });
+    await editPage.start(urlFor(flow));
+    await editPage.checkTextInView('Middle');
+    // Nothing remembers that the first-visit guide was seen.
+    await page.keyboard.press('Escape');
+    await addLine(page);
+    await editPage.checkTextInView('Kept in the link');
+    await expect.poll(() => linkedCode(page.url())).toContain('D[Kept in the link]');
+    await expect(page.getByText(t('storage.notSaving'))).toHaveCount(1);
   });
 });

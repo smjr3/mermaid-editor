@@ -15,6 +15,47 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#096790" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#29cbe0" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+    <script>
+      // Local: with site data blocked, reading `localStorage` throws (SecurityError), and
+      // libraries that touch it at load (mode-watcher) stopped the whole app with a 500.
+      // Put an in-memory stand-in there first; persist.svelte.ts recognises it and tells
+      // the user, once, that nothing is being saved.
+      (function () {
+        try {
+          if (window.localStorage) return;
+        } catch (error) {
+          // Blocked: fall through.
+        }
+        var data = new Map();
+        var memory = {
+          clear: function () {
+            data.clear();
+          },
+          getItem: function (key) {
+            return data.has(String(key)) ? data.get(String(key)) : null;
+          },
+          key: function (index) {
+            var keys = Array.from(data.keys());
+            return index < keys.length ? keys[index] : null;
+          },
+          get length() {
+            return data.size;
+          },
+          removeItem: function (key) {
+            data.delete(String(key));
+          },
+          setItem: function (key, value) {
+            data.set(String(key), String(value));
+          }
+        };
+        try {
+          Object.defineProperty(window, 'localStorage', { configurable: true, value: memory });
+          window.__memoryStorage = memory;
+        } catch (error) {
+          // The page carries on; persist.svelte.ts falls back on its own.
+        }
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body>

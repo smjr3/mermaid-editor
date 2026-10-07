@@ -6,7 +6,8 @@ import { createFakeIndexedDB, type FakeIndexedDB } from './fakeIndexedDB';
 const registerIconPacks = vi.hoisted(() => vi.fn());
 vi.mock('mermaid', () => ({ default: { registerIconPacks } }));
 
-const { listIconPacks, saveIconPack } = await import('./customIconStore');
+const { deleteIconPack, ICON_PACKS_CHANGED, listIconPacks, saveIconPack, storageErrorKind } =
+  await import('./customIconStore');
 
 let fake: FakeIndexedDB;
 
@@ -54,5 +55,55 @@ describe('a saved pack read back', () => {
     const [stored] = await listIconPacks();
     expect(stored.icons.shape).toEqual(pack.icons.shape);
     expect(stored.icons.shape).toMatchObject({ height: 24, left: 10, top: 20, width: 24 });
+  });
+});
+
+// R09: a write counts once its transaction completes, not when its request succeeds.
+describe('a write whose transaction aborts after the request succeeded', () => {
+  const pack = sanitizeIconSet({ icons: { a: { body: '<path d="M1 1"/>' } }, prefix: 'corp' });
+  const quota = () => new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+
+  it('rejects the save, registers nothing and announces nothing', async () => {
+    const announced = vi.fn();
+    window.addEventListener(ICON_PACKS_CHANGED, announced);
+    fake.failNextTransaction(quota());
+    try {
+      await expect(saveIconPack(pack)).rejects.toMatchObject({ name: 'QuotaExceededError' });
+      expect(registerIconPacks).not.toHaveBeenCalled();
+      expect(announced).not.toHaveBeenCalled();
+      expect(await listIconPacks()).toEqual([]);
+    } finally {
+      window.removeEventListener(ICON_PACKS_CHANGED, announced);
+    }
+  });
+
+  it('rejects the delete and keeps the pack', async () => {
+    await saveIconPack(pack);
+    registerIconPacks.mockClear();
+    fake.failNextTransaction(quota());
+    await expect(deleteIconPack('corp')).rejects.toMatchObject({ name: 'QuotaExceededError' });
+    expect(registerIconPacks).not.toHaveBeenCalled();
+    expect((await listIconPacks()).map(({ prefix }) => prefix)).toEqual(['corp']);
+  });
+
+  it('resolves a save once the transaction completes', async () => {
+    await saveIconPack(pack);
+    expect(fake.rows('packs')).toHaveLength(1);
+    expect(registerIconPacks).toHaveBeenCalledOnce();
+  });
+
+  it('rejects when the storage cannot be opened at all', async () => {
+    fake.failNextOpen(new DOMException('Blocked', 'SecurityError'));
+    await expect(saveIconPack(pack)).rejects.toMatchObject({ name: 'SecurityError' });
+    expect(registerIconPacks).not.toHaveBeenCalled();
+  });
+});
+
+describe('storageErrorKind', () => {
+  it('tells a full storage from a blocked one and from anything else', () => {
+    expect(storageErrorKind(new DOMException('x', 'QuotaExceededError'))).toBe('full');
+    expect(storageErrorKind(new DOMException('x', 'SecurityError'))).toBe('blocked');
+    expect(storageErrorKind(new DOMException('x', 'InvalidStateError'))).toBe('other');
+    expect(storageErrorKind('nope')).toBe('other');
   });
 });

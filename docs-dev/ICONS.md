@@ -179,7 +179,10 @@ The "Icons" card in the editor imports either several SVG files (the user picks 
 Iconify JSON file (its own prefix, unless one is typed). Imported packs are stored in that
 browser's IndexedDB (`src/lib/util/customIconStore.ts`) and registered on every load, including
 the view and embed pages. They are **per browser**: someone opening a shared link without the same
-pack sees mermaid's `?` placeholder. Bundled prefixes cannot be reused.
+pack sees mermaid's `?` placeholder. Bundled prefixes cannot be reused. A pack counts as
+imported (registered, listed, reported) only once its IndexedDB transaction has completed; a
+full or blocked storage (`QuotaExceededError`, `SecurityError`) is reported in the card and the
+import can be tried again.
 
 ## Security
 

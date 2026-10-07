@@ -679,6 +679,11 @@ export const messages = {
     'icons.errorPrefix':
       'Enter a name of lowercase letters, digits and hyphens that is not a bundled pack.',
     'icons.errorRead': 'Could not read {file}: {message}',
+    'icons.errorStorage': 'The icon pack could not be saved ({message}). Try again.',
+    'icons.errorStorageBlocked':
+      'This browser does not let the site keep data (a private window or the site-data settings), so the icon pack was not saved. Change the setting and try again.',
+    'icons.errorStorageFull':
+      "The browser's storage is full, so the icon pack was not saved. Delete packs you no longer need or free some space, then try again.",
     'icons.files': 'SVG files, or an Iconify JSON file',
     'icons.import': 'Import',
     'icons.imported': 'Imported packs (this browser only)',
@@ -1740,6 +1745,11 @@ export const messages = {
     'icons.errorPrefix':
       '英小文字・数字・ハイフンで、同梱のアイコン集と重ならない名前を入力してください。',
     'icons.errorRead': '{file} を読み込めませんでした: {message}',
+    'icons.errorStorage': 'アイコン集を保存できませんでした（{message}）。もう一度お試しください。',
+    'icons.errorStorageBlocked':
+      'このブラウザーではサイトのデータ保存が許可されていないため（プライベートウィンドウやサイトデータの設定）、アイコン集を保存できませんでした。設定を変更してから、もう一度お試しください。',
+    'icons.errorStorageFull':
+      'ブラウザーの保存領域がいっぱいのため、アイコン集を保存できませんでした。不要なアイコン集を削除するか空き容量を増やしてから、もう一度お試しください。',
     'icons.files': 'SVG ファイル、または Iconify の JSON ファイル',
     'icons.import': '取り込む',
     'icons.imported': '取り込んだアイコン集（このブラウザだけ）',

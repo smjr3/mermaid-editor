@@ -645,6 +645,8 @@ export const messages = {
       'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.',
     'history.emptyTimeline':
       'No timeline snapshots yet.\nThe Timeline is saved automatically every minute.',
+    'history.importFailed':
+      'The file is not a history export (a JSON list of entries), so nothing was imported. The history is unchanged.',
     'history.importSummary': '{restored} restored, {duplicates} duplicate, {invalid} invalid.',
     'history.openNewTab': 'Open in new tab',
     'history.openRevisionNewTab': 'Open revision in new tab',
@@ -1703,6 +1705,8 @@ export const messages = {
       '保存された状態はまだありません。\n保存ボタンを押すと現在の図をブックマークでき、あとから復元できます。',
     'history.emptyTimeline':
       'タイムラインのスナップショットはまだありません。\nタイムラインは 1 分ごとに自動保存されます。',
+    'history.importFailed':
+      '履歴のエクスポートファイル（項目の JSON 配列）ではないため、読み込みませんでした。履歴は変更していません。',
     'history.importSummary': '復元 {restored} 件、重複 {duplicates} 件、不正 {invalid} 件。',
     'history.openNewTab': '新しいタブで開く',
     'history.openRevisionNewTab': 'リビジョンを新しいタブで開く',

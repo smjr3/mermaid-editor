@@ -294,11 +294,12 @@ selection layer is.
 
 ### Input hardening (source review of 2026-10-08)
 
-| Path                       | Local change                                                                                                                                                   |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/sanitize.ts` | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06) |
+| Path                                                                  | Local change                                                                                                                                                                                                         |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/sanitize.ts`                                            | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                       |
+| `src/lib/components/History/historyState.svelte.ts`, `History.svelte` | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07) |
 
-On a conflict, take upstream's version and re-apply the guard; `sanitize.test.ts` fails if it is lost.
+On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
 
 ### Cross-platform guards
 
@@ -586,6 +587,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/GuideTour.svelte`                  |
 | Added    | `src/lib/components/HelpButton.svelte`                 |
 | Modified | `src/lib/components/History/History.svelte`            |
+| Modified | `src/lib/components/History/historyState.svelte.ts`    |
+| Modified | `src/lib/components/History/historyState.test.ts`      |
 | Added    | `src/lib/components/HtmlExport.svelte`                 |
 | Added    | `src/lib/components/IconChooser.svelte`                |
 | Added    | `src/lib/components/IconLicenseTable.svelte`           |

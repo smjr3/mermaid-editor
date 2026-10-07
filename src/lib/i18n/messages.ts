@@ -589,6 +589,8 @@ export const messages = {
     'editor.renameInvalid': '"{name}" cannot be used as a name.',
     'editor.renameNotName':
       'Only a name (a node, participant, state or class id) can be renamed here.',
+    'editor.renameTaken':
+      '"{name}" is already the id of another object; renaming would merge the two, so nothing was changed.',
     'editor.resetConfig': 'Reset config',
     'editor.resetConfigConfirm': 'Reset the configuration to the default? The diagram is kept.',
     'editor.resetConfigShort': 'Reset',
@@ -1649,6 +1651,8 @@ export const messages = {
     'editor.renameBreaks': '「{name}」に変えると図が壊れるため、変更しませんでした。',
     'editor.renameInvalid': '「{name}」は名前に使えません。',
     'editor.renameNotName': 'ここでは名前（ノードや参加者などの ID）だけを一括変更できます。',
+    'editor.renameTaken':
+      '「{name}」はすでに別の図形の ID です。同じ ID にすると 2 つが 1 つにまとまってしまうため、変更しませんでした。',
     'editor.resetConfig': '設定をリセット',
     'editor.resetConfigConfirm': '設定を初期状態に戻しますか？図のコードはそのまま残ります。',
     'editor.resetConfigShort': 'リセット',

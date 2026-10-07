@@ -643,6 +643,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/diagramDetails.ts`                       |
 | Added    | `src/lib/util/diagramEdit.test.ts`                     |
 | Added    | `src/lib/util/diagramEdit.ts`                          |
+| Added    | `src/lib/util/diagramIds.ts`                           |
 | Added    | `src/lib/util/diagramModify.test.ts`                   |
 | Added    | `src/lib/util/diagramModify.ts`                        |
 | Added    | `src/lib/util/diagramPick.test.ts`                     |

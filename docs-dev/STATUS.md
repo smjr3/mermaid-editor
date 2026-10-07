@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **295**.
+  every locally changed path — currently **296**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 
@@ -492,6 +492,15 @@ what was typed. All three now go through `applyToolEdit` (or, for the picker,
 `insertChecked` in `iconSearch.ts`), which drops an edit made from code that is no longer
 current (`stale`, message `edit.stale`) and keeps the newer code
 (`TableEditor.test.ts`, `EditControls.test.ts` mount the components with a pending check).
+R02: F2 renamed an id onto one another object already had, and mermaid silently merged the
+two (`A[Alpha] --> B[Beta]` renamed A → B is one node). `checkedRename` now refuses an id that
+mermaid's parse lists for another object (`diagramIds.ts`: flowchart and swimlane nodes and
+lanes, states, classes and namespaces, ER entities, architecture services, groups and junctions,
+sequence participants, C4 elements and boundaries, blocks, kanban, mindmap and requirement ids,
+gitGraph branches), and any rename that leaves fewer objects; a label with the same text is not a
+collision. Types without a reader fall back to the lexical scan (`editor.renameTaken`). A refused
+rename is now also shown as a notice: the standalone Monaco editor only logs a rename's
+`rejectReason` to the console, so the existing "breaks"/"invalid" refusals were never seen either.
 
 **Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
@@ -723,7 +732,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **999 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1000 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay

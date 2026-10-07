@@ -602,6 +602,8 @@ export const messages = {
     'embed.loadError': 'Unable to load the diagram from this URL.',
     'embed.title': 'Mermaid diagram',
     'embed.toggleMode': 'Toggle light / dark',
+    'error.loadFromUrlFailed':
+      'The diagram linked in the address could not be loaded ({message}). The current diagram is kept.',
     'error.returnHome': 'Return to Home',
     'error.title': 'Error {status}',
     'error.unexpected': 'An unexpected error occurred',
@@ -1668,6 +1670,8 @@ export const messages = {
     'embed.loadError': 'この URL からは図を読み込めませんでした。',
     'embed.title': 'Mermaid の図',
     'embed.toggleMode': 'ライト / ダークを切り替え',
+    'error.loadFromUrlFailed':
+      'アドレスで指定された図を読み込めませんでした（{message}）。現在の図はそのままです。',
     'error.returnHome': 'ホームに戻る',
     'error.title': 'エラー {status}',
     'error.unexpected': '予期しないエラーが発生しました',

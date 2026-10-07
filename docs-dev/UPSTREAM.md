@@ -300,6 +300,7 @@ selection layer is.
 | `src/lib/components/History/historyState.svelte.ts`, `History.svelte`                   | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                                            |
 | `src/lib/components/Actions.svelte`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom goes back to its previous value in `finally`; the copy button shows the tick only after success and an error mark otherwise (R10)              |
 | `src/lib/util/serde.ts`                                                                 | `deserialize` refuses a link that unpacks (pako, inflated in chunks) or decodes (base64) to more than `MAX_INFLATED_BYTES` (5 MB); the pako bytes are decoded with `TextDecoder` as pako 2.1.0 does, so `serde.compat.test.ts` holds. On an upstream pako upgrade re-check both |
+| `src/lib/util/util.ts`, `src/lib/util/fileLoaders/loader.ts`                            | `fetchText`/`fetchJSON` reject a non-2xx answer naming the status; an empty `?code=` file is refused instead of replacing the diagram with the default; `initHandler` reports a failed URL load and keeps the current diagram                                                   |
 
 On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
 
@@ -672,6 +673,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/exportPresets.ts`                        |
 | Added    | `src/lib/util/fakeIndexedDB.ts`                        |
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
+| Added    | `src/lib/util/fileLoaders/loader.test.ts`              |
+| Modified | `src/lib/util/fileLoaders/loader.ts`                   |
 | Added    | `src/lib/util/helpContent.test.ts`                     |
 | Added    | `src/lib/util/helpContent.ts`                          |
 | Added    | `src/lib/util/htmlExport.test.ts`                      |

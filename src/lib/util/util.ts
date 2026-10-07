@@ -1,9 +1,11 @@
 import { C } from '$/constants';
+import { t } from '$/i18n';
 import { env, MCBaseURL } from './env';
 import { loadDataFromUrl } from './fileLoaders/loader';
 import { initLoading } from './loading.svelte';
 import { isOnMermaidAI } from './migration/domainMigration';
 import { applyMigrations } from './migrations.svelte';
+import { notify } from './notify';
 import { initURLSubscription, loadState, updateCodeStore, verifyState } from './state.svelte';
 import { getAnalyticsSafeUrl, initAnalytics, plausible } from './stats';
 
@@ -26,7 +28,19 @@ export const syncDiagram = (): void => {
 export const initHandler = async (): Promise<void> => {
   applyMigrations();
   loadStateFromURL();
-  await initLoading('Loading Gist...', loadDataFromUrl().catch(console.error));
+  // Local: a ?code= / ?config= URL that fails (an HTTP error, an empty file) is
+  // reported; the diagram already on screen is kept.
+  await initLoading(
+    'Loading Gist...',
+    loadDataFromUrl().catch((error: unknown) => {
+      console.error(error);
+      notify(
+        t('error.loadFromUrlFailed', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      );
+    })
+  );
   syncDiagram();
   initURLSubscription();
   await initAnalytics();
@@ -97,14 +111,23 @@ export const assertFetchAllowed = (url: string): void => {
   if (target.origin === location.origin) return;
   throw new Error(`Loading from ${target.origin} is disabled on this site (MERMAID_OFFLINE)`);
 };
-export const fetchJSON = async <T>(url: string): Promise<T> => {
+// Local: an HTTP error is refused rather than read — a 404 page is not a diagram.
+const fetchOk = async (url: string): Promise<Response> => {
   assertFetchAllowed(url);
   const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(
+      `Loading ${url} failed: HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`
+    );
+  }
+  return res;
+};
+export const fetchJSON = async <T>(url: string): Promise<T> => {
+  const res = await fetchOk(url);
   return res.json() as T;
 };
 export const fetchText = async (url: string): Promise<string> => {
-  assertFetchAllowed(url);
-  const res = await fetch(url);
+  const res = await fetchOk(url);
   return res.text();
 };
 

@@ -209,6 +209,7 @@ class SelectionModel {
     void applyToolEdit(next).then((result) => {
       if (result === 'blocked') this.warn('recover.blocked');
       else if (result === 'refused') this.warn('edit.breaks');
+      else if (result === 'stale') this.warn('edit.stale');
     });
   }
 

@@ -113,3 +113,30 @@ export const registerEditorInserter = (next: Inserter): (() => void) => {
 
 /** Inserts text at the editor's cursor. False when no editor can take it (mobile, config tab). */
 export const insertIntoEditor = (text: string): boolean => inserter?.(text) ?? false;
+
+/** What `insertChecked` did. */
+export type InsertOutcome = 'broke' | 'inserted' | 'none' | 'superseded';
+
+/**
+ * Inserts text at the editor's cursor, and takes it back when it breaks a diagram
+ * that parsed: the cursor may sit anywhere (at the end of a line, in a label).
+ * The check is asynchronous, so the take-back happens only while the code is still
+ * what the insertion made; when it changed meanwhile (a keystroke, a tool), the
+ * newer code is kept and nothing is put back ('superseded', R01).
+ */
+export const insertChecked = async (
+  text: string,
+  io: {
+    code: () => string;
+    parses: (code: string) => Promise<boolean>;
+    restore: (code: string) => void;
+  }
+): Promise<InsertOutcome> => {
+  const before = io.code();
+  if (!insertIntoEditor(text)) return 'none';
+  const inserted = io.code();
+  if (!(await io.parses(before)) || (await io.parses(inserted))) return 'inserted';
+  if (io.code() !== inserted) return 'superseded';
+  io.restore(before);
+  return 'broke';
+};

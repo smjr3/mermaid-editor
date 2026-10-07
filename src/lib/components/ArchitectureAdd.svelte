@@ -52,6 +52,7 @@
   const said: Record<Exclude<ToolEditResult, 'applied'>, MessageKey> = {
     blocked: 'recover.blocked',
     refused: 'add.breaks',
+    stale: 'edit.stale',
     unchanged: 'add.breaks'
   };
   const apply = async (code: string, name: string): Promise<boolean> => {

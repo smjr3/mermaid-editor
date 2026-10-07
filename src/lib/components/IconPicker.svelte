@@ -17,7 +17,7 @@
     iconMatch,
     iconPage,
     iconSvg,
-    insertIntoEditor,
+    insertChecked,
     searchIcons,
     type IconMatch,
     type SearchablePack
@@ -210,16 +210,18 @@
       onchosen?.();
       return;
     }
-    const before = inputState.code;
-    if (insertIntoEditor(id)) {
-      // The cursor may sit anywhere (at the end of a line, in a label); a name written
-      // there can break a diagram that was fine, so take it back when it does.
-      const wasValid = await parses(before);
-      if (wasValid && !(await parses(inputState.code))) {
-        updateCode(before, { updateDiagram: true });
-        message = t('icons.pickBroke');
-        return;
-      }
+    // A name written at the cursor can break a diagram that was fine, so it is taken
+    // back when it does — unless the code changed while that was being checked.
+    const outcome = await insertChecked(id, {
+      code: () => inputState.code,
+      parses,
+      restore: (code) => updateCode(code, { updateDiagram: true })
+    });
+    if (outcome === 'broke') {
+      message = t('icons.pickBroke');
+      return;
+    }
+    if (outcome !== 'none') {
       message = t('icons.pickInserted', { id }) + note;
       onchosen?.();
       return;

@@ -571,6 +571,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/DiagramDocumentationButton.svelte` |
 | Added    | `src/lib/components/DiagramToolbar.svelte`             |
 | Added    | `src/lib/components/EditControls.svelte`               |
+| Added    | `src/lib/components/EditControls.test.ts`              |
 | Modified | `src/lib/components/Editor.svelte`                     |
 | Added    | `src/lib/components/EditorPaneToggle.svelte`           |
 | Added    | `src/lib/components/EditorRail.svelte`                 |
@@ -598,6 +599,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/components/Share.svelte`                      |
 | Deleted  | `src/lib/components/SyncRoughToolbar.svelte`           |
 | Added    | `src/lib/components/TableEditor.svelte`                |
+| Added    | `src/lib/components/TableEditor.test.ts`               |
 | Added    | `src/lib/components/TemplateForms.svelte`              |
 | Added    | `src/lib/components/ToolsBar.svelte`                   |
 | Added    | `src/lib/components/ToolsTabs.svelte`                  |

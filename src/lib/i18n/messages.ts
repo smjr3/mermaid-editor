@@ -570,6 +570,8 @@ export const messages = {
     'edit.shape': 'Shape',
     'edit.shapeIcon': "A node with an icon keeps the icon's shape; remove the icon to choose one.",
     'edit.shapeOther': '(another shape)',
+    'edit.stale':
+      'The code changed while this change was being checked, so it was not applied. Try again.',
     'edit.title': 'Edit',
     'edit.unsupported':
       'This diagram type cannot be edited from here yet. Edit the code on the left instead.',
@@ -1629,6 +1631,8 @@ export const messages = {
     'edit.shapeIcon':
       'アイコン付きのノードはアイコンの形になります。形を選ぶにはアイコンを外してください。',
     'edit.shapeOther': '（そのほかの形）',
+    'edit.stale':
+      '確認している間にコードが変わったため、この変更は反映しませんでした。もう一度操作してください。',
     'edit.title': '編集',
     'edit.unsupported':
       'この図の種類はまだここから編集できません。左のコードを直接編集してください。',

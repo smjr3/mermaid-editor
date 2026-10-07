@@ -4,6 +4,7 @@
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import type { MessageKey } from '$/i18n/messages';
   import {
     directionUnsupportedKey,
     getDirection,
@@ -36,8 +37,15 @@
 
   // Local: code changes are checked, and refused while the code has an error
   // (codeHealth.svelte.ts); the config-only options below stay available.
-  const refusal = (result: string) =>
-    result === 'blocked' ? t('recover.blocked') : result === 'refused' ? t('edit.breaks') : '';
+  const refusals: Partial<Record<string, MessageKey>> = {
+    blocked: 'recover.blocked',
+    refused: 'edit.breaks',
+    stale: 'edit.stale'
+  };
+  const refusal = (result: string) => {
+    const key = refusals[result];
+    return key ? t(key) : '';
+  };
   const applyDirection = async (next: Direction): Promise<boolean> => {
     message = '';
     const result = await applyToolEdit(setDirection(inputState.code, next), {

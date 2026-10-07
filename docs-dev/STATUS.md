@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **293**.
+  every locally changed path — currently **295**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 
@@ -484,6 +484,15 @@ quoted), gantt task names starting with a keyword such as `click` (now in 「」
 of these; "Create" in the template dialog also checks the result. `tests/errorRecovery.spec.ts` (15
 journeys, each also failing on any uncaught page error) and the unit tests of the files above.
 
+**Source review of 2026-10-08, P1 findings.** An external review of v0.2.3 (master
+`534956be`) raised twelve findings; R01–R05 are fixed here, each with a regression test.
+R01: the table editor, the Edit card and the icon picker's take-back checked an edit
+asynchronously and then wrote it even when the code had changed meanwhile, throwing away
+what was typed. All three now go through `applyToolEdit` (or, for the picker,
+`insertChecked` in `iconSearch.ts`), which drops an edit made from code that is no longer
+current (`stale`, message `edit.stale`) and keeps the newer code
+(`TableEditor.test.ts`, `EditControls.test.ts` mount the components with a pending check).
+
 **Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
@@ -714,7 +723,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **995 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **999 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay

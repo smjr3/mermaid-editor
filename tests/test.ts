@@ -145,10 +145,41 @@ export class EditorPage {
   }
 }
 
-export const test = base.extend<{ editPage: EditorPage; guideSeen: boolean }>({
+/**
+ * How a spec meets "名前を付けて保存" (saveFile.ts). Headless Chromium has
+ * `showSaveFilePicker`, whose dialog a test cannot answer, so by default it is
+ * removed and the editor's own name dialog is confirmed with the suggested
+ * name as soon as it opens: a click on a download button still ends in a
+ * Playwright download. `manual` removes the picker and leaves the dialog to the
+ * test; `picker` leaves `window` alone for a spec that stubs the picker itself.
+ */
+export type SaveAsMode = 'auto' | 'manual' | 'picker';
+
+export const test = base.extend<{ editPage: EditorPage; guideSeen: boolean; saveAs: SaveAsMode }>({
   // The first-visit guide floats over the page, so every spec starts with it already seen;
   // onboarding.spec.ts opts out with `test.use({ guideSeen: false })`.
-  context: async ({ context, guideSeen }, use) => {
+  context: async ({ context, guideSeen, saveAs }, use) => {
+    if (saveAs !== 'picker') {
+      await context.addInitScript(
+        ({ auto, confirm, dialog }) => {
+          Object.defineProperty(window, 'showSaveFilePicker', {
+            configurable: true,
+            value: undefined,
+            writable: true
+          });
+          if (!auto) return;
+          new MutationObserver(() => {
+            // A second click before the dialog closes answers nothing (saveAsPrompt).
+            document
+              .querySelector<HTMLButtonElement>(
+                `[data-testid="${dialog}"][data-state="open"] [data-testid="${confirm}"]:not([disabled])`
+              )
+              ?.click();
+          }).observe(document, { attributes: true, childList: true, subtree: true });
+        },
+        { auto: saveAs === 'auto', confirm: TID.saveAsConfirm, dialog: TID.saveAsDialog }
+      );
+    }
     if (guideSeen) {
       await context.addInitScript((key) => {
         try {
@@ -161,6 +192,7 @@ export const test = base.extend<{ editPage: EditorPage; guideSeen: boolean }>({
     await use(context);
   },
   guideSeen: [true, { option: true }],
+  saveAs: ['auto', { option: true }],
   editPage: async ({ page }, use) => {
     // Dismiss the editor chooser modal so it doesn't block interactions
     await page.addInitScript((key) => {

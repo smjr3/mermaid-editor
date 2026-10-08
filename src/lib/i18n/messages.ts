@@ -923,6 +923,24 @@ export const messages = {
     'recover.unfinished':
       'Line {line} stops part-way (is an arrow target or a closing bracket missing?).',
     'recover.unknown': 'The code has a mistake.',
+    'saveAs.cancel': 'Cancel',
+    'saveAs.description':
+      'Enter a name for the file. It is saved where the browser saves downloads.',
+    'saveAs.drawio': 'Save as .drawio',
+    'saveAs.drawioHint':
+      'Saves a file for draw.io (diagrams.net). The diagram goes in as a picture that every draw.io shows; double-clicking it in draw.io opens the Mermaid code, to redraw it or turn it into draw.io shapes.',
+    'saveAs.failed': 'The file could not be saved. Try again.',
+    'saveAs.label': 'File name',
+    'saveAs.save': 'Save',
+    'saveAs.title': 'Save as',
+    'saveAs.typeDrawio': 'draw.io diagram',
+    'saveAs.typeHtml': 'HTML page',
+    'saveAs.typePng': 'PNG image',
+    'saveAs.typeSvg': 'SVG image',
+    'saveAs.typeVsdx': 'Visio drawing',
+    'saveAs.vsdx': 'Save as .vsdx',
+    'saveAs.vsdxHint':
+      'Saves a file for Microsoft Visio. The diagram is one picture on the page (it can be moved and resized, not edited as Visio shapes); the Mermaid code is kept in the shape data.',
     'security.unsafeConfigConfirm':
       'Removing {paths} from the config for safety.\nClick Cancel if you trust the source of this Diagram.',
     'sel.addAfter': 'Add after this',
@@ -1996,6 +2014,24 @@ export const messages = {
     'recover.unfinished':
       '{line} 行目が途中で終わっています（矢印の先や閉じかっこが抜けていませんか）。',
     'recover.unknown': 'コードの書き方に誤りがあります。',
+    'saveAs.cancel': 'キャンセル',
+    'saveAs.description':
+      'ファイルの名前を入力してください。ブラウザーのダウンロード先に保存されます。',
+    'saveAs.drawio': '.drawio で保存',
+    'saveAs.drawioHint':
+      'draw.io（diagrams.net）で開けるファイルを保存します。図は画像として入るので、どの draw.io でも同じ見た目で表示されます。draw.io でダブルクリックすると Mermaid のコードが開き、直して描き直したり、draw.io の図形に変換したりできます。',
+    'saveAs.failed': 'ファイルを保存できませんでした。もう一度お試しください。',
+    'saveAs.label': 'ファイル名',
+    'saveAs.save': '保存',
+    'saveAs.title': '名前を付けて保存',
+    'saveAs.typeDrawio': 'draw.io の図',
+    'saveAs.typeHtml': 'HTML ファイル',
+    'saveAs.typePng': 'PNG 画像',
+    'saveAs.typeSvg': 'SVG 画像',
+    'saveAs.typeVsdx': 'Visio の図面',
+    'saveAs.vsdx': '.vsdx で保存',
+    'saveAs.vsdxHint':
+      'Microsoft Visio で開けるファイルを保存します。図はページに 1 枚の画像として入ります（移動や拡大縮小はできますが、Visio の図形としては編集できません）。Mermaid のコードは図形のデータに残ります。',
     'security.unsafeConfigConfirm':
       '安全のため、設定から {paths} を削除します。\nこの図の提供元を信頼できる場合は「キャンセル」を押してください。',
     'sel.addAfter': 'この後に追加',

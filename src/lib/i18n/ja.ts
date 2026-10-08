@@ -640,7 +640,7 @@ export const ja = {
     'タイムラインのスナップショットはまだありません。\nタイムラインは1分ごとに自動保存されます。',
   'history.importFailed':
     '履歴のエクスポートファイル（項目の JSON 配列）ではないため、読み込みませんでした。履歴は変更していません。',
-  'history.importSummary': '復元 {restored}件、重複 {duplicates}件、無効 {invalid}件。',
+  'history.importSummary': '復元{restored}件、重複{duplicates}件、無効{invalid}件。',
   'history.openNewTab': '新しいタブで開く',
   'history.openRevisionNewTab': 'リビジョンを新しいタブで開く',
   'history.rename': '名前を変更',
@@ -693,7 +693,7 @@ export const ja = {
     'そこに入れると図が壊れるため、入れませんでした。先に図の中の図形をクリックしてからアイコンを押すと、その図形に付きます。',
   'icons.pickBrowse': '一覧から選ぶ',
   'icons.pickBrowseCategories': '分類',
-  'icons.pickBrowseCount': '{from}〜{to}件目 / 全 {total}件',
+  'icons.pickBrowseCount': '{from}〜{to}件目 / 全{total}件',
   'icons.pickBrowseEmpty': 'このビルドには、この分類のアイコンがありません。',
   'icons.pickBrowseList': '表示する一覧',
   'icons.pickBrowseNext': '次へ',

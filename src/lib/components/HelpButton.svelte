@@ -1,5 +1,6 @@
 <script lang="ts">
   import IconLicenseTable from '$/components/IconLicenseTable.svelte';
+  import VersionInfo from '$/components/VersionInfo.svelte';
   import { Button } from '$/components/ui/button';
   import * as Dialog from '$/components/ui/dialog';
   import { TID } from '$/constants';
@@ -48,6 +49,8 @@
         <h3 class="mb-2 font-semibold">{section.title}</h3>
         {#if section.id === 'licenses'}
           <IconLicenseTable />
+        {:else if section.id === 'about'}
+          <VersionInfo />
         {/if}
         <ul class="flex list-disc flex-col gap-2 pl-5 text-sm">
           {#each section.items as point (point)}

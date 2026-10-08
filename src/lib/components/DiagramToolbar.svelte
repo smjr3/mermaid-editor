@@ -1,17 +1,11 @@
 <script lang="ts">
-  import LocaleToggle from '$/components/LocaleToggle.svelte';
-  import Privacy from '$/components/Privacy.svelte';
-  import ThemeIcon from '$/components/ThemeIcon.svelte';
   import { Button } from '$/components/ui/button';
   import { Separator } from '$/components/ui/separator';
   import { Toggle } from '$/components/ui/toggle';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { env } from '$/util/env';
   import type { PanZoomState } from '$/util/panZoom';
   import { defaultState, inputState, updateCodeStore } from '$/util/state.svelte';
-  import { version } from 'mermaid/package.json';
-  import { mode, setMode } from 'mode-watcher';
   import RoughIcon from '~icons/material-symbols/draw-outline-rounded';
   import BackgroundIcon from '~icons/material-symbols/grid-4x4-rounded';
   // Local: "open in new" rather than open-in-full, whose diagonal arrows read as
@@ -23,7 +17,7 @@
 
   // Local: one bar across the top of the diagram pane, replacing upstream's three
   // floating toolbars (PanZoomToolbar, SyncRoughToolbar, VersionSecurityToolbar):
-  // view controls, then drawing toggles, then the site settings at the right end.
+  // view controls, then drawing toggles. Theme and language live in the header.
   // PanZoomToolbar stays for the embed page.
   let {
     fullScreenHref,
@@ -37,10 +31,6 @@
     // Handle cases where old states were saved without grid option
     updateCodeStore({ grid: defaultState.grid });
   }
-
-  const themeLabel = $derived(
-    mode.current === 'dark' ? t('toolbar.switchToLight') : t('toolbar.switchToDark')
-  );
 </script>
 
 <div
@@ -109,29 +99,4 @@
     data-testid={TID.gridToggle}>
     <BackgroundIcon />
   </Toggle>
-  <div class="ml-auto flex items-center gap-1">
-    <Button
-      variant="ghost"
-      size="icon"
-      data-testid={TID.themeToggleButton}
-      title={themeLabel}
-      aria-label={themeLabel}
-      class="size-8"
-      onclick={() => setMode(mode.current === 'dark' ? 'light' : 'dark')}>
-      <ThemeIcon />
-    </Button>
-    <LocaleToggle />
-    {#if !env.hidePrivacyPolicy}
-      <span
-        class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted"
-        title={t('toolbar.privacySecurity')}
-        data-testid={TID.privacyButton}>
-        <Privacy />
-      </span>
-    {/if}
-    <span
-      class="px-1 text-xs text-muted-foreground"
-      title={t('toolbar.mermaidVersion')}
-      data-testid={TID.mermaidVersion}>v{version}</span>
-  </div>
 </div>

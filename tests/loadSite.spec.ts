@@ -71,8 +71,9 @@ test.describe('Site Loads', () => {
 
   // Local: an HTTP error page is not a diagram; the one on screen is kept.
   test('keeps the current diagram when a ?code= URL answers 404', async ({ editPage, page }) => {
-    await page.route('**/missing-diagram.mmd', (route) =>
-      route.fulfill({ body: '<html>Not Found</html>', status: 404 })
+    await page.route(
+      (url) => url.pathname.endsWith('/missing-diagram.mmd'),
+      (route) => route.fulfill({ body: '<html>Not Found</html>', status: 404 })
     );
     await editPage.checkTextInView('Car');
     await page.goto('/edit?code=/missing-diagram.mmd');

@@ -684,6 +684,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/monacoInsert.ts`                         |
 | Added    | `src/lib/util/newDiagram.test.ts`                      |
 | Added    | `src/lib/util/newDiagram.ts`                           |
+| Added    | `src/lib/util/offline.ts`                              |
 | Added    | `src/lib/util/onboarding.svelte.ts`                    |
 | Added    | `src/lib/util/panZoom.test.ts`                         |
 | Modified | `src/lib/util/panZoom.ts`                              |
@@ -711,6 +712,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/stateGuard.test.ts`                      |
 | Added    | `src/lib/util/stateGuard.ts`                           |
 | Added    | `src/lib/util/stateLoad.test.ts`                       |
+| Modified | `src/lib/util/stats.test.ts`                           |
+| Modified | `src/lib/util/stats.ts`                                |
 | Added    | `src/lib/util/svgToIconify.test.ts`                    |
 | Added    | `src/lib/util/tableEdit.test.ts`                       |
 | Added    | `src/lib/util/tableEdit.ts`                            |

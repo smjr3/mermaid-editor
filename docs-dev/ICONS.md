@@ -186,5 +186,12 @@ pack sees mermaid's `?` placeholder. Bundled prefixes cannot be reused.
 mermaid inserts an icon's `body` into the diagram SVG as markup. Build-time, hosted and imported packs are
 untrusted input, so every body is sanitised with DOMPurify (SVG profile, no `script`, `style` or
 `foreignObject`, no event handlers or `javascript:` URLs) when the pack is loaded — including
-packs read back from IndexedDB (`src/lib/util/customIcons.ts`). `scripts/svg-to-iconify.js` and
+packs read back from IndexedDB (`src/lib/util/customIcons.ts`).
+
+An icon is drawn without a click, so nothing in it may point outside it: after DOMPurify, an `<image>`
+or `<feImage>` whose `href`/`xlink:href` is not a `data:` URL is removed, so is a `<use>` of another
+file (DOMPurify already drops `<use>`), and any attribute or `style` declaration with a `url(…)` that is
+not a local `#id` (fill, stroke, filter, mask, clip-path, markers) is dropped. Links (`<a href>`)
+stay, since they only go anywhere on a click. `tests/offline.spec.ts` imports an SVG that points at
+another site and checks the diagram and the picker request nothing. `scripts/svg-to-iconify.js` and
 `scripts/fetch-icon-packs.js` only extract markup; the sanitising happens in the app.

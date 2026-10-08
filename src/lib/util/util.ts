@@ -1,9 +1,10 @@
 import { C } from '$/constants';
-import { env, MCBaseURL } from './env';
+import { MCBaseURL } from './env';
 import { loadDataFromUrl } from './fileLoaders/loader';
 import { initLoading } from './loading.svelte';
 import { isOnMermaidAI } from './migration/domainMigration';
 import { applyMigrations } from './migrations.svelte';
+import { assertFetchAllowed } from './offline';
 import { initURLSubscription, loadState, updateCodeStore, verifyState } from './state.svelte';
 import { getAnalyticsSafeUrl, initAnalytics, plausible } from './stats';
 
@@ -85,18 +86,8 @@ export const errorDebug = (limit = 1000) => {
 };
 
 export const formatJSON = (data: unknown): string => JSON.stringify(data, undefined, 2);
-/**
- * Local: with MERMAID_OFFLINE, only `data:`/`blob:` URLs and this site's own
- * files may be fetched (the `?code=` and `?config=` loaders, gists); anything
- * else is refused before a request is made.
- */
-export const assertFetchAllowed = (url: string): void => {
-  if (!env.isOffline) return;
-  const target = new URL(url, document.baseURI);
-  if (target.protocol === 'data:' || target.protocol === 'blob:') return;
-  if (target.origin === location.origin) return;
-  throw new Error(`Loading from ${target.origin} is disabled on this site (MERMAID_OFFLINE)`);
-};
+// Local: MERMAID_OFFLINE's fetch rule (offline.ts).
+export { assertFetchAllowed };
 export const fetchJSON = async <T>(url: string): Promise<T> => {
   assertFetchAllowed(url);
   const res = await fetch(url);

@@ -68,6 +68,13 @@ and their code is included in the built static site.
       recorded: this project elects Apache-2.0, which avoids MPL-2.0's
       file-level copyleft obligations. dompurify is used unmodified.
 
+  fflate
+      Copyright (c) Arjun Barrett
+      License: MIT
+      Called out because it is a direct dependency added by this distribution
+      (the .vsdx export zips its package with it) and its code is bundled
+      into the built JavaScript; its MIT notice must travel with that output.
+
   @fontsource-variable/recursive
       License: OFL-1.1 (SIL Open Font License 1.1)
       Called out because OFL-1.1 requires its license to travel with the font

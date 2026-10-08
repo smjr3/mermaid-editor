@@ -21,10 +21,10 @@
   import MermaidChartIcon from '$/components/MermaidChartIcon.svelte';
   import EditorChooserModal from '$/components/migration/EditorChooserModal.svelte';
   import Navbar from '$/components/Navbar.svelte';
+  import StyleCodeIcon from '$/components/StyleCodeIcon.svelte';
   import Preset from '$/components/Preset.svelte';
   import ResetConfigButton from '$/components/ResetConfigButton.svelte';
   import SelectionLayer from '$/components/SelectionLayer.svelte';
-  import Share from '$/components/Share.svelte';
   import { TID } from '$/constants';
   import ToolsBar from '$/components/ToolsBar.svelte';
   import ToolsTabs from '$/components/ToolsTabs.svelte';
@@ -47,7 +47,6 @@
   import { onMount } from 'svelte';
   import CodeIcon from '~icons/custom/code';
   import HistoryIcon from '~icons/material-symbols/history';
-  import GearIcon from '~icons/material-symbols/settings-outline-rounded';
 
   const panZoomState = new PanZoomState();
 
@@ -63,9 +62,10 @@
       title: t('editor.textTab')
     },
     {
-      icon: GearIcon,
+      icon: StyleCodeIcon,
       id: 'config',
-      title: t('editor.configTab')
+      title: t('editor.configTab'),
+      tooltip: t('editor.configTabTooltip')
     }
   ];
 
@@ -161,7 +161,6 @@
       aria-label={t('editor.historyToggle')}>
       <HistoryIcon />
     </Toggle>
-    <Share />
     {#if env.isEnabledMermaidChartLinks}
       <Separator orientation="vertical" />
       <McWrapper labelPrefix="Opens ">

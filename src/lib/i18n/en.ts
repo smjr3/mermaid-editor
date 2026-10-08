@@ -1,5 +1,10 @@
 // English catalogue: upstream's original wording. Keys are typed off this object, so every key must also exist in ja.ts.
 export const en = {
+  'about.appVersion': 'Editor version',
+  'about.docs': 'Mermaid documentation',
+  'about.mermaidVersion': 'Mermaid version',
+  'about.privacy': 'Privacy & Security',
+  'about.repository': 'Source code (GitHub)',
   'actions.background': 'Background',
   'actions.backgroundTheme': 'Current theme',
   'actions.backgroundTransparent': 'Transparent',
@@ -561,7 +566,8 @@ export const en = {
   'edit.unsupported':
     'This diagram type cannot be edited from here yet. Edit the code on the left instead.',
   'edit.updated': 'Arrow updated.',
-  'editor.configTab': 'Config',
+  'editor.configTab': 'Style',
+  'editor.configTabTooltip': 'Diagram style settings (JSON)',
   'editor.docsTab': 'Docs',
   'editor.docsTitle': 'View documentation for {type} diagram',
   'editor.hidePane': 'Hide the editor',
@@ -624,6 +630,13 @@ export const en = {
   'guide.step3.body':
     '"How to use" explains every tool, and Share and the Actions card save the diagram as an image or a link. Press Ctrl+K to search for any command.',
   'guide.step3.title': 'Help and sharing are in the header',
+  'header.reset': 'Reset',
+  'header.resetBody':
+    'This clears the diagram, its style settings, the view position and the selection, and starts again from the sample diagram. Saved History entries are kept. This cannot be undone.',
+  'header.resetCancel': 'Cancel',
+  'header.resetConfirm': 'Reset everything',
+  'header.resetTitle': 'Reset everything?',
+  'header.resetTooltip': 'Reset everything to the starting diagram',
   'help.button': 'How to use',
   'help.intro': 'A short guide to the editor. Pick a topic on the left.',
   'help.title': 'How to use this editor',

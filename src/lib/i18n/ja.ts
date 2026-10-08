@@ -1,5 +1,10 @@
 // ここを直せば画面の日本語が変わります。キーは変えないでください（左側の 'xxx.yyy' はそのまま、右側の文章だけ直します）
 export const ja = {
+  'about.appVersion': 'エディタのバージョン',
+  'about.docs': 'Mermaid のドキュメント',
+  'about.mermaidVersion': 'Mermaid のバージョン',
+  'about.privacy': 'プライバシーとセキュリティ',
+  'about.repository': 'ソースコード（GitHub）',
   'actions.background': '背景',
   'actions.backgroundTheme': '現在のテーマ色',
   'actions.backgroundTransparent': '透過',
@@ -564,7 +569,8 @@ export const ja = {
   'edit.unsupported':
     'この図の種類はまだここから編集できません。左のコードを直接編集してください。',
   'edit.updated': '矢印を変更しました。',
-  'editor.configTab': '設定',
+  'editor.configTab': 'スタイル',
+  'editor.configTabTooltip': '図のスタイル設定（JSON）',
   'editor.docsTab': 'ドキュメント',
   'editor.docsTitle': '{type} 図のドキュメントを表示',
   'editor.hidePane': 'エディタを隠す',
@@ -626,6 +632,13 @@ export const ja = {
   'guide.step3.body':
     '「使い方」で各ツールの説明を読めます。共有と保存は「共有」ボタンと「操作」カードから。Ctrl+K でコマンドを検索できます。',
   'guide.step3.title': '使い方・共有はヘッダーに',
+  'header.reset': '初期化',
+  'header.resetBody':
+    '図のコード、スタイル設定、表示位置、選択をすべて消して、最初の図に戻します。履歴に保存した内容は残ります。この操作は元に戻せません。',
+  'header.resetCancel': 'キャンセル',
+  'header.resetConfirm': 'すべて初期化する',
+  'header.resetTitle': 'すべて初期化しますか？',
+  'header.resetTooltip': '図を最初の状態にすべて戻す',
   'help.button': '使い方',
   'help.intro': 'エディタの使い方の簡単な案内です。左から知りたい項目を選んでください。',
   'help.title': 'このエディタの使い方',
@@ -777,8 +790,8 @@ export const ja = {
   'menu.duplicate': '複製',
   'menu.mermaidJs': 'Mermaid.js',
   'menu.new': '新規',
-  'nav.appTitle': 'Mermaid エディタ',
-  'nav.appTitleShort': 'エディタ',
+  'nav.appTitle': 'Mermaid Live Editor',
+  'nav.appTitleShort': 'Live Editor',
   'nav.dismissBanner': 'バナーを閉じる',
   'new.button': '新しい図を作る…',
   'new.confirm':

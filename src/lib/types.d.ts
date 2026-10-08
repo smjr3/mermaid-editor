@@ -20,6 +20,8 @@ export interface Tab {
   id: string;
   title: string;
   icon: Component;
+  /** Local: a longer hint for the title attribute. */
+  tooltip?: string;
 }
 
 export interface State {

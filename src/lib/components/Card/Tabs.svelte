@@ -30,6 +30,7 @@
     {#each tabs as tab, index (tab.id)}
       <Button
         role="tab"
+        title={tab.tooltip}
         variant="ghost"
         class={[
           'px-2',

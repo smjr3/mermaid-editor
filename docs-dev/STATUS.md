@@ -539,6 +539,17 @@ HTML and GitLab exports are made from one snapshot (R12). A link may unpack to a
 (`serde.ts`), `?code=`/gist loading refuses HTTP errors and empty files, and the embed takes the
 hash state through `normalizeState`. The per-file list is in `UPSTREAM.md` ("Input hardening").
 
+**Header (2026-10-08 feedback).** The title is "Mermaid Live Editor" in both languages and in `<title>`, with the
+app icon before it. The header's right end carries 初期化, the light/dark toggle and the language toggle;
+`DiagramToolbar` keeps zoom, fit, open, hand-drawn and grid only. The hamburger menu (`MainMenu.svelte`, kept
+as an unused upstream file) and the header 共有 button are gone from the header: `Share.svelte` stays intact for the
+tools pane to mount (the palette's "share" command and `tests/embed.spec.ts` "Share dialog" depend on that mount).
+The mermaid version, editor version (`package.json`), repository link, mermaid docs link and privacy moved to the last page of
+使い方 (`VersionInfo.svelte`, section id `about`). 初期化 (`ResetAllButton.svelte`) asks in a dialog, then replaces the input state
+with `defaultState` (code, config and theme, pan/zoom, selection, undo stack); History keeps its own stores. The code-pane tab
+for the mermaid config JSON uses `StyleCodeIcon` (palette + braces), is labelled "スタイル" and has the tooltip
+「図のスタイル設定（JSON）」 (`Tab.tooltip`, test id unchanged).
+
 **Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —

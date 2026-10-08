@@ -1,6 +1,7 @@
 import type { State } from './types';
 
 export const TID = {
+  aboutRepoLink: 'about-repo-link',
   actionsCard: 'actions-card',
   addAction: 'add-action',
   addArchArrow: 'add-arch-arrow',
@@ -40,6 +41,8 @@ export const TID = {
   aiMessage: 'ai-message',
   aiPrompt: 'ai-prompt',
   aiRepairButton: 'ai-repair-button',
+  appIcon: 'app-icon',
+  appVersion: 'app-version',
   codeErrorMessage: 'code-error-message',
   colorsCard: 'colors-card',
   colorsEdge: 'colors-edge',
@@ -129,6 +132,7 @@ export const TID = {
   guideNext: 'guide-next',
   guidePopover: 'guide-popover',
   guideRestart: 'guide-restart',
+  headerBar: 'header-bar',
   helpButton: 'help-button',
   helpContent: 'help-content',
   helpDialog: 'help-dialog',
@@ -184,6 +188,10 @@ export const TID = {
   noticeResetConfig: 'notice-reset-config',
   privacyButton: 'privacy-button',
   redoButton: 'redo-button',
+  resetAllButton: 'reset-all-button',
+  resetAllCancel: 'reset-all-cancel',
+  resetAllConfirm: 'reset-all-confirm',
+  resetAllDialog: 'reset-all-dialog',
   resetConfigButton: 'reset-config-button',
   resetViewButton: 'reset-view-button',
   revertToValid: 'revert-to-valid',

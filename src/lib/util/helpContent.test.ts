@@ -24,7 +24,8 @@ describe('helpContent', () => {
       'icons',
       'export',
       'licenses',
-      'tips'
+      'tips',
+      'about'
     ]);
   });
 });

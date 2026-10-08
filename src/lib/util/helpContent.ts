@@ -116,11 +116,19 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'F2 on a name renames it everywhere in the diagram.',
         'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it, Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears. The ? in the "Selected" panel lists them.',
         'The button at the top of the code or of the tools folds that side to a row of icons; click an icon to open it again. Fold the code away if you only use the tools, or the tools if you only write code. The ⇄ button above the tools swaps the sides (code on the left, as on mermaid.live); this browser remembers it.',
-        'The sun / moon button in the bar above the picture switches dark mode; the Config tab holds the mermaid settings.',
+        'The sun / moon button and the language button at the right of the header switch dark mode and the language; Reset in the header returns everything to the starting diagram (History is kept). The Style tab above the code holds the diagram style settings (JSON).',
         'When the code has a mistake, a notice over the picture says which line, and the picture stays as it last was. "Revert to the last valid state" puts that code back (Undo brings your change back again); the tools wait until the code is fixed. Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
         'The undo / redo arrows above the code take back the last change, including what the Add, Colours and Layout cards wrote.'
       ],
       title: 'Tips'
+    },
+    {
+      id: 'about',
+      items: [
+        'This editor is a fork of Mermaid Live Editor. Your diagrams are kept in this browser and are not sent anywhere.',
+        'The source code, issues and licence are on GitHub (link above).'
+      ],
+      title: 'Version & about'
     }
   ],
   ja: [
@@ -227,11 +235,19 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '名前の上で F2 を押すと、図の中のその名前をまとめて変えられます。',
         '図形を選択中のキー操作（入力中でないとき）：Enter で次のノードを追加（名前を入れて Enter）、Tab で横に分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。「選択中」の ? にも一覧があります。',
         'コードやツールの上部のボタンで、その側をアイコンだけにたためます。アイコンを押すと元に戻ります。ツールだけ使うならコードを、コードだけ書くならツールをたたむと広く使えます。ツールの上の ⇄ ボタンで左右を入れ替えられます（mermaid.live と同じくコードを左に）。この設定はブラウザに記憶されます。',
-        '図の上のバーにある太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
+        'ヘッダー右端の太陽／月のボタンでダークモード、隣のボタンで表示言語を切り替えます。ヘッダーの「初期化」で図と設定を最初の状態に戻せます（履歴は残ります）。コード横の「スタイル」タブには図のスタイル設定（JSON）があります。',
         'コードに誤りがあると、図の上のお知らせに何行目かが出て、図は直前の正しい状態のまま残ります。「直前の正しい状態に戻す」でそのコードに戻せます（「元に戻す」で変更前に戻ることもできます）。コードが直るまでツールは変更しません。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
         'コードの上にある「元に戻す」「やり直す」の矢印で、直前の変更を取り消せます。「追加」「色」「レイアウト」で書き込んだ内容も戻せます。'
       ],
       title: '便利な操作と困ったとき'
+    },
+    {
+      id: 'about',
+      items: [
+        'このエディタは Mermaid Live Editor を元にしたフォークです。作った図はこのブラウザに保存され、外部に送られません。',
+        'ソースコード、問い合わせ、ライセンスは GitHub（上のリンク）にあります。'
+      ],
+      title: 'バージョン情報'
     }
   ]
 };

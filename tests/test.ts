@@ -1,6 +1,5 @@
 import { C, TID } from '$/constants';
 import { createTranslator, resolveLocale } from '$/i18n/translate';
-import { sampleNameKeys } from '$/util/sampleNames';
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
 
@@ -71,11 +70,20 @@ export class EditorPage {
     return await downloadSVGPromise;
   }
 
-  // The Samples card shows a few catalogue keys under a translated name (Preset.svelte).
-  async loadSampleDiagram(diagramName: string) {
-    // The card shows the common groups under a name of their own (sampleNames.ts).
-    const key = sampleNameKeys[diagramName];
-    await this.page.getByText(key ? t(key) : diagramName, { exact: true }).click();
+  /**
+   * Loads a group's first template from the Templates card (Preset.svelte), opening the
+   * card if the fixture folded it. `diagramName` is the group's catalogue key ('Pie',
+   * 'Swimlane', '業務テンプレート'); `title` picks another of its templates.
+   */
+  async loadSampleDiagram(diagramName: string, title?: string) {
+    const picks = this.page.locator(
+      `[data-testid="${TID.templatePick}"][data-group="${diagramName}"]`
+    );
+    const pick = title ? picks.and(this.page.locator(`[data-title="${title}"]`)) : picks.first();
+    if (!(await this.page.getByTestId(TID.templateSearch).isVisible())) {
+      await this.page.getByTestId(TID.sampleDiagramsCard).click();
+    }
+    await pick.click();
   }
 
   /**
@@ -145,21 +153,33 @@ export class EditorPage {
   }
 }
 
-export const test = base.extend<{ editPage: EditorPage; guideSeen: boolean }>({
+export const test = base.extend<{
+  editPage: EditorPage;
+  foldCodeWhileFixing: boolean;
+  guideSeen: boolean;
+}>({
   // The first-visit guide floats over the page, so every spec starts with it already seen;
   // onboarding.spec.ts opts out with `test.use({ guideSeen: false })`.
-  context: async ({ context, guideSeen }, use) => {
-    if (guideSeen) {
-      await context.addInitScript((key) => {
+  // The code pane folds away while 直す is shown (toolsPane.svelte.ts); most specs read and
+  // type in the code next to the 直す cards, so they start with that turned off;
+  // toolsPane.spec.ts turns it on with `test.use({ foldCodeWhileFixing: true })`.
+  context: async ({ context, foldCodeWhileFixing, guideSeen }, use) => {
+    await context.addInitScript(
+      ({ fold, guideKey, seen }) => {
         try {
-          window.localStorage.setItem(key, 'true');
+          if (seen) window.localStorage.setItem(guideKey, 'true');
+          if (!fold && window.localStorage.getItem('foldCodeWhileFixing') === null) {
+            window.localStorage.setItem('foldCodeWhileFixing', 'false');
+          }
         } catch {
           // about:blank and opaque origins have no storage.
         }
-      }, C.guideDoneKey);
-    }
+      },
+      { fold: foldCodeWhileFixing, guideKey: C.guideDoneKey, seen: guideSeen }
+    );
     await use(context);
   },
+  foldCodeWhileFixing: [false, { option: true }],
   guideSeen: [true, { option: true }],
   editPage: async ({ page }, use) => {
     // Dismiss the editor chooser modal so it doesn't block interactions

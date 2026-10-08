@@ -24,7 +24,7 @@
   import Preset from '$/components/Preset.svelte';
   import ResetConfigButton from '$/components/ResetConfigButton.svelte';
   import SelectionLayer from '$/components/SelectionLayer.svelte';
-  import Share from '$/components/Share.svelte';
+  import ShareLinks from '$/components/ShareLinks.svelte';
   import { TID } from '$/constants';
   import ToolsBar from '$/components/ToolsBar.svelte';
   import ToolsTabs from '$/components/ToolsTabs.svelte';
@@ -42,7 +42,18 @@
   import { inputState, validatedState, updateCodeStore, urls } from '$/util/state.svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
   import { logEvent, logMermaidChartClick } from '$/util/stats';
-  import { openSection, paneOrder, toolsAccordion } from '$/util/toolsPane.svelte';
+  import {
+    codeFoldedForFix,
+    foldCodeWhileFixing,
+    openSection,
+    paneOrder,
+    rememberToolsSize,
+    toolsAccordion,
+    toolsSizeFor,
+    toolsWidths,
+    widthModeOf,
+    type ToolsWidthMode
+  } from '$/util/toolsPane.svelte';
   import { getContactSalesUrl, initHandler } from '$/util/util';
   import { onMount } from 'svelte';
   import CodeIcon from '~icons/custom/code';
@@ -103,9 +114,56 @@
   const codeLeft = $derived(isMobile || paneOrder.value === 'code-left');
   const codeSide = $derived(codeLeft ? 'left' : 'right');
   const toolsSide = $derived(codeLeft ? 'right' : 'left');
-  // The tools get about a third of a wide window, where its forms go two columns.
-  const toolsSize = $derived(width >= 1280 ? 32 : 25);
+  // The tools get about a third of a wide window; 直す, with the longest forms and the
+  // tables, gets a width of its own (two fifths by default), remembered apart from the
+  // other tabs' (toolsPane.svelte.ts).
+  const widthMode = $derived(widthModeOf(toolsAccordion.tab));
+  const toolsSize = $derived(toolsSizeFor('normal', width));
   const codeSize = $derived(isMobile ? 50 : width >= 1280 ? 27 : 25);
+  const applyToolsWidth = (pane: Resizable.Pane, mode: ToolsWidthMode) => {
+    const size = pane.getSize();
+    // Collapsed (or not laid out yet): leave it.
+    if (!size) return;
+    // The first run after an update keeps the width paneforge restored for the other tabs.
+    if (mode === 'normal' && toolsWidths.value.normal === undefined) {
+      rememberToolsSize('normal', size);
+      return;
+    }
+    const target = toolsSizeFor(mode, width);
+    if (Math.abs(size - target) > 0.5) pane.resize(target);
+  };
+  $effect(() => {
+    const mode = widthMode;
+    const pane = toolsPane;
+    if (isMobile || !pane) return;
+    // After paneforge has laid the panes out (also after a swap remounts them).
+    const timer = setTimeout(() => applyToolsWidth(pane, mode));
+    return () => clearTimeout(timer);
+  });
+  // A width the user drags the tools pane to is remembered for the tab shown (直す or not).
+  const onToolsDivider = (dragging: boolean) => {
+    if (dragging || !toolsPane) return;
+    rememberToolsSize(widthMode, toolsPane.getSize());
+  };
+  // While 直す is shown the code folds away (unless turned off in the tools header) and
+  // comes back when another tab is shown — also after a reload, which starts on 作る.
+  $effect(() => {
+    const fold = widthMode === 'fix' && foldCodeWhileFixing.value;
+    const pane = editorPane;
+    if (isMobile || !pane) return;
+    const timer = setTimeout(() => {
+      if (fold) {
+        if (!pane.isCollapsed()) {
+          codeFoldedForFix.value = true;
+          pane.collapse();
+        }
+      } else if (codeFoldedForFix.value) {
+        codeFoldedForFix.value = false;
+        if (pane.isCollapsed()) pane.expand();
+      }
+    });
+    return () => clearTimeout(timer);
+  });
   // The tool cards are an accordion only in the desktop tools pane.
   $effect.pre(() => {
     toolsAccordion.enabled = !isMobile;
@@ -118,7 +176,8 @@
     edit: TID.editCard,
     icons: TID.iconPacksCard,
     layout: TID.layoutCard,
-    samples: TID.sampleDiagramsCard
+    samples: TID.sampleDiagramsCard,
+    share: TID.shareCard
   };
   const openCodeFromRail = (target: RailTarget) => {
     editorPane?.expand();
@@ -161,7 +220,6 @@
       aria-label={t('editor.historyToggle')}>
       <HistoryIcon />
     </Toggle>
-    <Share />
     {#if env.isEnabledMermaidChartLinks}
       <Separator orientation="vertical" />
       <McWrapper labelPrefix="Opens ">
@@ -202,6 +260,7 @@
         <IconPacks />
         <Preset />
         <Actions />
+        <ShareLinks />
         <AiTools />
       {/snippet}
       {#snippet codePane(order: number)}
@@ -296,7 +355,7 @@
             <Resizable.Handle withHandle class="hidden sm:flex" />
           {:else}
             {@render toolsColumn(1)}
-            <Resizable.Handle withHandle />
+            <Resizable.Handle withHandle onDraggingChange={onToolsDivider} />
           {/if}
           <Resizable.Pane
             id="pane-view"
@@ -324,7 +383,7 @@
             <Resizable.Handle withHandle />
             {@render codePane(4)}
           {:else if !isMobile}
-            <Resizable.Handle withHandle />
+            <Resizable.Handle withHandle onDraggingChange={onToolsDivider} />
             {@render toolsColumn(4)}
           {/if}
         </Resizable.PaneGroup>
@@ -392,67 +451,72 @@
   .tools-pane :global(.card .flex-col:has(> span.font-semibold:first-child):not(:first-child)) {
     margin-top: 0.375rem;
   }
-  /* A wide pane (about a third of a 1280px window) puts the label-and-control rows of a
-     section side by side, two to a row, each label above its control. */
-  @container (min-width: 25rem) {
-    .tools-pane
-      :global(
-        .card
-          .flex-col:has(
-            > :is(label, div).items-center
-              > span.shrink-0:first-child
-              + :is(select, input):last-child
-          )
-      ) {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .tools-pane
-      :global(
-        .card
-          .flex-col:has(
-            > :is(label, div).items-center
-              > span.shrink-0:first-child
-              + :is(select, input):last-child
-          )
-          > *
-      ) {
-      grid-column: 1 / -1;
-    }
-    .tools-pane
-      :global(
-        .card
-          .flex-col
-          > :is(label, div).items-center:has(
-            > span.shrink-0:first-child + :is(select, input):last-child
-          )
-      ) {
-      grid-column: auto;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.125rem;
-    }
-    .tools-pane
-      :global(
-        .card
-          .flex-col
-          > :is(label, div).items-center:has(
-            > span.shrink-0:first-child + :is(select, input):last-child
-          )
-          > :is(select, input)
-      ) {
-      flex: none;
-    }
-    .tools-pane
-      :global(
-        .card
-          .flex-col
-          > :is(label, div).items-center:has(
-            > span.shrink-0:first-child + :is(select, input):last-child
-          )
-          > span.shrink-0
-      ) {
-      width: auto;
-    }
+  /* One column (user feedback 2026-10-08: 直す was too cramped to edit in): every
+     label-and-control row puts its label above a control as wide as the pane, instead of
+     a fixed-width label beside a squeezed control, or two half-width rows side by side. */
+  .tools-pane
+    :global(
+      .card
+        .flex-col
+        > :is(label, div).items-center:has(
+          > span.shrink-0:first-child + :is(select, input):last-child
+        )
+    ) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.125rem;
+  }
+  .tools-pane
+    :global(
+      .card
+        .flex-col
+        > :is(label, div).items-center:has(
+          > span.shrink-0:first-child + :is(select, input):last-child
+        )
+        > :is(select, input)
+    ) {
+    flex: none;
+    width: 100%;
+  }
+  .tools-pane
+    :global(
+      .card
+        .flex-col
+        > :is(label, div).items-center:has(
+          > span.shrink-0:first-child + :is(select, input):last-child
+        )
+        > span.shrink-0
+    ) {
+    width: auto;
+  }
+  /* A choice on its own line is as wide as the pane; one beside its button takes the
+     rest of the row. No control is ever wider than the pane. */
+  .tools-pane :global(.card .flex-col > select) {
+    width: 100%;
+  }
+  .tools-pane :global(.card :is(select, input)) {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .tools-pane :global(.card .flex.items-center:has(> select + button) > select) {
+    flex: 1 1 0%;
+  }
+  /* Rows of buttons wrap rather than run past the pane's edge. */
+  .tools-pane :global(.card .flex.items-center:has(> button + button)) {
+    flex-wrap: wrap;
+  }
+  /* A section's title (図形・レーン, 矢印, 表で編集, …) stays at the top of the open card
+     while its controls scroll under it, so a long form keeps saying what it edits. */
+  .tools-pane :global(.card .flex-col > span.font-semibold:first-child) {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background-color: var(--color-card);
+    padding-block: 0.25rem;
+  }
+  /* A table scrolls sideways inside its own box, never the pane. */
+  .tools-pane :global(.card [data-testid='table-editor']) {
+    min-width: 0;
+    max-width: 100%;
   }
 </style>

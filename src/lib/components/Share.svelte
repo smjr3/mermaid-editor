@@ -18,6 +18,10 @@
   import CopyButton from './CopyButton.svelte';
   import CopyInput from './CopyInput.svelte';
 
+  // Local: the 出す tab's share section (ShareLinks.svelte) opens this dialog for the embed
+  // code, under a label of its own.
+  let { label = t('share.title') }: { label?: string } = $props();
+
   const sanitizedConfig = $derived(silentlySanitizeConfig(validatedState.current.mermaid));
   // Deliberate initial-value capture: the embed form seeds from the config at
   // mount time and then owns its values.
@@ -54,7 +58,7 @@
 
 <Dialog.Root>
   <Dialog.Trigger class={buttonVariants({ size: 'sm' })} data-testid={TID.shareButton}
-    >{t('share.title')}</Dialog.Trigger>
+    >{label}</Dialog.Trigger>
   <Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-xl">
     <Dialog.Header>
       <Dialog.Title class="flex items-center gap-2 text-xl">

@@ -1,8 +1,10 @@
 import { TID } from '$/constants';
 import { readFileSync } from 'node:fs';
-import { expect, test } from './test';
+import { expect, t, test } from './test';
 import type { Page } from '@playwright/test';
 
+// The 出す tab's export options. The size presets (PowerPoint, A4, square) were removed
+// after user feedback (2026-10-08); the background and the scale stay.
 const code = 'flowchart LR\n  A[Start] --> B[End]';
 const url = `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid: '{}' })).toString('base64')}`;
 
@@ -43,55 +45,48 @@ const pixelAt = (page: Page, bytes: Buffer, x: number, y: number) =>
     { b64: bytes.toString('base64'), px: x, py: y }
   );
 
-test.describe('Export presets', () => {
+test.describe('Export options', () => {
   test.beforeEach(async ({ editPage, page }) => {
     await editPage.start(url);
     await editPage.checkTextInView('Start');
     await page.getByTestId(TID.actionsCard).click();
   });
 
-  test('PowerPoint 16:9 at 2x downloads a 3840x2160 PNG and says so', async ({ page }) => {
-    await page.getByTestId(`${TID.exportPreset}-ppt169`).click();
-    await page.getByTestId(`${TID.exportScale}-2`).click();
-    await expect(page.getByTestId(TID.exportNote)).toContainText('3840×2160');
-    const bytes = await downloadPng(page);
-    expect(pngSize(bytes)).toEqual({ height: 2160, width: 3840 });
-    // White background by default: the corner is opaque white.
-    expect(await pixelAt(page, bytes, 0, 0)).toEqual([255, 255, 255, 255]);
+  test('offers no size presets; the image is the diagram as it is', async ({ page }) => {
+    await expect(page.getByTestId(TID.downloadPNG)).toBeVisible();
+    await expect(page.locator(`[data-testid^="${TID.exportPreset}-"]`)).toHaveCount(0);
+    await expect(page.getByTestId(TID.exportNote)).toContainText(t('actions.noteAsIs'));
   });
 
-  test('A4 portrait at 1x follows its own ratio', async ({ page }) => {
-    await page.getByTestId(`${TID.exportPreset}-a4portrait`).click();
+  test('the scale multiplies the PNG size', async ({ page }) => {
     await page.getByTestId(`${TID.exportScale}-1`).click();
-    expect(pngSize(await downloadPng(page))).toEqual({ height: 1123, width: 794 });
+    const one = pngSize(await downloadPng(page));
+    await page.getByTestId(`${TID.exportScale}-2`).click();
+    const two = pngSize(await downloadPng(page));
+    expect(Math.abs(two.width - 2 * one.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(two.height - 2 * one.height)).toBeLessThanOrEqual(2);
   });
 
-  test('a transparent background leaves the corner transparent', async ({ page }) => {
-    await page.getByTestId(`${TID.exportPreset}-ppt169`).click();
+  test('a white background by default, a transparent one on request', async ({ page }) => {
+    let bytes = await downloadPng(page);
+    expect(await pixelAt(page, bytes, 0, 0)).toEqual([255, 255, 255, 255]);
     await page.getByTestId(`${TID.exportBackground}-transparent`).click();
-    const bytes = await downloadPng(page);
+    bytes = await downloadPng(page);
     expect(await pixelAt(page, bytes, 0, 0)).toEqual([0, 0, 0, 0]);
   });
 
-  test('the SVG has the preset viewBox and the diagram inside it', async ({ page }) => {
-    await page.getByTestId(`${TID.exportPreset}-ppt43`).click();
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.getByTestId('download-SVG').click()
-    ]);
-    const svg = readFileSync((await download.path()) ?? '', 'utf8');
-    expect(svg).toContain('viewBox="0 0 1440 1080"');
-    expect(svg).toContain('Start');
-  });
-
   test('the choice is remembered after a reload', async ({ editPage, page }) => {
-    await page.getByTestId(`${TID.exportPreset}-square`).click();
     await page.getByTestId(`${TID.exportScale}-3`).click();
+    await page.getByTestId(`${TID.exportBackground}-transparent`).click();
     await editPage.start(url);
     await editPage.checkTextInView('Start');
     if (!(await page.getByTestId(TID.exportNote).isVisible())) {
       await page.getByTestId(TID.actionsCard).click();
     }
-    await expect(page.getByTestId(TID.exportNote)).toContainText('3240×3240');
+    await expect(page.getByTestId(`${TID.exportScale}-3`)).toHaveAttribute('data-state', 'on');
+    await expect(page.getByTestId(`${TID.exportBackground}-transparent`)).toHaveAttribute(
+      'data-state',
+      'on'
+    );
   });
 });

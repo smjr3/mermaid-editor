@@ -11,8 +11,7 @@ import { TID } from '$/constants';
 import { messages, type MessageKey } from '$/i18n/messages';
 import { themePresets } from './themePresets';
 
-export type CommandAction =
-  'guide' | 'help' | 'history' | 'locale' | 'redo' | 'share' | 'theme' | 'undo';
+export type CommandAction = 'guide' | 'help' | 'history' | 'locale' | 'redo' | 'theme' | 'undo';
 
 export interface CardTarget {
   kind: 'card';
@@ -142,7 +141,8 @@ export const commands: Command[] = [
     id: 'share',
     ja: '共有リンク',
     keywords: ['share', 'link', 'url', 'embed', 'iframe', '共有', 'リンク', '埋め込み'],
-    target: action('share')
+    // Local: the share links are a section of the 出す tab (no longer a header button).
+    target: card(TID.shareCard, { click: TID.shareButton })
   },
   {
     en: 'How to use',
@@ -203,9 +203,9 @@ export const commands: Command[] = [
     target: action('history')
   },
   {
-    en: 'Open samples',
+    en: 'Open templates',
     id: 'samples',
-    ja: 'サンプルを開く',
+    ja: 'テンプレートを開く',
     keywords: [
       'sample',
       'samples',
@@ -233,7 +233,7 @@ export const commands: Command[] = [
       'プロンプト',
       '説明'
     ],
-    target: card(TID.iconPacksCard, { focus: TID.aiCopyButton })
+    target: card(TID.aiCard, { focus: TID.aiCopyButton })
   },
   {
     en: 'Fix unknown icons',
@@ -251,7 +251,7 @@ export const commands: Command[] = [
       '壊れ',
       '直す'
     ],
-    target: card(TID.iconPacksCard, { focus: TID.unknownIcons })
+    target: card(TID.aiCard, { focus: TID.unknownIcons })
   }
 ];
 

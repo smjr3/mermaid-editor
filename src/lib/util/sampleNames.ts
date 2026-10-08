@@ -1,11 +1,10 @@
 import type { MessageKey } from '$/i18n/messages';
 
 /**
- * Local: the names the Samples card shows for its groups. The group names are
+ * Local: the names the Templates card shows for its categories. The group names are
  * mermaid's catalogue keys (`@mermaid-js/examples`, plus ZenUML and this fork's
- * local groups), English and cut short in a narrow chip; these give the common
- * ones a Japanese name. English keeps the catalogue's own name. Shared with the
- * e2e helper that clicks a chip by the name it shows (tests/test.ts).
+ * local groups), in English; these give the common ones a Japanese name. English
+ * keeps the catalogue's own name.
  */
 export const sampleNameKeys: Record<string, MessageKey> = {
   Architecture: 'preset.name.architecture',

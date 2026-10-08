@@ -26,7 +26,7 @@ test.describe('AI icon helpers', () => {
     await result.first().click();
     // Collecting did not touch the code.
     await expect(editPage.editor).not.toContainText('load-balancer');
-    // The briefing is in the 出す tab's "AI and unknown icons" section.
+    // The briefing is in the 作る tab's "AI and unknown icons" section.
     await page.getByTestId(TID.aiCard).click();
     await expect(page.getByTestId(TID.aiCollected)).toContainText('tabler:load-balancer');
 

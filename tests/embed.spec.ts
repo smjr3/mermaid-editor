@@ -103,10 +103,16 @@ base.describe('Embed page', () => {
   });
 });
 
+// The share dialog opens from the 出す tab's share links section (no longer the header).
+const openShareDialog = async (page: import('@playwright/test').Page) => {
+  await page.getByTestId(TID.shareCard).click();
+  await page.getByTestId(TID.shareButton).click();
+};
+
 editorTest.describe('Share dialog embed section', () => {
   editorTest('should only offer the live editor link and the embed', async ({ editPage, page }) => {
     void editPage;
-    await page.getByRole('button', { name: t('share.title') }).click();
+    await openShareDialog(page);
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Mermaid Live Editor' })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: t('share.embedHeading') })).toBeVisible();
@@ -116,7 +122,7 @@ editorTest.describe('Share dialog embed section', () => {
 
   editorTest('should offer iframe and web component snippets', async ({ editPage, page }) => {
     void editPage;
-    await page.getByRole('button', { name: t('share.title') }).click();
+    await openShareDialog(page);
     const snippet = page.getByTestId(TID.embedSnippet);
     await expect(snippet).toBeVisible();
     await expect(snippet).toHaveValue(/\/embed\?.*#pako:/);

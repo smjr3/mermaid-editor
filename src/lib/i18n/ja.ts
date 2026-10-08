@@ -907,6 +907,24 @@ export const ja = {
   'recover.unfinished':
     '{line}行目が途中で終わっています（矢印の先や閉じかっこが抜けていませんか）。',
   'recover.unknown': 'コードの書き方に誤りがあります。',
+  'saveAs.cancel': 'キャンセル',
+  'saveAs.description':
+    'ファイルの名前を入力してください。ブラウザーのダウンロード先に保存されます。',
+  'saveAs.drawio': '.drawio で保存',
+  'saveAs.drawioHint':
+    'draw.io（diagrams.net）で開けるファイルを保存します。図は画像として入るので、どの draw.io でも同じ見た目で表示されます。draw.io でダブルクリックすると Mermaid のコードが開き、直して描き直したり、draw.io の図形に変換したりできます。',
+  'saveAs.failed': 'ファイルを保存できませんでした。もう一度お試しください。',
+  'saveAs.label': 'ファイル名',
+  'saveAs.save': '保存',
+  'saveAs.title': '名前を付けて保存',
+  'saveAs.typeDrawio': 'draw.io の図',
+  'saveAs.typeHtml': 'HTML ファイル',
+  'saveAs.typePng': 'PNG 画像',
+  'saveAs.typeSvg': 'SVG 画像',
+  'saveAs.typeVsdx': 'Visio の図面',
+  'saveAs.vsdx': '.vsdx で保存',
+  'saveAs.vsdxHint':
+    'Microsoft Visio で開けるファイルを保存します。図はページに1枚の画像として入ります（移動や拡大縮小はできますが、Visio の図形としては編集できません）。Mermaid のコードは図形のデータに残ります。',
   'security.unsafeConfigConfirm':
     '安全のため、設定から {paths} を削除します。\nこの図の提供元を信頼できる場合は「キャンセル」を押してください。',
   'sel.addAfter': 'この後に追加',

@@ -907,6 +907,23 @@ export const en = {
   'recover.unfinished':
     'Line {line} stops part-way (is an arrow target or a closing bracket missing?).',
   'recover.unknown': 'The code has a mistake.',
+  'saveAs.cancel': 'Cancel',
+  'saveAs.description': 'Enter a name for the file. It is saved where the browser saves downloads.',
+  'saveAs.drawio': 'Save as .drawio',
+  'saveAs.drawioHint':
+    'Saves a file for draw.io (diagrams.net). The diagram goes in as a picture that every draw.io shows; double-clicking it in draw.io opens the Mermaid code, to redraw it or turn it into draw.io shapes.',
+  'saveAs.failed': 'The file could not be saved. Try again.',
+  'saveAs.label': 'File name',
+  'saveAs.save': 'Save',
+  'saveAs.title': 'Save as',
+  'saveAs.typeDrawio': 'draw.io diagram',
+  'saveAs.typeHtml': 'HTML page',
+  'saveAs.typePng': 'PNG image',
+  'saveAs.typeSvg': 'SVG image',
+  'saveAs.typeVsdx': 'Visio drawing',
+  'saveAs.vsdx': 'Save as .vsdx',
+  'saveAs.vsdxHint':
+    'Saves a file for Microsoft Visio. The diagram is one picture on the page (it can be moved and resized, not edited as Visio shapes); the Mermaid code is kept in the shape data.',
   'security.unsafeConfigConfirm':
     'Removing {paths} from the config for safety.\nClick Cancel if you trust the source of this Diagram.',
   'sel.addAfter': 'Add after this',

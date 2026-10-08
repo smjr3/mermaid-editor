@@ -16,7 +16,8 @@
   import type { MermaidConfig } from 'mermaid';
   import { untrack } from 'svelte';
   import { base } from '$app/paths';
-  import dayjs from 'dayjs';
+  import { askFileName } from '$/util/saveAsPrompt.svelte';
+  import { defaultFileBase, pickSaveTarget, type SaveTarget } from '$/util/saveFile';
   import GitLabIcon from '~icons/material-symbols/upload-file-outline-rounded';
   import CodeIcon from '~icons/material-symbols/code-rounded';
 
@@ -43,17 +44,21 @@
     });
 
   const background = () => getComputedStyle(document.body).getPropertyValue('--background');
-  const stamp = () => dayjs().format('YYYY-MM-DD-HHmmss');
   let message = $state('');
 
-  const save = (content: string, type: string, fileName: string) => {
-    const url = URL.createObjectURL(new Blob([content], { type }));
-    const link = document.createElement('a');
-    link.download = fileName;
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  // Local: "名前を付けて保存" (saveFile.ts); the name defaults to the diagram's title.
+  const chooseTarget = (extension: 'html' | 'svg', mime: string): Promise<SaveTarget | undefined> =>
+    pickSaveTarget(
+      `${defaultFileBase(untrack(() => inputState.code))}.${extension}`,
+      {
+        description: t(extension === 'html' ? 'saveAs.typeHtml' : 'saveAs.typeSvg'),
+        extension,
+        mime
+      },
+      { askName: askFileName }
+    );
+  const save = (target: SaveTarget, content: string, type: string) =>
+    target.write(new Blob([content], { type }));
 
   // GitLab: the SVG to commit next to the page, and the Markdown that shows it,
   // links back here and keeps the source (htmlExport.ts).
@@ -68,7 +73,9 @@
   };
 
   const onGitLab = guarded(async () => {
-    const fileName = `mermaid-diagram-${stamp()}.svg`;
+    const target = await chooseTarget('svg', 'image/svg+xml');
+    if (!target) return;
+    const fileName = target.name;
     const { markdown, svg } = await buildGitLabExport(snapshot(), {
       background: background(),
       editBase: `${window.location.origin}${base}/edit`,
@@ -76,7 +83,7 @@
       labels: { edit: t('actions.gitlabEdit'), source: t('actions.gitlabSource') },
       render: renderSvg
     });
-    save(svg, 'image/svg+xml', fileName);
+    await save(target, svg, 'image/svg+xml');
     try {
       await navigator.clipboard.writeText(markdown);
       message = t('actions.gitlabDone', { file: fileName });
@@ -86,11 +93,13 @@
   });
 
   const onDownload = guarded(async () => {
+    const target = await chooseTarget('html', 'text/html');
+    if (!target) return;
     const html = await buildStandaloneHtml(snapshot(), {
       background: background(),
       render: renderSvg
     });
-    save(html, 'text/html', `mermaid-diagram-${stamp()}.html`);
+    await save(target, html, 'text/html');
   });
 
   const onCopyTag = async () => {

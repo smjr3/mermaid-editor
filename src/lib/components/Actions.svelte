@@ -18,7 +18,6 @@
   import { inputState, updateCodeStore, urls, validatedState } from '$lib/util/state.svelte';
   import { logEvent } from '$lib/util/stats';
   import { version as FAVersion } from '@fortawesome/fontawesome-free/package.json';
-  import dayjs from 'dayjs';
   import { untrack } from 'svelte';
   import { toXmlSvg } from '$/util/htmlExport';
   import {
@@ -40,7 +39,19 @@
   import { persisted } from '$/util/persist.svelte';
   import { presetBackground } from '$/util/themePresets';
   import { canvasToBlob, copyImageBlob, createPanZoomPause, loadImage } from '$/util/imageExport';
-  import { toBase64 } from 'js-base64';
+  import { toBase64, toUint8Array } from 'js-base64';
+  import SaveAsDialog from '$/components/SaveAsDialog.svelte';
+  import { buildDrawio } from '$/util/drawioExport';
+  import { askFileName } from '$/util/saveAsPrompt.svelte';
+  import {
+    defaultFileBase,
+    pickSaveTarget,
+    withExtension,
+    type SaveTarget,
+    type SaveType
+  } from '$/util/saveFile';
+  import { buildVsdx } from '$/util/vsdxExport';
+  import { svgSize } from '$/util/xmlText';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
   import WidthIcon from '~icons/material-symbols/width-rounded';
@@ -102,8 +113,27 @@
     };
   };
 
+  // Local: named after the diagram's title (else `diagram`), and the user picks
+  // the name and folder before the file is made (saveFile.ts).
   const getFileName = (extension: string) =>
-    `mermaid-diagram-${dayjs().format('YYYY-MM-DD-HHmmss')}.${extension}`;
+    withExtension(defaultFileBase(untrack(() => inputState.code)), extension);
+
+  const SAVE_TYPES = {
+    drawio: { extension: 'drawio', mime: 'application/vnd.jgraph.mxfile' },
+    png: { extension: 'png', mime: 'image/png' },
+    svg: { extension: 'svg', mime: 'image/svg+xml' },
+    vsdx: { extension: 'vsdx', mime: 'application/vnd.ms-visio.drawing.main+xml' }
+  } as const;
+  const SAVE_TYPE_NAMES = {
+    drawio: 'saveAs.typeDrawio',
+    png: 'saveAs.typePng',
+    svg: 'saveAs.typeSvg',
+    vsdx: 'saveAs.typeVsdx'
+  } as const;
+  const chooseTarget = (kind: keyof typeof SAVE_TYPES): Promise<SaveTarget | undefined> => {
+    const type: SaveType = { ...SAVE_TYPES[kind], description: t(SAVE_TYPE_NAMES[kind]) };
+    return pickSaveTarget(getFileName(type.extension), type, { askName: askFileName });
+  };
 
   /**
    * Fix text clipping in exported SVG for hand-drawn (rough) mode.
@@ -218,14 +248,6 @@
 ${stylesheet}${svgString}`);
   };
 
-  const simulateDownload = (download: string, href: string): void => {
-    const a = document.createElement('a');
-    a.download = download;
-    a.href = href;
-    a.click();
-    a.remove();
-  };
-
   // Local: one promise from the start of the capture to the saved file or the
   // clipboard write, so the copy button reports the real outcome. Pan/zoom is set
   // back to what it was in every case, including no diagram and no canvas.
@@ -274,15 +296,13 @@ ${stylesheet}${svgString}`);
       await exporter(context, image, layout.draw);
     });
 
-  const downloadImage: Exporter = (context, image, draw) => {
-    const { canvas } = context;
-    context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
-    simulateDownload(
-      getFileName('png'),
-      canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
-    );
-    return Promise.resolve();
-  };
+  const downloadImage =
+    (target: SaveTarget): Exporter =>
+    async (context, image, draw) => {
+      const { canvas } = context;
+      context.drawImage(image, draw.x, draw.y, draw.width, draw.height);
+      await target.write(await canvasToBlob(canvas));
+    };
 
   const isClipboardAvailable = (): boolean => {
     return Object.prototype.hasOwnProperty.call(window, 'ClipboardItem');
@@ -309,7 +329,9 @@ ${stylesheet}${svgString}`);
     event.stopPropagation();
     event.preventDefault();
     try {
-      await exportImage(downloadImage);
+      const target = await chooseTarget('png');
+      if (!target) return;
+      await exportImage(downloadImage(target));
     } catch (error) {
       console.error('PNG export failed', error);
       notify(t('actions.pngFailed'));
@@ -320,7 +342,11 @@ ${stylesheet}${svgString}`);
     });
   };
 
-  const onDownloadSVG = () => {
+  const svgBlob = (base64: string) => new Blob([toUint8Array(base64)], { type: 'image/svg+xml' });
+
+  const onDownloadSVG = async () => {
+    const target = await chooseTarget('svg');
+    if (!target) return;
     const fill = exportFill();
     let wrap: Parameters<typeof getBase64SVG>[4];
     if (preset !== 'asis') {
@@ -329,13 +355,118 @@ ${stylesheet}${svgString}`);
         wrap = computeSvgLayout(getContentSize(svg), preset);
       }
     }
-    simulateDownload(
-      getFileName('svg'),
-      `data:image/svg+xml;base64,${getBase64SVG(undefined, undefined, undefined, fill, wrap)}`
-    );
+    try {
+      await target.write(svgBlob(getBase64SVG(undefined, undefined, undefined, fill, wrap)));
+    } catch (error) {
+      console.error('SVG export failed', error);
+      notify(t('saveAs.failed'));
+      return;
+    }
     logEvent('download', {
       type: 'svg'
     });
+  };
+
+  // Local: .drawio and .vsdx (drawioExport.ts, vsdxExport.ts, docs-dev/EXPORTS.md).
+  const diagramConfig = (): Record<string, unknown> | undefined => {
+    try {
+      const config: unknown = JSON.parse(untrack(() => inputState.mermaid));
+      return config && typeof config === 'object' && !Array.isArray(config)
+        ? (config as Record<string, unknown>)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const saveTo = async (target: SaveTarget, make: () => Promise<Blob>, type: string) => {
+    try {
+      await target.write(await make());
+    } catch (error) {
+      console.error(`${type} export failed`, error);
+      notify(t('saveAs.failed'));
+      return;
+    }
+    logEvent('download', { type });
+  };
+
+  // With pan/zoom on, the view's SVG has no viewBox (svg-pan-zoom takes it), so the
+  // files are made from the diagram with pan/zoom paused, as the PNG export does.
+  const withDiagram = <T,>(work: (svg: HTMLElement) => Promise<T>): Promise<T> =>
+    pausePanZoom(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await waitForRender();
+      const svg = document.querySelector<HTMLElement>('#container svg');
+      if (!svg) throw new Error('svg not found');
+      return work(svg);
+    });
+
+  const onDownloadDrawio = async () => {
+    const target = await chooseTarget('drawio');
+    if (!target) return;
+    const code = untrack(() => inputState.code);
+    await saveTo(
+      target,
+      () =>
+        withDiagram((svg) => {
+          const content = getContentSize(svg);
+          const base64 = getBase64SVG(svg, content.width, content.height, exportFill());
+          const size = svgSize(new TextDecoder().decode(toUint8Array(base64))) ?? content;
+          const xml = buildDrawio({
+            code,
+            config: diagramConfig(),
+            height: size.height,
+            name: target.name.replace(/\.drawio$/i, ''),
+            svgBase64: base64,
+            width: size.width
+          });
+          return Promise.resolve(new Blob([xml], { type: SAVE_TYPES.drawio.mime }));
+        }),
+      'drawio'
+    );
+  };
+
+  // The diagram as a PNG at twice its size, for the Visio picture.
+  const VSDX_PNG_SCALE = 2;
+  const renderPng = () =>
+    withDiagram(async (svg) => {
+      const size = getContentSize(svg);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(size.width * VSDX_PNG_SCALE));
+      canvas.height = Math.max(1, Math.round(size.height * VSDX_PNG_SCALE));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('context not found');
+      const fill = exportFill();
+      if (fill) {
+        context.fillStyle = fill;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      const image = await loadImage(
+        `data:image/svg+xml;base64,${getBase64SVG(svg, canvas.width, canvas.height, diagramFill ? fill : null)}`
+      );
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return { blob: await canvasToBlob(canvas), size };
+    });
+
+  const onDownloadVsdx = async () => {
+    const target = await chooseTarget('vsdx');
+    if (!target) return;
+    const code = untrack(() => inputState.code);
+    await saveTo(
+      target,
+      async () => {
+        const { blob, size } = await renderPng();
+        const file = buildVsdx({
+          code,
+          height: size.height,
+          png: new Uint8Array(await blob.arrayBuffer()),
+          title: target.name.replace(/\.vsdx$/i, ''),
+          width: size.width
+        });
+        return new Blob([file as Uint8Array<ArrayBuffer>], { type: SAVE_TYPES.vsdx.mime });
+      },
+      'vsdx'
+    );
   };
 
   let gistURL = $state('');
@@ -494,6 +625,25 @@ ${stylesheet}${svgString}`);
         </a>
       </ExternalLinkWrapper>
     </div>
+    <!-- Local: files for draw.io and Visio (drawioExport.ts, vsdxExport.ts). -->
+    <div class="flex gap-2">
+      <Button
+        class="flex-grow"
+        data-testid={TID.downloadDrawio}
+        title={t('saveAs.drawioHint')}
+        onclick={onDownloadDrawio}>
+        <DownloadIcon />
+        {t('saveAs.drawio')}
+      </Button>
+      <Button
+        class="flex-grow"
+        data-testid={TID.downloadVsdx}
+        title={t('saveAs.vsdxHint')}
+        onclick={onDownloadVsdx}>
+        <DownloadIcon />
+        {t('saveAs.vsdx')}
+      </Button>
+    </div>
     <p class="text-xs text-muted-foreground" data-testid={TID.exportNote}>
       {pngNote} / {svgNote}
     </p>
@@ -527,3 +677,5 @@ ${stylesheet}${svgString}`);
     {/if}
   </div>
 </Card>
+<!-- Local: asks for the file name where the browser has no save dialog (saveFile.ts). -->
+<SaveAsDialog />

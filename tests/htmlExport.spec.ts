@@ -18,7 +18,7 @@ test.describe('HTML export', () => {
       page.waitForEvent('download'),
       page.getByTestId(TID.downloadHTML).click()
     ]);
-    expect(download.suggestedFilename()).toMatch(/^mermaid-diagram-.*\.html$/);
+    expect(download.suggestedFilename()).toBe('diagram.html');
     const html = readFileSync((await download.path()) ?? '', 'utf8');
     expect(html.startsWith('<!doctype html>')).toBe(true);
     expect(html).toContain('<svg');
@@ -57,7 +57,7 @@ test.describe('HTML export', () => {
       page.getByTestId(TID.exportGitLab).click()
     ]);
     const fileName = download.suggestedFilename();
-    expect(fileName).toMatch(/^mermaid-diagram-.*\.svg$/);
+    expect(fileName).toBe('diagram.svg');
     const svg = readFileSync((await download.path()) ?? '', 'utf8');
     expect(svg.startsWith('<?xml')).toBe(true);
     expect(svg).toContain('#336791');

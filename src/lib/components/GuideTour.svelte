@@ -33,18 +33,60 @@
   const step = $derived(steps[Math.min(guide.step, steps.length - 1)]);
   const isLast = $derived(guide.step >= steps.length - 1);
 
-  let anchor = $state<HTMLElement | null>(null);
+  type Side = 'bottom' | 'left' | 'right' | 'top';
+  let anchor = $state<HTMLElement | { getBoundingClientRect: () => DOMRect } | null>(null);
+  let side = $state<Side>('bottom');
   let rect = $state<DOMRect | null>(null);
 
   const visible = (element: Element | null): element is HTMLElement =>
     !!element && element.getBoundingClientRect().width > 0;
 
+  // The popover's size (w-80, and about its tallest text) plus its offset and margin.
+  const POPOVER = { height: 240, width: 344 };
+  const opposite: Record<Side, Side> = {
+    bottom: 'top',
+    left: 'right',
+    right: 'left',
+    top: 'bottom'
+  };
+  const roomOn = (box: DOMRect, at: Side): boolean => {
+    if (at === 'bottom') return window.innerHeight - box.bottom >= POPOVER.height;
+    if (at === 'top') return box.top >= POPOVER.height;
+    if (at === 'left') return box.left >= POPOVER.width;
+    return window.innerWidth - box.right >= POPOVER.width;
+  };
+
+  /**
+   * Where the popover goes: beside the target on the step's side, or the opposite one.
+   * A target that leaves no room on either (the diagram fills the window's middle, so
+   * "below the diagram" was off-screen) gets the popover inside it, near its top.
+   */
+  const place = (element: HTMLElement, box: DOMRect, preferred: Side) => {
+    for (const at of [preferred, opposite[preferred]]) {
+      if (roomOn(box, at)) {
+        anchor = element;
+        side = at;
+        return;
+      }
+    }
+    const point = () => {
+      const now = element.getBoundingClientRect();
+      const x = now.left + now.width / 2;
+      const y = Math.max(now.top, 0) + 16;
+      return new DOMRect(x, y, 0, 0);
+    };
+    anchor = { getBoundingClientRect: point };
+    side = 'bottom';
+  };
+
   const locate = () => {
     for (const selector of step.selectors) {
       const element = document.querySelector(selector);
       if (visible(element)) {
-        anchor = element;
-        rect = element.getBoundingClientRect();
+        // A local first: reading `rect` here would make the effect that calls this rerun.
+        const box = element.getBoundingClientRect();
+        rect = box;
+        place(element, box, step.side);
         return;
       }
     }
@@ -88,7 +130,9 @@
     }}>
     <Popover.Content
       customAnchor={anchor}
-      side={step.side}
+      {side}
+      avoidCollisions
+      sticky="always"
       sideOffset={12}
       collisionPadding={12}
       trapFocus={false}

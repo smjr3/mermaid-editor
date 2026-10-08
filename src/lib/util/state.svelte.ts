@@ -303,6 +303,10 @@ export const loadState = (data: string): void => {
     try {
       // Local: a link holds whatever JSON it was given; only a real state is applied.
       next = normalizeState(deserializeState(data), $state.snapshot(state) as State);
+      // Local: a link whose pan/zoom is null (the new-diagram link, NewDiagram.svelte) asks
+      // for a fitted view; normalizeState drops the keys, so clear the stored view too.
+      if (!('pan' in next)) next.pan = undefined;
+      if (!('zoom' in next)) next.zoom = undefined;
       try {
         next.mermaid = sanitizeConfig(next.mermaid || defaultState.mermaid);
       } catch (error) {

@@ -25,10 +25,8 @@
     computeExportLayout,
     computeSvgLayout,
     EXPORT_BACKGROUNDS,
-    EXPORT_PRESETS,
     EXPORT_SCALES,
     isExportBackground,
-    isExportPreset,
     isExportScale,
     PRESET_SIZES,
     type ExportBackground,
@@ -65,24 +63,17 @@
     draw: Rect
   ) => Promise<void>;
 
-  // Local: office export presets, remembered per browser.
-  const presetStore = persisted<ExportPreset>('exportPreset', 'asis');
+  // Local: the background and scale, remembered per browser. The size presets (A4,
+  // slides) are no longer offered (user feedback, 2026-10-08); the export code keeps
+  // its preset parameter, always "as is".
+  const preset = $derived<ExportPreset>('asis');
   const backgroundStore = persisted<ExportBackground>('exportBackground', 'white');
   const scaleStore = persisted<ExportScale>('exportScale', 2);
-  const preset = $derived(isExportPreset(presetStore.value) ? presetStore.value : 'asis');
   const background = $derived(
     isExportBackground(backgroundStore.value) ? backgroundStore.value : 'white'
   );
   const scale = $derived(isExportScale(scaleStore.value) ? scaleStore.value : 2);
 
-  const PRESET_LABELS = {
-    a4landscape: 'actions.presetA4Landscape',
-    a4portrait: 'actions.presetA4Portrait',
-    asis: 'actions.presetAsIs',
-    ppt169: 'actions.presetPpt169',
-    ppt43: 'actions.presetPpt43',
-    square: 'actions.presetSquare'
-  } as const;
   const BACKGROUND_LABELS = {
     theme: 'actions.backgroundTheme',
     transparent: 'actions.backgroundTransparent',
@@ -568,21 +559,6 @@ ${stylesheet}${svgString}`);
         max="10000"
         disabled={imageSizeMode === 'auto' || preset !== 'asis'}
         bind:value={imageSize} />
-    </div>
-    <div class="flex flex-col gap-1">
-      <span class="text-sm">{t('actions.preset')}</span>
-      <ToggleGroup.Root
-        type="single"
-        variant="outline"
-        class="flex-wrap justify-start"
-        value={preset}
-        onValueChange={(v) => v && (presetStore.value = v as ExportPreset)}>
-        {#each EXPORT_PRESETS as value (value)}
-          <ToggleGroup.Item {value} data-testid="{TID.exportPreset}-{value}">
-            {t(PRESET_LABELS[value])}
-          </ToggleGroup.Item>
-        {/each}
-      </ToggleGroup.Root>
     </div>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 whitespace-nowrap">
       <div class="flex items-center gap-2">

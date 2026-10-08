@@ -22,23 +22,38 @@
     type Row,
     type TemplateForm
   } from '$/util/templateForms';
-  import { templateNotice } from '$/util/templateNotice.svelte';
+  import { templateDialog, templateNotice } from '$/util/templateNotice.svelte';
   import { thumbnail } from '$/util/templateThumbnails';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import TemplateIcon from '~icons/material-symbols/dynamic-form-outline-rounded';
   import BackIcon from '~icons/material-symbols/arrow-back-rounded';
   import AddIcon from '~icons/material-symbols/add-rounded';
   import RemoveIcon from '~icons/material-symbols/close-rounded';
 
-  // Local: "Create from a template" in the Samples card — pick one of the business
-  // templates, fill in its form (templateForms.ts) and get the diagram, then carry on
-  // in the Add card. Asks first unless the code is a sample, a starter or a template.
+  // Local: a business template's form — opened from the template picker (Preset.svelte)
+  // for a template that has one: fill in its form (templateForms.ts) and get the diagram,
+  // then carry on in the Add card. Asks first unless the code is a sample, a starter or
+  // a template.
   let { samples }: { samples: string[] } = $props();
 
-  let open = $state(false);
+  // The template picker (Preset.svelte) chooses the template; this is only its form.
   let chosen = $state<TemplateForm | undefined>();
   let values = $state<FormValues>({});
   let thumbs = $state<Record<string, string>>({});
+  const open = $derived(chosen !== undefined);
+  $effect.pre(() => {
+    const id = templateDialog.id;
+    untrack(() => {
+      chosen = templateForms.find((template) => template.id === id);
+      if (chosen) {
+        values = defaultValues(chosen);
+        templateNotice.message = '';
+      }
+    });
+  });
+  const close = () => {
+    templateDialog.id = undefined;
+  };
 
   const label = (value: { en: string; ja: string }) => labelOf(value, locale);
   const selectClass =
@@ -53,16 +68,13 @@
     }
   };
 
-  // Previews: each template's default diagram, rendered once (templateThumbnails.ts).
+  // A preview of the chosen template's default diagram, rendered once (templateThumbnails.ts).
   $effect(() => {
-    if (!open) return;
-    const theme = currentTheme();
-    for (const template of templateForms) {
-      if (thumbs[template.id] !== undefined) continue;
-      void thumbnail(template.id, generate(template, defaultValues(template)), theme).then(
-        (svg) => (thumbs[template.id] = svg)
-      );
-    }
+    const template = chosen;
+    if (!template || thumbs[template.id] !== undefined) return;
+    void thumbnail(template.id, generate(template, defaultValues(template)), currentTheme()).then(
+      (svg) => (thumbs[template.id] = svg)
+    );
   });
 
   const rowsOf = (key: string): Row[] => {
@@ -86,11 +98,6 @@
         value: row._id
       }))
     ];
-  };
-
-  const choose = (template: TemplateForm) => {
-    chosen = template;
-    values = defaultValues(template);
   };
 
   const removeRow = (field: ListField, id: string) => {
@@ -127,59 +134,40 @@
       updateDiagram: true
     });
     templateNotice.message = t('template.done', { name: label(chosen.name) });
-    open = false;
-    chosen = undefined;
+    close();
     await tick();
     openAddCard();
   };
 </script>
 
-<Button
-  size="sm"
-  variant="outline"
-  class="self-start"
-  data-testid={TID.templateFormsButton}
-  onclick={() => {
-    open = true;
-    templateNotice.message = '';
+<Dialog.Root
+  {open}
+  onOpenChange={(next) => {
+    if (!next) close();
   }}>
-  <TemplateIcon />
-  {t('template.button')}
-</Button>
-
-<Dialog.Root bind:open>
   <Dialog.Content
     class="flex max-h-[90vh] flex-col sm:max-w-3xl"
     data-testid={TID.templateFormsDialog}>
     <Dialog.Header>
-      <Dialog.Title>{chosen ? label(chosen.name) : t('template.title')}</Dialog.Title>
+      <Dialog.Title class="flex items-center gap-2">
+        <TemplateIcon class="size-5 shrink-0" />
+        {chosen ? label(chosen.name) : t('template.title')}
+      </Dialog.Title>
       <Dialog.Description>
         {chosen ? label(chosen.description) : t('template.intro')}
       </Dialog.Description>
     </Dialog.Header>
 
-    {#if !chosen}
-      <div class="grid min-h-0 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-3">
-        {#each templateForms as template (template.id)}
-          <button
-            type="button"
-            class="flex flex-col gap-1 rounded-md border border-border p-2 text-left text-sm hover:bg-muted"
-            data-testid={`${TID.templateFormsItem}-${template.id}`}
-            onclick={() => choose(template)}>
-            <div
-              class="flex h-20 items-center justify-center overflow-hidden rounded bg-background [&>svg]:h-full [&>svg]:max-w-full"
-              aria-hidden="true">
-              {#if thumbs[template.id]}
-                <!-- eslint-disable-next-line svelte/no-at-html-tags -- rendered by mermaid from the editor's own template code -->
-                {@html thumbs[template.id]}
-              {/if}
-            </div>
-            <span class="font-medium">{label(template.name)}</span>
-            <span class="text-xs text-muted-foreground">{label(template.description)}</span>
-          </button>
-        {/each}
+    {#if chosen}
+      <div
+        class="flex h-24 shrink-0 items-center justify-center overflow-hidden rounded border bg-background [&>svg]:h-full [&>svg]:max-w-full"
+        aria-hidden="true"
+        data-testid={`${TID.templateFormsItem}-preview`}>
+        {#if thumbs[chosen.id]}
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -- rendered by mermaid from the editor's own template code -->
+          {@html thumbs[chosen.id]}
+        {/if}
       </div>
-    {:else}
       <div class="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1 text-sm">
         {#each chosen.fields as field (field.key)}
           {#if field.kind === 'text'}
@@ -253,13 +241,9 @@
         <p class="text-xs text-muted-foreground">{t('template.emptyRows')}</p>
       </div>
       <Dialog.Footer class="gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          data-testid={TID.templateFormsBack}
-          onclick={() => (chosen = undefined)}>
+        <Button variant="outline" size="sm" data-testid={TID.templateFormsBack} onclick={close}>
           <BackIcon />
-          {t('template.back')}
+          {t('template.cancel')}
         </Button>
         <Button size="sm" data-testid={TID.templateFormsCreate} onclick={create}
           >{t('template.create')}</Button>

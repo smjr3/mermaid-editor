@@ -66,6 +66,25 @@ describe('loadState from a link', () => {
     expect(typeof inputState.rough).toBe('boolean');
   });
 
+  it('a link with a null pan and zoom (a new diagram) drops the stored view', async () => {
+    window.localStorage.setItem(
+      'codeStore',
+      JSON.stringify({ code: 'graph TD\n  Old', mermaid: '{}', pan: { x: 5, y: 6 }, zoom: 2 })
+    );
+    const { inputState, loadState } = await freshState();
+    expect(inputState.zoom).toBe(2);
+    loadState(linkTo({ code: 'graph TD\n  New', mermaid: '{}', pan: null, zoom: null }));
+    flushSync();
+    expect(inputState.code).toBe('graph TD\n  New');
+    expect(inputState.pan).toBeUndefined();
+    expect(inputState.zoom).toBeUndefined();
+    // A link that leaves them out keeps the stored view, as before.
+    loadState(linkTo({ code: 'graph TD\n  Other', mermaid: '{}', pan: { x: 1, y: 2 }, zoom: 3 }));
+    loadState(linkTo({ code: 'graph TD\n  Again', mermaid: '{}' }));
+    flushSync();
+    expect(inputState.zoom).toBe(3);
+  });
+
   it('keeps the linked diagram when its config is not JSON, with the default config', async () => {
     const { inputState, loadState } = await freshState();
     loadState(linkTo({ code: 'graph TD\n  KeepMe', mermaid: '{bad json' }));

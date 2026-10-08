@@ -53,4 +53,36 @@ test.describe('First-visit guide', () => {
     await expect(popover).toBeVisible();
     await expect(popover).toContainText(t('guide.step1.title'));
   });
+
+  // User feedback (2026-10-08): step 2, pointing at the diagram in the middle, was drawn
+  // below it — off the screen. Every step's popover must sit wholly inside the window.
+  for (const [width, height] of [
+    [1280, 720],
+    [1440, 900]
+  ]) {
+    test(`every step stays inside a ${width}x${height} window`, async ({ page }) => {
+      await page.setViewportSize({ height, width });
+      await page.goto('/edit');
+      const popover = page.getByTestId(TID.guidePopover);
+      for (const step of [1, 2, 3]) {
+        await expect(popover).toContainText(t(`guide.step${step}.title` as 'guide.step1.title'));
+        // Wait for the popover to settle where floating-ui puts it.
+        await expect
+          .poll(async () => {
+            const first = await popover.boundingBox();
+            await page.waitForTimeout(150);
+            return JSON.stringify(first) === JSON.stringify(await popover.boundingBox());
+          })
+          .toBe(true);
+        const box = await popover.boundingBox();
+        if (!box) throw new Error(`step ${step}: no popover`);
+        expect(box.x, `step ${step} left`).toBeGreaterThanOrEqual(0);
+        expect(box.y, `step ${step} top`).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, `step ${step} right`).toBeLessThanOrEqual(width);
+        expect(box.y + box.height, `step ${step} bottom`).toBeLessThanOrEqual(height);
+        await expect(popover).toBeInViewport({ ratio: 1 });
+        if (step < 3) await page.getByTestId(TID.guideNext).click();
+      }
+    });
+  }
 });

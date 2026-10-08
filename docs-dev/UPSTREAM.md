@@ -342,7 +342,7 @@ time:
 | `src/lib/components/Navbar.svelte` | Upstream's Mermaid logo removed from the header                                                                                                                                                         |
 | `static/icons/mermaid.svg`         | Deleted — the brand mark, now unused                                                                                                                                                                    |
 | `static/favicon.{svg,png,ico}`     | Brand mark replaced with a generic diagram glyph                                                                                                                                                        |
-| `static/manifest.json`             | `background_color` and `theme_color` moved off the brand pink                                                                                                                                           |
+| `static/manifest.json`             | `background_color` and `theme_color` moved off the brand pink; icon, `start_url` and `scope` are relative so they follow `MERMAID_BASE_PATH`                                                            |
 
 The dark `--accent-foreground` is near-black **because** the dark accent is
 bright. Restoring upstream's near-white value there drops accent-button labels to
@@ -401,7 +401,7 @@ local component replaces them (the two floating toolbars).
 
 | Path                                                                                             | Why it is gone                                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/deploy.yml`                                                                   | Publishes to GitHub Pages; this fork publishes no site itself; `ci/gitlab-ci.example.yml` is a template for GitLab Pages.                                                                                                                 |
+| `.github/workflows/deploy.yml`                                                                   | Publishes to GitHub Pages for mermaid.live (custom domain, no sub-path); this fork's own `pages.yml` publishes under `/mermaid-editor`; `ci/gitlab-ci.example.yml` is a template for GitLab Pages.                                        |
 | `.github/workflows/docker-publish.yml`                                                           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it would publish for real rather than failing on upstream's.                                                            |
 | `.github/workflows/close-broken-link-issues.yml`                                                 | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                         |
 | `.github/workflows/update-browserlist.yml`                                                       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                    |
@@ -516,6 +516,7 @@ modifications as if they were local customizations.
 | Deleted  | `.github/workflows/deploy.yml`                         |
 | Deleted  | `.github/workflows/docker-publish.yml`                 |
 | Added    | `.github/workflows/fork-checks.yml`                    |
+| Added    | `.github/workflows/pages.yml`                          |
 | Added    | `.github/workflows/publish.yml`                        |
 | Deleted  | `.github/workflows/release-pr.yml`                     |
 | Modified | `.github/workflows/tests.yml`                          |

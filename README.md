@@ -133,6 +133,13 @@ npm run build
 
 全体は `docs-dev/FEATURE-FLAGS.md` を参照してください。
 
+### GitHub Pages
+
+`master` への push ごとに <https://smjr3.github.io/mermaid-editor/> へ公開されます
+（`.github/workflows/pages.yml`、手動実行も可）。サブパスは `MERMAID_BASE_PATH=/mermaid-editor`
+で指定しており、GitLab Pages の例と同じ仕組みです。初回のみ、リポジトリの
+**Settings → Pages → Source** を **「GitHub Actions」** に設定してください。
+
 ## 対応ブラウザ
 
 | ブラウザ                    | 対応   | CI での確認                 |
@@ -244,3 +251,10 @@ choice is remembered in the browser. Builds can change the default with `MERMAID
   `a70ed761a7d040a38f71bf13d999e387f4bf68ca` (version 2.0.67); the procedure for following
   upstream is in `docs-dev/UPSTREAM.md`, and upstream's own README is kept in
   [`README.upstream.md`](README.upstream.md).
+
+### GitHub Pages
+
+Every push to `master` publishes the site to <https://smjr3.github.io/mermaid-editor/>
+(`.github/workflows/pages.yml`; it can also be run by hand). The sub-path is set with
+`MERMAID_BASE_PATH=/mermaid-editor`, the same variable the GitLab Pages example uses. One-time
+setting: repository **Settings → Pages → Source: "GitHub Actions"**.

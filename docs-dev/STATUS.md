@@ -670,9 +670,15 @@ leaves an empty chart that mermaid draws with `NaN` lines; `swimlane-beta LR` dr
 of mermaid's viewBox, so the first column of titles is cut off at the view's edge; selection does not
 work in hand-drawn mode (the redrawn SVG has no ids).
 
-**Dark mode (0.2.0).** In dark mode, the dark themes
-render with near-white lines unless the user set `lineColor`, and a diagram in a light theme
-gets a light grey background so its dark lines stay visible (`src/lib/util/darkLines.ts`).
+**Dark mode (0.2.0, changed).** The diagram looks the same in the site's light and dark mode, so
+it can be carried into other tools unchanged: the managed theme is the diagram type's light
+default in both (`syncManagedTheme` no longer reads the site mode), the view behind the picture is
+white in both (`View.svelte`), and the grey dark-mode backdrop is gone. Only the app chrome
+follows dark mode. 「自動」 in the built-in theme buttons means that light default. A dark theme the
+user picks (redux-dark, neo-dark, ...) is theirs and stays; it still gets near-white lines unless
+`lineColor` is set (`darkLines.ts`). The migration `normalizeLegacyDarkTheme` drops a stored
+`dark` / `redux-dark-color` theme (set only by the old switching) so the light default is filled
+in; `redux-dark` / `neo-dark` cannot be told apart from a user's pick and are kept.
 
 **Icon picker (0.2.0).** The "Icons" card searches the bundled, build-time, hosted and imported
 packs by name, shows the matches as icons, and inserts the clicked icon's `prefix:name` at the

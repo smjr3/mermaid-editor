@@ -134,8 +134,10 @@ test.describe('Theme presets', () => {
     const standard = await config(page);
     expect(standard.themeVariables).toBeUndefined();
     expect(standard.themeCSS).toBeUndefined();
+    // The site mode no longer changes the managed theme.
     await editPage.toggleTheme();
-    await expect.poll(async () => (await config(page)).theme).toBe('redux-dark-color');
+    await page.waitForTimeout(500);
+    expect((await config(page)).theme).toBe('redux-color');
     await editPage.toggleTheme();
     await expect.poll(async () => (await config(page)).theme).toBe('redux-color');
   });

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  darkVariantOf,
   architectureParts,
   diagramEdges,
   diagramObjects,
@@ -25,27 +24,25 @@ describe('getDefaultTheme', () => {
   });
 });
 
-describe('darkVariantOf', () => {
-  it.each([
-    ['redux-color', 'redux-dark-color'],
-    ['redux', 'redux-dark'],
-    ['redux-dark-color', 'redux-dark-color'],
-    ['default', 'dark'],
-    ['forest', 'dark']
-  ])('%s → %s', (theme, dark) => {
-    expect(darkVariantOf(theme)).toBe(dark);
-  });
-});
-
 describe('isManagedTheme', () => {
   it('treats a missing theme and every derivable default as editor-managed', () => {
-    for (const theme of [undefined, 'default', 'dark', 'redux-color', 'redux-dark-color']) {
+    for (const theme of [undefined, 'default', 'redux-color']) {
       expect(isManagedTheme(theme), String(theme)).toBe(true);
     }
   });
 
   it('treats any other theme as the user’s choice', () => {
-    for (const theme of ['forest', 'neutral', 'neo', 'base', 'redux', 42]) {
+    for (const theme of [
+      'forest',
+      'neutral',
+      'neo',
+      'base',
+      'redux',
+      'dark',
+      'redux-dark',
+      'redux-dark-color',
+      42
+    ]) {
       expect(isManagedTheme(theme), String(theme)).toBe(false);
     }
   });

@@ -826,6 +826,7 @@ modifications as if they were local customizations.
 | Added    | `tests/layout.spec.ts`                                 |
 | Modified | `tests/loadSite.spec.ts`                               |
 | Added    | `tests/locale.spec.ts`                                 |
+| Modified | `tests/managedTheme.spec.ts`                           |
 | Added    | `tests/monkey.spec.ts`                                 |
 | Added    | `tests/newDiagram.spec.ts`                             |
 | Added    | `tests/offline.spec.ts`                                |

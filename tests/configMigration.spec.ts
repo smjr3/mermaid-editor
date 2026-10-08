@@ -13,7 +13,8 @@ const legacyCodeStore = JSON.stringify({
   updateDiagram: true
 });
 
-// Seeds the legacy install with the history-id migration already applied (v0).
+// Seeds the legacy install with the history-id migration already applied (v0); the
+// default-theme (v1) and legacy dark theme (v2) migrations then run.
 // Guarded so reloads do not re-seed.
 const seedLegacyInstall = (page: Page) =>
   page.addInitScript(
@@ -49,19 +50,20 @@ test.describe('Default theme config migration', () => {
     await seedLegacyInstall(page);
     await openEditor(page);
     await expect(page.locator('#view')).toContainText('Legacy');
-    await expect.poll(() => migrationVersion(page)).toBe(1);
+    await expect.poll(() => migrationVersion(page)).toBe(2);
     // A flowchart: mermaid 12's own default for it is redux-color.
     await expect.poll(() => storedConfig(page)).toBe('{\n  "theme": "redux-color"\n}');
   });
 
-  test('uses the redux dark variant when the site is dark', async ({ page }) => {
+  // The diagram no longer follows the site's dark mode (normalizeLegacyDarkTheme, mermaid.ts).
+  test('uses the same light default when the site is dark', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await seedLegacyInstall(page);
     await openEditor(page);
     await expect(page.locator('#view')).toContainText('Legacy');
-    await expect.poll(() => migrationVersion(page)).toBe(1);
+    await expect.poll(() => migrationVersion(page)).toBe(2);
     await expect
       .poll(async () => JSON.parse((await storedConfig(page)) ?? '{}') as unknown)
-      .toEqual({ theme: 'redux-dark-color' });
+      .toEqual({ theme: 'redux-color' });
   });
 });

@@ -794,6 +794,17 @@ opens at once on the name the node will get (`selectionModel.draftLabel`), the t
 put until the new node is drawn, and a name confirmed before the node exists is applied once it
 does (`pendingAdd`). `tests/selection.spec.ts` types straight after Enter and Tab.
 
+**Source review of 2026-10-08, P2 items (R06–R12) and its three extra checks.** A config whose
+JSON root is not an object is a config error in the editor and "no config" in links and the
+embed (R06); history import validates every entry and dedupes within the file (R07); imported
+icon packs keep Iconify's position, transforms and aliases through a reload (R08) and count as
+stored only once the IndexedDB transaction completes (R09); the PNG export and image copy are one
+awaited promise and the copy button ticks only on success (R10); a build without
+`MERMAID_FETCH_ICON_PACKS` removes the packs the previous run generated, by manifest (R11); the
+HTML and GitLab exports are made from one snapshot (R12). A link may unpack to at most 5 MB
+(`serde.ts`), `?code=`/gist loading refuses HTTP errors and empty files, and the embed takes the
+hash state through `normalizeState`. The per-file list is in `UPSTREAM.md` ("Input hardening").
+
 ## What is open
 
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue

@@ -1,4 +1,8 @@
+import type { State } from '$/types';
 import { toBase64 } from 'js-base64';
+import type { MermaidConfig } from 'mermaid';
+import { serializeState } from './serde';
+import { parseConfigObject } from './stateGuard';
 
 /**
  * Local: HTML export (HtmlExport.svelte). The diagram is already rendered SVG
@@ -124,3 +128,79 @@ ${fence}
 </details>
 `;
 };
+
+/**
+ * The diagram at the moment an export starts. The image, the source and the
+ * edit link of one export are all made from it, so typing (or a validation
+ * landing) while the image renders cannot make them disagree.
+ */
+export interface ExportSnapshot {
+  code: string;
+  /** The config to render with; one that is not a JSON object renders with the defaults. */
+  config: MermaidConfig;
+  /** The snapshot's state, serialised for the edit link. */
+  serialized: string;
+  title: string;
+}
+
+/** Take the snapshot. `diagramType` is the validated type, if it is that of this code. */
+export const takeExportSnapshot = (
+  state: State,
+  diagramType: string | undefined
+): ExportSnapshot => {
+  let config: MermaidConfig = {};
+  try {
+    config = parseConfigObject(state.mermaid) as MermaidConfig;
+  } catch {
+    // An unparsable config renders with the defaults, like the view's last good render.
+  }
+  return {
+    code: state.code,
+    config,
+    serialized: serializeState(state),
+    title: `${diagramType ?? 'mermaid'} diagram`
+  };
+};
+
+type RenderSvg = (config: MermaidConfig, code: string) => Promise<string>;
+
+/** The SVG file and the Markdown of a GitLab export, from one snapshot. */
+export const buildGitLabExport = async (
+  snapshot: ExportSnapshot,
+  {
+    background,
+    editBase,
+    fileName,
+    labels,
+    render
+  }: {
+    background: string;
+    /** The editor's absolute URL, without the hash. */
+    editBase: string;
+    fileName: string;
+    labels: { edit: string; source: string };
+    render: RenderSvg;
+  }
+): Promise<{ markdown: string; svg: string }> => {
+  const svg = svgFile(await render(snapshot.config, snapshot.code), background);
+  const markdown = gitlabMarkdown({
+    alt: snapshot.title,
+    code: snapshot.code,
+    editUrl: `${editBase}#${snapshot.serialized}`,
+    fileName,
+    labels
+  });
+  return { markdown, svg };
+};
+
+/** The standalone HTML page, from one snapshot. */
+export const buildStandaloneHtml = async (
+  snapshot: ExportSnapshot,
+  { background, render }: { background: string; render: RenderSvg }
+): Promise<string> =>
+  toStandaloneHtml({
+    background,
+    code: snapshot.code,
+    svg: await render(snapshot.config, snapshot.code),
+    title: snapshot.title
+  });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '$/i18n';
   import Card from '$lib/components/Card/Card.svelte';
-  import type { HistoryEntry, HistoryType, State, Tab } from '$lib/types';
+  import type { HistoryType, State, Tab } from '$lib/types';
   import { notify, prompt } from '$lib/util/notify';
   import { serializeState } from '$lib/util/serde';
   import { inputState, replaceInputState } from '$lib/util/state.svelte';
@@ -24,10 +24,11 @@
     addManualEntry,
     clearActive,
     historyState,
+    importHistory,
     removeEntry,
     renameEntry,
-    restoreEntries,
-    setMode
+    setMode,
+    type RestoreResult
   } from './historyState.svelte';
 
   dayjs.extend(dayjsRelativeTime);
@@ -91,8 +92,18 @@
       if (!file) {
         return;
       }
-      const data: HistoryEntry[] = JSON.parse(await file.text());
-      const { restored, invalid, duplicates } = restoreEntries(data);
+      // Local: a file that is not a history export is reported; the history is kept.
+      let result: RestoreResult | undefined;
+      try {
+        result = importHistory(await file.text());
+      } catch (error) {
+        console.error('History import failed', error);
+      }
+      if (!result) {
+        notify(t('history.importFailed'));
+        return;
+      }
+      const { restored, invalid, duplicates } = result;
       notify(
         t('history.importSummary', {
           duplicates: String(duplicates),

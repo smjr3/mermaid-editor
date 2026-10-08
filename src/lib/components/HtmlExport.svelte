@@ -3,10 +3,18 @@
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { gitlabMarkdown, svgFile, toImgTag, toStandaloneHtml } from '$/util/htmlExport';
+  import {
+    buildGitLabExport,
+    buildStandaloneHtml,
+    takeExportSnapshot,
+    toImgTag,
+    type ExportSnapshot
+  } from '$/util/htmlExport';
   import { render } from '$/util/mermaid';
   import { inputState, validatedState } from '$/util/state.svelte';
+  import type { State } from '$/types';
   import type { MermaidConfig } from 'mermaid';
+  import { untrack } from 'svelte';
   import { base } from '$app/paths';
   import dayjs from 'dayjs';
   import GitLabIcon from '~icons/material-symbols/upload-file-outline-rounded';
@@ -14,21 +22,25 @@
 
   // Local: export the diagram as a standalone HTML page, or copy it as one
   // self-contained <img> tag (htmlExport.ts). Rendered afresh rather than taken
-  // from the view, so pan and zoom do not leak into the file.
+  // from the view, so pan and zoom do not leak into the file. Each export starts
+  // from one snapshot of the diagram (`takeExportSnapshot`), so edits made while
+  // it renders do not end up in only part of it.
   let probe = 0;
-  const renderSvg = async (): Promise<string> => {
-    let config: MermaidConfig = {};
-    try {
-      config = JSON.parse(inputState.mermaid) as MermaidConfig;
-    } catch {
-      // An unparsable config renders with the defaults, like the view's last good render.
-    }
+  const renderSvg = async (config: MermaidConfig, code: string): Promise<string> => {
     probe++;
-    const { svg } = await render(config, inputState.code, `html-export-${probe}`);
+    const { svg } = await render(config, code, `html-export-${probe}`);
     return svg;
   };
 
-  const title = () => `${validatedState.current.diagramType ?? 'mermaid'} diagram`;
+  const snapshot = (): ExportSnapshot =>
+    untrack(() => {
+      const state = $state.snapshot(inputState) as State;
+      const validated = validatedState.current;
+      return takeExportSnapshot(
+        state,
+        validated.code === state.code ? validated.diagramType : undefined
+      );
+    });
 
   const background = () => getComputedStyle(document.body).getPropertyValue('--background');
   const stamp = () => dayjs().format('YYYY-MM-DD-HHmmss');
@@ -57,14 +69,14 @@
 
   const onGitLab = guarded(async () => {
     const fileName = `mermaid-diagram-${stamp()}.svg`;
-    save(svgFile(await renderSvg(), background()), 'image/svg+xml', fileName);
-    const markdown = gitlabMarkdown({
-      alt: title(),
-      code: inputState.code,
-      editUrl: `${window.location.origin}${base}/edit#${validatedState.current.serialized}`,
+    const { markdown, svg } = await buildGitLabExport(snapshot(), {
+      background: background(),
+      editBase: `${window.location.origin}${base}/edit`,
       fileName,
-      labels: { edit: t('actions.gitlabEdit'), source: t('actions.gitlabSource') }
+      labels: { edit: t('actions.gitlabEdit'), source: t('actions.gitlabSource') },
+      render: renderSvg
     });
+    save(svg, 'image/svg+xml', fileName);
     try {
       await navigator.clipboard.writeText(markdown);
       message = t('actions.gitlabDone', { file: fileName });
@@ -74,17 +86,16 @@
   });
 
   const onDownload = guarded(async () => {
-    const html = toStandaloneHtml({
+    const html = await buildStandaloneHtml(snapshot(), {
       background: background(),
-      code: inputState.code,
-      svg: await renderSvg(),
-      title: title()
+      render: renderSvg
     });
     save(html, 'text/html', `mermaid-diagram-${stamp()}.html`);
   });
 
   const onCopyTag = async () => {
-    await navigator.clipboard.writeText(toImgTag(await renderSvg(), title()));
+    const { code, config, title } = snapshot();
+    await navigator.clipboard.writeText(toImgTag(await renderSvg(config, code), title));
   };
 </script>
 

@@ -7,14 +7,45 @@
  * editor (which serialized plain objects to the same JSON shape) stay loadable.
  */
 
-const hasStorage = (): boolean => typeof window !== 'undefined' && !!window.localStorage;
+import { t } from '$/i18n';
+import { notify } from './notify';
+
+// Local (R03): every access is guarded. Blocked site data makes the `localStorage`
+// getter itself throw (SecurityError); a full quota or a refusal makes setItem throw
+// (QuotaExceededError). Either used to escape into the caller — the state's update
+// functions — and stop the URL update, the validation and the render after it.
+const storage = (): Storage | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    return window.localStorage ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// The in-memory stand-in app.html installs when the browser blocks storage: it keeps
+// the page working, but nothing written to it survives the tab.
+const inMemory = (store: Storage): boolean =>
+  (window as { __memoryStorage?: unknown }).__memoryStorage === store;
+
+let noticeShown = false;
+
+const saved = (ok: boolean): boolean => {
+  // Once per page: the next keystroke would fail the same way.
+  if (!ok && !noticeShown) {
+    noticeShown = true;
+    notify(t('storage.notSaving'));
+  }
+  return ok;
+};
 
 export const readJSON = <T>(key: string, fallback: T): T => {
-  if (!hasStorage()) {
-    return fallback;
-  }
   try {
-    const raw = window.localStorage.getItem(key);
+    const store = storage();
+    if (!store) {
+      return fallback;
+    }
+    const raw = store.getItem(key);
     if (raw === null) {
       return fallback;
     }
@@ -26,9 +57,16 @@ export const readJSON = <T>(key: string, fallback: T): T => {
   }
 };
 
-export const writeJSON = (key: string, value: unknown): void => {
-  if (hasStorage()) {
-    window.localStorage.setItem(key, JSON.stringify(value));
+/** Stores `value`; false (and a one-time notice) when the browser would not keep it. */
+export const writeJSON = (key: string, value: unknown): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const store = storage();
+    if (!store) return saved(false);
+    store.setItem(key, JSON.stringify(value));
+    return saved(!inMemory(store));
+  } catch {
+    return saved(false);
   }
 };
 

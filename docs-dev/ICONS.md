@@ -124,7 +124,14 @@ names: AWS's `Arch_`/`Res_` prefixes and size and Light/Dark suffixes and Azure'
 `12345-icon-service-` prefix are dropped (`Arch_Amazon-EC2_64.svg` → `aws:amazon-ec2`), and of
 several variants the largest light one is kept. `<style>` class rules (Google Cloud's icons use
 them) are turned into attributes so icons in one diagram do not restyle each other. Without the
-variable nothing is fetched and an earlier run's packs are kept.
+variable nothing is fetched.
+
+Each run first removes the packs the previous run generated, listed in
+`src/lib/vendor-icons/.fetch-icon-packs.manifest`, so a build without the variable (or with
+other prefixes) carries none of them. A `.json` pack put in that folder by hand is not in the
+manifest and is never removed (unless a configured prefix writes a file of the same name).
+Packs generated before the manifest existed are not known to the script: delete
+`src/lib/vendor-icons/` once by hand.
 
 The download pages and archive URLs, as of 2026-10 (they change with each release; check the
 page and copy the current link):
@@ -179,12 +186,29 @@ The "Icons" card in the editor imports either several SVG files (the user picks 
 Iconify JSON file (its own prefix, unless one is typed). Imported packs are stored in that
 browser's IndexedDB (`src/lib/util/customIconStore.ts`) and registered on every load, including
 the view and embed pages. They are **per browser**: someone opening a shared link without the same
-pack sees mermaid's `?` placeholder. Bundled prefixes cannot be reused.
+pack sees mermaid's `?` placeholder. Bundled prefixes cannot be reused. A pack counts as
+imported (registered, listed, reported) only once its IndexedDB transaction has completed; a
+full or blocked storage (`QuotaExceededError`, `SecurityError`) is reported in the card and the
+import can be tried again.
 
 ## Security
 
 mermaid inserts an icon's `body` into the diagram SVG as markup. Build-time, hosted and imported packs are
 untrusted input, so every body is sanitised with DOMPurify (SVG profile, no `script`, `style` or
 `foreignObject`, no event handlers or `javascript:` URLs) when the pack is loaded — including
-packs read back from IndexedDB (`src/lib/util/customIcons.ts`). `scripts/svg-to-iconify.js` and
+packs read back from IndexedDB (`src/lib/util/customIcons.ts`).
+
+An icon is drawn without a click, so nothing in it may point outside it: after DOMPurify, an `<image>`
+or `<feImage>` whose `href`/`xlink:href` is not a `data:` URL is removed, so is a `<use>` of another
+file (DOMPurify already drops `<use>`), and any attribute or `style` declaration with a `url(…)` that is
+not a local `#id` (fill, stroke, filter, mask, clip-path, markers) is dropped. Links (`<a href>`)
+stay, since they only go anywhere on a click. `tests/offline.spec.ts` imports an SVG that points at
+another site and checks the diagram and the picker request nothing. `scripts/svg-to-iconify.js` and
 `scripts/fetch-icon-packs.js` only extract markup; the sanitising happens in the app.
+
+Besides the body, what Iconify draws an icon with is kept, validated: per icon and as pack
+defaults `left`/`top` (finite, negative allowed — an SVG's viewBox origin), `width`/`height`
+(positive), `rotate` (whole quarter turns) and `hFlip`/`vFlip` (booleans); and the pack's
+`aliases`, each only if it leads to one of the pack's icons. Names that are `Object.prototype`
+keys (`constructor`) are refused. A pack therefore draws the same after a reload as when it was
+imported.

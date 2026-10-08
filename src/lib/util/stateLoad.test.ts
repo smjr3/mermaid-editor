@@ -75,6 +75,22 @@ describe('loadState from a link', () => {
   });
 });
 
+// R06: a linked config that is JSON but not an object counts as no config.
+describe('loadState with a linked config that is not an object', () => {
+  it.each([
+    ['null', 'null'],
+    ['a number', '42'],
+    ['a string', '"forest"'],
+    ['an array', '[{"theme":"dark"}]']
+  ])('keeps the linked diagram, with the default config, for %s', async (_name, mermaid) => {
+    const { inputState, loadState } = await freshState();
+    loadState(linkTo({ code: 'graph TD\n  KeepMe', mermaid }));
+    flushSync();
+    expect(inputState.code).toBe('graph TD\n  KeepMe');
+    expect(inputState.mermaid).toBe('{}');
+  });
+});
+
 describe('replaceInputState with a stored history entry', () => {
   it('takes only a well-formed state', async () => {
     const { inputState, replaceInputState } = await freshState();

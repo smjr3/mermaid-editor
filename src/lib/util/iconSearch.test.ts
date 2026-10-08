@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { iconMatch, iconPage, iconSvg, searchIcons } from './iconSearch';
-import { insertIntoEditor, registerEditorInserter } from './iconSearch';
+import { insertChecked, insertIntoEditor, registerEditorInserter } from './iconSearch';
 
 const tabler = {
   aliases: { 'db-alias': { parent: 'database' } },
@@ -71,6 +71,62 @@ describe('insertIntoEditor', () => {
     expect(inserted).toEqual(['logos:aws-s3']);
     unregister();
     expect(insertIntoEditor('logos:aws-s3')).toBe(false);
+  });
+});
+
+describe('insertChecked (R01)', () => {
+  const valid = 'architecture-beta\n  service a(server)[A]';
+  /** An editor holding `code`, and a parse that waits until the test releases it. */
+  const setup = () => {
+    const state = { code: valid, restored: [] as string[] };
+    const waiting: ((ok: boolean) => void)[] = [];
+    const unregister = registerEditorInserter((text) => {
+      state.code += text;
+      return true;
+    });
+    const io = {
+      code: () => state.code,
+      parses: (code: string) =>
+        code === valid
+          ? Promise.resolve(true)
+          : new Promise<boolean>((resolve) => waiting.push(resolve)),
+      restore: (code: string) => {
+        state.restored.push(code);
+        state.code = code;
+      }
+    };
+    return { io, state, unregister, waiting };
+  };
+
+  it('takes an insertion back when it breaks a diagram that parsed', async () => {
+    const { io, state, unregister, waiting } = setup();
+    const outcome = insertChecked('tabler:x', io);
+    await vi.waitFor(() => expect(waiting).toHaveLength(1));
+    waiting[0](false);
+    expect(await outcome).toBe('broke');
+    expect(state.code).toBe(valid);
+    unregister();
+  });
+
+  it('keeps code typed while the insertion was being checked', async () => {
+    const { io, state, unregister, waiting } = setup();
+    const outcome = insertChecked('tabler:x', io);
+    await vi.waitFor(() => expect(waiting).toHaveLength(1));
+    state.code = `${valid}tabler:x\n  service b(server)[B]`;
+    waiting[0](false);
+    expect(await outcome).toBe('superseded');
+    expect(state.restored).toEqual([]);
+    expect(state.code).toContain('service b');
+    unregister();
+  });
+
+  it('reports when no editor takes the text', async () => {
+    const outcome = await insertChecked('tabler:x', {
+      code: () => valid,
+      parses: () => Promise.resolve(true),
+      restore: () => undefined
+    });
+    expect(outcome).toBe('none');
   });
 });
 

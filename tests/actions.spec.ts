@@ -48,4 +48,34 @@ test.describe('Check actions', () => {
     expect(firstPngSize).not.toBe(secondPngSize);
     expect(firstSvgSize).not.toBe(secondSvgSize);
   });
+
+  // R10: the copy button reports the outcome of the whole copy, not its start.
+  test('copies the PNG to the clipboard and shows the tick only then', async ({ page }) => {
+    const copy = page.getByRole('button', { name: t('actions.copyImage') });
+    await copy.click();
+    await expect(copy).toHaveAttribute('data-copy-state', 'busy');
+    await expect(copy).toHaveAttribute('data-copy-state', 'done', { timeout: 15_000 });
+    const types = await page.evaluate(async () => {
+      const items = await navigator.clipboard.read();
+      return items.flatMap((item) => item.types);
+    });
+    expect(types).toContain('image/png');
+  });
+
+  test('reports a refused clipboard write instead of a tick', async ({ page }) => {
+    await page.evaluate(() => {
+      navigator.clipboard.write = () =>
+        Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+    });
+    const copy = page.getByRole('button', { name: t('actions.copyImage') });
+    await copy.click();
+    await expect(copy).toHaveAttribute('data-copy-state', 'failed', { timeout: 15_000 });
+    await expect(page.getByText(t('notify.copyFailed'))).toBeVisible();
+    // Pan/zoom, paused for the capture, is back on afterwards.
+    await expect
+      .poll(() =>
+        page.evaluate(() => JSON.parse(localStorage.getItem('codeStore') ?? '{}').panZoom)
+      )
+      .toBe(true);
+  });
 });

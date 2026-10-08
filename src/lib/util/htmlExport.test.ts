@@ -1,6 +1,18 @@
 import { fromBase64 } from 'js-base64';
 import { describe, expect, it } from 'vitest';
-import { gitlabMarkdown, svgFile, toImgTag, toStandaloneHtml, toXmlSvg } from './htmlExport';
+import { defaultState } from '$/constants';
+import type { State } from '$/types';
+import {
+  buildGitLabExport,
+  buildStandaloneHtml,
+  gitlabMarkdown,
+  svgFile,
+  takeExportSnapshot,
+  toImgTag,
+  toStandaloneHtml,
+  toXmlSvg
+} from './htmlExport';
+import { deserializeState } from './serde';
 
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><text>図</text></svg>';
 
@@ -118,5 +130,59 @@ describe('gitlabMarkdown', () => {
     expect(markdown).not.toContain('```mermaid');
     // A fence longer than any backtick run in the code, so the code cannot close it.
     expect(markdown).toMatch(/````text\n[\s\S]*```\n````/);
+  });
+});
+
+// R12: the image, the source and the edit link of one export come from one moment.
+describe('an export taken while the diagram is being edited', () => {
+  const before = 'flowchart TD\n  Before --> Export';
+  const after = 'flowchart TD\n  Edited --> During';
+  const labels = { edit: 'Edit', source: 'Source' };
+
+  // A render that is slow, during which the user types: the live state changes.
+  const editingRender = (live: State) => (config: unknown, code: string) => {
+    live.code = after;
+    live.mermaid = '{"theme":"forest"}';
+    return Promise.resolve(
+      `<svg xmlns="http://www.w3.org/2000/svg"><text>${encodeURIComponent(code + JSON.stringify(config))}</text></svg>`
+    );
+  };
+
+  it('builds the GitLab SVG, source and edit URL from the snapshot', async () => {
+    const live: State = { ...defaultState, code: before, mermaid: '{"theme":"dark"}' };
+    const snapshot = takeExportSnapshot(live, 'flowchart-v2');
+    const { markdown, svg } = await buildGitLabExport(snapshot, {
+      background: '#fff',
+      editBase: 'https://wiki.example/edit',
+      fileName: 'd.svg',
+      labels,
+      render: editingRender(live)
+    });
+    expect(live.code).toBe(after);
+    expect(svg).toContain(encodeURIComponent(`${before}{"theme":"dark"}`));
+    expect(markdown).toContain(before);
+    expect(markdown).not.toContain('Edited');
+    const editHash = /\(https:\/\/wiki\.example\/edit#([^)]+)\)/.exec(markdown)?.[1] ?? '';
+    const linked = deserializeState(editHash);
+    expect(linked.code).toBe(before);
+    expect(linked.mermaid).toBe('{"theme":"dark"}');
+    expect(markdown).toContain('![flowchart-v2 diagram](d.svg)');
+  });
+
+  it('builds the standalone page from the snapshot', async () => {
+    const live: State = { ...defaultState, code: before, mermaid: '{}' };
+    const html = await buildStandaloneHtml(takeExportSnapshot(live, undefined), {
+      background: '#fff',
+      render: editingRender(live)
+    });
+    expect(html).toContain('Before --&gt; Export');
+    expect(html).not.toContain('Edited');
+    expect(html).toContain('<title>mermaid diagram</title>');
+  });
+
+  it('renders a config that is not an object with the defaults', () => {
+    for (const mermaid of ['{bad', 'null', '[1]']) {
+      expect(takeExportSnapshot({ ...defaultState, mermaid }, undefined).config).toEqual({});
+    }
   });
 });

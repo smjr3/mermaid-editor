@@ -1,5 +1,27 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { getAnalyticsSafeUrl } from './stats';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Local (R04): analytics configured on an offline build.
+vi.mock('./env', () => ({
+  env: { analyticsUrl: 'https://analytics.example.com', domain: 'example.org', isOffline: true }
+}));
+const plausibleLoaded = vi.hoisted(() => ({ count: 0 }));
+vi.mock('plausible-tracker', () => ({
+  default: () => {
+    plausibleLoaded.count++;
+    return { trackEvent: () => undefined };
+  }
+}));
+
+const stats = await import('./stats');
+const { getAnalyticsSafeUrl, initAnalytics } = stats;
+
+describe('analytics on an offline build (R04)', () => {
+  it('is not started, even with an analytics URL', async () => {
+    await initAnalytics();
+    expect(plausibleLoaded.count).toBe(0);
+    expect(stats.plausible).toBeUndefined();
+  });
+});
 
 describe('getAnalyticsUrl', () => {
   beforeEach(() => {

@@ -98,7 +98,11 @@ export const editsBlocked = (): boolean => {
   return true;
 };
 
-export type ToolEditResult = 'applied' | 'blocked' | 'refused' | 'unchanged';
+/**
+ * `stale`: the code changed while mermaid checked the result (a keystroke, another
+ * tool), so the result — made from the older code — was dropped and the newer code kept.
+ */
+export type ToolEditResult = 'applied' | 'blocked' | 'refused' | 'stale' | 'unchanged';
 
 /**
  * Applies a tool's change to the code only if the code is valid now and mermaid
@@ -114,7 +118,11 @@ export const applyToolEdit = async (
   if (editsBlocked()) return 'blocked';
   const before = inputState.code;
   if (next === undefined || next === before) return 'unchanged';
-  if (!(await checkEdit(before, next)) || inputState.code !== before) return 'refused';
+  const accepted = await checkEdit(before, next);
+  // Local (R01): the edit was made from `before`; writing it now would throw away
+  // whatever changed the code while mermaid was checking.
+  if (inputState.code !== before) return 'stale';
+  if (!accepted) return 'refused';
   updateCode(next, { resetPanZoom, updateDiagram: true });
   return 'applied';
 };

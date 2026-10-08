@@ -19,6 +19,10 @@ export const loadDataFromUrl = async (): Promise<void> => {
 
   if (codeURL) {
     code = await fetchText(codeURL);
+    // Local: an empty file is not a diagram; it used to put the default one in its place.
+    if (!code.trim()) {
+      throw new Error(`The diagram file at ${codeURL} is empty`);
+    }
     loaded = true;
   }
   if (code) {

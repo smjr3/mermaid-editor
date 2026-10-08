@@ -6,6 +6,7 @@ import {
   addManualEntry,
   clearActive,
   historyState,
+  importHistory,
   injectHistoryIDs,
   removeEntry,
   renameEntry,
@@ -295,6 +296,82 @@ describe('restoreEntries', () => {
     expect(result.restored).toBe(1);
     expect(result.invalid).toBe(0);
     expect(entriesFor('manual')).toHaveLength(1);
+  });
+});
+
+// R07: what an imported file holds is checked entry by entry.
+describe('restoreEntries validation', () => {
+  const good = (id: string, time = 10): HistoryEntry => ({
+    id,
+    name: id,
+    state: { ...defaultState, code: `graph TD\n  ${id}` },
+    time,
+    type: 'manual'
+  });
+
+  it.each([
+    ['a code that is not text', { ...good('x'), state: { ...defaultState, code: 123 } }],
+    ['a config that is not text', { ...good('x'), state: { ...defaultState, mermaid: 5 } }],
+    ['a state that is not an object', { ...good('x'), state: 'graph TD' }],
+    ['an unknown type', { ...good('x'), type: 'cloud' }],
+    ['a loader entry, which has no store', { ...good('x'), type: 'loader' }],
+    ['a time that is not finite', { ...good('x'), time: Number.POSITIVE_INFINITY }],
+    ['a time that is text', { ...good('x'), time: '10' }],
+    ['an id that is not text', { ...good('x'), id: 42 }],
+    ['null', null],
+    ['a number', 7]
+  ])('rejects an entry with %s, counted as invalid, not duplicate', (_name, bad) => {
+    const result = restoreEntries([good('m1'), bad as unknown as HistoryEntry]);
+    expect(result).toEqual({ duplicates: 0, invalid: 1, restored: 1 });
+    expect(entriesFor('manual').map((e) => e.id)).toEqual(['m1']);
+  });
+
+  it('dedupes ids within the imported file as well as against the store', () => {
+    restoreEntries([good('m1')]);
+    const result = restoreEntries([good('m1'), good('m2', 20), good('m2', 30), good('m3', 40)]);
+    expect(result).toEqual({ duplicates: 2, invalid: 0, restored: 2 });
+    const ids = entriesFor('manual').map((e) => e.id);
+    expect(ids).toEqual(['m3', 'm2', 'm1']);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('gives an entry without an id a new one, as the id migration does', () => {
+    const noId: Partial<HistoryEntry> = good('m1');
+    delete noId.id;
+    const result = restoreEntries([noId as HistoryEntry, noId as HistoryEntry]);
+    expect(result).toEqual({ duplicates: 0, invalid: 0, restored: 2 });
+    const ids = entriesFor('manual').map((e) => e.id);
+    expect(ids).toHaveLength(2);
+    expect(ids.every((id) => typeof id === 'string' && id.length > 0)).toBe(true);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it('stores a well-formed state, filling in what the entry leaves out', () => {
+    restoreEntries([{ ...good('m1'), state: { code: 'graph TD\n  Partial' } as never }]);
+    const [entry] = entriesFor('manual');
+    expect(entry.state.code).toBe('graph TD\n  Partial');
+    expect(typeof entry.state.mermaid).toBe('string');
+    expect(typeof entry.state.rough).toBe('boolean');
+  });
+});
+
+describe('importHistory', () => {
+  it('restores the entries of a file holding an array', () => {
+    const result = importHistory(
+      JSON.stringify([{ id: 'm1', name: 'm', state: defaultState, time: 20, type: 'manual' }])
+    );
+    expect(result).toEqual({ duplicates: 0, invalid: 0, restored: 1 });
+  });
+
+  it.each([
+    ['text that is not JSON', '{not json'],
+    ['an object', '{"id":"m1"}'],
+    ['null', 'null'],
+    ['a number', '3']
+  ])('refuses %s and keeps the existing history', (_name, text) => {
+    restoreEntries([{ id: 'keep', name: 'k', state: defaultState, time: 1, type: 'manual' }]);
+    expect(importHistory(text)).toBeUndefined();
+    expect(entriesFor('manual').map((e) => e.id)).toEqual(['keep']);
   });
 });
 

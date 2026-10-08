@@ -19,7 +19,6 @@
   import { headerLine } from '$/util/diagramEdit';
   import { displayName } from '$/util/displayName';
   import {
-    checkEdit,
     deleteEdge,
     deleteObject,
     editKind,
@@ -45,8 +44,8 @@
   } from '$/util/diagramModify';
   import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
   import { reverseDuplicates } from '$/util/selectionActions';
-  import { editsBlocked } from '$/util/codeHealth.svelte';
-  import { inputState, updateCode } from '$/util/state.svelte';
+  import { applyToolEdit, type ToolEditResult } from '$/util/codeHealth.svelte';
+  import { inputState } from '$/util/state.svelte';
   import { settledState } from '$/util/settledState.svelte';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
 
@@ -152,24 +151,18 @@
     return () => document.removeEventListener('click', pick);
   });
 
+  // Local: the lists are the last valid code's; the broken code cannot be checked, and
+  // an edit made from code that changed while mermaid checked it is dropped (R01).
+  const said: Record<Exclude<ToolEditResult, 'applied'>, MessageKey> = {
+    blocked: 'recover.blocked',
+    refused: 'edit.breaks',
+    stale: 'edit.stale',
+    unchanged: 'edit.breaks'
+  };
   /** Applies the edit if mermaid still accepts the result as the same kind of diagram. */
   const apply = async (next: string | undefined, done: string) => {
-    // Local: the lists are the last valid code's; the broken code cannot be checked.
-    if (editsBlocked()) {
-      message = t('recover.blocked');
-      return;
-    }
-    const code = inputState.code;
-    if (next === undefined || next === code) {
-      message = t('edit.breaks');
-      return;
-    }
-    if (!(await checkEdit(code, next))) {
-      message = t('edit.breaks');
-      return;
-    }
-    updateCode(next, { updateDiagram: true });
-    message = done;
+    const result = await applyToolEdit(next);
+    message = result === 'applied' ? done : t(said[result]);
   };
 
   const onRename = () => {

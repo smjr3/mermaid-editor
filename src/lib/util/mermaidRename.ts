@@ -220,29 +220,50 @@ export const renameIn = (code: string, from: string, to: string): string => {
   return lines.join('\n');
 };
 
+/** The ids of a diagram's objects from mermaid's parse (diagramIds.ts), or undefined. */
+export type IdReader = (code: string) => Promise<ReadonlySet<string> | undefined>;
+
 /**
  * A rename checked against mermaid itself: the lexical scan above cannot know
  * every grammar (C4's `Rel`, xychart's `axis`, architecture's `R`/`L`/`T`/`B`
  * sides, which also forbid ids starting with those capitals), so a rename is
  * only applied when the result still parses as the same diagram type.
+ *
+ * Local (R02): nor may it land on an id another object already has — mermaid
+ * merges the two without an error (`B[Alpha] --> B[Beta]` is one node). With
+ * `ids` the objects come from mermaid's parse, so a label with the same text is
+ * not a collision; for a type it cannot read, any identifier use of the new name is.
  */
 export const checkedRename = async (
   code: string,
   from: string,
   to: string,
-  parse: (code: string) => Promise<string | undefined>
-): Promise<{ code: string } | { reason: 'invalid' | 'breaks' }> => {
+  parse: (code: string) => Promise<string | undefined>,
+  ids?: IdReader
+): Promise<{ code: string } | { reason: 'invalid' | 'breaks' | 'taken' }> => {
   if (!isValidIdentifier(to)) return { reason: 'invalid' };
+  if (to === from) return { code };
+  const known = await ids?.(code);
+  if (known ? known.has(to) : findOccurrences(code, to).length > 0) return { reason: 'taken' };
   const renamed = renameIn(code, from, to);
   try {
     const [before, after] = await Promise.all([parse(code), parse(renamed)]);
-    return before === after ? { code: renamed } : { reason: 'breaks' };
+    if (before !== after) return { reason: 'breaks' };
   } catch {
     return { reason: 'breaks' };
   }
+  // Fewer objects afterwards means two were joined under one id all the same.
+  const after = known && (await ids?.(renamed));
+  return after && after.size < known.size ? { reason: 'taken' } : { code: renamed };
 };
 
 let registered = false;
+
+const rejections = {
+  breaks: 'editor.renameBreaks',
+  invalid: 'editor.renameInvalid',
+  taken: 'editor.renameTaken'
+} as const;
 
 /**
  * F2 / "Rename Symbol" in the Monaco editor for the `mermaid` language.
@@ -250,7 +271,10 @@ let registered = false;
  */
 export const registerMermaidRename = (
   monaco: typeof Monaco,
-  parse: (code: string) => Promise<string | undefined>
+  parse: (code: string) => Promise<string | undefined>,
+  ids?: IdReader,
+  // Local: the standalone editor only logs a refused rename to the console.
+  onReject?: (message: string) => void
 ): void => {
   if (registered) return;
   registered = true;
@@ -270,15 +294,11 @@ export const registerMermaidRename = (
       if (!found) return { edits: [], rejectReason: t('editor.renameNotName') };
       const versionId = model.getVersionId();
       const code = model.getValue();
-      const result = await checkedRename(code, found.name, newName, parse);
+      const result = await checkedRename(code, found.name, newName, parse, ids);
       if ('reason' in result) {
-        return {
-          edits: [],
-          rejectReason:
-            result.reason === 'invalid'
-              ? t('editor.renameInvalid', { name: newName })
-              : t('editor.renameBreaks', { name: newName })
-        };
+        const rejectReason = t(rejections[result.reason], { name: newName });
+        onReject?.(rejectReason);
+        return { edits: [], rejectReason };
       }
       return {
         edits: findOccurrences(code, found.name).map(({ line, start, end }) => ({

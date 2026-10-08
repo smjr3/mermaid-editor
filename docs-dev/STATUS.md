@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **293**.
+  every locally changed path — currently **317**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 
@@ -484,6 +484,57 @@ quoted), gantt task names starting with a keyword such as `click` (now in 「」
 of these; "Create" in the template dialog also checks the result. `tests/errorRecovery.spec.ts` (15
 journeys, each also failing on any uncaught page error) and the unit tests of the files above.
 
+**Source review of 2026-10-08, P1 findings.** An external review of v0.2.3 (master
+`534956be`) raised twelve findings; R01–R05 are fixed here, each with a regression test.
+R01: the table editor, the Edit card and the icon picker's take-back checked an edit
+asynchronously and then wrote it even when the code had changed meanwhile, throwing away
+what was typed. All three now go through `applyToolEdit` (or, for the picker,
+`insertChecked` in `iconSearch.ts`), which drops an edit made from code that is no longer
+current (`stale`, message `edit.stale`) and keeps the newer code
+(`TableEditor.test.ts`, `EditControls.test.ts` mount the components with a pending check).
+R02: F2 renamed an id onto one another object already had, and mermaid silently merged the
+two (`A[Alpha] --> B[Beta]` renamed A → B is one node). `checkedRename` now refuses an id that
+mermaid's parse lists for another object (`diagramIds.ts`: flowchart and swimlane nodes and
+lanes, states, classes and namespaces, ER entities, architecture services, groups and junctions,
+sequence participants, C4 elements and boundaries, blocks, kanban, mindmap and requirement ids,
+gitGraph branches), and any rename that leaves fewer objects; a label with the same text is not a
+collision. Types without a reader fall back to the lexical scan (`editor.renameTaken`). A refused
+rename is now also shown as a notice: the standalone Monaco editor only logs a rename's
+`rejectReason` to the console, so the existing "breaks"/"invalid" refusals were never seen either.
+R03: a browser that does not save stopped the editor. `readJSON` touched the `localStorage` getter
+outside its `try` (it throws with site data blocked) and `writeJSON` let a `QuotaExceededError`
+escape, which aborted `persistAndProcess` before the URL hash, the validation and the render. Every
+access is guarded now (`persist.svelte.ts`), a failed save leaves the input in memory and the rest
+running, and the user is told once per page (`storage.notSaving`) to copy the link or export before
+closing the tab. With storage blocked the page used to end in a 500 — mode-watcher reads
+`localStorage` as it loads — so `app.html` puts an in-memory stand-in there first, which
+`persist.svelte.ts` counts as not saving. Unit tests inject a throwing getter and a throwing
+`setItem`; `tests/errorRecovery.spec.ts` edits, draws and links a diagram with full and with
+blocked storage.
+R04: `MERMAID_OFFLINE` did not cover the hosted icon packs, which fetched any URL directly, nor
+analytics; and an imported SVG kept `<image href="https://…">` and `url(https://…)` paints, which the
+browser fetches as soon as the icon is drawn. The pack loader now goes through `assertFetchAllowed`
+(moved to `offline.ts`, so `customIcons.ts` can use it without an import cycle; `util.ts` re-exports
+it), `initAnalytics` does nothing offline, and icon bodies lose every external reference
+(`customIcons.test.ts`, `stats.test.ts`, `tests/offline.spec.ts`).
+R05: `render` (`mermaid.ts`) called `mermaid.initialize(config)` before waiting for its turn and read
+`getConfig()` after it, so of two renders with different configs (the view and an HTML export, the
+layout card's two probes, the template thumbnails, a theme change) the one waiting drew, and took
+its backdrop from, the other's config. Initialise, render and read-back now share one turn; every
+caller goes through `render`, so all of them are covered (`mermaidRender.test.ts`, with a fake
+mermaid: concurrent dark and forest renders each keep their own theme and background).
+
+**Source review of 2026-10-08, P2 items (R06–R12) and its three extra checks.** A config whose
+JSON root is not an object is a config error in the editor and "no config" in links and the
+embed (R06); history import validates every entry and dedupes within the file (R07); imported
+icon packs keep Iconify's position, transforms and aliases through a reload (R08) and count as
+stored only once the IndexedDB transaction completes (R09); the PNG export and image copy are one
+awaited promise and the copy button ticks only on success (R10); a build without
+`MERMAID_FETCH_ICON_PACKS` removes the packs the previous run generated, by manifest (R11); the
+HTML and GitLab exports are made from one snapshot (R12). A link may unpack to at most 5 MB
+(`serde.ts`), `?code=`/gist loading refuses HTTP errors and empty files, and the embed takes the
+hash state through `normalizeState`. The per-file list is in `UPSTREAM.md` ("Input hardening").
+
 **Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
@@ -714,7 +765,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **995 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1004 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay

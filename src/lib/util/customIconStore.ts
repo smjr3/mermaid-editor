@@ -21,6 +21,9 @@ const open = (): Promise<IDBDatabase> =>
     request.onerror = () => reject(request.error ?? new Error('IndexedDB unavailable'));
   });
 
+// A request succeeding does not mean it was written: the transaction can still
+// abort (a full disk, storage cleared meanwhile). The result is handed over once
+// the transaction completes; an error or an abort rejects.
 const run = async <T>(
   mode: IDBTransactionMode,
   action: (store: IDBObjectStore) => IDBRequest<T>
@@ -28,13 +31,29 @@ const run = async <T>(
   const db = await open();
   try {
     return await new Promise<T>((resolve, reject) => {
-      const request = action(db.transaction(STORE, mode).objectStore(STORE));
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
+      const transaction = db.transaction(STORE, mode);
+      const request = action(transaction.objectStore(STORE));
+      const fail = () =>
+        reject(transaction.error ?? request.error ?? new Error('IndexedDB transaction failed'));
+      transaction.oncomplete = () => resolve(request.result);
+      transaction.onabort = fail;
+      transaction.onerror = fail;
     });
   } finally {
     db.close();
   }
+};
+
+/**
+ * Why a write failed, for the message: the storage is full (QuotaExceededError)
+ * or the browser does not let the site keep data (SecurityError, as in some
+ * private windows), or something else.
+ */
+export const storageErrorKind = (error: unknown): 'blocked' | 'full' | 'other' => {
+  const name = error instanceof Error || error instanceof DOMException ? error.name : '';
+  if (name === 'QuotaExceededError') return 'full';
+  if (name === 'SecurityError') return 'blocked';
+  return 'other';
 };
 
 const register = (pack: IconifyJSON): void => {

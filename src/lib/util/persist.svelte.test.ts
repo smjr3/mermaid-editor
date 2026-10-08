@@ -1,5 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { persisted, readJSON, writeJSON } from './persist.svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const notified = vi.hoisted(() => [] as string[]);
+vi.mock('./notify', () => ({
+  notify: (message: string) => notified.push(message),
+  prompt: () => true
+}));
+
+const { persisted, readJSON, writeJSON } = await import('./persist.svelte');
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -62,5 +69,78 @@ describe('persisted', () => {
     window.localStorage.setItem('settings', 'null');
     const settings = persisted('settings', { theme: 'default' });
     expect(settings.value).toEqual({ theme: 'default' });
+  });
+});
+
+// R03: storage that throws (blocked site data makes the `localStorage` getter itself
+// throw; a full quota or a refusal makes setItem throw) must never stop the editor.
+describe('storage that refuses', () => {
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  const blockGetter = () =>
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('The operation is insecure.', 'SecurityError');
+      }
+    });
+  const refuseWrites = () =>
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+
+  beforeEach(() => {
+    notified.length = 0;
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (original) Object.defineProperty(window, 'localStorage', original);
+  });
+
+  it('reads the fallback when the localStorage getter throws', () => {
+    blockGetter();
+    expect(readJSON('key', 'fallback')).toBe('fallback');
+  });
+
+  it('does not throw when the localStorage getter throws on write', () => {
+    blockGetter();
+    expect(() => writeJSON('key', { a: 1 })).not.toThrow();
+    expect(writeJSON('key', { a: 1 })).toBe(false);
+  });
+
+  it('does not throw when setItem refuses, and says so once per page', async () => {
+    // A fresh module: the notice is shown once per page load.
+    vi.resetModules();
+    const fresh = await import('./persist.svelte');
+    refuseWrites();
+    expect(fresh.writeJSON('key', { a: 1 })).toBe(false);
+    expect(fresh.writeJSON('key', { a: 2 })).toBe(false);
+    expect(notified).toHaveLength(1);
+    vi.restoreAllMocks();
+    expect(fresh.writeJSON('key', { a: 3 })).toBe(true);
+  });
+
+  it('keeps a persisted value in memory when it cannot be saved', () => {
+    refuseWrites();
+    const counter = persisted('counter', 0);
+    counter.value = 3;
+    expect(counter.value).toBe(3);
+  });
+
+  it('counts the in-memory stand-in for blocked storage as not saving', async () => {
+    vi.resetModules();
+    const fresh = await import('./persist.svelte');
+    const memory = window.localStorage;
+    (window as { __memoryStorage?: unknown }).__memoryStorage = memory;
+    try {
+      expect(fresh.writeJSON('key', 1)).toBe(false);
+      expect(fresh.readJSON('key', 0)).toBe(1);
+      expect(notified).toHaveLength(1);
+    } finally {
+      delete (window as { __memoryStorage?: unknown }).__memoryStorage;
+    }
+  });
+
+  it('reports a successful write', () => {
+    expect(writeJSON('key', 1)).toBe(true);
   });
 });

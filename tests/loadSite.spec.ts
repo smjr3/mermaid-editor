@@ -69,6 +69,21 @@ test.describe('Site Loads', () => {
     });
   });
 
+  // Local: an HTTP error page is not a diagram; the one on screen is kept.
+  test('keeps the current diagram when a ?code= URL answers 404', async ({ editPage, page }) => {
+    await page.route(
+      (url) => url.pathname.endsWith('/missing-diagram.mmd'),
+      (route) => route.fulfill({ body: '<html>Not Found</html>', status: 404 })
+    );
+    await editPage.checkTextInView('Car');
+    await page.goto('/edit?code=/missing-diagram.mmd');
+    await expect(
+      page.getByText(t('error.loadFromUrlFailed', { message: '' }).split('（')[0].split('(')[0])
+    ).toBeVisible();
+    await editPage.checkTextInView('Car');
+    await expect(editPage.view).not.toContainText('Not Found');
+  });
+
   test('should prompt user to scrub unsafe config', async ({ editPage, page }) => {
     let dialogAccepted = false;
     page.on('dialog', async (dialog) => {

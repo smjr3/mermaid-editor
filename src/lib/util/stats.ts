@@ -5,7 +5,8 @@ import { env } from './env';
 export let plausible: ReturnType<typeof PlausibleInstance> | undefined;
 
 export const initAnalytics = async (): Promise<void> => {
-  if (!env.analyticsUrl || !browser || plausible) {
+  // Local: MERMAID_OFFLINE means no request leaves the site, analytics included.
+  if (!env.analyticsUrl || env.isOffline || !browser || plausible) {
     return;
   }
 

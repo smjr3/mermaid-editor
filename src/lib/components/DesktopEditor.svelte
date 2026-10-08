@@ -8,10 +8,12 @@
   import { urls, validatedState } from '$/util/state.svelte';
   import { logMermaidChartClick } from '$/util/stats';
   import { AIPromptViewZoneManager } from '$lib/util/AIPromptViewZoneManager';
+  import { diagramIds } from '$lib/util/diagramIds';
   import { registerEditorInserter } from '$lib/util/iconSearch';
   import { parse } from '$lib/util/mermaid';
   import { registerMermaidRename } from '$lib/util/mermaidRename';
   import { insertAtCursor } from '$lib/util/monacoInsert';
+  import { notify } from '$lib/util/notify';
   import { initEditor } from '$lib/util/monacoExtra';
   import { errorDebug } from '$lib/util/util';
   import { mode } from 'mode-watcher';
@@ -147,7 +149,12 @@
     });
 
     initEditor(monaco);
-    registerMermaidRename(monaco, async (code) => (await parse(code)).diagramType);
+    registerMermaidRename(
+      monaco,
+      async (code) => (await parse(code)).diagramType,
+      diagramIds,
+      notify
+    );
     errorDebug();
     editor = monaco.editor.create(divElement, editorOptions);
     aiPromptManager.setEditor(editor);

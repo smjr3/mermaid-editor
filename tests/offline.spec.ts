@@ -57,4 +57,52 @@ test.describe('Offline build', () => {
     await editPage.checkTextInView('Hello');
     expect([...external]).toEqual([]);
   });
+
+  // R04: an imported icon that points outside itself (an <image>, a url() paint) is
+  // drawn without the browser fetching anything, in the diagram and in the picker.
+  test('draws an imported icon with external references without requesting them', async ({
+    editPage,
+    page
+  }) => {
+    const external = new Set<string>();
+    page.on('request', (request) => {
+      const host = new URL(request.url()).host;
+      if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) external.add(request.url());
+    });
+    const tracker = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24">
+  <image href="https://tracker.example.com/pixel.png" width="24" height="24"/>
+  <image xlink:href="https://tracker.example.com/pixel2.png" width="24" height="24"/>
+  <rect width="24" height="24" fill="#123456" style="stroke:url(https://tracker.example.com/paint.svg#p)"/>
+  <circle r="4" cx="12" cy="12" fill="url(https://tracker.example.com/fill.svg#f)"/>
+</svg>`;
+    const architecture = `architecture-beta\n  service fw(corp:tracker)[Firewall]`;
+    await editPage.start(
+      `/edit#base64:${Buffer.from(JSON.stringify({ code: architecture, mermaid: '{}' })).toString('base64')}`
+    );
+    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.iconPackPrefix).fill('corp');
+    await page.getByTestId(TID.iconPackFiles).setInputFiles({
+      buffer: Buffer.from(tracker),
+      mimeType: 'image/svg+xml',
+      name: 'Tracker.svg'
+    });
+    await page.getByTestId(TID.iconPackImport).click();
+    await expect(page.getByTestId(TID.iconPackList)).toContainText('corp');
+
+    const icon = editPage.view.locator('rect[fill="#123456"]');
+    await expect(icon.first()).toBeAttached({ timeout: 15_000 });
+    await expect(page.locator('#view image')).toHaveCount(0);
+    expect(await page.locator('#view').innerHTML()).not.toContain('tracker.example.com');
+
+    // The picker previews the icon too.
+    await page.getByTestId(TID.iconPickerSearch).fill('tracker');
+    await expect(page.getByTestId(TID.iconPickerResults).locator('svg').first()).toBeAttached();
+    expect(await page.content()).not.toContain('tracker.example.com');
+
+    await page.waitForTimeout(1000);
+    expect([...external]).toEqual([]);
+
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByTestId(TID.iconPackList).getByRole('button').first().click();
+  });
 });

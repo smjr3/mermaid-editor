@@ -46,6 +46,7 @@ export const messages = {
     'actions.noteTransparent': 'transparent',
     'actions.noteWhite': 'white background',
     'actions.noteWidth': 'width {n}px',
+    'actions.pngFailed': 'The PNG could not be made. Try again.',
     'actions.pngSize': 'PNG size',
     'actions.preset': 'Preset',
     'actions.presetA4Landscape': 'A4 landscape',
@@ -570,6 +571,8 @@ export const messages = {
     'edit.shape': 'Shape',
     'edit.shapeIcon': "A node with an icon keeps the icon's shape; remove the icon to choose one.",
     'edit.shapeOther': '(another shape)',
+    'edit.stale':
+      'The code changed while this change was being checked, so it was not applied. Try again.',
     'edit.title': 'Edit',
     'edit.unsupported':
       'This diagram type cannot be edited from here yet. Edit the code on the left instead.',
@@ -587,6 +590,8 @@ export const messages = {
     'editor.renameInvalid': '"{name}" cannot be used as a name.',
     'editor.renameNotName':
       'Only a name (a node, participant, state or class id) can be renamed here.',
+    'editor.renameTaken':
+      '"{name}" is already the id of another object; renaming would merge the two, so nothing was changed.',
     'editor.resetConfig': 'Reset config',
     'editor.resetConfigConfirm': 'Reset the configuration to the default? The diagram is kept.',
     'editor.resetConfigShort': 'Reset',
@@ -601,6 +606,8 @@ export const messages = {
     'embed.loadError': 'Unable to load the diagram from this URL.',
     'embed.title': 'Mermaid diagram',
     'embed.toggleMode': 'Toggle light / dark',
+    'error.loadFromUrlFailed':
+      'The diagram linked in the address could not be loaded ({message}). The current diagram is kept.',
     'error.returnHome': 'Return to Home',
     'error.title': 'Error {status}',
     'error.unexpected': 'An unexpected error occurred',
@@ -645,6 +652,8 @@ export const messages = {
       'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.',
     'history.emptyTimeline':
       'No timeline snapshots yet.\nThe Timeline is saved automatically every minute.',
+    'history.importFailed':
+      'The file is not a history export (a JSON list of entries), so nothing was imported. The history is unchanged.',
     'history.importSummary': '{restored} restored, {duplicates} duplicate, {invalid} invalid.',
     'history.openNewTab': 'Open in new tab',
     'history.openRevisionNewTab': 'Open revision in new tab',
@@ -677,6 +686,11 @@ export const messages = {
     'icons.errorPrefix':
       'Enter a name of lowercase letters, digits and hyphens that is not a bundled pack.',
     'icons.errorRead': 'Could not read {file}: {message}',
+    'icons.errorStorage': 'The icon pack could not be saved ({message}). Try again.',
+    'icons.errorStorageBlocked':
+      'This browser does not let the site keep data (a private window or the site-data settings), so the icon pack was not saved. Change the setting and try again.',
+    'icons.errorStorageFull':
+      "The browser's storage is full, so the icon pack was not saved. Delete packs you no longer need or free some space, then try again.",
     'icons.files': 'SVG files, or an Iconify JSON file',
     'icons.import': 'Import',
     'icons.imported': 'Imported packs (this browser only)',
@@ -976,6 +990,8 @@ export const messages = {
     'share.title': 'Share',
     'share.webComponent': 'Web component',
     'share.width': 'Width',
+    'storage.notSaving':
+      'This browser is not saving your work (its storage is full or blocked). You can keep editing, but copy the share link or export the diagram before you close the tab.',
     'table.actions': 'Row actions',
     'table.addRow': 'Add a row',
     'table.col.after': 'After task',
@@ -1104,6 +1120,7 @@ export const messages = {
     'actions.noteTransparent': '透過',
     'actions.noteWhite': '白背景',
     'actions.noteWidth': '幅 {n}px',
+    'actions.pngFailed': 'PNG を作成できませんでした。もう一度お試しください。',
     'actions.pngSize': 'PNG サイズ',
     'actions.preset': 'プリセット',
     'actions.presetA4Landscape': 'A4 横',
@@ -1629,6 +1646,8 @@ export const messages = {
     'edit.shapeIcon':
       'アイコン付きのノードはアイコンの形になります。形を選ぶにはアイコンを外してください。',
     'edit.shapeOther': '（そのほかの形）',
+    'edit.stale':
+      '確認している間にコードが変わったため、この変更は反映しませんでした。もう一度操作してください。',
     'edit.title': '編集',
     'edit.unsupported':
       'この図の種類はまだここから編集できません。左のコードを直接編集してください。',
@@ -1645,6 +1664,8 @@ export const messages = {
     'editor.renameBreaks': '「{name}」に変えると図が壊れるため、変更しませんでした。',
     'editor.renameInvalid': '「{name}」は名前に使えません。',
     'editor.renameNotName': 'ここでは名前（ノードや参加者などの ID）だけを一括変更できます。',
+    'editor.renameTaken':
+      '「{name}」はすでに別の図形の ID です。同じ ID にすると 2 つが 1 つにまとまってしまうため、変更しませんでした。',
     'editor.resetConfig': '設定をリセット',
     'editor.resetConfigConfirm': '設定を初期状態に戻しますか？図のコードはそのまま残ります。',
     'editor.resetConfigShort': 'リセット',
@@ -1659,6 +1680,8 @@ export const messages = {
     'embed.loadError': 'この URL からは図を読み込めませんでした。',
     'embed.title': 'Mermaid の図',
     'embed.toggleMode': 'ライト / ダークを切り替え',
+    'error.loadFromUrlFailed':
+      'アドレスで指定された図を読み込めませんでした（{message}）。現在の図はそのままです。',
     'error.returnHome': 'ホームに戻る',
     'error.title': 'エラー {status}',
     'error.unexpected': '予期しないエラーが発生しました',
@@ -1703,6 +1726,8 @@ export const messages = {
       '保存された状態はまだありません。\n保存ボタンを押すと現在の図をブックマークでき、あとから復元できます。',
     'history.emptyTimeline':
       'タイムラインのスナップショットはまだありません。\nタイムラインは 1 分ごとに自動保存されます。',
+    'history.importFailed':
+      '履歴のエクスポートファイル（項目の JSON 配列）ではないため、読み込みませんでした。履歴は変更していません。',
     'history.importSummary': '復元 {restored} 件、重複 {duplicates} 件、不正 {invalid} 件。',
     'history.openNewTab': '新しいタブで開く',
     'history.openRevisionNewTab': 'リビジョンを新しいタブで開く',
@@ -1736,6 +1761,11 @@ export const messages = {
     'icons.errorPrefix':
       '英小文字・数字・ハイフンで、同梱のアイコン集と重ならない名前を入力してください。',
     'icons.errorRead': '{file} を読み込めませんでした: {message}',
+    'icons.errorStorage': 'アイコン集を保存できませんでした（{message}）。もう一度お試しください。',
+    'icons.errorStorageBlocked':
+      'このブラウザーではサイトのデータ保存が許可されていないため（プライベートウィンドウやサイトデータの設定）、アイコン集を保存できませんでした。設定を変更してから、もう一度お試しください。',
+    'icons.errorStorageFull':
+      'ブラウザーの保存領域がいっぱいのため、アイコン集を保存できませんでした。不要なアイコン集を削除するか空き容量を増やしてから、もう一度お試しください。',
     'icons.files': 'SVG ファイル、または Iconify の JSON ファイル',
     'icons.import': '取り込む',
     'icons.imported': '取り込んだアイコン集（このブラウザだけ）',
@@ -2033,6 +2063,8 @@ export const messages = {
     'share.title': '共有',
     'share.webComponent': 'Web コンポーネント',
     'share.width': '幅',
+    'storage.notSaving':
+      'このブラウザーには保存できません（保存容量の不足か、サイトデータの保存が許可されていません）。編集はこのまま続けられますが、タブを閉じる前に共有リンクをコピーするか、書き出してください。',
     'table.actions': '行の操作',
     'table.addRow': '行を追加',
     'table.col.after': '前のタスク',

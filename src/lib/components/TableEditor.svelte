@@ -4,9 +4,9 @@
   import { t } from '$/i18n';
   import { newChartRow } from '$/util/chartEdit';
   import { displayName } from '$/util/displayName';
-  import { checkEdit } from '$/util/diagramModify';
-  import { editsBlocked } from '$/util/codeHealth.svelte';
-  import { inputState, updateCode } from '$/util/state.svelte';
+  import { applyToolEdit, type ToolEditResult } from '$/util/codeHealth.svelte';
+  import type { MessageKey } from '$/i18n/messages';
+  import { inputState } from '$/util/state.svelte';
   import { settledState } from '$/util/settledState.svelte';
   import {
     addRow,
@@ -53,21 +53,19 @@
     };
   });
 
+  // Local: the table is the last valid code's; the broken code cannot be checked, and
+  // a change made from code that changed while mermaid checked it is dropped (R01).
+  const said: Record<Exclude<ToolEditResult, 'applied'>, MessageKey> = {
+    blocked: 'recover.blocked',
+    refused: 'edit.breaks',
+    stale: 'edit.stale',
+    unchanged: 'edit.breaks'
+  };
   /** Applies the change if mermaid still accepts it; false when it was refused. */
   const apply = async (next: string | undefined, done: string): Promise<boolean> => {
-    // Local: the table is the last valid code's; the broken code cannot be checked.
-    if (editsBlocked()) {
-      message = t('recover.blocked');
-      return false;
-    }
-    const code = inputState.code;
-    if (next === undefined || next === code || !(await checkEdit(code, next))) {
-      message = t('edit.breaks');
-      return false;
-    }
-    updateCode(next, { updateDiagram: true });
-    message = done;
-    return true;
+    const result = await applyToolEdit(next);
+    message = result === 'applied' ? done : t(said[result]);
+    return result === 'applied';
   };
 
   const commit = async (

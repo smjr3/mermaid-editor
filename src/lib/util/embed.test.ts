@@ -2,7 +2,7 @@ import { defaultState } from '$/constants';
 import type { State } from '$/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildEditUrl, resolveEmbedSettings, serializeEmbedState, toggleMode } from './embed';
-import { deserializeState, serializeState } from './serde';
+import { deserializeState, pakoSerde, serializeState } from './serde';
 
 const embedUrl = (state?: Partial<State>, params?: Record<string, string>): URL => {
   const query = params ? `?${new URLSearchParams(params).toString()}` : '';
@@ -148,6 +148,85 @@ describe('resolveEmbedSettings', () => {
     expect(settings?.config.securityLevel).toBe('strict');
     expect(settings?.config.themeVariables).toEqual({});
     expect(settings?.config.theme).toBe('dark');
+  });
+});
+
+// R06: a config whose JSON root is not an object counts as no config.
+describe('resolveEmbedSettings with a config that is not an object', () => {
+  const roots: [string, string][] = [
+    ['null', 'null'],
+    ['a number', '42'],
+    ['a string', '"forest"'],
+    ['an array', '[{"theme":"dark"}]']
+  ];
+  const only = { look: 'classic', securityLevel: 'strict', theme: 'default' };
+
+  it.each(roots)('keeps the diagram when the hash config is %s', (_name, mermaid) => {
+    const { error, settings } = resolveEmbedSettings(
+      embedUrl({ code: 'graph TD\n  Kept-->B', mermaid })
+    );
+    expect(error).toBeUndefined();
+    expect(settings?.code).toBe('graph TD\n  Kept-->B');
+    expect(settings?.config).toEqual(only);
+  });
+
+  it.each(roots)('ignores a ?config= of %s', (_name, config) => {
+    const { error, settings } = resolveEmbedSettings(
+      embedUrl({ code: 'graph TD\n  Kept-->B' }, { config })
+    );
+    expect(error).toBeUndefined();
+    expect(settings?.code).toBe('graph TD\n  Kept-->B');
+    expect(settings?.config).toEqual(only);
+  });
+});
+
+// Local: a hash holds whatever JSON it was given; the embed takes only a real
+// state from it, field by field, as the editor does (stateGuard.ts).
+describe('resolveEmbedSettings with a hash that is not a well-formed state', () => {
+  const rawHash = (value: unknown) =>
+    new URL(`https://mermaid.live/embed#pako:${pakoSerde.serialize(JSON.stringify(value))}`);
+
+  it.each([
+    ['null', null],
+    ['an array', [1, 2]],
+    ['a number', 42],
+    ['a code that is not text', { code: 42, mermaid: '{}' }],
+    ['a config that is neither text nor an object', { code: 'graph TD\n  A', mermaid: 7 }]
+  ])('reports %s as a link that could not be read', (_name, value) => {
+    const { error, settings } = resolveEmbedSettings(rawHash(value));
+    expect(error).toBeDefined();
+    expect(settings).toBeUndefined();
+  });
+
+  it('drops a pan, zoom, rough or grid of the wrong type and keeps the diagram', () => {
+    const { error, settings } = resolveEmbedSettings(
+      rawHash({
+        code: 'graph TD\n  Kept',
+        grid: 'no',
+        mermaid: '{}',
+        pan: { x: 'left', y: 2 },
+        rough: 'yes',
+        zoom: -3
+      })
+    );
+    expect(error).toBeUndefined();
+    expect(settings?.code).toBe('graph TD\n  Kept');
+    expect(settings?.pan).toBeUndefined();
+    expect(settings?.zoom).toBeUndefined();
+    expect(settings?.rough).toBe(false);
+    expect(settings?.grid).toBe(true);
+  });
+
+  it('keeps a well-formed pan and zoom from the hash', () => {
+    const { settings } = resolveEmbedSettings(
+      rawHash({ code: 'graph TD\n  A', pan: { x: 3, y: 4 }, rough: true, zoom: 1.5 })
+    );
+    expect(settings).toMatchObject({ pan: { x: 3, y: 4 }, rough: true, zoom: 1.5 });
+  });
+
+  it.each(['0', '-2', 'Infinity', 'big'])('ignores ?zoom=%s', (zoom) => {
+    const { settings } = resolveEmbedSettings(embedUrl({ zoom: 2 }, { zoom }));
+    expect(settings?.zoom).toBe(2);
   });
 });
 

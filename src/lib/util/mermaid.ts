@@ -44,13 +44,21 @@ export const render = async (
   await init;
   await storedIconPacks;
 
-  // Should be able to call this multiple times without any issues.
-  // Local: brighter lines in dark themes (darkLines.ts).
-  mermaid.initialize(withVisibleLines(config));
-  const result = await inTurn(() => mermaid.render(id, code));
+  // Local (R05): mermaid's config is global, so the config, the render and the read-back
+  // of the config the render used take one turn together. Initialising outside the turn
+  // let a render waiting for its turn draw with the config of the render asked for after it.
+  const { result, themeBackground } = await inTurn(async () => {
+    // Should be able to call this multiple times without any issues.
+    // Local: brighter lines in dark themes (darkLines.ts).
+    mermaid.initialize(withVisibleLines(config));
+    const rendered = await mermaid.render(id, code);
+    return {
+      result: rendered,
+      themeBackground: mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown
+    };
+  });
   // Local: keep architecture edges from running through service labels (architectureLabels.ts),
   // and keep a light-themed diagram readable on the dark site (darkLines.ts).
-  const themeBackground = mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown;
   const background = typeof themeBackground === 'string' ? themeBackground : '';
   // Local: a theme preset (themePresets.ts) paints its own background, in the view and
   // in every export, instead of the dark site's grey backdrop.

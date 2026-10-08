@@ -97,6 +97,7 @@
   const applyCode = (code: string) =>
     void applyToolEdit(code).then((result) => {
       if (result === 'refused') notify(t('edit.breaks'));
+      else if (result === 'stale') notify(t('edit.stale'));
     });
   const applyColor = (id: string, swatch: Swatch | undefined, syntax: ColorSyntax = 'style') =>
     applyCode(setObjectColor(inputState.code, id, swatch, syntax));

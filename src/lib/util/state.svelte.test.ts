@@ -111,6 +111,49 @@ describe('the URL hash', () => {
   });
 });
 
+// R03: a browser that refuses to save must not stop the URL, validation or the view.
+describe('when the browser refuses to save', () => {
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  const restore = () => {
+    vi.restoreAllMocks();
+    if (original) Object.defineProperty(window, 'localStorage', original);
+  };
+  const proceeds = async (code: string) => {
+    initURLSubscription();
+    expect(() => updateCode(code)).not.toThrow();
+    expect(inputState.code).toBe(code);
+    flushHash();
+    expect(deserializeState(location.hash.slice(1)).code).toBe(code);
+    await vi.waitFor(() => expect(validatedState.current.code).toBe(code), { timeout: 10_000 });
+    expect(validatedState.current.error).toBeUndefined();
+  };
+
+  it('keeps the input, the hash and validation going when setItem throws', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+    try {
+      await proceeds('flowchart TD\n  Q[Quota exceeded]');
+    } finally {
+      restore();
+    }
+  }, 15_000);
+
+  it('keeps the input, the hash and validation going when the getter throws', async () => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('The operation is insecure.', 'SecurityError');
+      }
+    });
+    try {
+      await proceeds('flowchart TD\n  S[Storage blocked]');
+    } finally {
+      restore();
+    }
+  }, 15_000);
+});
+
 describe('default config', () => {
   it('ships an empty mermaid config so mermaid picks its own theme, look and layout', () => {
     expect(defaultState.mermaid).toBe('{}');
@@ -229,6 +272,31 @@ describe('managed theme', () => {
     await settled();
     expect(inputState.mermaid).toBe('{ "theme": ');
     toggleDarkTheme(false);
+  });
+});
+
+// R06: config text that is JSON but not an object is a config error, not a crash.
+describe('a config whose JSON root is not an object', () => {
+  it.each([
+    ['null', 'null'],
+    ['a number', '42'],
+    ['a string', '"forest"'],
+    ['an array', '[{"theme":"dark"}]']
+  ])('is reported as a config error and left as typed: %s', slow, async (_name, text) => {
+    toggleDarkTheme(false);
+    updateCode(flowchart);
+    updateConfig(text);
+    toggleDarkTheme(true);
+    await settled();
+    expect(validatedState.current.errorKind).toBe('config');
+    expect(validatedState.current.code).toBe(flowchart);
+    expect(inputState.mermaid).toBe(text);
+    toggleDarkTheme(false);
+    await settled();
+    expect(inputState.mermaid).toBe(text);
+    updateConfig('{}');
+    await waitForTheme('redux-color');
+    expect(validatedState.current.errorKind).toBeUndefined();
   });
 });
 

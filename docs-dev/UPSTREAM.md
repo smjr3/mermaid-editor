@@ -681,6 +681,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/mermaid.ts`                              |
 | Added    | `src/lib/util/mermaidRename.test.ts`                   |
 | Added    | `src/lib/util/mermaidRename.ts`                        |
+| Added    | `src/lib/util/mermaidRender.test.ts`                   |
 | Added    | `src/lib/util/monacoInsert.ts`                         |
 | Added    | `src/lib/util/newDiagram.test.ts`                      |
 | Added    | `src/lib/util/newDiagram.ts`                           |

@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **301**.
+  every locally changed path — currently **302**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 
@@ -517,3 +517,9 @@ browser fetches as soon as the icon is drawn. The pack loader now goes through `
 (moved to `offline.ts`, so `customIcons.ts` can use it without an import cycle; `util.ts` re-exports
 it), `initAnalytics` does nothing offline, and icon bodies lose every external reference
 (`customIcons.test.ts`, `stats.test.ts`, `tests/offline.spec.ts`).
+R05: `render` (`mermaid.ts`) called `mermaid.initialize(config)` before waiting for its turn and read
+`getConfig()` after it, so of two renders with different configs (the view and an HTML export, the
+layout card's two probes, the template thumbnails, a theme change) the one waiting drew, and took
+its backdrop from, the other's config. Initialise, render and read-back now share one turn; every
+caller goes through `render`, so all of them are covered (`mermaidRender.test.ts`, with a fake
+mermaid: concurrent dark and forest renders each keep their own theme and background).

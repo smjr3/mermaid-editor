@@ -365,7 +365,7 @@ call, and update the message in the catalogue if the wording moved. Two rules
 keep that honest:
 
 - The `en` catalogue is upstream's wording. If upstream rewords a string, the
-  edit belongs in `messages.ts`, not at the call site.
+  edit belongs in `ja.ts`/`en.ts`, not at the call site.
 - Keys are typed off `en`, and `src/lib/i18n/i18n.test.ts` asserts both locales
   carry the same keys and the same `{placeholders}`. Adding a key to one locale
   only fails `pnpm check` or the unit suite, not review.
@@ -626,8 +626,10 @@ modifications as if they were local customizations.
 | Deleted  | `src/lib/components/VersionSecurityToolbar.svelte`     |
 | Modified | `src/lib/components/View.svelte`                       |
 | Modified | `src/lib/constants.ts`                                 |
+| Added    | `src/lib/i18n/en.ts`                                   |
 | Added    | `src/lib/i18n/i18n.test.ts`                            |
 | Added    | `src/lib/i18n/index.ts`                                |
+| Added    | `src/lib/i18n/ja.ts`                                   |
 | Added    | `src/lib/i18n/messages.ts`                             |
 | Added    | `src/lib/i18n/translate.ts`                            |
 | Modified | `src/lib/types.d.ts`                                   |

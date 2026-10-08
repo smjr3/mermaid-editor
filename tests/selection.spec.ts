@@ -155,7 +155,7 @@ test.describe('Selection', () => {
     expect(await code(page)).not.toContain('n3');
   });
 
-  test('the right-click menu deletes, and offers "ノードを追加" on the canvas', async ({
+  test('the right-click menu deletes, and offers "図形を追加" on the canvas', async ({
     editPage,
     page
   }) => {

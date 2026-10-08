@@ -65,6 +65,7 @@ export const commands: Command[] = [
       'shape',
       '追加',
       'ノード',
+      '図形',
       'レーン'
     ],
     target: card(TID.addCard, { focus: TID.addNodeName })

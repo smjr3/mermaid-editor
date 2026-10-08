@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAiPrompt, curatedIcons } from './aiPrompt';
+import { aiKind, buildAiPrompt, curatedIcons } from './aiPrompt';
 import { loadPack } from './iconCatalog';
 
 describe('curatedIcons', () => {
@@ -24,16 +24,57 @@ describe('curatedIcons', () => {
 describe('buildAiPrompt', () => {
   const packs = ['mermaid', 'tabler', 'logos'];
 
-  it('explains the syntax, the packs and the curated icons in Japanese', () => {
+  it('defaults to a flowchart example with the icon-node syntax, in Japanese', () => {
     const text = buildAiPrompt({ collected: [], locale: 'ja', packs });
-    expect(text).toContain('architecture-beta');
-    expect(text).toContain('service web(tabler:server)');
+    expect(text).toContain('flowchart LR');
+    expect(text).toContain('@{ icon: "tabler:server"');
+    expect(text).not.toContain('architecture-beta\n');
+    expect(text).not.toContain('service web(');
     expect(text).toContain('tabler, logos');
     expect(text).toContain('tabler:server');
     expect(text).toContain('サーバー');
-    // The rules an AI gets wrong most: ids, the first letters, Font Awesome.
-    expect(text).toMatch(/R|L|T|B/);
+    // Standard (prefix-less) icons exist in architecture diagrams only.
+    expect(text).not.toContain('- server —');
     expect(text).not.toContain('{collected}');
+  });
+
+  it('treats every flowchart flavour as a flowchart', () => {
+    for (const type of ['flowchart', 'flowchart-v2', 'flowchart-elk', 'graph', undefined]) {
+      expect(aiKind(type), String(type)).toBe('flowchart');
+    }
+  });
+
+  it('shows the architecture example and its syntax for architecture diagrams', () => {
+    const text = buildAiPrompt({ collected: [], diagramType: 'architecture', locale: 'ja', packs });
+    expect(text).toContain('architecture-beta');
+    expect(text).toContain('service web(tabler:server)');
+    expect(text).toContain('- server —');
+    expect(text).not.toContain('flowchart LR');
+    // The rules an AI gets wrong most: ids, the first letters, Font Awesome.
+    expect(text).toMatch(/R, L, T, B/);
+    expect(text).toContain('Font Awesome');
+  });
+
+  it('gives types without icons a plain example and no icon lists', () => {
+    for (const locale of ['en', 'ja'] as const) {
+      const text = buildAiPrompt({
+        collected: ['logos:aws-s3'],
+        diagramType: 'sequence',
+        locale,
+        packs
+      });
+      expect(text).toContain('sequenceDiagram');
+      expect(text).not.toContain('tabler:server');
+      expect(text).not.toContain('logos:aws-s3');
+      expect(text).not.toContain('@{ icon');
+    }
+  });
+
+  it('keeps the type of a diagram it has no example for', () => {
+    const text = buildAiPrompt({ collected: [], diagramType: 'gantt', locale: 'en', packs });
+    expect(text).toContain('(gantt)');
+    expect(text).not.toContain('tabler:server');
+    expect(text).not.toContain('flowchart LR');
   });
 
   it('adds the icons the user collected, first', () => {

@@ -245,10 +245,7 @@ test.describe('Diagram toolbar', () => {
       TID.resetViewButton,
       TID.fullScreenButton,
       TID.roughToggle,
-      TID.gridToggle,
-      TID.themeToggleButton,
-      TID.localeToggleButton,
-      TID.mermaidVersion
+      TID.gridToggle
     ]) {
       const control = bar.getByTestId(id);
       await expect(control).toBeVisible();
@@ -256,7 +253,13 @@ test.describe('Diagram toolbar', () => {
       if (!box) throw new Error(`${id} missing`);
       expect(box.x + box.width).toBeLessThanOrEqual(barBox.x + barBox.width + 1);
     }
-    await expect(bar.getByTestId(TID.mermaidVersion)).toHaveText(/^v\d+\.\d+\.\d+/);
+    // Theme, language and version moved out: theme and language to the header, the version to 使い方.
+    for (const id of [TID.themeToggleButton, TID.localeToggleButton, TID.mermaidVersion]) {
+      await expect(bar.getByTestId(id)).toHaveCount(0);
+    }
+    const header = page.getByTestId(TID.headerBar);
+    await expect(header.getByTestId(TID.themeToggleButton)).toBeVisible();
+    await expect(header.getByTestId(TID.localeToggleButton)).toBeVisible();
   });
 
   test('zooms, toggles hand-drawn and grid, theme and language', async ({ editPage, page }) => {

@@ -31,7 +31,8 @@ describe('getTheme / setTheme', () => {
   it('reports an editor-managed theme as automatic', () => {
     expect(getTheme('{}')).toBe('auto');
     expect(getTheme('{"theme":"redux-color"}')).toBe('auto');
-    expect(getTheme('{"theme":"redux-dark-color"}')).toBe('auto');
+    // A dark variant is the user's choice: the editor no longer follows the site's dark mode.
+    expect(getTheme('{"theme":"redux-dark-color"}')).toBe('redux-dark-color');
     expect(getTheme('{"theme":"forest"}')).toBe('forest');
   });
 

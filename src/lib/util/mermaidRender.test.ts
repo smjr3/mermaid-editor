@@ -48,10 +48,10 @@ describe('render (R05)', () => {
     ]);
     expect(dark.svg).toContain('data-theme="dark"');
     expect(forest.svg).toContain('data-theme="forest"');
-    // The dark site's backdrop goes behind a light background only, read from the
-    // config the render used (darkLines.ts).
+    // No dark-site backdrop is added to either: the picture is the same in the
+    // site's light and dark mode (mermaid.ts).
     expect(dark.svg).not.toContain('background-color');
-    expect(forest.svg).toContain('background-color');
+    expect(forest.svg).not.toContain('background-color');
   });
 
   it('runs one render after another, in the order they were asked for', async () => {

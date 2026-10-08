@@ -62,10 +62,6 @@
         void click(TID.helpButton);
         break;
       }
-      case 'share': {
-        void click(TID.shareButton);
-        break;
-      }
       case 'history': {
         pressByLabel(t('editor.historyToggle'));
         break;

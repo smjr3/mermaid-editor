@@ -12,7 +12,7 @@ import {
   findMostRelevantLineNumber,
   replaceLineNumberInErrorMessage
 } from './errorHandling';
-import { darkVariantOf, getDefaultTheme, isManagedTheme, parse } from './mermaid';
+import { getDefaultTheme, legacyDarkManagedThemes, isManagedTheme, parse } from './mermaid';
 import { readJSON, writeJSON } from './persist.svelte';
 import { createLatestGuard } from './renderScheduler';
 import { findUnsafeConfigPaths, stripConfigPaths } from './sanitize';
@@ -303,6 +303,10 @@ export const loadState = (data: string): void => {
     try {
       // Local: a link holds whatever JSON it was given; only a real state is applied.
       next = normalizeState(deserializeState(data), $state.snapshot(state) as State);
+      // Local: a link whose pan/zoom is null (the new-diagram link, NewDiagram.svelte) asks
+      // for a fitted view; normalizeState drops the keys, so clear the stored view too.
+      if (!('pan' in next)) next.pan = undefined;
+      if (!('zoom' in next)) next.zoom = undefined;
       try {
         next.mermaid = sanitizeConfig(next.mermaid || defaultState.mermaid);
       } catch (error) {
@@ -355,16 +359,13 @@ export const updateConfig = (config: string): void => {
   updateCodeStore({ mermaid: config });
 };
 
-let siteDark = false;
-
 // The editor manages the diagram theme unless the user picked one of their
 // own. A missing theme, mermaid's global default, a config section's default
-// or any of their dark variants (see isManagedTheme) is replaced by the
-// current diagram type's default, or its dark counterpart while the site is
-// dark. Runs after every validation, since the diagram type may have changed,
-// and whenever the site mode changes. Converges after one update: the next
-// validation finds the theme already in place. Reads are untracked so an
-// effect calling toggleDarkTheme does not subscribe to the input state.
+// (see isManagedTheme) is replaced by the current diagram type's default. The
+// site's light/dark mode is deliberately not an input: the diagram looks the same
+// in both. Runs after every validation, since the diagram type may have changed.
+// Converges after one update: the next validation finds the theme already in
+// place. Reads are untracked so a caller does not subscribe to the input state.
 const syncManagedTheme = (diagramType: string | undefined): void => {
   if (!diagramType) {
     return;
@@ -380,7 +381,7 @@ const syncManagedTheme = (diagramType: string | undefined): void => {
       return;
     }
     const defaultTheme = getDefaultTheme(diagramType);
-    const theme = siteDark ? darkVariantOf(defaultTheme) : defaultTheme;
+    const theme = defaultTheme;
     if (config.theme === theme) {
       return;
     }
@@ -390,8 +391,10 @@ const syncManagedTheme = (diagramType: string | undefined): void => {
   });
 };
 
+// The site mode no longer changes the diagram; kept as the layout's hook, it only
+// re-runs the sync (a no-op once the theme is in place).
 export const toggleDarkTheme = (dark: boolean): void => {
-  siteDark = dark;
+  void dark;
   syncManagedTheme(untrack(() => validatedCurrent.diagramType));
 };
 
@@ -417,6 +420,24 @@ const isOnlyDefaultTheme = (config: string): boolean => {
 export const clearDefaultThemeConfig = (): void => {
   if (isOnlyDefaultTheme(inputState.mermaid)) {
     updateConfig(formatJSON({}));
+  }
+};
+
+// Local: the diagram used to switch to dark themes with the site. A stored theme the
+// editor set only that way (legacyDarkManagedThemes) is dropped so the light default of
+// the diagram type is filled in again by the next validation. Themes the user can pick
+// (redux-dark, neo-dark, ...) are left alone.
+export const normalizeLegacyDarkTheme = (): void => {
+  let config: MermaidConfig;
+  try {
+    config = parseConfigObject(inputState.mermaid) as MermaidConfig;
+  } catch {
+    return;
+  }
+  if (typeof config.theme === 'string' && legacyDarkManagedThemes.includes(config.theme)) {
+    const rest: MermaidConfig = { ...config };
+    delete rest.theme;
+    updateConfig(formatJSON(rest));
   }
 };
 

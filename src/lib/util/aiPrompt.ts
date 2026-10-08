@@ -121,47 +121,74 @@ export const curatedIcons: CuratedIcon[] = [
   { en: 'Linux', id: 'logos:linux-tux', ja: 'Linux' }
 ];
 
+/** What the briefing teaches: diagram types with icon syntax get their own, the rest a generic one. */
+export type AiKind = 'flowchart' | 'architecture' | 'sequence' | 'other';
+
+/**
+ * The briefing kind for a mermaid diagram type as `parse` reports it
+ * (`flowchart-v2`, `flowchart-elk`, `architecture`, `sequence`, ...). With no
+ * type yet, the general example is a flowchart.
+ */
+export const aiKind = (diagramType: string | undefined): AiKind => {
+  if (!diagramType || diagramType === 'graph' || diagramType.startsWith('flowchart')) {
+    return 'flowchart';
+  }
+  if (diagramType === 'architecture') return 'architecture';
+  if (diagramType.startsWith('sequence')) return 'sequence';
+  return 'other';
+};
+
 export interface AiPromptOptions {
   locale: Locale;
   /** The packs this site offers: standard (`mermaid`), bundled, hosted and imported. */
   packs: string[];
   /** Icons the user collected in the picker for this diagram. */
   collected: string[];
+  /** The current diagram's type (validatedState.diagramType); the example follows it. */
+  diagramType?: string;
 }
 
 const STANDARD = 'mermaid';
 
-const text: Record<
-  Locale,
-  {
-    intro: string;
-    syntax: string;
-    rules: string[];
-    packs: (names: string) => string;
-    collected: string;
-    curated: string;
-    outro: string;
-  }
-> = {
+interface KindText {
+  /** The example diagram, introduced by `Words.example`. */
+  example: string;
+  /** How an icon is written in this diagram type; absent where icons do not exist. */
+  icons?: string;
+  rules: string[];
+}
+
+interface Words {
+  collected: string;
+  common: string[];
+  curated: string;
+  example: (type: string) => string;
+  iconOutro: string;
+  intro: string;
+  kinds: Record<Exclude<AiKind, 'other'>, KindText>;
+  noIcons: (type: string) => string;
+  otherType: (type: string) => string;
+  outro: string;
+  packs: (names: string) => string;
+  usingIcons: string;
+}
+
+const text: Record<Locale, Words> = {
   en: {
     collected: 'Icons I want in this diagram (use these names exactly):',
+    common: [
+      'ids are ASCII letters and digits only (web, db1); the label shown on the diagram can be Japanese.',
+      'Keep to one diagram type and start with its keyword (flowchart, sequenceDiagram, architecture-beta, ...).'
+    ],
     curated: 'Other icons that exist (name — meaning):',
+    example: (type) => `Example (${type}):`,
+    iconOutro:
+      'Use only icon names from the lists above or names you are certain exist in the named packs; if unsure, use a standard icon.',
     intro:
       'Write the diagram as mermaid code for an editor that bundles icon packs. Follow these rules exactly.',
-    outro:
-      'Reply with the mermaid code only, in one code block. Use only icon names from the lists above or names you are certain exist in the named packs; if unsure, use a standard icon.',
-    packs: (names) =>
-      `Icon packs available: ${names}. An icon is written as prefix:name (tabler:server). The standard icons server, database, disk, internet and cloud are written without a prefix and render everywhere.`,
-    rules: [
-      'ids are ASCII letters and digits only (web, db1); the label in [ ] can be Japanese.',
-      'An id must not start with R, L, T or B (those letters name the sides in edges).',
-      'Edges: web:R --> L:db joins the right side of web to the left side of db; sides are L, R, T, B. Use --> for an arrow and -- for a plain line.',
-      'service id(icon)[Label] in groupId puts a service in a group; group id(icon)[Label] in parentId nests groups.',
-      'Font Awesome (fa:) icons do not work in architecture diagrams.',
-      'In a flowchart, an icon node is written id@{ icon: "tabler:server", form: "square", label: "Web" }.'
-    ],
-    syntax: `Example:
-architecture-beta
+    kinds: {
+      architecture: {
+        example: `architecture-beta
   group office(tabler:building)[Office]
   group cloud(tabler:cloud)[Cloud]
 
@@ -170,27 +197,65 @@ architecture-beta
   service db(database)[DB] in cloud
 
   pc:R --> L:web
-  web:R --> L:db`
+  web:R --> L:db`,
+        icons: 'service web(tabler:server)[Web] in cloud',
+        rules: [
+          'An id must not start with R, L, T or B (those letters name the sides in edges).',
+          'Edges: web:R --> L:db joins the right side of web to the left side of db; sides are L, R, T, B. Use --> for an arrow and -- for a plain line.',
+          'service id(icon)[Label] in groupId puts a service in a group; group id(icon)[Label] in parentId nests groups.',
+          'Font Awesome (fa:) icons do not work in architecture diagrams.'
+        ]
+      },
+      flowchart: {
+        example: `flowchart LR
+  start([Start]) --> order[Receive the order]
+  order --> stock{In stock?}
+  stock -->|yes| ship[Ship it]
+  stock -->|no| wait[Tell the customer]`,
+        icons: `web@{ icon: "tabler:server", form: "square", label: "Web" }
+db@{ icon: "tabler:database", form: "square", label: "DB" }
+web --> db`,
+        rules: [
+          'Shapes: [text] box, (text) rounded, ([text]) stadium, {text} decision. Arrows: --> and -->|label|.',
+          'Group steps with subgraph name[Title] ... end.',
+          'An icon node is written id@{ icon: "tabler:server", form: "square", label: "Web" }.'
+        ]
+      },
+      sequence: {
+        example: `sequenceDiagram
+  participant U as Customer
+  participant S as Shop
+  U->>S: Place an order
+  S-->>U: Confirmation`,
+        rules: [
+          'participant id as Label declares a participant; ->> is a request, -->> a reply.',
+          'Group steps with alt / else / end, loop ... end and opt ... end.'
+        ]
+      }
+    },
+    noIcons: (type) =>
+      `This diagram type (${type}) has no icons: do not write icon names, only the plain mermaid syntax for this type.`,
+    otherType: (type) => `Write the diagram in the same type as the current one (${type}).`,
+    outro: 'Reply with the mermaid code only, in one code block.',
+    packs: (names) =>
+      `Icon packs available: ${names}. An icon is written as prefix:name (tabler:server). The standard icons server, database, disk, internet and cloud are written without a prefix and render everywhere (architecture diagrams only).`,
+    usingIcons: 'Writing an icon:'
   },
   ja: {
     collected: 'この図で使いたいアイコン（この名前をそのまま使うこと）:',
+    common: [
+      'ID は半角英数字のみ（web, db1 など）。図に表示する名前は日本語でよい。',
+      '図の種類は 1 つに絞り、その種類のキーワード（flowchart, sequenceDiagram, architecture-beta など）で始める。'
+    ],
     curated: 'ほかに使えるアイコン（名前 — 意味）:',
+    example: (type) => `例（${type}）:`,
+    iconOutro:
+      'アイコン名は上のリストにあるもの、または指定したアイコン集に確実に存在するものだけを使い、迷ったら標準アイコンを使ってください。',
     intro:
       'アイコン集を同梱したエディタ向けに、図を mermaid コードで書いてください。次のルールを厳守してください。',
-    outro:
-      '返答は mermaid コードだけを 1 つのコードブロックで。アイコン名は上のリストにあるもの、または指定したアイコン集に確実に存在するものだけを使い、迷ったら標準アイコンを使ってください。',
-    packs: (names) =>
-      `使えるアイコン集: ${names}。アイコンは 接頭辞:名前 の形で書きます（例 tabler:server）。標準アイコン server, database, disk, internet, cloud は接頭辞なしで書け、どこでも表示されます。`,
-    rules: [
-      'ID は半角英数字のみ（web, db1 など）。[ ] の中の表示名は日本語でよい。',
-      'ID を R, L, T, B で始めない（矢印で辺を表す文字と衝突するため）。',
-      '矢印: web:R --> L:db は web の右辺と db の左辺をつなぐ。辺は L, R, T, B。矢印は -->、線だけなら --。',
-      'service id(アイコン)[表示名] in グループID でグループに入れる。group id(アイコン)[表示名] in 親ID で入れ子にできる。',
-      'Font Awesome（fa:）のアイコンはアーキテクチャ図では使えない。',
-      'フローチャートでアイコン付きノードを書くときは id@{ icon: "tabler:server", form: "square", label: "Web" } の形。'
-    ],
-    syntax: `例:
-architecture-beta
+    kinds: {
+      architecture: {
+        example: `architecture-beta
   group office(tabler:building)[本社]
   group cloud(tabler:cloud)[クラウド]
 
@@ -199,32 +264,86 @@ architecture-beta
   service db(database)[DB] in cloud
 
   pc:R --> L:web
-  web:R --> L:db`
+  web:R --> L:db`,
+        icons: 'service web(tabler:server)[Webサーバー] in cloud',
+        rules: [
+          'ID を R, L, T, B で始めない（矢印で辺を表す文字と衝突するため）。',
+          '矢印: web:R --> L:db は web の右辺と db の左辺をつなぐ。辺は L, R, T, B。矢印は -->、線だけなら --。',
+          'service id(アイコン)[表示名] in グループID でグループに入れる。group id(アイコン)[表示名] in 親ID で入れ子にできる。',
+          'Font Awesome（fa:）のアイコンはアーキテクチャ図では使えない。'
+        ]
+      },
+      flowchart: {
+        example: `flowchart LR
+  start([開始]) --> order[注文を受ける]
+  order --> stock{在庫はある？}
+  stock -->|ある| ship[発送する]
+  stock -->|ない| wait[お客様に連絡する]`,
+        icons: `web@{ icon: "tabler:server", form: "square", label: "Webサーバー" }
+db@{ icon: "tabler:database", form: "square", label: "DB" }
+web --> db`,
+        rules: [
+          '図形: [文字] 四角、(文字) 角丸、([文字]) 開始・終了、{文字} 判断。矢印は --> と -->|ラベル|。',
+          '手順のまとまりは subgraph 名前[見出し] ... end で囲む。',
+          'アイコン付きの図形は id@{ icon: "tabler:server", form: "square", label: "Web" } の形で書く。'
+        ]
+      },
+      sequence: {
+        example: `sequenceDiagram
+  participant U as お客様
+  participant S as 店
+  U->>S: 注文する
+  S-->>U: 確認を返す`,
+        rules: [
+          'participant ID as 表示名 で参加者を宣言する。->> は依頼、-->> は返信。',
+          '分岐・繰り返しは alt / else / end、loop ... end、opt ... end で囲む。'
+        ]
+      }
+    },
+    noIcons: (type) =>
+      `この種類の図（${type}）にはアイコンがありません。アイコン名は書かず、この種類の通常の mermaid の書き方だけを使うこと。`,
+    otherType: (type) => `今の図と同じ種類（${type}）で書くこと。`,
+    outro: '返答は mermaid コードだけを 1 つのコードブロックで返してください。',
+    packs: (names) =>
+      `使えるアイコン集: ${names}。アイコンは 接頭辞:名前 の形で書きます（例 tabler:server）。標準アイコン server, database, disk, internet, cloud は接頭辞なしで書け、どこでも表示されます（アーキテクチャ図のみ）。`,
+    usingIcons: 'アイコンの書き方:'
   }
 };
 
 /** The briefing text for the clipboard. */
-export const buildAiPrompt = ({ collected, locale, packs }: AiPromptOptions): string => {
+export const buildAiPrompt = ({
+  collected,
+  diagramType,
+  locale,
+  packs
+}: AiPromptOptions): string => {
   const words = text[locale];
+  const kind = aiKind(diagramType);
+  const known = kind === 'other' ? undefined : words.kinds[kind];
   const names = packs.filter((name) => name !== STANDARD);
   const available = new Set(packs);
+  // Standard (prefix-less) icons exist in architecture diagrams only.
   const curated = curatedIcons.filter(({ id }) => {
     const colon = id.indexOf(':');
-    return available.has(colon === -1 ? STANDARD : id.slice(0, colon));
+    return colon === -1 ? kind === 'architecture' : available.has(id.slice(0, colon));
   });
-  const lines = [
-    words.intro,
-    '',
-    words.syntax,
-    '',
-    ...words.rules.map((rule) => `- ${rule}`),
-    '',
-    words.packs(names.join(', '))
-  ];
-  if (collected.length > 0) {
-    lines.push('', words.collected, ...collected.map((id) => `- ${id}`));
+  const lines = [words.intro, ''];
+  if (known) {
+    lines.push(words.example(kind), known.example, '');
+  } else {
+    lines.push(words.otherType(diagramType ?? ''), '');
   }
-  lines.push('', words.curated, ...curated.map((icon) => `- ${icon.id} — ${icon[locale]}`));
+  lines.push(...[...words.common, ...(known?.rules ?? [])].map((rule) => `- ${rule}`));
+  if (known?.icons) {
+    lines.push('', words.packs(names.join(', ')), '', words.usingIcons, known.icons);
+    if (collected.length > 0) {
+      lines.push('', words.collected, ...collected.map((id) => `- ${id}`));
+    }
+    lines.push('', words.curated, ...curated.map((icon) => `- ${icon.id} — ${icon[locale]}`));
+  } else {
+    lines.push('', words.noIcons(diagramType ?? kind));
+  }
+  if (known?.icons) lines.push('', words.iconOutro);
   lines.push('', words.outro);
   return lines.join('\n');
 };

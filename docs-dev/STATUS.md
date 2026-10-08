@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **318**.
+  every locally changed path — currently **340**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -38,6 +38,7 @@ The standing constraints, which shape almost every decision recorded here:
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | A GitLab Pages publishing example                                                                                                        |
+| `EXPORTS.md`                  | 名前を付けて保存 (the save dialog and its fallback), what the `.drawio` and `.vsdx` files hold and what draw.io and Visio do with them   |
 | `QUALITY-AUDIT-2026-08-31.md` | An external portability audit, its three findings, and a follow-up for each recording how it was resolved                                |
 
 ## What is delivered
@@ -538,6 +539,17 @@ HTML and GitLab exports are made from one snapshot (R12). A link may unpack to a
 (`serde.ts`), `?code=`/gist loading refuses HTTP errors and empty files, and the embed takes the
 hash state through `normalizeState`. The per-file list is in `UPSTREAM.md` ("Input hardening").
 
+**Header (2026-10-08 feedback).** The title is "Mermaid Live Editor" in both languages and in `<title>`, with the
+app icon before it. The header's right end carries 初期化, the light/dark toggle and the language toggle;
+`DiagramToolbar` keeps zoom, fit, open, hand-drawn and grid only. The hamburger menu (`MainMenu.svelte`, kept
+as an unused upstream file) and the header 共有 button are gone from the header: `Share.svelte` stays intact for the
+tools pane to mount (the palette's "share" command and `tests/embed.spec.ts` "Share dialog" depend on that mount).
+The mermaid version, editor version (`package.json`), repository link, mermaid docs link and privacy moved to the last page of
+使い方 (`VersionInfo.svelte`, section id `about`). 初期化 (`ResetAllButton.svelte`) asks in a dialog, then replaces the input state
+with `defaultState` (code, config and theme, pan/zoom, selection, undo stack); History keeps its own stores. The code-pane tab
+for the mermaid config JSON uses `StyleCodeIcon` (palette + braces), is labelled "スタイル" and has the tooltip
+「図のスタイル設定（JSON）」 (`Tab.tooltip`, test id unchanged).
+
 **Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
 by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
 in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
@@ -602,6 +614,43 @@ except that the same bar sits above the diagram, without the zoom buttons, as be
 `tests/toolsPane.spec.ts` (order, swap and reload, rails, accordion), `tests/toolsTabs.spec.ts`
 (the tabs, header test ids opening their section and tab, the rail mapping, the accordion),
 `tests/editorPanes.spec.ts`, `tests/fixedLayout.spec.ts`.
+
+**Tools pane after the user feedback of 2026-10-08.** This supersedes the tab contents above.
+The user's most important point was that 直す was too narrow to edit in: at 1280px the pane was
+409px (32%) next to a 345px code pane the user never reads, half-width selects in two columns
+and a gantt table scrolled sideways. Now, while 直す is shown, the tools pane has a width of
+its own — 40% of the window by default (36% under 1280px), remembered per browser apart from the
+other tabs' width (`toolsWidths`, `localStorage` `toolsPaneWidths`; a width is recorded when the
+user drags the divider) — and the code pane folds to its rail (`foldCodeWhileFixing`, on by
+default, the code-off button in the tools header turns it off; `codeFoldedForFix` brings the
+code back on another tab or after a reload, which starts on 作る). Measured at 1280×800: tools
+409 → 492px, diagram 524 → 738px; at 1440×900: 460 → 556px, diagram 590 → 834px; the gantt table
+fits without scrolling at 1440. The forms are one column (each label above a control as wide as
+the pane, a select beside its button takes the rest of the row, button rows wrap), and a
+section's title (図形・レーン, 矢印, 表で編集) stays at the top of the open card while its fields
+scroll under it. Tab contents: **作る** = テンプレート (formerly "サンプル図"/Samples), AI・アイコン確認;
+**直す** = 選択中, then 追加, レイアウト, 編集, 配色, アイコン; **出す** = 操作 (without the size presets —
+A4, PowerPoint, square — which the user did not want; background and scale stay, `preset` is
+fixed at "asis" so `exportPresets.ts` is untouched) and 共有リンク (`ShareLinks.svelte`: edit link,
+view-only link, and the embed dialog, whose trigger keeps `TID.shareButton`; the header's 共有
+button is gone). テンプレート is one picker (`Preset.svelte`): upstream's grid of sample chips and
+the separate "テンプレートから作る…" dialog list are gone; every template (business templates,
+upstream's catalogue, local samples) is a button under its category, with a search box and a
+category choice; a business template with a form has "フォームで作る…", which opens that form
+(`TemplateForms.svelte`, no list of its own any more). "新しい図を作る…" opens the starter in a new
+tab (`target="_blank" rel="noopener"`, the `/edit#pako:` share URL), so the current tab keeps its
+diagram and nothing asks first; the link carries `pan`/`zoom` as null, which `loadState` now
+reads as "fit the view" instead of keeping the view of the browser's previous diagram (a
+link that leaves them out behaves as before). The first-visit guide's step 2 (the diagram) used to be placed
+below the diagram, off-screen; a target with no room on the step's side or the opposite one now
+gets the popover inside it near its top (`GuideTour.svelte`). Tests: `tests/toolsPane.spec.ts`
+("while fixing": width, fold, no control outside the pane and no sideways scroll box in the Add,
+Layout, Edit and Colours cards at 1280 and 1440, the remembered width, the toggle),
+`tests/onboarding.spec.ts` (every step inside 1280×720 and 1440×900), `tests/templates.spec.ts`
+(search, category), `tests/newDiagram.spec.ts` (new tab), `tests/exportOptions.spec.ts` (replaces
+`exportPresets.spec.ts`). The e2e fixture turns the fold off (`foldCodeWhileFixing` option in
+`tests/test.ts`), since most specs read the code next to the 直す cards; `loadSampleDiagram`
+clicks the picker's button by `data-group` (and `data-title`).
 
 **Selection: click the diagram, then change it (0.2.2).** The diagram itself is now where
 editing starts. A click on a drawn object (node, lane, state, class, entity, participant, service,
@@ -670,9 +719,15 @@ leaves an empty chart that mermaid draws with `NaN` lines; `swimlane-beta LR` dr
 of mermaid's viewBox, so the first column of titles is cut off at the view's edge; selection does not
 work in hand-drawn mode (the redrawn SVG has no ids).
 
-**Dark mode (0.2.0).** In dark mode, the dark themes
-render with near-white lines unless the user set `lineColor`, and a diagram in a light theme
-gets a light grey background so its dark lines stay visible (`src/lib/util/darkLines.ts`).
+**Dark mode (0.2.0, changed).** The diagram looks the same in the site's light and dark mode, so
+it can be carried into other tools unchanged: the managed theme is the diagram type's light
+default in both (`syncManagedTheme` no longer reads the site mode), the view behind the picture is
+white in both (`View.svelte`), and the grey dark-mode backdrop is gone. Only the app chrome
+follows dark mode. 「自動」 in the built-in theme buttons means that light default. A dark theme the
+user picks (redux-dark, neo-dark, ...) is theirs and stays; it still gets near-white lines unless
+`lineColor` is set (`darkLines.ts`). The migration `normalizeLegacyDarkTheme` drops a stored
+`dark` / `redux-dark-color` theme (set only by the old switching) so the light default is filled
+in; `redux-dark` / `neo-dark` cannot be told apart from a user's pick and are kept.
 
 **Icon picker (0.2.0).** The "Icons" card searches the bundled, build-time, hosted and imported
 packs by name, shows the matches as icons, and inserts the clicked icon's `prefix:name` at the
@@ -768,7 +823,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1004 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1051 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay
@@ -847,6 +902,20 @@ element; keys typed meanwhile were lost and a final Enter added another node. Th
 opens at once on the name the node will get (`selectionModel.draftLabel`), the toolbar stays
 put until the new node is drawn, and a name confirmed before the node exists is applied once it
 does (`pendingAdd`). `tests/selection.spec.ts` types straight after Enter and Tab.
+
+**Save as, .drawio and .vsdx (2026-10-08 feedback)** (`EXPORTS.md`). Every file the 出す card
+saves (PNG, SVG, HTML, the GitLab SVG and the two new formats) lets the user choose the name:
+Chromium and Edge open the system save dialog (`showSaveFilePicker`), other browsers get a small
+「名前を付けて保存」 dialog and the usual download (`saveFile.ts`, `SaveAsDialog.svelte`). The name
+defaults to the diagram's title, else `diagram` (upstream's `mermaid-diagram-<timestamp>` is gone).
+「.drawio で保存」 writes the draw.io cell draw.io itself uses for Mermaid: an image of this editor's
+SVG with the source in `mermaidData`, so every draw.io shows it, and a double-click opens draw.io's
+Mermaid dialog with the source, which redraws it or converts it into draw.io shapes (checked in the
+draw.io web app; `drawioExport.ts`). 「.vsdx で保存」 writes a Visio 2013+ package with one page and the
+diagram as a PNG picture, the source in its Shape Data (`vsdxExport.ts`, zipped with `fflate`,
+a new MIT dependency) — a picture in Visio, not editable shapes. The e2e fixture removes the
+picker and confirms the name dialog (`tests/test.ts`, option `saveAs`), so existing download specs
+are unchanged; `tests/fileExports.spec.ts` covers both formats, the dialog and a stubbed picker.
 
 ## What is open
 

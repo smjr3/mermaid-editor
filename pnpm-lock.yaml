@@ -87,6 +87,9 @@ importers:
       dompurify:
         specifier: ^3.4.16
         version: 3.4.16
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       hammerjs:
         specifier: ^2.0.8
         version: 2.0.8

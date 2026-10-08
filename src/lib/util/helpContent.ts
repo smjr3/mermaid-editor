@@ -16,7 +16,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'basics',
       items: [
-        "The tools are on the left in three tabs — Make (new diagram, templates, samples; Add), Fix (the selection, Edit, Colours, Layout, Icons) and Export (Actions; AI and unknown icons) — the picture is in the middle and the code on the right; the picture follows every change. Click a section's title to open it: one opens at a time and gets the whole column.",
+        "The tools are on the left in three tabs — Make (Templates, with New diagram; AI and unknown icons), Fix (the selection, Add, Layout, Edit, Colours, Icons) and Export (Actions; share links) — the picture is in the middle and the code on the right; the picture follows every change. Click a section's title to open it: one opens at a time and gets the whole column. Fix gets a wider column, and the code folds away while it is open (the code-off button in the tools header turns that off); drag the divider to set Fix's width, which is remembered apart from the other tabs'.",
         'Drag the picture to move it, and use the wheel or the zoom buttons in the bar above it.',
         'Your work is kept in this browser; History (clock icon) brings back earlier versions.',
         'Press Ctrl+K (⌘K on a Mac) or the search button in the header to find any action by name, such as "colour", "PNG" or "undo".'
@@ -26,9 +26,9 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
-        '"New diagram…" at the top of Samples: choose a type (each has a one-line description), a title and a direction, and press Create for a small starter to grow with Add and change with Edit.',
-        '"From a template…" under it: pick one of the nine business templates (each with a preview), fill in its form — lanes, steps, tasks, people, … with rows to add or remove — and press Create; the diagram is drawn for you and the Add card opens to continue.',
-        'Samples: pick a diagram type to load a ready-made example to edit; 業務テンプレート holds Japanese business templates (approval flow, swimlanes, gantt, org chart, …).',
+        '"New diagram…" at the top of Templates: choose a type (each has a one-line description), a title and a direction, and press "Create in a new tab" for a small starter, opened in a new tab so the diagram here stays; grow it with Add and change it with Edit.',
+        'Templates: search or choose a category, then click a template to load it here, ready to change; 業務テンプレート holds Japanese business templates (approval flow, swimlanes, gantt, org chart, …), and every diagram type has examples.',
+        '"Fill in a form…" beside a business template opens its form — lanes, steps, tasks, people, … with rows to add or remove — and Create draws the diagram for you and opens the Add card to continue.',
         'Add: type a name and press a button to add a lane, node, participant, task, … without writing the syntax.',
         'The Docs tab opens the mermaid documentation for the kind of diagram you are writing.'
       ],
@@ -87,7 +87,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
         'Architecture diagrams use them as service(icon)[Name].',
         'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.',
-        'Asking an AI: "Copy a briefing for an AI" (Export tab, "AI and unknown icons") gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are listed there under "Unknown icons" with a one-click replacement.'
+        'Asking an AI: "Copy a briefing for an AI" (Make tab, "AI and unknown icons") gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are listed there under "Unknown icons" with a one-click replacement.'
       ],
       title: 'Icons'
     },
@@ -95,8 +95,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'export',
       items: [
         'Actions: download PNG or SVG, a standalone HTML page, an HTML tag, or a GitLab-ready SVG with Markdown.',
-        'Pasting into PowerPoint, Word or an e-mail: pick a preset (PowerPoint 16:9 or 4:3, A4, square) in Actions to get the image at that ratio with margins, choose a white, transparent or theme-colour background and a 1x to 3x scale; the line under the buttons shows the size. The choice is remembered in this browser.',
-        'Share: the link holds the whole diagram, so whoever opens it sees the same thing.'
+        'Pasting into PowerPoint, Word or an e-mail: choose a white, transparent or theme-colour background and a 1x to 3x scale in Actions; the line under the buttons shows the size. The choice is remembered in this browser.',
+        'Share links (Export tab): the link to edit and the view-only link hold the whole diagram, so whoever opens them sees the same thing; "Embed code…" makes an iframe or a web component.'
       ],
       title: 'Export and share'
     },
@@ -116,18 +116,26 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'F2 on a name renames it everywhere in the diagram.',
         'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it, Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears. The ? in the "Selected" panel lists them.',
         'The button at the top of the code or of the tools folds that side to a row of icons; click an icon to open it again. Fold the code away if you only use the tools, or the tools if you only write code. The ⇄ button above the tools swaps the sides (code on the left, as on mermaid.live); this browser remembers it.',
-        'The sun / moon button in the bar above the picture switches dark mode; the Config tab holds the mermaid settings.',
+        'The sun / moon button and the language button at the right of the header switch dark mode and the language; Reset in the header returns everything to the starting diagram (History is kept). The Style tab above the code holds the diagram style settings (JSON).',
         'When the code has a mistake, a notice over the picture says which line, and the picture stays as it last was. "Revert to the last valid state" puts that code back (Undo brings your change back again); the tools wait until the code is fixed. Ctrl+Z (Cmd+Z) undoes, and History goes further back.',
         'The undo / redo arrows above the code take back the last change, including what the Add, Colours and Layout cards wrote.'
       ],
       title: 'Tips'
+    },
+    {
+      id: 'about',
+      items: [
+        'This editor is a fork of Mermaid Live Editor. Your diagrams are kept in this browser and are not sent anywhere.',
+        'The source code, issues and licence are on GitHub (link above).'
+      ],
+      title: 'Version & about'
     }
   ],
   ja: [
     {
       id: 'basics',
       items: [
-        '左にツール、中央に図、右にコードがあります。ツールは「作る」（新しい図・テンプレート・サンプル図、追加）・「直す」（選択中・編集・配色・レイアウト・アイコン）・「出す」（操作、AI・アイコン確認）の 3 つのタブに分かれています。どこを変えても図はすぐに変わります。見出しを押すと開き、一度に一つだけ開いて列の高さいっぱいに使えます。',
+        '左にツール、中央に図、右にコードがあります。ツールは「作る」（テンプレートと新しい図、AI・アイコン確認）・「直す」（選択中・追加・レイアウト・編集・配色・アイコン）・「出す」（操作、共有リンク）の3つのタブに分かれています。どこを変えても図はすぐに変わります。見出しを押すと開き、一度に一つだけ開いて列の高さいっぱいに使えます。「直す」の間はツールの列が広くなり、コードは自動でたたまれます（ツールの見出しのボタンで切り替え）。境目をドラッグした「直す」の幅は、ほかのタブとは別に記憶されます。',
         '図はドラッグで動かし、マウスホイールや図の上のバーのボタンで拡大・縮小できます。',
         '作業内容はこのブラウザに保存されます。時計のアイコン（履歴）で前の状態に戻せます。',
         'Ctrl+K（Mac は ⌘K）かヘッダーの検索ボタンで、「色」「PNG」「元に戻す」のように操作を名前で探して実行できます。'
@@ -137,10 +145,10 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'start',
       items: [
-        '「サンプル図」の上の「新しい図を作る…」で、図の種類（それぞれ一行の説明付き）・タイトル・向きを選んで「作成」を押すと、小さなひな形ができます。「追加」で要素を足し、「編集」で変えていきます。',
-        'その下の「テンプレートから作る…」では、9 つの業務テンプレート（プレビュー付き）から選び、レーン・手順・作業・参加者などの欄を書き換えたり行を足したりして「作成」を押すと、図ができあがり「追加」カードが開きます。',
-        '「サンプル図」で図の種類を選ぶと、ひな形が入るので書き換えて使えます。「業務テンプレート」には稟議・承認フロー、スイムレーン、工程表、組織図などの日本語のひな形があります。',
-        '「追加」で名前を入れてボタンを押すと、レーン・ノード・参加者・タスクなどを書き方を知らなくても足せます。',
+        '「テンプレート」の上の「新しい図を作る…」で、図の種類（それぞれ一行の説明付き）・タイトル・向きを選んで「新しいタブで作成」を押すと、小さなひな形が新しいタブで開きます（今の画面の図はそのまま残ります）。「追加」で要素を足し、「編集」で変えていきます。',
+        '「テンプレート」では、検索するか種類を選び、テンプレートを押すとこの画面に読み込まれるので書き換えて使えます。「業務テンプレート」には稟議・承認フロー、スイムレーン、工程表、組織図などの日本語のひな形があり、図の種類ごとの例もそろっています。',
+        '業務テンプレートの横の「フォームで作る…」では、レーン・手順・作業・参加者などの欄を書き換えたり行を足したりして「作成」を押すと、図ができあがり「追加」カードが開きます。',
+        '「追加」で名前を入れてボタンを押すと、レーン・図形・参加者・タスクなどを書き方を知らなくても足せます。',
         '「ドキュメント」タブで、今書いている図の書き方（Mermaid公式）を開けます。'
       ],
       title: '図を作り始める'
@@ -162,7 +170,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '図の中の図形や矢印をクリックすると選択され、そのすぐ上に小さなツールバーが出ます（名前・色・太字と文字の大きさ・形・アイコン・「この後に追加」・「ここから矢印」・削除。矢印ならラベル・向きの反転・線の種類・削除）。「直す」タブの「選択中」にも全部の操作が出ます。ダブルクリックで名前を変更、右クリックでメニュー、Esc か何もないところのクリックで選択を解除します。',
         '「編集」で図形を選ぶ（図をクリックしても選べます）と、表示名を変えたり、つながる矢印ごと削除したりできます。レーンやトピックは中身ごと、または中身を残して削除できます。',
         '矢印を選ぶ（クリックでも可）と、ラベルの変更、向きの反転、実線・点線・太線や矢じりの有無の切り替え、削除ができます。',
-        'フローチャートとスイムレーンのノードは、形の変更、別のレーンへの移動（どのレーンにも入れないことも可。矢印はそのまま）、アイコンの検索・設定と取り外しができます。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
+        'フローチャートとスイムレーンの図形は、形の変更、別のレーンへの移動（どのレーンにも入れないことも可。矢印はそのまま）、アイコンの検索・設定と取り外しができます。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
         '図が壊れる変更は行われず、カードにその旨が表示されます。',
         'クラスの属性・メソッドと ER 図の属性は、クラスやエンティティを選ぶと下に一覧が出て、変更・削除できます。ガントのタスクは開始日・前のタスク・日数・状況・印を変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。円グラフの項目は値を変えられます。',
         '「表で編集」（編集の下）では、ガントのタスク・カンバンのカード・タイムラインの期間・円グラフの項目・ER 図のエンティティの属性を表として扱えます。セルを書き換えて離れるか Enter で反映、行の追加・削除・上下の移動、カードの別の列への移動ができ、Excel でコピーした行を貼り付けると行として追加されます。'
@@ -184,7 +192,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'テーマ：モダン・ネオン・パステル・ビジネス・ハイコントラストなど 12 種類のデザインから、図全体の見た目を選べます。標準はライト/ダークモードに合わせて切り替わり、ほかのテーマは選んだまま共有リンクや書き出しにも残ります。',
         '線の色で図全体の線を変えられます。テーマの下には mermaid の組み込みテーマもあります。',
-        'レーン・図形（ノード・状態・クラス・エンティティなど）・矢印ごとに色を付けられます。一覧から選ぶか、図をクリックして選びます。',
+        'レーン・図形（状態・クラス・エンティティなども）・矢印ごとに色を付けられます。一覧から選ぶか、図をクリックして選びます。',
         '図形ごとに文字を太字にしたり、文字サイズや文字の色を変えられます（C4 の要素は文字の色のみ）。',
         '「自由に選ぶ」で好きな色を選べ、選んだ色は次から色の丸に並びます。'
       ],
@@ -198,7 +206,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
         'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
         'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。',
-        'AI に描かせるときは「出す」タブの「AI・アイコン確認」にある「AI用の説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は同じ場所の「コード内の不明なアイコン」に出て、1 クリックで置き換えられます。'
+        'AI に描かせるときは「作る」タブの「AI・アイコン確認」にある「AI用の説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は同じ場所の「コード内の不明なアイコン」に出て、1 クリックで置き換えられます。'
       ],
       title: 'アイコン'
     },
@@ -206,8 +214,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'export',
       items: [
         '「操作」から PNG・SVG・HTMLページ・HTMLタグ・GitLab用（SVGとMarkdown）を保存できます。',
-        'PowerPoint・Word・メールに貼るときは、「操作」でプリセット（PowerPoint 16:9・4:3、A4 横・縦、正方形）を選ぶと、その比率に余白つきで収まった画像になります。背景（白・透過・テーマ色）と倍率（1x〜3x）も選べ、ボタンの下の一行で大きさを確認できます。選んだ内容はこのブラウザに記憶されます。',
-        '「共有」のリンクには図がまるごと入っているので、開いた人も同じ図を見られます。'
+        'PowerPoint・Word・メールに貼るときは、「操作」で背景（白・透過・テーマ色）と倍率（1x〜3x）を選べ、ボタンの下の一行で大きさを確認できます。選んだ内容はこのブラウザに記憶されます。',
+        '「出す」タブの「共有リンク」の編集用リンクと表示専用リンクには図がまるごと入っているので、開いた人も同じ図を見られます。「埋め込みコード…」で iframe や Web コンポーネントも作れます。'
       ],
       title: '書き出しと共有'
     },
@@ -225,13 +233,21 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         '名前の上で F2 を押すと、図の中のその名前をまとめて変えられます。',
-        '図形を選択中のキー操作（入力中でないとき）：Enter で次のノードを追加（名前を入れて Enter）、Tab で横に分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。「選択中」の ? にも一覧があります。',
+        '図形を選択中のキー操作（入力中でないとき）：Enter で次の図形を追加（名前を入れて Enter）、Tab で横に分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。「選択中」の ? にも一覧があります。',
         'コードやツールの上部のボタンで、その側をアイコンだけにたためます。アイコンを押すと元に戻ります。ツールだけ使うならコードを、コードだけ書くならツールをたたむと広く使えます。ツールの上の ⇄ ボタンで左右を入れ替えられます（mermaid.live と同じくコードを左に）。この設定はブラウザに記憶されます。',
-        '図の上のバーにある太陽／月のボタンでダークモードを切り替えます。「設定」タブには Mermaid の設定があります。',
+        'ヘッダー右端の太陽／月のボタンでダークモード、隣のボタンで表示言語を切り替えます。ヘッダーの「初期化」で図と設定を最初の状態に戻せます（履歴は残ります）。コード横の「スタイル」タブには図のスタイル設定（JSON）があります。',
         'コードに誤りがあると、図の上のお知らせに何行目かが出て、図は直前の正しい状態のまま残ります。「直前の正しい状態に戻す」でそのコードに戻せます（「元に戻す」で変更前に戻ることもできます）。コードが直るまでツールは変更しません。Ctrl+Z（Mac は Cmd+Z）で元に戻し、もっと前は履歴から戻せます。',
         'コードの上にある「元に戻す」「やり直す」の矢印で、直前の変更を取り消せます。「追加」「色」「レイアウト」で書き込んだ内容も戻せます。'
       ],
       title: '便利な操作と困ったとき'
+    },
+    {
+      id: 'about',
+      items: [
+        'このエディタは Mermaid Live Editor を元にしたフォークです。作った図はこのブラウザに保存され、外部に送られません。',
+        'ソースコード、問い合わせ、ライセンスは GitHub（上のリンク）にあります。'
+      ],
+      title: 'バージョン情報'
     }
   ]
 };

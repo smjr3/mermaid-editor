@@ -5,7 +5,7 @@ import type { MermaidConfig, RenderResult } from 'mermaid';
 import mermaid from 'mermaid';
 import { addLabelHalo } from './architectureLabels';
 import { remoteIconPacks } from './customIcons';
-import { addDarkSiteBackdrop, withVisibleLines } from './darkLines';
+import { withVisibleLines } from './darkLines';
 import { registerStoredIconPacks } from './customIconStore';
 import { env } from './env';
 import { iconPacks } from './iconPacks';
@@ -57,16 +57,16 @@ export const render = async (
       themeBackground: mermaid.mermaidAPI.getConfig().themeVariables?.background as unknown
     };
   });
-  // Local: keep architecture edges from running through service labels (architectureLabels.ts),
-  // and keep a light-themed diagram readable on the dark site (darkLines.ts).
+  // Local: keep architecture edges from running through service labels (architectureLabels.ts).
   const background = typeof themeBackground === 'string' ? themeBackground : '';
   // Local: a theme preset (themePresets.ts) paints its own background, in the view and
-  // in every export, instead of the dark site's grey backdrop.
+  // in every export. The picture is the same in the site's light and dark mode: no
+  // dark-mode backdrop is added (the view is white in both, see View.svelte).
   const presetFill = presetBackground(config as Record<string, unknown>);
   const svg = addLabelHalo(result.svg, id, background);
   return {
     ...result,
-    svg: presetFill ? withBackground(svg, id, presetFill) : addDarkSiteBackdrop(svg, id, background)
+    svg: presetFill ? withBackground(svg, id, presetFill) : svg
   };
 };
 
@@ -325,16 +325,9 @@ export const getDefaultTheme = (diagramType: string): string => {
   return themeOfSection(section) ?? globalDefaultTheme;
 };
 
-/** Dark counterpart of a default theme: redux themes have -dark variants, anything else uses `dark`. */
-export const darkVariantOf = (theme: string): string => {
-  if (theme.includes('dark')) {
-    return theme;
-  }
-  return theme.startsWith('redux') ? theme.replace('redux', 'redux-dark') : 'dark';
-};
-
 // Every theme the editor may set on its own: the global default, each config
-// section's default and their dark variants. Anything else is the user's choice.
+// section's default. Anything else, dark variants included, is the user's choice:
+// the diagram looks the same in the site's light and dark mode.
 const managedThemes = new Set<string>();
 for (const theme of [
   globalDefaultTheme,
@@ -342,9 +335,11 @@ for (const theme of [
 ]) {
   if (theme) {
     managedThemes.add(theme);
-    managedThemes.add(darkVariantOf(theme));
   }
 }
+
+/** Themes the editor itself set while the site was dark, before the diagram stopped following the site mode. */
+export const legacyDarkManagedThemes: readonly string[] = ['dark', 'redux-dark-color'];
 
 /** Whether the editor may replace this theme (a missing theme counts as managed). */
 export const isManagedTheme = (theme: unknown): boolean =>

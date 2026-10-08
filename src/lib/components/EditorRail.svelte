@@ -10,6 +10,7 @@
     | 'icons'
     | 'samples'
     | 'actions'
+    | 'share'
     | 'ai';
 
   /** Which side of the window a rail sits on. */
@@ -19,6 +20,7 @@
 </script>
 
 <script lang="ts">
+  import StyleCodeIcon from '$/components/StyleCodeIcon.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
@@ -33,8 +35,8 @@
   import AddIcon from '~icons/material-symbols/add-box-outline-rounded';
   import EditIcon from '~icons/material-symbols/edit-square-outline-rounded';
   import PaletteIcon from '~icons/material-symbols/palette-outline';
-  import GearIcon from '~icons/material-symbols/settings-outline-rounded';
   import LayoutIcon from '~icons/material-symbols/view-quilt-outline-rounded';
+  import ShareIcon from '~icons/material-symbols/share';
 
   // Local: what stays of a side pane while it is collapsed — one icon per section;
   // each expands the pane and opens that section. A code rail stands in for the code
@@ -57,14 +59,15 @@
   }
   const codeItems: Item[] = [
     { icon: CodeIcon, label: t('editor.textTab'), target: 'code' },
-    { icon: GearIcon, label: t('editor.configTab'), target: 'config' }
+    { icon: StyleCodeIcon, label: t('editor.configTabTooltip'), target: 'config' }
   ];
   const toolItems: Item[] = [
     { icon: SamplesIcon, label: t('preset.title'), target: 'samples' },
-    { icon: AddIcon, label: t('add.title'), target: 'add' },
-    { first: true, icon: EditIcon, label: t('edit.title'), target: 'edit' },
-    { icon: PaletteIcon, label: t('colors.title'), target: 'colors' },
+    { icon: AiIcon, label: t('ai.title'), target: 'ai' },
+    { first: true, icon: AddIcon, label: t('add.title'), target: 'add' },
     { icon: LayoutIcon, label: t('layout.title'), target: 'layout' },
+    { icon: EditIcon, label: t('edit.title'), target: 'edit' },
+    { icon: PaletteIcon, label: t('colors.title'), target: 'colors' },
     { icon: IconsIcon, label: t('icons.title'), target: 'icons' },
     {
       class: 'rotate-180',
@@ -73,7 +76,7 @@
       label: t('actions.title'),
       target: 'actions'
     },
-    { icon: AiIcon, label: t('ai.title'), target: 'ai' }
+    { icon: ShareIcon, label: t('share.shareableLinks'), target: 'share' }
   ];
 
   const left = $derived(side === 'left');

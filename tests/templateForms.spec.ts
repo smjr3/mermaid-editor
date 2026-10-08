@@ -12,12 +12,14 @@ const stored = async (page: Page) =>
     )
     .then((code) => code.replaceAll('\r\n', '\n'));
 
-/** Opens "Create from a template" in the Samples card (the fixture may have folded the card). */
+/**
+ * Shows the Templates card (the fixture may have folded it), where each business template
+ * has a "Fill in a form…" button (`templateFormsItem-<id>`) that opens its form.
+ */
 const openTemplates = async (page: Page) => {
-  const button = page.getByTestId(TID.templateFormsButton);
-  if (!(await button.isVisible())) await page.getByTestId(TID.sampleDiagramsCard).click();
-  await button.click();
-  await expect(page.getByTestId(TID.templateFormsDialog)).toBeVisible();
+  const search = page.getByTestId(TID.templateSearch);
+  if (!(await search.isVisible())) await page.getByTestId(TID.sampleDiagramsCard).click();
+  await expect(search).toBeVisible();
 };
 const field = (page: Page, ...path: (string | number)[]) =>
   page.getByTestId([TID.templateFormsField, ...path].join('-'));
@@ -32,8 +34,10 @@ test.describe('Create from a template', () => {
     await openTemplates(page);
     // Every template is offered, with a rendered preview.
     await expect(page.locator(`[data-testid^="${TID.templateFormsItem}-"]`)).toHaveCount(9);
-    await expect(page.getByTestId(`${TID.templateFormsItem}-expense`).locator('svg')).toBeVisible();
     await page.getByTestId(`${TID.templateFormsItem}-expense`).click();
+    // The form shows a rendered preview of the template.
+    await expect(page.getByTestId(TID.templateFormsDialog)).toBeVisible();
+    await expect(page.getByTestId(`${TID.templateFormsItem}-preview`).locator('svg')).toBeVisible();
 
     await expect(field(page, 'title')).toHaveValue('経費精算フロー');
     await page.getByTestId(`${TID.templateFormsAddRow}-lanes`).click();
@@ -95,7 +99,11 @@ test.describe('Create from a template', () => {
 
     await openTemplates(page);
     await page.getByTestId(`${TID.templateFormsItem}-org`).click();
+    await expect(page.getByTestId(TID.templateFormsDialog)).toBeVisible();
+    // Cancel closes the form without touching the diagram; the picker is still there.
     await page.getByTestId(TID.templateFormsBack).click();
+    await expect(page.getByTestId(TID.templateFormsDialog)).toHaveCount(0);
+    expect(await stored(page)).toContain('キックオフ会議');
     await expect(page.getByTestId(`${TID.templateFormsItem}-org`)).toBeVisible();
   });
 });

@@ -493,7 +493,7 @@ class SelectionModel {
     );
     await this.added(addAfter(inputState.code, kind, source, t('sel.newNode')));
   };
-  /** "ノードを追加" on the empty canvas. */
+  /** "図形を追加" on the empty canvas. */
   addNode = async () => {
     await this.added(
       addStandalone(inputState.code, this.kind, this.objects?.items ?? [], t('sel.newNode'))

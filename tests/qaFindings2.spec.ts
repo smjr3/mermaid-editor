@@ -22,7 +22,10 @@ const create = async (page: Page, kind: string) => {
   if (!(await toggle.isVisible())) await page.getByTestId(TID.sampleDiagramsCard).click();
   await toggle.click();
   await page.getByTestId(`${TID.newDiagramKind}-${kind}`).click();
-  await page.getByTestId(TID.newDiagramCreate).click();
+  // "Create" opens the starter in a new tab; follow its link in this one instead.
+  const href = await page.getByTestId(TID.newDiagramCreate).getAttribute('href');
+  await page.goto('about:blank');
+  await page.goto(href ?? '');
 };
 
 const openAdd = (page: Page) => page.getByTestId(TID.addCard).click();
@@ -383,22 +386,28 @@ test.describe('QA findings, second pass', () => {
     await expect(addMessage(page)).toHaveText(t('add.choose'));
   });
 
-  test('the sample chips have Japanese names that wrap instead of being cut short', async ({
+  test('the template categories have Japanese names and no template name is cut short', async ({
     editPage,
     page
   }) => {
     const card = page.getByTestId(TID.sampleDiagramsCard).locator('..');
     await editPage.checkTextInView('Car');
-    // The fixture folds the Samples card; open it again.
+    // The fixture folds the Templates card; open it again.
     await editPage.toggleSampleDiagrams();
-    const flowchart = card.getByRole('button', { exact: true, name: t('preset.name.flowchart') });
-    await expect(flowchart).toBeVisible();
-    const long = card.getByRole('button', { exact: true, name: t('preset.name.cynefin') });
+    await expect(
+      card.locator('[data-template-group="Flowchart"]', { hasText: t('preset.name.flowchart') })
+    ).toBeVisible();
+    const long = card.locator('[data-template-group="Cynefin Framework"]');
     await long.scrollIntoViewIfNeeded();
-    // Not clipped: the whole name fits in the chip, on more lines if need be.
-    const clipped = await long.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
-    expect(clipped).toBe(false);
-    await card.getByRole('button', { exact: true, name: t('preset.name.journey') }).click();
+    await expect(long).toHaveText(t('preset.name.cynefin'));
+    // Not clipped: every template's whole name fits in its button, on more lines if need be.
+    const clipped = await card
+      .getByTestId(TID.templatePick)
+      .evaluateAll(
+        (buttons) => buttons.filter((button) => button.scrollWidth > button.clientWidth + 1).length
+      );
+    expect(clipped).toBe(0);
+    await editPage.loadSampleDiagram('User Journey');
     await expect(page.locator('#view')).toContainText('My working day', { timeout: 15_000 });
   });
 });

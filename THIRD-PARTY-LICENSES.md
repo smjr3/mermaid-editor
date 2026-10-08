@@ -20,11 +20,11 @@ outside the redistributed output.
 
 ## License summary
 
-Production dependency tree at the snapshot described below: **236 packages**.
+Production dependency tree at the snapshot described below: **237 packages**.
 
 | Count | License                                    |
 | ----: | ------------------------------------------ |
-|   165 | MIT                                        |
+|   166 | MIT                                        |
 |    34 | ISC                                        |
 |    19 | Apache-2.0                                 |
 |     9 | BSD-3-Clause                               |
@@ -102,6 +102,14 @@ sets out and removes the brand icons when a generic pack loads. Vendor architect
 (AWS, Azure, Google Cloud) are not dependencies at all: a deployment imports them at build time
 from the vendor (`MERMAID_FETCH_ICON_PACKS`), under the vendor's terms.
 
+### `fflate` — MIT
+
+A direct dependency since 2026-10-08: it zips the `.vsdx` (Visio) export in the browser
+(`src/lib/util/vsdxExport.ts`, `docs-dev/EXPORTS.md`), so its code is bundled into the built
+JavaScript. MIT, Copyright (c) Arjun Barrett; used unmodified, and its notice travels with the
+build through `NOTICE` and this file. It was already in the tree as a development-only dependency
+of `@vitest/ui`.
+
 ### `khroma` — MIT (reported as "Unknown")
 
 `khroma` ships **no `license` field in its `package.json`**, so license-scanning tools report it as
@@ -134,7 +142,8 @@ The counts above are a **point-in-time snapshot**, taken against:
 - this repository's `pnpm-lock.yaml` after that merge, the move to mermaid 12.1.0, the
   nine bundled icon packs and the direct `dompurify` dependency (2026-10-03), including its `pnpm.overrides`;
   recounted on 2026-10-05 after the later dependency additions and the three further icon packs
-  (`clarity`, `eos-icons`, `fluent-color`). mermaid 12.1.0's chevrotain 13
+  (`clarity`, `eos-icons`, `fluent-color`); `fflate` (MIT) counted in on 2026-10-08 when it became a
+  production dependency, without a full recount. mermaid 12.1.0's chevrotain 13
   no longer pulls in `lodash-es@4.17.23`, and Monaco's `dompurify` is overridden to 3.4.16, so a
   single `dompurify` (3.4.16) is installed; the Apache-2.0 election applies to it.
 

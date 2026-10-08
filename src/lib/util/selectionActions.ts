@@ -240,7 +240,7 @@ export const addedObject = (
   );
 };
 
-/** The Add card's first "new object" action per type, for "ノードを追加" on the empty canvas. */
+/** The Add card's first "new object" action per type, for "図形を追加" on the empty canvas. */
 const standaloneActions: Partial<Record<EditKind, [string, string]>> = {
   block: ['block', 'from'],
   c4: ['element', 'from'],

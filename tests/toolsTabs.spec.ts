@@ -30,9 +30,35 @@ test.describe('Tools tabs', () => {
       await expect(tab(page, id)).toHaveText(t(key));
     }
     await expect(tab(page, 'make')).toHaveAttribute('aria-selected', 'true');
+    // 作る: the templates (with new diagram) and the AI and unknown-icon section.
     await expect(page.getByTestId(TID.sampleDiagramsCard)).toBeInViewport();
-    await expect(page.getByTestId(TID.addCard)).toBeInViewport();
+    await expect(page.getByTestId(TID.aiCard)).toBeInViewport();
+    await expect(page.getByTestId(TID.addCard)).not.toBeInViewport();
     await expect(page.getByTestId(TID.colorsCard)).not.toBeInViewport();
+  });
+
+  test('直す: Add first, then layout, edit, colours and icons; 出す: export and share', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(flowchart);
+    const order = async (id: string) =>
+      page
+        .getByTestId(`${TID.toolsTabPanel}-${id}`)
+        .locator('.card > [role="toolbar"][data-testid]')
+        .evaluateAll((headers) => headers.map((header) => header.dataset.testid));
+    expect(await order('fix')).toEqual([
+      TID.addCard,
+      TID.layoutCard,
+      TID.editCard,
+      TID.colorsCard,
+      TID.iconPacksCard
+    ]);
+    expect(await order('out')).toEqual([TID.actionsCard, TID.shareCard]);
+    expect(await order('make')).toEqual([TID.sampleDiagramsCard, TID.aiCard]);
+    // Showing 直す opens its first section, Add.
+    await tab(page, 'fix').click();
+    await expect(card(page, TID.addCard)).toHaveClass(/isOpen/);
   });
 
   test('a section header in another tab opens it and shows its tab', async ({ editPage, page }) => {
@@ -41,7 +67,7 @@ test.describe('Tools tabs', () => {
     await expect(tab(page, 'fix')).toHaveAttribute('aria-selected', 'true');
     await expect(card(page, TID.colorsCard)).toHaveClass(/isOpen/);
     await expect(page.getByTestId(TID.colorsCard)).toBeInViewport();
-    await expect(page.getByTestId(TID.addCard)).not.toBeInViewport();
+    await expect(page.getByTestId(TID.sampleDiagramsCard)).not.toBeInViewport();
 
     await page.getByTestId(TID.actionsCard).click();
     await expect(tab(page, 'out')).toHaveAttribute('aria-selected', 'true');
@@ -52,7 +78,7 @@ test.describe('Tools tabs', () => {
   test('a tab reopens the section last open in it, else its first', async ({ editPage, page }) => {
     await editPage.start(flowchart);
     await tab(page, 'fix').click();
-    await expect(card(page, TID.editCard)).toHaveClass(/isOpen/);
+    await expect(card(page, TID.addCard)).toHaveClass(/isOpen/);
     await page.getByTestId(TID.layoutCard).click();
     await tab(page, 'out').click();
     await expect(card(page, TID.actionsCard)).toHaveClass(/isOpen/);
@@ -91,9 +117,10 @@ test.describe('Tools tabs', () => {
     await editPage.start(flowchart);
     await page.getByTestId(TID.toolsPaneToggle).click();
     for (const [target, id, section] of [
-      ['ai', 'out', TID.aiCard],
+      ['ai', 'make', TID.aiCard],
       ['layout', 'fix', TID.layoutCard],
-      ['add', 'make', TID.addCard]
+      ['add', 'fix', TID.addCard],
+      ['share', 'out', TID.shareCard]
     ] as const) {
       await page.getByTestId(`${TID.toolsRail}-${target}`).click();
       await expect(tab(page, id)).toHaveAttribute('aria-selected', 'true');

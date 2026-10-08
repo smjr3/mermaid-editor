@@ -6,6 +6,7 @@
   import { buildAiPrompt } from '$/util/aiPrompt';
   import { importedPacks, packNames } from '$/util/iconCatalog';
   import { iconReference } from '$/util/standardIcons';
+  import { validatedState } from '$/util/state.svelte';
   import CopyIcon from '~icons/material-symbols/content-copy-outline';
   import RemoveIcon from '~icons/material-symbols/close-rounded';
 
@@ -17,6 +18,7 @@
     const packs = [...packNames(), ...(await importedPacks()).map(({ prefix }) => prefix)];
     const text = buildAiPrompt({
       collected: aiCollection.ids.map(iconReference),
+      diagramType: validatedState.current.diagramType,
       locale,
       packs
     });

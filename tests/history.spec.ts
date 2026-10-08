@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { t } from './test';
+import { EditorPage, t } from './test';
 
 const config = '{\n  "theme": "default"\n}';
 
@@ -126,7 +126,7 @@ test.describe('History', () => {
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
     // Loading a different sample changes the state, so it saves as a new entry.
-    await page.getByRole('button', { name: t('preset.name.sequence'), exact: true }).click();
+    await new EditorPage(page).loadSampleDiagram('Sequence');
     await expect(page.locator('#view')).not.toContainText('Christmas');
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(2);
@@ -145,7 +145,7 @@ test.describe('History', () => {
   test('deletes a single entry and clears all after confirmation', async ({ page }) => {
     await openHistory(page);
     await page.locator('#saveHistory').click();
-    await page.getByRole('button', { name: t('preset.name.sequence'), exact: true }).click();
+    await new EditorPage(page).loadSampleDiagram('Sequence');
     await expect(page.locator('#view')).not.toContainText('Christmas');
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(2);

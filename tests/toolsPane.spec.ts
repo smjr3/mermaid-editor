@@ -227,6 +227,140 @@ test.describe('Tools pane', () => {
   });
 });
 
+// User feedback (2026-10-08), the most important item: 「直す」 was too narrow to edit in.
+// While 直す is shown the tools pane has a wider width of its own and the code folds away.
+const lanes = urlFor(`swimlane-beta LR
+  subgraph Customer
+    A[Place order] --> B[Receive goods]
+  end
+  subgraph Shop
+    C[Accept order]
+    D{In stock?}
+  end
+  A --> C
+  C -->|yes| D
+  D -- no --> A`);
+
+/** Controls in the open card that stick out of the pane, and boxes that scroll sideways. */
+const clipping = (page: Page) =>
+  page.getByTestId(TID.toolsPane).evaluate((pane) => {
+    const edge = pane.getBoundingClientRect();
+    const open = pane.querySelector('[data-active="true"] .card.isOpen');
+    const clipped = [...(open?.querySelectorAll('button, select, input, textarea') ?? [])]
+      .filter((element) => element.getBoundingClientRect().width > 0)
+      .filter((element) => {
+        const box = element.getBoundingClientRect();
+        return box.left < edge.left - 0.5 || box.right > edge.right + 0.5;
+      })
+      .map((element) => element.outerHTML.slice(0, 80));
+    const scrollers = [...pane.querySelectorAll('*')]
+      .filter((element) => ['auto', 'scroll'].includes(getComputedStyle(element).overflowX))
+      .filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map((element) => element.outerHTML.slice(0, 80));
+    return { clipped, scrollers };
+  });
+
+test.describe('Tools pane while fixing (直す)', () => {
+  test.use({ foldCodeWhileFixing: true });
+
+  for (const [width, height] of [
+    [1280, 800],
+    [1440, 900]
+  ]) {
+    test(`at ${width}px it widens, folds the code and nothing is clipped`, async ({
+      editPage,
+      page
+    }) => {
+      await page.setViewportSize({ height, width });
+      await editPage.start(lanes);
+      await editPage.checkTextInView('Accept order');
+      const pane = page.getByTestId(TID.toolsPane);
+      const paneWidth = async () => (await pane.boundingBox())?.width ?? 0;
+      const before = await paneWidth();
+      expect(before).toBeLessThan(width * 0.34);
+      await expect(editPage.editor).toBeVisible();
+
+      await page.getByTestId(`${TID.toolsTab}-fix`).click();
+      await expect(page.getByTestId(TID.editorRail)).toBeVisible();
+      await expect.poll(paneWidth).toBeGreaterThan(width * 0.37);
+      // The diagram keeps more room than before, though the tools grew.
+      expect((await editPage.view.boundingBox())?.width ?? 0).toBeGreaterThan(width * 0.5);
+
+      await page.getByTestId(TID.editCard).click();
+      await page.getByTestId(TID.editObjectSelect).selectOption('D');
+      await expect(page.getByTestId(TID.editRenameInput)).toHaveValue('In stock?');
+      expect(await clipping(page)).toEqual({ clipped: [], scrollers: [] });
+      for (const section of [TID.addCard, TID.layoutCard, TID.colorsCard]) {
+        await page.getByTestId(section).click();
+        expect(await clipping(page), section).toEqual({ clipped: [], scrollers: [] });
+      }
+
+      // Another tab: the code comes back and the tools take their usual width.
+      await page.getByTestId(`${TID.toolsTab}-out`).click();
+      await expect(page.getByTestId(TID.editorRail)).toBeHidden();
+      await expect(editPage.editor).toBeVisible();
+      await expect.poll(paneWidth).toBeLessThan(width * 0.34);
+    });
+  }
+
+  test('remembers the width dragged in 直す apart from the other tabs, across a reload', async ({
+    editPage,
+    page
+  }) => {
+    await page.setViewportSize({ height: 900, width: 1400 });
+    await editPage.start(flowchart);
+    const pane = page.getByTestId(TID.toolsPane);
+    const paneWidth = async () => Math.round((await pane.boundingBox())?.width ?? 0);
+    const normal = await paneWidth();
+    await page.getByTestId(`${TID.toolsTab}-fix`).click();
+    await expect.poll(paneWidth).toBeGreaterThan(normal + 50);
+    const fixDefault = await paneWidth();
+
+    const handle = page.locator('[data-pane-resizer]').first();
+    const box = await handle.boundingBox();
+    if (!box) throw new Error('divider missing');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 120, box.y + box.height / 2, { steps: 10 });
+    await page.mouse.up();
+    await expect.poll(paneWidth).toBeGreaterThan(fixDefault + 80);
+    const widened = await paneWidth();
+
+    await page.getByTestId(`${TID.toolsTab}-make`).click();
+    await expect.poll(paneWidth).toBeLessThan(normal + 5);
+    await page.getByTestId(`${TID.toolsTab}-fix`).click();
+    await expect.poll(paneWidth).toBeGreaterThan(widened - 5);
+
+    // A reload starts on 作る with the code back and the usual width.
+    await page.reload();
+    await editPage.checkTextInView('Start');
+    await expect(editPage.editor).toBeVisible();
+    await expect.poll(paneWidth).toBeLessThan(normal + 5);
+    await page.getByTestId(`${TID.toolsTab}-fix`).click();
+    await expect.poll(paneWidth).toBeGreaterThan(widened - 5);
+  });
+
+  test('the code stays when folding is turned off in the tools header', async ({
+    editPage,
+    page
+  }) => {
+    await page.setViewportSize({ height: 900, width: 1400 });
+    await editPage.start(flowchart);
+    const toggle = page.getByTestId(TID.foldCodeToggle);
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await page.getByTestId(`${TID.toolsTab}-fix`).click();
+    await expect(page.getByTestId(TID.layoutCard)).toBeInViewport();
+    await page.waitForTimeout(300);
+    await expect(editPage.editor).toBeVisible();
+    await expect(page.getByTestId(TID.editorRail)).toBeHidden();
+    // Turned on again while 直す is shown, the code folds.
+    await toggle.click();
+    await expect(page.getByTestId(TID.editorRail)).toBeVisible();
+  });
+});
+
 test.describe('Diagram toolbar', () => {
   test.use({ viewport: { height: 768, width: 1024 } });
 
@@ -245,10 +379,7 @@ test.describe('Diagram toolbar', () => {
       TID.resetViewButton,
       TID.fullScreenButton,
       TID.roughToggle,
-      TID.gridToggle,
-      TID.themeToggleButton,
-      TID.localeToggleButton,
-      TID.mermaidVersion
+      TID.gridToggle
     ]) {
       const control = bar.getByTestId(id);
       await expect(control).toBeVisible();
@@ -256,7 +387,13 @@ test.describe('Diagram toolbar', () => {
       if (!box) throw new Error(`${id} missing`);
       expect(box.x + box.width).toBeLessThanOrEqual(barBox.x + barBox.width + 1);
     }
-    await expect(bar.getByTestId(TID.mermaidVersion)).toHaveText(/^v\d+\.\d+\.\d+/);
+    // Theme, language and version moved out: theme and language to the header, the version to 使い方.
+    for (const id of [TID.themeToggleButton, TID.localeToggleButton, TID.mermaidVersion]) {
+      await expect(bar.getByTestId(id)).toHaveCount(0);
+    }
+    const header = page.getByTestId(TID.headerBar);
+    await expect(header.getByTestId(TID.themeToggleButton)).toBeVisible();
+    await expect(header.getByTestId(TID.localeToggleButton)).toBeVisible();
   });
 
   test('zooms, toggles hand-drawn and grid, theme and language', async ({ editPage, page }) => {

@@ -69,17 +69,18 @@ test.describe('Code pane', () => {
 test.describe('Dark site', () => {
   test.use({ colorScheme: 'dark' });
 
-  test('gives a light-themed diagram a light grey background', async ({ editPage }) => {
+  // The diagram looks the same in the site's light and dark mode: no grey backdrop.
+  test('adds no backdrop to a light-themed diagram', async ({ editPage }) => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]', '{"theme":"neutral"}'));
     await editPage.checkTextInView('Start');
     await expect(editPage.view.locator('svg').first()).toHaveCSS(
       'background-color',
-      'rgb(207, 212, 218)'
+      'rgba(0, 0, 0, 0)'
     );
   });
 
-  test('draws the managed dark theme with bright lines', async ({ editPage }) => {
-    await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
+  test('draws a dark theme the user picked with bright lines', async ({ editPage }) => {
+    await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]', '{"theme":"dark"}'));
     await editPage.checkTextInView('Start');
     await expect(editPage.view.locator('.flowchart-link').first()).toHaveCSS(
       'stroke',

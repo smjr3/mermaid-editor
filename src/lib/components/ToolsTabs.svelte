@@ -9,6 +9,7 @@
   import LayoutControls from '$/components/LayoutControls.svelte';
   import Preset from '$/components/Preset.svelte';
   import SelectionPanel from '$/components/SelectionPanel.svelte';
+  import ShareLinks from '$/components/ShareLinks.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { showTab, toolsAccordion, toolsTabs, type ToolsTab } from '$/util/toolsPane.svelte';
@@ -17,9 +18,9 @@
   import MakeIcon from '~icons/material-symbols/draw-outline-rounded';
   import OutIcon from '~icons/material-symbols/ios-share-rounded';
 
-  // Local: the desktop tools pane's three tabs — 作る (new diagram, templates and
-  // samples; add), 直す (the selection, then edit, colours, layout, icons) and 出す
-  // (export and share; AI briefing and unknown icons) — each an accordion of
+  // Local: the desktop tools pane's three tabs — 作る (templates and new diagrams; AI
+  // briefing and unknown icons), 直す (the selection, then add, layout, edit, colours,
+  // icons) and 出す (export; share links) — each an accordion of
   // sections (Card.svelte, toolsPane.svelte.ts), one open at a time.
   //
   // The panels sit side by side in a strip that scrolls sideways, the active one in
@@ -109,16 +110,17 @@
         onfocusin={() => onfocusin(tab.id)}>
         {#if tab.id === 'make'}
           <Preset />
-          <AddControls />
+          <AiTools />
         {:else if tab.id === 'fix'}
           <SelectionPanel />
+          <AddControls />
+          <LayoutControls />
           <EditControls />
           <ColorControls />
-          <LayoutControls />
           <IconPacks />
         {:else}
           <Actions />
-          <AiTools />
+          <ShareLinks />
         {/if}
       </div>
     {/each}

@@ -46,6 +46,7 @@ export const messages = {
     'actions.noteTransparent': 'transparent',
     'actions.noteWhite': 'white background',
     'actions.noteWidth': 'width {n}px',
+    'actions.pngFailed': 'The PNG could not be made. Try again.',
     'actions.pngSize': 'PNG size',
     'actions.preset': 'Preset',
     'actions.presetA4Landscape': 'A4 landscape',
@@ -605,6 +606,8 @@ export const messages = {
     'embed.loadError': 'Unable to load the diagram from this URL.',
     'embed.title': 'Mermaid diagram',
     'embed.toggleMode': 'Toggle light / dark',
+    'error.loadFromUrlFailed':
+      'The diagram linked in the address could not be loaded ({message}). The current diagram is kept.',
     'error.returnHome': 'Return to Home',
     'error.title': 'Error {status}',
     'error.unexpected': 'An unexpected error occurred',
@@ -649,6 +652,8 @@ export const messages = {
       'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.',
     'history.emptyTimeline':
       'No timeline snapshots yet.\nThe Timeline is saved automatically every minute.',
+    'history.importFailed':
+      'The file is not a history export (a JSON list of entries), so nothing was imported. The history is unchanged.',
     'history.importSummary': '{restored} restored, {duplicates} duplicate, {invalid} invalid.',
     'history.openNewTab': 'Open in new tab',
     'history.openRevisionNewTab': 'Open revision in new tab',
@@ -681,6 +686,11 @@ export const messages = {
     'icons.errorPrefix':
       'Enter a name of lowercase letters, digits and hyphens that is not a bundled pack.',
     'icons.errorRead': 'Could not read {file}: {message}',
+    'icons.errorStorage': 'The icon pack could not be saved ({message}). Try again.',
+    'icons.errorStorageBlocked':
+      'This browser does not let the site keep data (a private window or the site-data settings), so the icon pack was not saved. Change the setting and try again.',
+    'icons.errorStorageFull':
+      "The browser's storage is full, so the icon pack was not saved. Delete packs you no longer need or free some space, then try again.",
     'icons.files': 'SVG files, or an Iconify JSON file',
     'icons.import': 'Import',
     'icons.imported': 'Imported packs (this browser only)',
@@ -1110,6 +1120,7 @@ export const messages = {
     'actions.noteTransparent': '透過',
     'actions.noteWhite': '白背景',
     'actions.noteWidth': '幅 {n}px',
+    'actions.pngFailed': 'PNG を作成できませんでした。もう一度お試しください。',
     'actions.pngSize': 'PNG サイズ',
     'actions.preset': 'プリセット',
     'actions.presetA4Landscape': 'A4 横',
@@ -1669,6 +1680,8 @@ export const messages = {
     'embed.loadError': 'この URL からは図を読み込めませんでした。',
     'embed.title': 'Mermaid の図',
     'embed.toggleMode': 'ライト / ダークを切り替え',
+    'error.loadFromUrlFailed':
+      'アドレスで指定された図を読み込めませんでした（{message}）。現在の図はそのままです。',
     'error.returnHome': 'ホームに戻る',
     'error.title': 'エラー {status}',
     'error.unexpected': '予期しないエラーが発生しました',
@@ -1713,6 +1726,8 @@ export const messages = {
       '保存された状態はまだありません。\n保存ボタンを押すと現在の図をブックマークでき、あとから復元できます。',
     'history.emptyTimeline':
       'タイムラインのスナップショットはまだありません。\nタイムラインは 1 分ごとに自動保存されます。',
+    'history.importFailed':
+      '履歴のエクスポートファイル（項目の JSON 配列）ではないため、読み込みませんでした。履歴は変更していません。',
     'history.importSummary': '復元 {restored} 件、重複 {duplicates} 件、不正 {invalid} 件。',
     'history.openNewTab': '新しいタブで開く',
     'history.openRevisionNewTab': 'リビジョンを新しいタブで開く',
@@ -1746,6 +1761,11 @@ export const messages = {
     'icons.errorPrefix':
       '英小文字・数字・ハイフンで、同梱のアイコン集と重ならない名前を入力してください。',
     'icons.errorRead': '{file} を読み込めませんでした: {message}',
+    'icons.errorStorage': 'アイコン集を保存できませんでした（{message}）。もう一度お試しください。',
+    'icons.errorStorageBlocked':
+      'このブラウザーではサイトのデータ保存が許可されていないため（プライベートウィンドウやサイトデータの設定）、アイコン集を保存できませんでした。設定を変更してから、もう一度お試しください。',
+    'icons.errorStorageFull':
+      'ブラウザーの保存領域がいっぱいのため、アイコン集を保存できませんでした。不要なアイコン集を削除するか空き容量を増やしてから、もう一度お試しください。',
     'icons.files': 'SVG ファイル、または Iconify の JSON ファイル',
     'icons.import': '取り込む',
     'icons.imported': '取り込んだアイコン集（このブラウザだけ）',

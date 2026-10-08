@@ -178,4 +178,39 @@ test.describe('History', () => {
     await expect(page.locator('#historyList')).toContainText('my-custom-name');
     await expect(page.locator('#historyList li')).toHaveCount(1);
   });
+
+  // R07: an uploaded file is checked; a broken one is reported and changes nothing.
+  const upload = async (page: Page, contents: string) => {
+    const chooser = page.waitForEvent('filechooser');
+    await page.locator('#uploadHistory').click();
+    await (
+      await chooser
+    ).setFiles({ buffer: Buffer.from(contents), mimeType: 'application/json', name: 'h.json' });
+  };
+
+  test('refuses an upload that is not a history export and keeps the history', async ({ page }) => {
+    await page.evaluate(
+      (manual) => localStorage.setItem('manualHistoryStore', manual),
+      JSON.stringify(manualHistory)
+    );
+    await page.reload();
+    await openHistory(page);
+    await expect(page.locator('#historyList li')).toHaveCount(2);
+
+    await upload(page, '{"not": "a list"');
+    await expect(page.getByText(t('history.importFailed'))).toBeVisible();
+    await expect(page.locator('#historyList li')).toHaveCount(2);
+  });
+
+  test('imports a file once per id and counts broken entries as invalid', async ({ page }) => {
+    await openHistory(page);
+    const fresh = entry('m-9', 'fresh-entry', 'manual', 'Fresh');
+    const broken = { ...entry('m-8', 'broken-entry', 'manual', 'Broken'), state: { code: 1 } };
+    await upload(page, JSON.stringify([fresh, fresh, broken]));
+    await expect(
+      page.getByText(t('history.importSummary', { duplicates: '1', invalid: '1', restored: '1' }))
+    ).toBeVisible();
+    await expect(page.locator('#historyList li')).toHaveCount(1);
+    await expect(page.locator('#historyList')).toContainText('fresh-entry');
+  });
 });

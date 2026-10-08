@@ -275,6 +275,31 @@ describe('managed theme', () => {
   });
 });
 
+// R06: config text that is JSON but not an object is a config error, not a crash.
+describe('a config whose JSON root is not an object', () => {
+  it.each([
+    ['null', 'null'],
+    ['a number', '42'],
+    ['a string', '"forest"'],
+    ['an array', '[{"theme":"dark"}]']
+  ])('is reported as a config error and left as typed: %s', slow, async (_name, text) => {
+    toggleDarkTheme(false);
+    updateCode(flowchart);
+    updateConfig(text);
+    toggleDarkTheme(true);
+    await settled();
+    expect(validatedState.current.errorKind).toBe('config');
+    expect(validatedState.current.code).toBe(flowchart);
+    expect(inputState.mermaid).toBe(text);
+    toggleDarkTheme(false);
+    await settled();
+    expect(inputState.mermaid).toBe(text);
+    updateConfig('{}');
+    await waitForTheme('redux-color');
+    expect(validatedState.current.errorKind).toBeUndefined();
+  });
+});
+
 describe('clearDefaultThemeConfig migration', () => {
   // Code that does not parse has no diagram type, which keeps the managed
   // theme sync out of the way so the migration is observed on its own.

@@ -6,7 +6,12 @@
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { buildIconSet, sanitizeIconSet, toPrefix, type IconifyJSON } from '$/util/customIcons';
-  import { deleteIconPack, listIconPacks, saveIconPack } from '$/util/customIconStore';
+  import {
+    deleteIconPack,
+    listIconPacks,
+    saveIconPack,
+    storageErrorKind
+  } from '$/util/customIconStore';
   import { iconPacks } from '$/util/iconPacks';
   import { onMount } from 'svelte';
   import DeleteIcon from '~icons/material-symbols/delete-outline';
@@ -33,6 +38,17 @@
   const report = (text: string, error = false) => {
     message = text;
     isError = error;
+  };
+
+  // A write that did not reach storage: why, and that it can be tried again
+  // (the chosen files stay selected).
+  const storageError = (error: unknown): string => {
+    const kind = storageErrorKind(error);
+    if (kind === 'full') return t('icons.errorStorageFull');
+    if (kind === 'blocked') return t('icons.errorStorageBlocked');
+    return t('icons.errorStorage', {
+      message: error instanceof Error ? error.message : String(error)
+    });
   };
 
   const readPack = async (chosen: File[]): Promise<IconifyJSON> => {
@@ -76,14 +92,28 @@
       report(t('icons.errorEmpty'), true);
       return;
     }
-    await saveIconPack(pack);
+    // Local: shown as imported only once the pack is stored (saveIconPack waits for
+    // the IndexedDB transaction to complete, and registers the pack after that).
+    try {
+      await saveIconPack(pack);
+    } catch (error) {
+      console.error('Icon pack not saved', error);
+      report(storageError(error), true);
+      return;
+    }
     await refresh();
     report(t('icons.done', { count: String(count), prefix: pack.prefix }));
   };
 
   const remove = async (name: string) => {
     if (confirm(t('icons.deleteConfirm', { prefix: name }))) {
-      await deleteIconPack(name);
+      try {
+        await deleteIconPack(name);
+      } catch (error) {
+        console.error('Icon pack not deleted', error);
+        report(storageError(error), true);
+        return;
+      }
       await refresh();
       report('');
     }

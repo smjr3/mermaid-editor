@@ -59,4 +59,14 @@ describe('silentlySanitizeConfig', () => {
   it('should return an empty config for undefined', () => {
     expect(silentlySanitizeConfig(undefined)).toEqual({});
   });
+
+  // R06: valid JSON is not necessarily a config object.
+  it.each([
+    ['null', 'null'],
+    ['a number', '42'],
+    ['a string', '"forest"'],
+    ['an array', '[{"theme":"dark"}]']
+  ])('should return an empty config when the JSON root is %s', (_name, text) => {
+    expect(silentlySanitizeConfig(text)).toEqual({});
+  });
 });

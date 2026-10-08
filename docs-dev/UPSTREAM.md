@@ -292,6 +292,19 @@ three panes (code, diagram, tools), their `id`/`order`, the rails and `<DiagramT
 `tests/toolsTabs.spec.ts` fail if the layout is lost; `tests/selection.spec.ts` if the
 selection layer is.
 
+### Input hardening (source review of 2026-10-08)
+
+| Path                                                                                    | Local change                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/sanitize.ts`                                                              | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                                                                                  |
+| `src/lib/components/History/historyState.svelte.ts`, `History.svelte`                   | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                                            |
+| `src/lib/components/Actions.svelte`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom goes back to its previous value in `finally`; the copy button shows the tick only after success and an error mark otherwise (R10)              |
+| `src/lib/util/serde.ts`                                                                 | `deserialize` refuses a link that unpacks (pako, inflated in chunks) or decodes (base64) to more than `MAX_INFLATED_BYTES` (5 MB); the pako bytes are decoded with `TextDecoder` as pako 2.1.0 does, so `serde.compat.test.ts` holds. On an upstream pako upgrade re-check both |
+| `src/lib/util/util.ts`, `src/lib/util/fileLoaders/loader.ts`                            | `fetchText`/`fetchJSON` reject a non-2xx answer naming the status; an empty `?code=` file is refused instead of replacing the diagram with the default; `initHandler` reports a failed URL load and keeps the current diagram                                                   |
+| `src/lib/util/embed.ts`                                                                 | The hash state goes through `normalizeState` (a state that is not one is a link error; a pan, zoom, rough or grid of the wrong type is dropped), and `?zoom=` must be positive                                                                                                  |
+
+On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
+
 ### Cross-platform guards
 
 The build may run on Windows, so the build and publish path uses only
@@ -545,6 +558,7 @@ modifications as if they were local customizations.
 | Added    | `scripts/dev-force.js`                                 |
 | Added    | `scripts/fetch-icon-packs.d.ts`                        |
 | Added    | `scripts/fetch-icon-packs.js`                          |
+| Added    | `scripts/fetch-icon-packs.node-test.mjs`               |
 | Added    | `scripts/prepare-pages.js`                             |
 | Added    | `scripts/svg-to-iconify.d.ts`                          |
 | Added    | `scripts/svg-to-iconify.js`                            |
@@ -565,6 +579,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/ColorSwatches.svelte`              |
 | Added    | `src/lib/components/CommandPalette.svelte`             |
 | Modified | `src/lib/components/CopyButton.svelte`                 |
+| Added    | `src/lib/components/CopyButton.test.ts`                |
 | Modified | `src/lib/components/CopyInput.svelte`                  |
 | Modified | `src/lib/components/DesktopEditor.svelte`              |
 | Added    | `src/lib/components/DiagramContextMenu.svelte`         |
@@ -579,6 +594,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/GuideTour.svelte`                  |
 | Added    | `src/lib/components/HelpButton.svelte`                 |
 | Modified | `src/lib/components/History/History.svelte`            |
+| Modified | `src/lib/components/History/historyState.svelte.ts`    |
+| Modified | `src/lib/components/History/historyState.test.ts`      |
 | Added    | `src/lib/components/HtmlExport.svelte`                 |
 | Added    | `src/lib/components/IconChooser.svelte`                |
 | Added    | `src/lib/components/IconLicenseTable.svelte`           |
@@ -634,6 +651,7 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/colors.ts`                               |
 | Added    | `src/lib/util/commands.test.ts`                        |
 | Added    | `src/lib/util/commands.ts`                             |
+| Added    | `src/lib/util/customIconStore.test.ts`                 |
 | Added    | `src/lib/util/customIconStore.ts`                      |
 | Added    | `src/lib/util/customIcons.test.ts`                     |
 | Added    | `src/lib/util/customIcons.ts`                          |
@@ -652,11 +670,15 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/diagramTitle.ts`                         |
 | Added    | `src/lib/util/displayName.test.ts`                     |
 | Added    | `src/lib/util/displayName.ts`                          |
+| Modified | `src/lib/util/embed.test.ts`                           |
 | Modified | `src/lib/util/embed.ts`                                |
 | Modified | `src/lib/util/env.ts`                                  |
 | Added    | `src/lib/util/exportPresets.test.ts`                   |
 | Added    | `src/lib/util/exportPresets.ts`                        |
+| Added    | `src/lib/util/fakeIndexedDB.ts`                        |
 | Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
+| Added    | `src/lib/util/fileLoaders/loader.test.ts`              |
+| Modified | `src/lib/util/fileLoaders/loader.ts`                   |
 | Added    | `src/lib/util/helpContent.test.ts`                     |
 | Added    | `src/lib/util/helpContent.ts`                          |
 | Added    | `src/lib/util/htmlExport.test.ts`                      |
@@ -671,6 +693,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/iconPacks.ts`                            |
 | Added    | `src/lib/util/iconSearch.test.ts`                      |
 | Added    | `src/lib/util/iconSearch.ts`                           |
+| Added    | `src/lib/util/imageExport.test.ts`                     |
+| Added    | `src/lib/util/imageExport.ts`                          |
 | Added    | `src/lib/util/layout.test.ts`                          |
 | Added    | `src/lib/util/layout.ts`                               |
 | Added    | `src/lib/util/localSamples.test.ts`                    |
@@ -697,6 +721,8 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/renderView.ts`                           |
 | Added    | `src/lib/util/sampleNames.test.ts`                     |
 | Added    | `src/lib/util/sampleNames.ts`                          |
+| Modified | `src/lib/util/sanitize.test.ts`                        |
+| Modified | `src/lib/util/sanitize.ts`                             |
 | Added    | `src/lib/util/selection.svelte.ts`                     |
 | Added    | `src/lib/util/selection.test.ts`                       |
 | Added    | `src/lib/util/selectionActions.test.ts`                |
@@ -705,6 +731,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/selectionKeys.ts`                        |
 | Added    | `src/lib/util/selectionModel.svelte.ts`                |
 | Added    | `src/lib/util/serde.compat.test.ts`                    |
+| Modified | `src/lib/util/serde.test.ts`                           |
+| Modified | `src/lib/util/serde.ts`                                |
 | Added    | `src/lib/util/settledState.svelte.ts`                  |
 | Added    | `src/lib/util/standardIcons.test.ts`                   |
 | Added    | `src/lib/util/standardIcons.ts`                        |

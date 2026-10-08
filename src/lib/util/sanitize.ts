@@ -91,6 +91,11 @@ export const silentlySanitizeConfig = (
   } else if (config) {
     parsed = config;
   }
+  // Local: valid JSON is not necessarily a config — `null`, a number, a string or
+  // an array as the root counts as no config (and `null` threw below).
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    parsed = {};
+  }
   stripConfigPaths(parsed, findUnsafeConfigPaths(parsed));
   return parsed;
 };

@@ -1,6 +1,7 @@
 import type { HistoryEntry, HistoryType, Optional, State } from '$lib/types';
 import { persisted, readJSON, type Persisted } from '$lib/util/persist.svelte';
-import { inputState } from '$lib/util/state.svelte';
+import { defaultState, inputState } from '$lib/util/state.svelte';
+import { isStateLike, normalizeState } from '$lib/util/stateGuard';
 import { logEvent } from '$lib/util/stats';
 import { generateSlug } from 'random-word-slugs';
 import { v4 as uuidV4 } from 'uuid';
@@ -120,19 +121,41 @@ export const clearActive = (): void => {
   logEvent('history', { action: 'clear', type: 'all' });
 };
 
-const validateEntry = (entry: HistoryEntry): boolean =>
-  Boolean(entry && entry.type && entry.state) && typeof entry.time === 'number';
-
 export interface RestoreResult {
   restored: number;
   invalid: number;
   duplicates: number;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// Local: an imported entry is whatever JSON the file held. Only an entry with a
+// store to go to (auto or manual), a finite time, a saved state (stateGuard.ts)
+// and a text id is taken; one without an id gets a new one, as the id migration
+// (`injectHistoryIDs`) gives one. Returns undefined for anything else.
+const importedEntry = (raw: unknown): HistoryEntry | undefined => {
+  if (!isRecord(raw)) return undefined;
+  const { id, name, state, time, type, url } = raw;
+  if (type !== 'auto' && type !== 'manual') return undefined;
+  if (typeof time !== 'number' || !Number.isFinite(time)) return undefined;
+  if (!isStateLike(state)) return undefined;
+  if (id !== undefined && id !== null && id !== '' && typeof id !== 'string') return undefined;
+  const entry: HistoryEntry = {
+    id: typeof id === 'string' && id ? id : uuidV4(),
+    state: normalizeState(state, defaultState),
+    time,
+    type
+  };
+  if (typeof name === 'string') entry.name = name;
+  if (typeof url === 'string') entry.url = url;
+  return entry;
+};
+
 // Routes each uploaded entry to the store matching its own type, skipping ids
-// that already exist.
-export const restoreEntries = (data: HistoryEntry[]): RestoreResult => {
-  const valid = data.filter((entry) => validateEntry(entry));
+// that already exist — in the store or earlier in the same file.
+export const restoreEntries = (data: readonly unknown[]): RestoreResult => {
+  const valid = data.map((raw) => importedEntry(raw)).filter((entry) => entry !== undefined);
   const invalid = data.length - valid.length;
   let restored = 0;
 
@@ -145,8 +168,13 @@ export const restoreEntries = (data: HistoryEntry[]): RestoreResult => {
     if (incoming.length === 0) {
       continue;
     }
-    const existingIDs = slot.value.map(({ id }) => id);
-    const fresh = incoming.filter(({ id }) => !existingIDs.includes(id));
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a local lookup, not state
+    const seen = new Set(slot.value.map(({ id }) => id));
+    const fresh = incoming.filter(({ id }) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
     restored += fresh.length;
     slot.value = [...slot.value, ...fresh].sort((a, b) => b.time - a.time);
   }
@@ -154,6 +182,20 @@ export const restoreEntries = (data: HistoryEntry[]): RestoreResult => {
   const duplicates = valid.length - restored;
   logEvent('history', { action: 'restore', duplicates, invalid, success: restored });
   return { restored, invalid, duplicates };
+};
+
+/**
+ * Restores the entries of an uploaded history file. Undefined, with the history
+ * left as it was, when the file is not JSON or does not hold a list of entries.
+ */
+export const importHistory = (text: string): RestoreResult | undefined => {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  return Array.isArray(data) ? restoreEntries(data) : undefined;
 };
 
 const setIDs = (entries: HistoryEntry[]): HistoryEntry[] =>

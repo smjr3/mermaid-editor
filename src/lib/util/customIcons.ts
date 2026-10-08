@@ -138,9 +138,76 @@ export const buildIconSet = (
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+type Transform = Pick<IconData, 'height' | 'hFlip' | 'left' | 'rotate' | 'top' | 'vFlip' | 'width'>;
+
+const finite = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+/**
+ * The Iconify drawing properties of an icon, an alias or a pack's defaults that
+ * are valid: a finite `left`/`top` (negative ones too — a viewBox may start
+ * anywhere), a positive `width`/`height`, a whole number of quarter turns for
+ * `rotate`, and boolean flips. Anything else is left out.
+ */
+const transformOf = (value: Record<string, unknown>): Transform => {
+  const out: Transform = {};
+  const left = finite(value.left);
+  const top = finite(value.top);
+  const width = positive(value.width);
+  const height = positive(value.height);
+  const rotate = finite(value.rotate);
+  if (left !== undefined) out.left = left;
+  if (top !== undefined) out.top = top;
+  if (width !== undefined) out.width = width;
+  if (height !== undefined) out.height = height;
+  if (rotate !== undefined && Number.isInteger(rotate)) out.rotate = ((rotate % 4) + 4) % 4;
+  if (typeof value.hFlip === 'boolean') out.hFlip = value.hFlip;
+  if (typeof value.vFlip === 'boolean') out.vFlip = value.vFlip;
+  return out;
+};
+
+// An icon or alias name: Iconify's syntax, and never a key Object.prototype has
+// (`constructor`), which a lookup by name would otherwise find on every pack.
+const isIconName = (name: string): boolean =>
+  namePattern.test(name) && !(name in Object.prototype) && name !== 'prototype';
+
+/**
+ * The aliases of a pack that lead, possibly through other aliases, to one of its
+ * icons. Ones that point nowhere, loop, or have no `parent` are left out.
+ */
+const sanitizeAliases = (
+  value: unknown,
+  icons: Record<string, IconData>
+): Record<string, Transform & { parent: string }> => {
+  if (!isRecord(value)) return {};
+  const raw = new Map<string, Record<string, unknown>>();
+  for (const [name, alias] of Object.entries(value)) {
+    if (isIconName(name) && !Object.hasOwn(icons, name) && isRecord(alias)) {
+      raw.set(name, alias);
+    }
+  }
+  const resolves = (name: string, seen: Set<string>): boolean => {
+    if (Object.hasOwn(icons, name)) return true;
+    const alias = raw.get(name);
+    if (!alias || seen.has(name) || typeof alias.parent !== 'string') return false;
+    seen.add(name);
+    return resolves(alias.parent, seen);
+  };
+  const aliases: Record<string, Transform & { parent: string }> = {};
+  for (const [name, alias] of raw) {
+    if (resolves(name, new Set())) {
+      aliases[name] = { parent: alias.parent as string, ...transformOf(alias) };
+    }
+  }
+  return aliases;
+};
+
 /**
  * Validate an Iconify JSON pack and sanitise every body. Throws when the value
- * is not a pack. `prefix` overrides the pack's own.
+ * is not a pack. `prefix` overrides the pack's own. What Iconify draws an icon
+ * with — its position, size, rotation and flips, the pack's defaults for them,
+ * and the pack's aliases — is kept, validated, so a pack read back from storage
+ * draws the same as when it was imported.
  */
 export const sanitizeIconSet = (value: unknown, prefix?: string): IconifyJSON => {
   if (!isRecord(value) || !isRecord(value.icons)) {
@@ -152,19 +219,16 @@ export const sanitizeIconSet = (value: unknown, prefix?: string): IconifyJSON =>
   }
   const icons: Record<string, IconData> = {};
   for (const [iconName, icon] of Object.entries(value.icons)) {
-    if (namePattern.test(iconName) && isRecord(icon) && typeof icon.body === 'string') {
-      icons[iconName] = {
-        body: sanitizeBody(icon.body),
-        ...(positive(icon.width) ? { width: positive(icon.width) } : {}),
-        ...(positive(icon.height) ? { height: positive(icon.height) } : {})
-      };
+    if (isIconName(iconName) && isRecord(icon) && typeof icon.body === 'string') {
+      icons[iconName] = { body: sanitizeBody(icon.body), ...transformOf(icon) };
     }
   }
+  const aliases = sanitizeAliases(value.aliases, icons);
   return {
     icons,
     prefix: name,
-    ...(positive(value.width) ? { width: positive(value.width) } : {}),
-    ...(positive(value.height) ? { height: positive(value.height) } : {})
+    ...(Object.keys(aliases).length > 0 ? { aliases } : {}),
+    ...transformOf(value)
   };
 };
 

@@ -17,7 +17,7 @@ import { readJSON, writeJSON } from './persist.svelte';
 import { createLatestGuard } from './renderScheduler';
 import { findUnsafeConfigPaths, stripConfigPaths } from './sanitize';
 import { deserializeState, pakoSerde, serializeState } from './serde';
-import { normalizeState, storedState } from './stateGuard';
+import { normalizeState, parseConfigObject, storedState } from './stateGuard';
 import { errorDebug, formatJSON, getUTMSource, MCBaseURL } from './util';
 
 export { defaultState };
@@ -77,7 +77,8 @@ const processState = async (state: State) => {
       setTimeout(() => window.location.reload(), 500);
     }
     lastDiagramType = diagramType;
-    JSON.parse(state.mermaid);
+    // Local: JSON whose root is not an object (null, a number, …) is a config error too.
+    parseConfigObject(state.mermaid);
   } catch (error) {
     // Local: mermaid can throw something that is not an Error (a string, an object).
     processed.error = error instanceof Error ? error : new Error(String(error));
@@ -272,8 +273,9 @@ export const urls = {
  * @returns The sanitized Mermaid configuration as a JSON string.
  */
 export const sanitizeConfig = (config: string | MermaidConfig) => {
+  // Local: throws for a config whose root is not an object; loadState then drops it.
   const mermaidConfig: MermaidConfig =
-    typeof config === 'string' ? (JSON.parse(config) as MermaidConfig) : config;
+    typeof config === 'string' ? (parseConfigObject(config) as MermaidConfig) : config;
 
   const unsafePaths = findUnsafeConfigPaths(mermaidConfig);
 
@@ -370,7 +372,7 @@ const syncManagedTheme = (diagramType: string | undefined): void => {
   untrack(() => {
     let config: MermaidConfig;
     try {
-      config = JSON.parse(input.mermaid) as MermaidConfig;
+      config = parseConfigObject(input.mermaid) as MermaidConfig;
     } catch {
       return;
     }

@@ -115,8 +115,40 @@ const readSource = async (source) => {
 };
 
 /**
- * Build the packs that `value` (MERMAID_FETCH_ICON_PACKS) names into `out`,
- * replacing whatever an earlier run left there. Does nothing when it is empty.
+ * The list of pack files the last run wrote, kept beside them. Not `*.json`, so
+ * the app's `import.meta.glob('../vendor-icons/*.json')` never takes it for a pack.
+ */
+export const manifestName = '.fetch-icon-packs.manifest';
+
+const packFile = /^[a-z0-9]+(-[a-z0-9]+)*\.json$/;
+
+/**
+ * Remove the packs an earlier run generated, as its manifest lists them, and the
+ * manifest. Only plain `prefix.json` names directly in `out` are removed, so a
+ * file someone put there by hand, or a tampered manifest, never costs anything else.
+ * @param {string} out
+ */
+const removeGenerated = (out) => {
+  const manifest = join(out, manifestName);
+  if (!existsSync(manifest)) return;
+  /** @type {unknown} */
+  let listed;
+  try {
+    listed = JSON.parse(readFileSync(manifest, 'utf8')).files;
+  } catch {
+    listed = [];
+  }
+  for (const file of Array.isArray(listed) ? listed : []) {
+    if (typeof file === 'string' && packFile.test(file)) rmSync(join(out, file), { force: true });
+  }
+  rmSync(manifest, { force: true });
+};
+
+/**
+ * Build the packs that `value` (MERMAID_FETCH_ICON_PACKS) names into `out`.
+ * The packs an earlier run generated are removed first — also when `value` is
+ * empty, so a build without the variable carries no vendor pack from before.
+ * Files the script did not write are left alone.
  * @param {string | undefined} value
  * @param {string} [out]
  */
@@ -127,10 +159,14 @@ export const fetchIconPacks = async (value, out = outputDir) => {
     .filter((parts) => parts.length >= 2)
     .map(([prefix, ...source]) => ({ prefix: slug(prefix), source: source.join('=').trim() }))
     .filter(({ prefix, source }) => namePattern.test(prefix) && source);
+  removeGenerated(out);
   if (pairs.length === 0) return [];
-  rmSync(out, { force: true, recursive: true });
   mkdirSync(out, { recursive: true });
   const written = [];
+  /** @type {string[]} */
+  const files = [];
+  const record = () =>
+    writeFileSync(join(out, manifestName), `${JSON.stringify({ files }, undefined, 2)}\n`);
   for (const { prefix, source } of pairs) {
     const pack =
       !/^https?:\/\//i.test(source) && existsSync(source) && statSync(source).isDirectory()
@@ -139,6 +175,9 @@ export const fetchIconPacks = async (value, out = outputDir) => {
     const count = Object.keys(pack.icons).length;
     if (count === 0) throw new Error(`${prefix}: no SVG icons in ${source}`);
     writeFileSync(join(out, `${prefix}.json`), JSON.stringify(pack));
+    // Recorded at once, so a later source that fails still leaves this one known.
+    files.push(`${prefix}.json`);
+    record();
     written.push({ count, prefix });
   }
   return written;

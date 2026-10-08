@@ -3,6 +3,7 @@ import { flushSync } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearDefaultThemeConfig,
+  normalizeLegacyDarkTheme,
   defaultState,
   flushHash,
   initURLSubscription,
@@ -195,22 +196,26 @@ describe('managed theme', () => {
     await waitForTheme('default');
   });
 
-  it('uses the redux dark variant in dark mode and switches back', slow, async () => {
+  it('keeps the light default when the site is dark', slow, async () => {
     updateConfig('{}');
     updateCode(flowchart);
     toggleDarkTheme(true);
-    await waitForTheme('redux-dark-color');
-    toggleDarkTheme(false);
     await waitForTheme('redux-color');
+    await settled();
+    expect(themeOf()).toBe('redux-color');
+    toggleDarkTheme(false);
+    await settled();
+    expect(themeOf()).toBe('redux-color');
   });
 
-  it('falls back to the dark theme for diagrams without a redux default', slow, async () => {
+  it('uses the light default for diagrams without a redux default in dark mode', slow, async () => {
     updateConfig('{}');
     updateCode(pie);
     toggleDarkTheme(true);
-    await waitForTheme('dark');
-    toggleDarkTheme(false);
     await waitForTheme('default');
+    await settled();
+    expect(themeOf()).toBe('default');
+    toggleDarkTheme(false);
   });
 
   it('replaces the legacy pinned "default" theme', slow, async () => {
@@ -251,9 +256,9 @@ describe('managed theme', () => {
       updateConfig(applyThemePreset(inputState.mermaid, 'standard'));
       await waitForTheme('redux-color');
       toggleDarkTheme(true);
-      await waitForTheme('redux-dark-color');
+      await settled();
+      expect(themeOf()).toBe('redux-color');
       toggleDarkTheme(false);
-      await waitForTheme('redux-color');
     }
   );
 
@@ -297,6 +302,27 @@ describe('a config whose JSON root is not an object', () => {
     updateConfig('{}');
     await waitForTheme('redux-color');
     expect(validatedState.current.errorKind).toBeUndefined();
+  });
+});
+
+describe('normalizeLegacyDarkTheme migration', () => {
+  beforeEach(async () => {
+    toggleDarkTheme(false);
+    updateCode('not a diagram');
+    await settled();
+  });
+
+  it.each(['redux-dark-color', 'dark'])('drops the managed dark theme %s', (theme) => {
+    updateConfig(`{"look":"classic","theme":"${theme}"}`);
+    normalizeLegacyDarkTheme();
+    expect(JSON.parse(inputState.mermaid)).toEqual({ look: 'classic' });
+  });
+
+  it.each(['redux-dark', 'neo-dark', 'forest', 'redux-color'])('leaves %s alone', (theme) => {
+    const config = `{"theme":"${theme}"}`;
+    updateConfig(config);
+    normalizeLegacyDarkTheme();
+    expect(JSON.parse(inputState.mermaid)).toEqual({ theme });
   });
 });
 

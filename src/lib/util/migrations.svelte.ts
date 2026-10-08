@@ -1,6 +1,6 @@
 import { injectHistoryIDs } from '$lib/components/History/historyState.svelte';
 import { persisted } from '$lib/util/persist.svelte';
-import { clearDefaultThemeConfig } from './state.svelte';
+import { clearDefaultThemeConfig, normalizeLegacyDarkTheme } from './state.svelte';
 import { logEvent } from './stats';
 
 interface MigrationState {
@@ -13,7 +13,8 @@ interface MigrationState {
 // module is being evaluated.
 const getMigrations = (): Record<string, () => void> => ({
   injectHistoryIDs,
-  clearDefaultThemeConfig
+  clearDefaultThemeConfig,
+  normalizeLegacyDarkTheme
 });
 
 const migrationState = persisted<MigrationState>('migrations', { version: -1 });

@@ -12,7 +12,6 @@
   import debounce from 'lodash-es/debounce';
   import uniqueID from 'lodash-es/uniqueId';
   import type { MermaidConfig } from 'mermaid';
-  import { mode } from 'mode-watcher';
   import { onMount } from 'svelte';
 
   let {
@@ -199,18 +198,19 @@
   id="view"
   bind:this={view}
   data-render-count={renderCount}
-  class={['h-full w-full', shouldShowGrid && `grid-bg-${mode.current}`, error && 'opacity-50']}>
+  class={['view-bg h-full w-full', shouldShowGrid && 'grid-bg', error && 'opacity-50']}>
   <div id="container" bind:this={container} class="h-full overflow-auto"></div>
 </div>
 
 <style>
-  .grid-bg-light {
-    background-size: 30px 30px;
-    background-image: radial-gradient(circle, #e4e4e48c 2px, #0000 2px);
+  /* The picture looks the same in the site's light and dark mode, so the view behind it
+     is white in both (only the app chrome follows the mode). */
+  .view-bg {
+    background-color: #fff;
   }
 
-  .grid-bg-dark {
+  .grid-bg {
     background-size: 30px 30px;
-    background-image: radial-gradient(circle, #46464646 2px, #0000 2px);
+    background-image: radial-gradient(circle, #e4e4e48c 2px, #0000 2px);
   }
 </style>

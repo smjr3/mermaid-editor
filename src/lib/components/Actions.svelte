@@ -49,7 +49,7 @@
     type SaveType
   } from '$/util/saveFile';
   import { buildVsdx } from '$/util/vsdxExport';
-  import { svgSize } from '$/util/xmlText';
+  import { parseColour, svgToDrawio } from '$/util/svgToDrawio';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
   import WidthIcon from '~icons/material-symbols/width-rounded';
@@ -400,16 +400,18 @@ ${stylesheet}${svgString}`);
       target,
       () =>
         withDiagram((svg) => {
+          // Every element as its own draw.io cell, read from the diagram on screen.
+          const page = svgToDrawio(svg as unknown as SVGSVGElement);
           const content = getContentSize(svg);
-          const base64 = getBase64SVG(svg, content.width, content.height, exportFill());
-          const size = svgSize(new TextDecoder().decode(toUint8Array(base64))) ?? content;
+          const fill = parseColour(exportFill() ?? undefined);
           const xml = buildDrawio({
+            background: fill.colour === 'none' ? undefined : fill.colour,
+            cells: page.cells,
             code,
             config: diagramConfig(),
-            height: size.height,
+            height: page.height || content.height,
             name: target.name.replace(/\.drawio$/i, ''),
-            svgBase64: base64,
-            width: size.width
+            width: page.width || content.width
           });
           return Promise.resolve(new Blob([xml], { type: SAVE_TYPES.drawio.mime }));
         }),

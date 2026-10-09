@@ -928,7 +928,7 @@ export const en = {
   'saveAs.description': 'Enter a name for the file. It is saved where the browser saves downloads.',
   'saveAs.drawio': 'Save as .drawio',
   'saveAs.drawioHint':
-    'Saves a file for draw.io (diagrams.net). The diagram goes in as a picture that every draw.io shows; double-clicking it in draw.io opens the Mermaid code, to redraw it or turn it into draw.io shapes.',
+    'Saves a file for draw.io (diagrams.net). Every shape, arrow, text and group becomes its own draw.io element, to select, move and restyle one by one. The Mermaid code stays in the file as the diagram data.',
   'saveAs.failed': 'The file could not be saved. Try again.',
   'saveAs.label': 'File name',
   'saveAs.save': 'Save',

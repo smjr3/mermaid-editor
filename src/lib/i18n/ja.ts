@@ -935,7 +935,7 @@ export const ja = {
     'ファイルの名前を入力してください。ブラウザーのダウンロード先に保存されます。',
   'saveAs.drawio': '.drawio で保存',
   'saveAs.drawioHint':
-    'draw.io（diagrams.net）で開けるファイルを保存します。図は画像として入るので、どの draw.io でも同じ見た目で表示されます。draw.io でダブルクリックすると Mermaid のコードが開き、直して描き直したり、draw.io の図形に変換したりできます。',
+    'draw.io（diagrams.net）で開けるファイルを保存します。図形・矢印・文字・グループがそれぞれ別の draw.io の要素になるので、一つずつ選んで動かしたり、文字や色を直したりできます。Mermaid のコードは図のデータとしてファイルに残ります。',
   'saveAs.failed': 'ファイルを保存できませんでした。もう一度お試しください。',
   'saveAs.label': 'ファイル名',
   'saveAs.save': '保存',

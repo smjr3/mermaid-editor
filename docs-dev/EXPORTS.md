@@ -36,55 +36,78 @@ Chromium on a system without a UTF-8 locale (`LANG` unset, as in some containers
 download with a non-ASCII name as `download`; that is the browser, not the editor. The e2e
 download names are ASCII for that reason; the Japanese names are unit-tested.
 
-## .drawio (`src/lib/util/drawioExport.ts`)
+## .drawio (`src/lib/util/drawioExport.ts`, `svgToDrawio.ts`, `svgPath.ts`)
 
-The file is an uncompressed draw.io document: `mxfile > diagram > mxGraphModel > root`, the two
-root cells `0` and `1`, and one cell in a `UserObject`:
+Since 2026-10-09 (「.drawio形式は、drawioで全ての要素が個別に編集可能なようにして。」) every element of
+the diagram is its own draw.io cell, so in draw.io each box, arrow, label and group can be
+selected, moved, resized, restyled and retyped on its own. The file is an uncompressed draw.io
+document: `mxfile > diagram > mxGraphModel > root`, the root cell `0`, the layer `1`, then one
+`mxCell` per element. The page is the size of the diagram (its viewBox) with the export background.
 
-```xml
-<UserObject label="" mermaidData="{&#10;  &quot;data&quot;: &quot;flowchart LR…&quot;,&#10;  &quot;config&quot;: {…}&#10;}" id="2">
-  <mxCell style="shape=image;noLabel=1;verticalAlign=top;imageAspect=1;aspect=fixed;editIcon=1;image=data:image/svg+xml,<base64>;" vertex="1" parent="1">
-    <mxGeometry x="0" y="0" width="…" height="…" as="geometry" />
-  </mxCell>
-</UserObject>
-```
+### What becomes what
 
-This is the same cell draw.io makes itself when Mermaid is inserted as an image
-(`EditorUi.prototype.createMermaidImageXml` and `EditorUi.createMermaidData` in draw.io's
-`src/main/webapp/js/diagramly/EditorUi.js`, read on 2026-10-08): an image cell whose
-`mermaidData` attribute is `{"data": <source>, "config": <mermaid config or null>}`. The image is
-the SVG this editor rendered (theme, background and icons as exported as SVG), sized from its
-viewBox; the page is the size of the diagram. draw.io style values cannot hold `;`, so the data
-URI is written without `;base64`, as draw.io's `convertDataUri` does.
+`svgToDrawio.ts` reads the SVG on screen (pan/zoom paused, as for the PNG) through `Measure`:
+`getBBox` and `getScreenCTM` give every element's place in the diagram's coordinates, and
+`getComputedStyle` gives the colours, widths, dashes and fonts mermaid's stylesheet and theme
+actually applied. Nothing is re-laid out and nothing leaves the browser.
 
-What draw.io does with it (checked on 2026-10-08 in the draw.io web app, `dev` branch of
-jgraph/drawio, run locally in Chromium with a file exported from the built site):
+| In the SVG                                                                             | In draw.io                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a node (`g.node`: flowchart, class, state, ER, mindmap…; architecture services)        | a vertex: its outline as `rect` (rounded with the same corner radius), `ellipse`, `rhombus`, `hexagon`, `parallelogram`, `trapezoid` (flipped as drawn) when it is one, else a custom stencil shape (`shape=stencil(…)`) with exactly the outline (stadium, cylinder, subroutine, hand-drawn boxes); fill, stroke, width, opacity |
+| the node's label                                                                       | the vertex's value (`html=1`, escaped, line breaks as `<br>`), with the label's colour, size, family, bold/italic, and its alignment where it was not centred; a caption under an icon is the value placed below the shape                                                                                                        |
+| the rest of a node (class members, ER attribute rows and dividers, icons)              | cells inside the node (its children), so they move with it and can still be edited one by one                                                                                                                                                                                                                                     |
+| a subgraph, composite state, swimlane lane, architecture group                         | a container (`container=1;collapsible=0`) with its title as the value (a lane's sideways title as vertical text); the nodes, texts and inner containers inside it become its children, in its coordinates, behind them                                                                                                            |
+| a link (`.edgePaths`, `data-edge`, class/ER/state/architecture edges)                  | an edge with `source`/`target` set to the node cells (by mermaid's ids, `L_A_B_0`, `id_entity-…`, else the nearest shape), the route as waypoints (mermaid's `data-points` where present), `rounded`/`curved` as drawn, the arrowheads, dashed or dotted, width and colour; fixed connection points on box-shaped ends            |
+| arrowheads                                                                             | `block` (filled or open for inheritance), `open`, `oval`, `cross`, `diamondThin` (composition / aggregation), `ERmandOne`, `ERzeroToOne`, `ERoneToMany`, `ERzeroToMany`                                                                                                                                                           |
+| a link label                                                                           | the edge's value, with an offset to where mermaid put it and its background colour                                                                                                                                                                                                                                                |
+| other shapes (sequence actors and notes, gantt bars, pie slices, legends, backgrounds) | shape cells as above; a text centred on a shape (an actor's name, a bar's task) becomes that shape's value                                                                                                                                                                                                                        |
+| lines and open paths (lifelines, messages, axes, ticks, loop frames)                   | edges without terminals, with their arrowheads and dash; open curves are stroke-only stencil shapes                                                                                                                                                                                                                               |
+| free text (titles, messages, axis labels, percentages)                                 | text cells (`text;html=1`), not wrapped, rotated if drawn rotated                                                                                                                                                                                                                                                                 |
+| icons, nested SVGs, `<use>`, pictures                                                  | an image cell of just that element (`shape=image`, an SVG data URI with its computed styles written in), never the whole diagram                                                                                                                                                                                                  |
 
-- **It opens as the picture this editor drew**: one selectable, movable, resizable image on a page
-  the size of the diagram, the page tab named after the file. Displaying it needs neither Mermaid
-  support nor a network connection, so older draw.io versions and viewers (Confluence, Jira, the
-  VS Code extension) show the same picture.
-- **A double-click (or the pen handle) opens draw.io's Mermaid dialog with the source**, line
-  breaks and Japanese text intact (the double-click handler finds `mermaidData` and calls
-  `editMermaidData`). The dialog offers two outputs:
-  - **Image** (preselected, since the cell is an image) re-renders the picture with draw.io's own
-    Mermaid, keeping the source on the cell for the next edit;
-  - **Diagram** converts it into native draw.io shapes and connectors (checked: the expense-flow
-    sample became four shapes, three connectors and the title, each editable), which is how a user
-    gets an editable draw.io diagram from this editor.
-- Either way the result is drawn by **draw.io's** Mermaid and defaults, not this editor's: the
-  colours, fonts and layout change (the converted diagram above used draw.io's purple default
-  look, not this editor's theme), this editor's themes and `themeCSS` do not carry over, a type
-  draw.io's Mermaid does not know (this editor renders with mermaid 12, e.g. `swimlane-beta`)
-  gives an error there and the old picture stays, and icons from this editor's bundled packs
-  (`tabler:server` and the like) are not registered in draw.io. Until it is edited in draw.io, the
-  picture is exactly this editor's.
+A hand-drawn shape that mermaid draws twice (a filled copy and a stroked copy, from roughjs) is one
+cell. Hidden elements and anything wholly outside the picture (gantt's "today" line far right) are
+left out. A diagram type without its own rules (pie, gantt, quadrant, xychart, timeline, C4…) still
+comes out as separate primitives by the same walk; no type falls back to one picture.
 
-How it was checked: `drawioExport.test.ts` parses the file (structure, sizes from the viewBox, the
-source with its line breaks and the config round-tripping through `mermaidData`);
-`tests/fileExports.spec.ts` downloads it from the built site and checks the structure, the source
-and that the embedded SVG is the diagram; and the draw.io run above (load, double-click, Image and
-Diagram outputs, by screenshot). The desktop app was not run; it is the same code.
+### The Mermaid source
+
+The root cell is a `UserObject` with `label=""` and `mermaidData="{"data": <source>, "config":
+<mermaid config or null>}"` — the JSON draw.io itself keeps for Mermaid
+(`EditorUi.createMermaidData` in draw.io's `EditorUi.js`). It is the diagram's own data in draw.io
+(Edit Data with nothing selected shows it) and survives saving in draw.io. Before this change
+the file was a single image cell carrying `mermaidData`, which draw.io's double-click turned
+into its Mermaid dialog; with separate cells there is no such cell, so editing the Mermaid again
+means copying the source from the diagram data into this editor (or a draw.io Mermaid insert).
+
+### How it was checked
+
+- `svgPath.test.ts` (path parsing, arcs, transforms, flattening, simplification) and
+  `svgToDrawio.test.ts` (a cut-down flowchart SVG in jsdom with a stub `Measure`: shapes,
+  container nesting and relative coordinates, connected and labelled edges, dashes and arrows,
+  free text, a slice, a line, an icon, hidden elements; label placement; shape and arrow mapping);
+  `drawioExport.test.ts` (XML structure, edge geometry, styles, the stencil compression read back
+  the way draw.io's `Graph.decompress` reads it, `mermaidData`).
+- `tests/fileExports.spec.ts` downloads `.drawio` files from the built site: a flowchart with a
+  subgraph, a dotted link and labels (six vertices with their labels, one container holding three
+  nodes, five edges all with source and target, one dashed, the labels on the edges, no
+  whole-diagram image) and a sequence diagram (actors, note, messages and lifelines as separate
+  cells).
+- The draw.io web app (`dev` branch of jgraph/drawio, served locally, opened in Chromium with every
+  outside request blocked), on 2026-10-09, with files exported from the built site for flowchart
+  (subgraph, dotted link, labels, ten node shapes), sequence, class, state, ER, gantt, pie,
+  architecture, swimlane and mindmap: every file loaded without errors, every cell was rendered,
+  selectable and movable, every stencil shape parsed and drew, every link that joins nodes had both
+  ends connected (flowchart 10/10, class 3/3, state 5/5, ER 2/2, architecture 2/2, swimlane 3/3),
+  containers held their children, `mermaidData` was on the root and stayed there when draw.io
+  wrote the diagram back out, and draw.io's own rendering (screenshots) matched the diagram.
+  The desktop app was not run; it is the same code.
+
+Limitations: draw.io lays text out with its own font metrics (this editor's theme font is named,
+and falls back if draw.io does not have it), so text widths can differ slightly; links are routed
+by draw.io from the waypoints, so a moved node re-routes like any draw.io edge; mermaid's drop
+shadows, gradients (the first stop is used) and `themeCSS` effects do not carry over; sequence
+messages are not attached to the lifelines; the hand-drawn look turns into many small strokes.
 
 ## .vsdx (`src/lib/util/vsdxExport.ts`)
 

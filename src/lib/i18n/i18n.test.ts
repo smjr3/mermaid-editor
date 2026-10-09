@@ -21,6 +21,28 @@ describe('message catalogue', () => {
     }
   });
 
+  it('shows no owner name, npm scope or repository link on the version page', () => {
+    for (const [name, catalogue] of Object.entries(messages)) {
+      for (const [key, value] of Object.entries(catalogue)) {
+        if (key.startsWith('about.')) expect(value, `${name} ${key}`).not.toMatch(/github|smjr3/i);
+        expect(value, `${name} ${key}`).not.toMatch(/smjr3|@smjr3/i);
+      }
+    }
+    expect(Object.keys(messages.en)).not.toContain('about.repository');
+  });
+
+  it('keeps every icon id in a message exactly as written (never translated)', () => {
+    const ids = /\b(?:logos|tabler|mermaid|simple-icons|fluent-color|clarity):[A-Za-z0-9-]+/g;
+    for (const [name, catalogue] of Object.entries(messages)) {
+      for (const [key, value] of Object.entries(catalogue)) {
+        for (const id of value.match(ids) ?? []) {
+          expect(id, `${name} ${key}`).toMatch(/^[a-z0-9-]+:[a-z0-9-]+$/);
+        }
+      }
+    }
+    expect(messages.ja['add.arch.iconOtherHint']).toContain('logos:aws-lambda');
+  });
+
   it('has no blank messages', () => {
     for (const [name, catalogue] of Object.entries(messages)) {
       for (const [key, value] of Object.entries(catalogue)) {

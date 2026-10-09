@@ -108,7 +108,7 @@
 
 {#snippet iconOptions()}
   {#each standardIcons as icon (icon)}
-    <option value={icon}>{t(`add.arch.icon.${icon}`)}</option>
+    <option value={icon}>{icon}</option>
   {/each}
 {/snippet}
 

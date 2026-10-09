@@ -1,7 +1,6 @@
 import type { State } from './types';
 
 export const TID = {
-  aboutRepoLink: 'about-repo-link',
   actionsCard: 'actions-card',
   addAction: 'add-action',
   addArchArrow: 'add-arch-arrow',

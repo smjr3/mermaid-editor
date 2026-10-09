@@ -12,10 +12,10 @@ describe('curatedIcons', () => {
     }
   });
 
-  it('covers the usual parts of a system in both languages', () => {
+  it('covers the usual parts of a system, described in English only', () => {
     expect(curatedIcons.length).toBeGreaterThan(40);
     for (const icon of curatedIcons) {
-      expect(icon.ja, icon.id).not.toBe('');
+      expect(icon.en, icon.id).not.toMatch(/[\u3040-\u30ff\u4e00-\u9fff]/);
       expect(icon.en, icon.id).not.toBe('');
     }
   });
@@ -32,7 +32,8 @@ describe('buildAiPrompt', () => {
     expect(text).not.toContain('service web(');
     expect(text).toContain('tabler, logos');
     expect(text).toContain('tabler:server');
-    expect(text).toContain('サーバー');
+    expect(text).toContain('- tabler:server-2 — server rack');
+    expect(text).not.toContain('サーバーラック');
     // Standard (prefix-less) icons exist in architecture diagrams only.
     expect(text).not.toContain('- server —');
     expect(text).not.toContain('{collected}');

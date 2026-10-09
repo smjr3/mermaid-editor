@@ -440,22 +440,28 @@ const hiring: TemplateForm = {
 
 // ---- System architecture ----
 
+/** An icon choice labelled with the icon's own name, never a translation of it. */
+const iconOption = (value: string): Option => {
+  const name = value.slice(value.indexOf(':') + 1);
+  return option(value, name, name);
+};
+
 /** A short list of icons for the parts of an office system (all tabler, bundled). */
 export const architectureIcons: Option[] = [
-  option('tabler:building', '建物・拠点', 'Building / site'),
-  option('tabler:cloud', 'クラウド', 'Cloud'),
-  option('tabler:server-2', 'サーバー', 'Server'),
-  option('tabler:database', 'データベース', 'Database'),
-  option('tabler:folders', 'ファイルサーバ', 'File server'),
-  option('tabler:device-desktop', 'PC', 'Desktop PC'),
-  option('tabler:device-laptop', 'ノートPC', 'Laptop'),
-  option('tabler:users', '利用者', 'Users'),
-  option('tabler:firewall-check', 'ファイアウォール', 'Firewall'),
-  option('tabler:lock', 'VPN・認証', 'VPN / sign-in'),
-  option('tabler:router', 'ルーター', 'Router'),
-  option('tabler:world', 'インターネット', 'Internet'),
-  option('tabler:mail', 'メール', 'Mail'),
-  option('tabler:cloud-upload', 'バックアップ', 'Backup')
+  iconOption('tabler:building'),
+  iconOption('tabler:cloud'),
+  iconOption('tabler:server-2'),
+  iconOption('tabler:database'),
+  iconOption('tabler:folders'),
+  iconOption('tabler:device-desktop'),
+  iconOption('tabler:device-laptop'),
+  iconOption('tabler:users'),
+  iconOption('tabler:firewall-check'),
+  iconOption('tabler:lock'),
+  iconOption('tabler:router'),
+  iconOption('tabler:world'),
+  iconOption('tabler:mail'),
+  iconOption('tabler:cloud-upload')
 ];
 const iconOf = (value: string) =>
   architectureIcons.some((icon) => icon.value === value) ? value : 'tabler:server-2';

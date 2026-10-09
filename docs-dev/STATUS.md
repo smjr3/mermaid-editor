@@ -19,7 +19,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **340**.
+  every locally changed path — currently **344**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -823,7 +823,7 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1051 keys**,
+**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1045 keys**,
 read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
 toggle switches to English and the choice is remembered per browser. `en` holds upstream's
 original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay
@@ -908,10 +908,12 @@ saves (PNG, SVG, HTML, the GitLab SVG and the two new formats) lets the user cho
 Chromium and Edge open the system save dialog (`showSaveFilePicker`), other browsers get a small
 「名前を付けて保存」 dialog and the usual download (`saveFile.ts`, `SaveAsDialog.svelte`). The name
 defaults to the diagram's title, else `diagram` (upstream's `mermaid-diagram-<timestamp>` is gone).
-「.drawio で保存」 writes the draw.io cell draw.io itself uses for Mermaid: an image of this editor's
-SVG with the source in `mermaidData`, so every draw.io shows it, and a double-click opens draw.io's
-Mermaid dialog with the source, which redraws it or converts it into draw.io shapes (checked in the
-draw.io web app; `drawioExport.ts`). 「.vsdx で保存」 writes a Visio 2013+ package with one page and the
+「.drawio で保存」 writes every element of the diagram as its own draw.io cell (2026-10-09 feedback
+「drawioで全ての要素が個別に編集可能なように」): nodes as draw.io shapes with their labels, subgraphs
+and lanes as containers, links as connected edges with their arrowheads and labels, and titles,
+notes, axes and slices as shape, line and text cells, converted from the SVG on screen
+(`svgToDrawio.ts`, `svgPath.ts`); the source stays in the root cell's `mermaidData` (checked in the
+draw.io web app for nine diagram types; `drawioExport.ts`). 「.vsdx で保存」 writes a Visio 2013+ package with one page and the
 diagram as a PNG picture, the source in its Shape Data (`vsdxExport.ts`, zipped with `fflate`,
 a new MIT dependency) — a picture in Visio, not editable shapes. The e2e fixture removes the
 picker and confirms the name dialog (`tests/test.ts`, option `saveAs`), so existing download specs

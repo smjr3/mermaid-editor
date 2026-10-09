@@ -10,7 +10,10 @@ import type { Locale } from '$/i18n';
  * icons its packs do not have, and hides a group left empty.
  */
 
-/** One icon: its id, then its Japanese and English labels. */
+/**
+ * One icon: its id, then Japanese and English descriptions (search aids only: an icon's
+ * name is never translated, so the picker shows `iconName(id)` as the caption).
+ */
 export type CategoryIcon = readonly [id: string, ja: string, en: string];
 
 export interface IconCategory {
@@ -447,10 +450,12 @@ export const iconCategories: readonly IconCategory[] = [
   }
 ];
 
-/** A category's name in the given language. */
+/** The icon's own name: the part of `prefix:name` after the colon, as the pack spells it. */
+export const iconName = (id: string): string => id.slice(id.indexOf(':') + 1);
+
+/** A category's name in the given language (a group heading, not an icon name). */
 export const categoryName = (category: IconCategory, locale: Locale): string =>
   locale === 'ja' ? category.ja : category.en;
 
-/** An entry's short label in the given language. */
-export const iconLabel = (icon: CategoryIcon, locale: Locale): string =>
-  locale === 'ja' ? icon[1] : icon[2];
+/** An entry's caption: the icon's own name, the same in every language. */
+export const iconLabel = (icon: CategoryIcon): string => iconName(icon[0]);

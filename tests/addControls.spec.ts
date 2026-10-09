@@ -93,6 +93,12 @@ test.describe('Add card', () => {
     await expect(page.getByTestId(TID.addArchServiceGroup)).toHaveValue('grp1');
 
     await page.getByTestId(TID.addArchServiceName).fill('ストレージ');
+    // The icon choices are the icons' own names, not translations of them.
+    const optionTexts = await page
+      .getByTestId(TID.addArchServiceIcon)
+      .locator('option')
+      .allTextContents();
+    expect(optionTexts.slice(0, 5)).toEqual(['server', 'database', 'disk', 'internet', 'cloud']);
     await page.getByTestId(TID.addArchServiceIcon).selectOption('disk');
     await page.getByTestId(TID.addArchServiceFrom).selectOption('web');
     await page.getByTestId(TID.addArchServicePlace).selectOption('down');

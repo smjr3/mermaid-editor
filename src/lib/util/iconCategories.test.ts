@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryName, iconCategories, iconLabel } from './iconCategories';
+import { categoryName, iconCategories, iconLabel, iconName } from './iconCategories';
 import { loadPack } from './iconCatalog';
 import { standardPrefix } from './standardIcons';
 
@@ -68,7 +68,16 @@ describe('iconCategories', () => {
     const [first] = iconCategories;
     expect(categoryName(first, 'ja')).toBe(first.ja);
     expect(categoryName(first, 'en')).toBe(first.en);
-    expect(iconLabel(first.icons[0], 'ja')).toBe(first.icons[0][1]);
-    expect(iconLabel(first.icons[0], 'en')).toBe(first.icons[0][2]);
+  });
+
+  it('never translates an icon name: the caption is the pack name as written in the id', () => {
+    for (const category of iconCategories) {
+      for (const icon of category.icons) {
+        const caption = iconLabel(icon);
+        expect(icon[0].endsWith(`:${caption}`), icon[0]).toBe(true);
+        expect(caption, icon[0]).toMatch(/^[a-z0-9-]+$/);
+      }
+    }
+    expect(iconName('logos:aws-lambda')).toBe('aws-lambda');
   });
 });

@@ -40,6 +40,30 @@ test.describe('Browsing icons without typing', () => {
       .toContain('service db(clarity:router-line)[Database]');
   });
 
+  test('captions every icon with its own name, never a translation', async ({ editPage, page }) => {
+    await editPage.start(urlFor('architecture-beta\n  service db()[Database]'));
+    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.iconPickerModeBrowse).click();
+    const grid = page.getByTestId(TID.iconBrowseGrid);
+    for (const list of ['cat:standard', 'cat:network', 'cat:m365']) {
+      await page.getByTestId(TID.iconBrowseList).selectOption(list);
+      await expect(grid.locator('button').first()).toBeVisible({ timeout: 60_000 });
+      const tiles = await grid.locator('button').evaluateAll((buttons) =>
+        buttons.map((button) => ({
+          caption: (button.textContent ?? '').replace('™', '').trim(),
+          id: button.getAttribute('data-icon') ?? '',
+          title: button.getAttribute('title') ?? ''
+        }))
+      );
+      expect(tiles.length).toBeGreaterThan(0);
+      for (const tile of tiles) {
+        expect(tile.caption, tile.id).toBe(tile.id.slice(tile.id.indexOf(':') + 1));
+        expect(tile.title, tile.id).toContain(tile.caption);
+        expect(tile.caption, tile.id).not.toMatch(/[\u3040-\u30ff\u4e00-\u9fff]/);
+      }
+    }
+  });
+
   test('lists the standard icons and marks logos with a trademark sign', async ({
     editPage,
     page

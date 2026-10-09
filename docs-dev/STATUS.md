@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-10-08**, including the 0.2.0 to 0.2.4 work: the upstream merge of `a70ed76`,
+Accurate as of **2026-10-09**, including the 0.2.0 to 0.2.5 work: the upstream merge of `a70ed76`,
 mermaid 12.1.0, and the editor, layout and icon features below.
 
 ## What this is

@@ -1,6 +1,6 @@
 {
   "name": "@smjr3/mermaid-editor",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Customizable distribution of Mermaid Live Editor, delivered as an npm package and buildable into a static site. Unofficial derivative of mermaid-js/mermaid-live-editor.",
   "keywords": [
     "diagram",

@@ -125,8 +125,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'about',
       items: [
-        'This editor is a fork of Mermaid Live Editor. Your diagrams are kept in this browser and are not sent anywhere.',
-        'The source code, issues and licence are on GitHub (link above).'
+        'This editor is a fork of Mermaid Live Editor. Your diagrams are kept in this browser and are not sent anywhere.'
       ],
       title: 'Version & about'
     }
@@ -244,8 +243,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'about',
       items: [
-        'このエディタは Mermaid Live Editor を元にしたフォークです。作った図はこのブラウザに保存され、外部に送られません。',
-        'ソースコード、問い合わせ、ライセンスは GitHub（上のリンク）にあります。'
+        'このエディタは Mermaid Live Editor を元にしたフォークです。作った図はこのブラウザに保存され、外部に送られません。'
       ],
       title: 'バージョン情報'
     }

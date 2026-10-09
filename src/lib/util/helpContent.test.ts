@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { helpContent } from './helpContent';
 
 describe('helpContent', () => {
+  it('names no owner and links no repository in the version section', () => {
+    for (const sections of Object.values(helpContent)) {
+      const about = sections.find(({ id }) => id === 'about');
+      expect(about?.items.join(' ')).not.toMatch(/github|smjr3/i);
+    }
+  });
+
   it('has every language, with the same sections and as many points in each', () => {
     const languages = Object.keys(messages);
     expect(Object.keys(helpContent).sort()).toEqual(languages.sort());

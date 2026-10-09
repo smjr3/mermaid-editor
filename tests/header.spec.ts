@@ -35,7 +35,7 @@ test.describe('Header', () => {
     await expect(header.getByRole('button', { name: t('menu.new') })).toHaveCount(0);
   });
 
-  test('keeps the version and the project links on a page of 使い方', async ({
+  test('keeps the version numbers, and no owner or repository, on a page of 使い方', async ({
     editPage,
     page
   }) => {
@@ -47,10 +47,12 @@ test.describe('Header', () => {
     await page.getByTestId(`${TID.helpSection}-about`).click();
     await expect(page.getByTestId(TID.appVersion)).toHaveText(/\d+\.\d+\.\d+/);
     await expect(page.getByTestId(TID.mermaidVersion)).toHaveText(/^v\d+\.\d+\.\d+/);
-    await expect(page.getByTestId(TID.aboutRepoLink)).toHaveAttribute(
-      'href',
-      /^https:\/\/github\.com\//
-    );
+    // The page names no owner and links no repository.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).not.toContainText(/smjr3/i);
+    await expect(dialog).not.toContainText(/github/i);
+    await expect(dialog.locator('a[href*="github"], a[href*="smjr3"]')).toHaveCount(0);
+    await expect(page.getByTestId(TID.appVersion)).not.toContainText('@');
   });
 
   test('the style tab is labelled as diagram style code, not settings', async ({

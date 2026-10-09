@@ -148,7 +148,7 @@
         const colon = entry[0].indexOf(':');
         const found = byPrefix.get(entry[0].slice(0, colon));
         const match = found && iconMatch(found, entry[0].slice(colon + 1));
-        return match ? [{ caption: iconLabel(entry, locale), match }] : [];
+        return match ? [{ caption: iconLabel(entry), match }] : [];
       });
       next = { ...next, tiles, total: tiles.length };
     } else {
@@ -236,9 +236,10 @@
 
   // The tooltip carries the licence facts (iconLicenses.ts) so they are at hand
   // without a visit to the licence dialog; unknown packs (vendor, imported) say nothing.
-  const label = (id: string, caption?: string) => {
+  const label = (id: string) => {
     const kind = isStandardIcon(id) ? t('icons.pickStandard') : t('icons.pickExtended');
-    const named = caption ? `${caption} — ${iconReference(id)}` : iconReference(id);
+    // The caption is the icon's own name, which the reference already carries.
+    const named = iconReference(id);
     const terms = iconLicense(id);
     if (!terms) return `${named} — ${kind}`;
     const mark = terms.trademark ? ` · ™ ${t('icons.licensesTrademarkShort')}` : '';
@@ -259,8 +260,8 @@
       'relative flex flex-col items-center justify-center rounded-md border border-transparent hover:border-border hover:bg-muted',
       large ? 'gap-1 p-2' : caption ? 'gap-0.5 p-1' : 'aspect-square p-1.5'
     ]}
-    title={label(match.id, caption)}
-    aria-label={label(match.id, caption)}
+    title={label(match.id)}
+    aria-label={label(match.id)}
     data-icon={match.id}
     data-standard={isStandardIcon(match.id)}
     onclick={() => choose(match.id)}>

@@ -43,7 +43,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'The add bar changes with the type of diagram. Flowcharts and swimlanes: Process, Decision, Start / end, Lane, Arrow and More ▾ (other shapes, a group, joining two existing shapes). Architecture: group, service and connection. Sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4, block, requirement, journey, XY, quadrant, sankey, git, packet and ZenUML diagrams have buttons of their own.',
         'With a shape selected, what you add is joined to it by an arrow; with nothing selected, it is added on its own. What you just added becomes the selection, so a flow can be built step by step.',
         'Arrow: click the shape it starts from, then the one it goes to (Cancel stops).',
-        'Sequence diagrams also take a note over or beside participants, and an empty "if" (alt), "repeat" (loop) or "optional" (opt) block after a chosen message, to fill in the code.',
+        'Sequence diagrams also take a note over or beside participants, and an empty "if" (alt), "repeat" (loop), "optional" (opt), "in parallel" (par), "critical", "break" or background (rect) block after a chosen message, to fill in the code. Participants can be drawn as any of mermaid’s symbols (person, boundary, control, entity, database, collections, queue) and messages as any of its arrows (reply, asynchronous, lost, both ways, …). State diagrams take a choice, a fork or a join and a note; class relations every mermaid kind (realization, link, lollipop, …) with multiplicities.',
         'Inside objects: attributes and methods of a class (with visibility and type), attributes of an ER entity (type, key, comment), composite states, C4 boundaries around an element, requirements, elements and their relationships, and the first topic of an empty mindmap. Gantt tasks take a status, critical and milestone marks and "after task".'
       ],
       title: 'Adding shapes'
@@ -53,8 +53,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         'Click a shape, an arrow or a lane in the picture to select it: the top of the settings panel shows "Whole diagram › Shape" (or Arrow, Lane, Task) and the panel switches to its settings; ✕, Escape or a click on the empty canvas clears. Double-click to rename; right-click for Rename, Change colour, Change shape, Add next, Draw an arrow from here and Delete.',
         'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text (size, bold, reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it, and + Next, + Branch, Arrow and Delete.',
-        'An arrow: from and to, label, line (solid, dotted, thick), arrowhead (at the end, both ends, none), colour, reverse and delete.',
-        'A lane: name, colour, how many shapes it holds with a button to add one, and delete (keeping or with what is inside). Architecture services: change the icon, or move the service to another group.',
+        'An arrow: from and to, label, line (solid, dotted, thick, invisible), arrowhead (at the end, both ends, none), colour, reverse and delete — and what mermaid allows for its type: a flowchart arrow’s head shape (arrow, circle, cross), length, animation and curve; a message’s end and activation; a class relation’s kind and multiplicities; an ER relationship’s cardinality at each end; an architecture edge’s sides; a C4 relation’s direction.',
+        'A lane: name, colour, how many shapes it holds with a button to add one, its own direction (flowchart subgraphs), and delete (keeping or with what is inside). Architecture services: change the icon, or move the service to another group. An icon shape takes a backdrop (square, circle, rounded) and its label above or below; a participant its symbol, a mindmap topic its shape, a class its annotation and type parameter, a kanban card its assignee, ticket and priority, a requirement its kind, id, text, risk and verification, a block its width.',
         'A change that would break the diagram is not made; the panel says so instead.',
         'Diagrams whose parts cannot be clicked (gantt, kanban, pie, …) list them in the settings panel to choose from. Class members, ER attributes, gantt tasks (section, start, predecessor, days, status and marks) and pie values can be changed too; sections, composite states, C4 boundaries and nested blocks can go with or without what is inside.',
         'Table-shaped diagrams (gantt tasks, kanban cards, timeline periods, pie slices, the attributes of an ER entity, …) switch between Diagram, Table and Both above the picture: change a cell and leave it or press Enter, add, delete or move rows, move a card to another column, and paste rows copied from Excel to add them.'
@@ -65,9 +65,9 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'layout',
       items: [
         'Direction (Whole diagram in the settings panel): top to bottom, bottom to top, left to right, right to left, or automatic, which picks the one that shows larger.',
-        'Layout: Standard, or ELK for compact layouts of large diagrams; under ELK also Placement and Merge arrows.',
+        'Layout: Standard, or ELK for compact layouts of large diagrams; under ELK also Placement, Cycles, Order and Merge arrows.',
         'Spacing: compact, normal or wide (ELK ignores it).',
-        'Title: shown above flowcharts, swimlanes, sequence, state, class, ER, gantt, pie, timeline and C4 diagrams; mindmaps, kanban, architecture and block diagrams show none. Rows a diagram type cannot use are not shown.'
+        'Title: shown above flowcharts, swimlanes, sequence, state, class, ER, gantt, pie, timeline and C4 diagrams; mindmaps, kanban, architecture and block diagrams show none. Rows a diagram type cannot use are not shown. Each type also has its own mermaid options in Whole diagram: the line curve and the look (classic, hand-drawn, neo) of flowcharts, numbered messages, a gantt chart’s weekends, today line, axis format and ticks, pie values, a horizontal XY chart, a git graph’s direction, block columns, a mindmap’s layout, sankey and packet settings, timeline colours, and the accessible title and description read by screen readers.'
       ],
       title: 'Layout'
     },
@@ -75,7 +75,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'colours',
       items: [
         'Theme (Whole diagram): twelve designs for the whole diagram (modern, neon, pastel, business, high contrast, …) as cards. The theme you choose goes into shared links and exports.',
-        'Standard picks one of mermaid’s eight built-in themes (none by default). Line colour sets the colour of every line, Font the typeface, and Hand-drawn draws the picture as if by hand, exports included.',
+        'Standard picks one of mermaid’s nine built-in themes, dark ones included (none by default). Line colour sets the colour of every line, Font the typeface, and Hand-drawn draws the picture as if by hand, exports included.',
         'Lanes, shapes (node, state, class, entity, …) and arrows: select one, then use Colour in the panel. Lanes colours every lane or none at once; Arrows puts every arrow back to its own colour.',
         'Text per shape: bold, font size and text colour; C4 elements take a text colour only.',
         '"+" picks any colour; colours you picked are offered again as recent ones.'
@@ -161,7 +161,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '追加バーの中身は図の種類で変わります。フローチャートとスイムレーンは「処理」「分岐」「開始・終了」「レーン」「矢印」「その他 ▾」（ほかの形・グループ・既存の2つをつなぐ）。アーキテクチャはグループ・サービス・接続。シーケンス・状態・クラス・ER・マインドマップ・ガント・円グラフ・カンバン・タイムライン・C4・ブロック図・要件図・ジャーニー・XY・4象限・サンキー・Git・パケット・ZenUML にもそれぞれのボタンがあります。',
         '図形を選んでいるときは、追加したものがその図形から矢印でつながります。選んでいなければ単独で足されます。追加した直後のものが選ばれるので、流れを順に作れます。',
         '「矢印」は、つなぐ元の図形、つなぐ先の図形の順にクリックします（「やめる」で中止）。',
-        'シーケンス図では、参加者の上や横に置くノートと、選んだメッセージの後に入れる空の枠（条件分岐 alt・繰り返し loop・任意 opt）も追加できます。中身はコードで書き足します。',
+        'シーケンス図では、参加者の上や横に置くノートと、選んだメッセージの後に入れる空の枠（条件分岐 alt・繰り返し loop・任意 opt・並行 par・必須 critical・中断 break・背景色 rect）も追加できます。中身はコードで書き足します。参加者は Mermaid の記号（人・境界・制御・エンティティ・データベース・コレクション・キュー）で、メッセージは返答・非同期・打ち切り・双方向などの矢印で追加できます。状態図には分岐（choice）・分かれる（fork）・合流（join）とメモ、クラス図の関係には実現・リンク・ロリポップなど Mermaid の全種類と多重度を指定できます。',
         '中身も足せます：クラスの属性・メソッド（公開範囲と型つき）、ER 図のエンティティの属性（型・キー・コメント）、入れ子の状態、C4 の境界（要素を囲む）、要件図の要件・要素・関係、空のマインドマップの最初の話題。ガントのタスクには状況・重要・マイルストーンと「前のタスク」を付けられます。'
       ],
       title: '要素の追加'
@@ -171,8 +171,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       items: [
         '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの上に「図全体 › 図形」（矢印・レーン・タスク）と出て、その設定に変わります。✕ か Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更、右クリックで「名前を変更・色を変える・形を変える・次の処理を追加・ここから矢印を引く・削除」のメニューが出ます。',
         '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字（大きさ・太字・元に戻す）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧、「＋次」「＋分岐」「矢印」「削除」。',
-        '矢印：つなぐ元と先、ラベル、線（実線・点線・太線）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。',
-        'レーン：名前、色、入っている図形の数と追加、削除（中身は残す・中身ごと）。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
+        '矢印：つなぐ元と先、ラベル、線（実線・点線・太線・見えない）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。図の種類で Mermaid が書けるものも変えられます：フローチャートの矢印の先の形（矢印・丸・×）・長さ・動き・曲線、シーケンスのメッセージの先の形と活性化、クラス図の関係の種類と多重度、ER 図の両端の数、アーキテクチャの接続の辺、C4 の関係の向き。',
+        'レーン：名前、色、入っている図形の数と追加、そのレーンだけの向き（フローチャートのサブグラフ）、削除（中身は残す・中身ごと）。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。アイコンの図形は背景（四角・丸・角丸）と文字の位置（上・下）、シーケンスの参加者は種類、マインドマップの話題は形、クラスは注釈と型引数、カンバンのカードは担当・チケット・優先度、要件図の要件は種類・ID・本文・リスク・検証方法、ブロック図のブロックは幅を変えられます。',
         '図が壊れる変更は行われず、パネルにその旨が表示されます。',
         'クリックで選べない図（ガント・カンバン・円グラフなど）は、設定パネルの一覧から要素を選びます。クラスの属性・メソッド、ER 図の属性、ガントのタスク（区分・開始日・前のタスク・日数・状況・印）、円グラフの値なども変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。',
         'ガントのタスク・カンバンのカード・タイムラインの期間・円グラフの項目・ER 図のエンティティの属性など表の形の図は、図の上の「図 ／ 表 ／ 並べる」で表として編集できます。セルを書き換えて離れるか Enter で反映、行の追加・削除・上下の移動、カードの別の列への移動ができ、Excel でコピーした行を貼り付けると行として追加されます。'
@@ -183,9 +183,9 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'layout',
       items: [
         '設定パネルの「図全体」の「向き」：上→下・下→上・左→右・右→左・自動（大きく表示できる向きを自動で選びます）。',
-        '「配置」：標準 か ELK（大きな図を詰めて配置）。ELK のときは「並べ方」と「矢印をまとめる」も選べます。',
+        '「配置」：標準 か ELK（大きな図を詰めて配置）。ELK のときは「並べ方」「循環」「書いた順」「矢印をまとめる」も選べます。',
         '「間隔」：詰める・標準・広く（ELK のときは効きません）。',
-        '「タイトル」：フローチャート・スイムレーン・シーケンス・状態・クラス・ER・ガント・円グラフ・タイムライン・C4 の図の上に表示されます。マインドマップ・カンバン・アーキテクチャ・ブロック図には表示されません。図の種類で使えない項目はパネルに出ません。'
+        '「タイトル」：フローチャート・スイムレーン・シーケンス・状態・クラス・ER・ガント・円グラフ・タイムライン・C4 の図の上に表示されます。マインドマップ・カンバン・アーキテクチャ・ブロック図には表示されません。図の種類で使えない項目はパネルに出ません。「図全体」には種類ごとの Mermaid の設定も並びます：フローチャートの「曲線」と「描き方」（クラシック・手描き・ネオ）、シーケンスの「番号」、ガントの「土日除く」「今日線」「目盛り」「間隔」、円グラフの「値を表示」、XY チャートの「横向き」、Git グラフの「向き」、ブロック図の「列数」、マインドマップの「配置」、サンキー・パケット・タイムラインの設定、読み上げ用の「読上名」「読上説明」（accTitle / accDescr）。'
       ],
       title: 'レイアウト'
     },
@@ -193,7 +193,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'colours',
       items: [
         '「図全体」のテーマ：モダン・ネオン・パステル・ビジネス・ハイコントラストなど 12 種類のカードから、図全体の見た目を選べます。選んだテーマは共有リンクや書き出しにも残ります。',
-        '「標準」で Mermaid の組み込みテーマ 8 種から選べます（既定は「使わない」）。「線の色」で図全体の線の色を、「フォント」で文字の書体を変えられます。「手描き風」をオンにすると手で描いたような線になり、書き出しにも反映されます。',
+        '「標準」で Mermaid の組み込みテーマ 9 種（ダークを含む）から選べます（既定は「使わない」）。「線の色」で図全体の線の色を、「フォント」で文字の書体を変えられます。「手描き風」をオンにすると手で描いたような線になり、書き出しにも反映されます。',
         'レーン・図形（状態・クラス・エンティティなども）・矢印は、選んでから設定パネルの「色」で色を付けます。「レーン」の色分け・色なしでまとめて塗り分け、「矢印」の「すべて元の色に」で矢印の色を戻せます。',
         '図形ごとに文字を太字にしたり、文字サイズや文字の色を変えられます（C4 の要素は文字の色のみ）。',
         '「＋」で好きな色を選べ、選んだ色は次から最近使った色として並びます。'

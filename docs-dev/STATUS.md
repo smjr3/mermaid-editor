@@ -20,7 +20,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **357**.
+  every locally changed path — currently **360**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -608,8 +608,48 @@ went was audited item by item at the merge; the result is in the PR that introdu
 
 Policy from 2026-10-12 (user): what mermaid supports is settable from the UI, per diagram type,
 not only a common subset; a type that cannot express an option hides it. Applied at the merge:
-the arrowheads (両方), the full shape list, BT/RL and the ELK options above. Still open: see the
-PR's list of mermaid options not yet exposed.
+the arrowheads (両方), the full shape list, BT/RL and the ELK options above. Then ("難しいもの以外は
+mermaid 通りに", same day) the rest, each written as plain mermaid through the util layer with
+unit tests and `tests/inspector.spec.ts` / `tests/addControls.spec.ts` cases:
+
+- **Arrows** (`edgeFields` / `setEdgeFields` in `diagramModify.ts`, rows `TID.inspEdgeField` with
+  `data-key`, the shared `inspector/DetailFieldRow.svelte`): flowchart 線 gains 見えない (`~~~`, no
+  head); 先の形 (矢印 / 丸 / × — `-->`, `--o`, `--x`), 長さ (`-->` … `----->`), 動き (なし / あり /
+  速く / ゆっくり — `e1@-->` plus `e1@{ animate: true }` / `animation: fast`; the arrow gets a free
+  id, the statement goes when emptied and when the arrow or its node is deleted) and 曲線 (the
+  arrow's own `curve`); sequence 先の形 (矢印 / × / 開いた矢印 / the four half arrows) and 活性化
+  (`+` / `-`, refused by mermaid's own check when unpaired); class 種類 (all nine relations, the
+  mark kept at the end it was written at) and the two multiplicities; ER cardinality at each end
+  (identifying / non-identifying is the 線 row); architecture 元の辺 / 先の辺; C4 向き (`Rel`,
+  `BiRel`, `Rel_Up` …). Arrow ids (`A e1@--> B`) are now parsed, so such flowcharts are no longer
+  listed as "unsure".
+- **The selection** (`objectOptions` in the new `diagramOptions.ts`, rows `TID.inspField`): a
+  flowchart subgraph's own 向き (`direction`), a participant's 種類 (participant, actor and the
+  `@{ "type": … }` symbols), a mindmap topic's 形, a class's 注釈 (`<<interface>>` …) and 型引数
+  (`class X~T~`), a kanban card's 担当 / チケット / 優先度, a requirement's 種類 / ID / 本文 / リスク /
+  検証 and an element's 種類 / 文書, a block's 幅 (`a:2`); an icon node's 背景 (`form`) and 文字
+  (`pos`) as two Segmented rows (`TID.inspIconForm`, `inspIconPos`).
+- **図全体** (`diagramOptions` / `setDiagramOption`, rows `TID.inspOption-<key>`): flowchart 曲線
+  (`flowchart.curve`); 描き方 (`look`: classic / handDrawn / neo, for the six types that draw it);
+  sequence 番号 (`autonumber`); gantt 土日除く, 今日線, 目盛り (`axisFormat` presets), 間隔
+  (`tickInterval`); pie 値を表示; XY 横向き; git 向き (`gitGraph TB:`); block 列数; mindmap 配置
+  (`layout: tidy-tree` / `cose-bilkent`); sankey 値 / 流れの色 / 揃え; packet 1行ビット / ビット番号;
+  timeline 色分け; 読上名 / 読上説明 (`accTitle` / `accDescr`, for the 16 types whose grammar reads
+  them). ELK also gets 循環 (`cycleBreakingStrategy`) and 書いた順 (`considerModelOrder`). 標準 now
+  lists `dark` and `redux-dark-color` too: the migration that dropped the editor's own use of them
+  ran once, so a stored one is the user's choice.
+- **Add bar**: participant symbols, every message arrow (reply / async / lost / line / both
+  ways), par / critical / break / rect blocks, every class relation with multiplicities, and
+  state choice / fork / join and notes.
+
+Left out as hard (each needs a new parser or rewriter, or a large new UI): `classDef` and
+`class` assignment management, per-element `themeVariables` beyond the line colour, a
+sequence `box` (participants must be re-declared inside it in order), `create` / `destroy`,
+central connections `()` and the reverse half arrows (a second arrow grammar at the tail),
+image nodes (`img`, and a URL the browser would fetch), node `w` / `h`, C4's per-element
+shapes and styles, state concurrency (`--`) inside composites, `htmlLabels` and wrapping
+widths, gantt `weekday` / `includes` / `inclusiveEndDates`, click / href / callbacks (XSS
+surface, deliberately not offered).
 
 Removed by user decision: the command palette (Ctrl+K), the language button (the UI is Japanese;
 `en.ts` stays complete for `MERMAID_LOCALE=en`, `I18N.md`), loading from a Gist or a URL in the

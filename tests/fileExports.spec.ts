@@ -1,12 +1,12 @@
 import { TID } from '$/constants';
 import { strFromU8, unzipSync } from 'fflate';
-import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import { expect, test } from './test';
+import { chooseExport, openExport, readDownload, saveExport } from './helpers/exportDlg';
+import { expect, t, test } from './test';
 
-// "名前を付けて保存" and the .drawio / .vsdx files (saveFile.ts, drawioExport.ts,
-// vsdxExport.ts). By default the fixture removes showSaveFilePicker and confirms
-// the editor's own name dialog with the suggested name (tests/test.ts).
+// The .drawio / .vsdx files of the 書き出す dialog (drawioExport.ts, vsdxExport.ts) and the
+// file name: the diagram's title by default, saved at once under what is typed (saveFile.ts,
+// exportDiagram.ts). There is no second name dialog and no browser save picker any more.
 
 // The title is ASCII: Chromium on a system without a UTF-8 locale saves a
 // download with a non-ASCII name as "download" (the Japanese names themselves
@@ -19,15 +19,17 @@ test.describe('Save as .drawio and .vsdx', () => {
   test.beforeEach(async ({ editPage, page }) => {
     await editPage.start(url);
     await editPage.checkTextInView('承認');
-    await page.getByTestId(TID.actionsCard).click();
+    await openExport(page);
   });
 
   test('saves a draw.io file of separate cells, keeping the Mermaid source', async ({ page }) => {
-    const button = page.getByTestId(TID.downloadDrawio);
-    await expect(button).toHaveAttribute('title', /draw\.io/);
-    const [download] = await Promise.all([page.waitForEvent('download'), button.click()]);
+    await chooseExport(page, 'drawio');
+    await expect(page.getByTestId(TID.exportDlgNote)).toHaveText(t('saveAs.drawioHint'));
+    await expect(page.getByTestId(TID.exportDlgFileName)).toHaveValue('Expense flow');
+    await expect(page.getByTestId(TID.exportDlgExtension)).toHaveText('.drawio');
+    const download = await saveExport(page, 'drawio');
     expect(download.suggestedFilename()).toBe('Expense flow.drawio');
-    const xml = readFileSync((await download.path()) ?? '', 'utf8');
+    const xml = (await readDownload(download)).toString('utf8');
     expect(xml.startsWith('<?xml')).toBe(true);
     expect(xml).toMatch(
       /<mxfile [^>]*>\s*<diagram [^>]*name="Expense flow"[^>]*>\s*<mxGraphModel /
@@ -41,11 +43,11 @@ test.describe('Save as .drawio and .vsdx', () => {
   });
 
   test('saves a Visio package with the diagram as a PNG picture', async ({ page }) => {
-    const button = page.getByTestId(TID.downloadVsdx);
-    await expect(button).toHaveAttribute('title', /Visio/);
-    const [download] = await Promise.all([page.waitForEvent('download'), button.click()]);
+    await chooseExport(page, 'vsdx');
+    await expect(page.getByTestId(TID.exportDlgNote)).toHaveText(t('saveAs.vsdxHint'));
+    const download = await saveExport(page, 'vsdx');
     expect(download.suggestedFilename()).toBe('Expense flow.vsdx');
-    const file = readFileSync((await download.path()) ?? '');
+    const file = await readDownload(download);
     expect([...file.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
     const parts = unzipSync(new Uint8Array(file));
     expect(Object.keys(parts)).toEqual(
@@ -67,99 +69,57 @@ test.describe('Save as .drawio and .vsdx', () => {
   });
 });
 
-test.describe('名前を付けて保存 without the browser save dialog', () => {
+test.describe('The file name', () => {
   test.beforeEach(async ({ editPage, page }) => {
     await editPage.start(url);
     await editPage.checkTextInView('承認');
-    await page.getByTestId(TID.actionsCard).click();
+    await openExport(page);
   });
 
-  test('asks for the name, suggesting the title, and saves under the typed one', async ({
-    page
-  }) => {
-    await page.getByTestId(TID.downloadPNG).click();
-    const dialog = page.getByTestId(TID.saveAsDialog);
-    await expect(dialog).toBeVisible();
-    const input = page.getByTestId(TID.saveAsInput);
-    await expect(input).toHaveValue('Expense flow.png');
-    await input.fill('monthly report');
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.getByTestId(TID.saveAsConfirm).click()
-    ]);
+  test('suggests the title and saves under the typed name, at once', async ({ page }) => {
+    await expect(page.getByTestId(TID.exportDlgFileName)).toHaveValue('Expense flow');
+    const download = await saveExport(page, 'png', { name: 'monthly report' });
     expect(download.suggestedFilename()).toBe('monthly report.png');
-    const file = readFileSync((await download.path()) ?? '');
+    const file = await readDownload(download);
     expect([...file.subarray(0, 4)]).toEqual(PNG_MAGIC);
-    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId(TID.saveAsDialog)).toHaveCount(0);
   });
 
   test('saves nothing when the dialog is cancelled', async ({ page }) => {
     let downloads = 0;
     page.on('download', () => downloads++);
-    await page.getByTestId(TID.downloadSVG).click();
-    await expect(page.getByTestId(TID.saveAsInput)).toHaveValue('Expense flow.svg');
-    await page.getByTestId(TID.saveAsCancel).click();
-    await expect(page.getByTestId(TID.saveAsDialog)).toBeHidden();
-    await page.getByTestId(TID.downloadHTML).click();
-    await expect(page.getByTestId(TID.saveAsInput)).toHaveValue('Expense flow.html');
+    await chooseExport(page, 'svg', { name: 'never' });
+    await page.getByTestId(TID.exportDlgCancel).click();
+    await expect(page.getByTestId(TID.exportDlg)).toBeHidden();
+    await openExport(page);
+    // Opened again, the name is the title again.
+    await expect(page.getByTestId(TID.exportDlgFileName)).toHaveValue('Expense flow');
     await page.keyboard.press('Escape');
-    await expect(page.getByTestId(TID.saveAsDialog)).toBeHidden();
+    await expect(page.getByTestId(TID.exportDlg)).toBeHidden();
     await page.waitForTimeout(500);
     expect(downloads).toBe(0);
   });
-});
 
-test.describe('名前を付けて保存 with the browser save dialog', () => {
-  test('writes the file to the handle the save dialog returns', async ({ editPage, page }) => {
+  test('never opens the browser save picker', async ({ editPage, page }) => {
     await page.addInitScript(() => {
-      const state = window as unknown as {
-        pickerOptions?: unknown;
-        written?: number[];
-      };
       Object.defineProperty(window, 'showSaveFilePicker', {
         configurable: true,
-        value: (options: unknown) => {
-          state.pickerOptions = options;
-          return Promise.resolve({
-            createWritable: () =>
-              Promise.resolve({
-                close: () => Promise.resolve(),
-                write: async (blob: Blob) => {
-                  state.written = [...new Uint8Array(await blob.arrayBuffer())];
-                }
-              }),
-            name: 'chosen.vsdx'
-          });
+        value: () => {
+          (window as unknown as { pickerUsed?: boolean }).pickerUsed = true;
+          return Promise.reject(new DOMException('aborted', 'AbortError'));
         }
       });
     });
-    let downloads = 0;
-    page.on('download', () => downloads++);
     await editPage.start(url);
     await editPage.checkTextInView('承認');
-    await page.getByTestId(TID.actionsCard).click();
-    await page.getByTestId(TID.downloadVsdx).click();
-    const written = await page.waitForFunction(
-      () => (window as unknown as { written?: number[] }).written,
-      undefined,
-      { timeout: 15_000 }
+    const download = await saveExport(page, 'vsdx');
+    expect(download.suggestedFilename()).toBe('Expense flow.vsdx');
+    expect(Object.keys(unzipSync(new Uint8Array(await readDownload(download))))).toContain(
+      'visio/document.xml'
     );
-    const bytes = new Uint8Array((await written.jsonValue()) ?? []);
-    expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
-    expect(Object.keys(unzipSync(bytes))).toContain('visio/document.xml');
     expect(
-      await page.evaluate(() => (window as unknown as { pickerOptions?: unknown }).pickerOptions)
-    ).toEqual({
-      suggestedName: 'Expense flow.vsdx',
-      types: [
-        {
-          accept: { 'application/vnd.ms-visio.drawing.main+xml': ['.vsdx'] },
-          description: expect.any(String)
-        }
-      ]
-    });
-    await expect(page.getByTestId(TID.saveAsDialog)).toBeHidden();
-    expect(downloads).toBe(0);
+      await page.evaluate(() => (window as unknown as { pickerUsed?: boolean }).pickerUsed)
+    ).toBeUndefined();
   });
 });
 
@@ -201,12 +161,8 @@ const drawioUrl = (source: string) =>
 
 test.describe('.drawio: every element its own draw.io cell', () => {
   const save = async (page: Page) => {
-    await page.getByTestId(TID.actionsCard).click();
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.getByTestId(TID.downloadDrawio).click()
-    ]);
-    const xml = readFileSync((await download.path()) ?? '', 'utf8');
+    const download = await saveExport(page, 'drawio');
+    const xml = (await readDownload(download)).toString('utf8');
     return page.evaluate(readDrawio, xml);
   };
 

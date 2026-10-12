@@ -103,32 +103,91 @@ base.describe('Embed page', () => {
   });
 });
 
-// The share dialog opens from the 出す tab's share links section (no longer the header).
-const openShareDialog = async (page: import('@playwright/test').Page) => {
-  await page.getByTestId(TID.shareCard).click();
-  await page.getByTestId(TID.shareButton).click();
+// The header's 共有 dialog: the edit and view links, and the embed code.
+const openShareDialog = async (page: Page) => {
+  await page.getByTestId(TID.wsShareButton).click();
+  await expect(page.getByTestId(TID.shareDlg)).toBeVisible();
 };
 
-editorTest.describe('Share dialog embed section', () => {
-  editorTest('should only offer the live editor link and the embed', async ({ editPage, page }) => {
+editorTest.describe('Share dialog', () => {
+  editorTest('offers the edit link, the view link and the embed', async ({ editPage, page }) => {
     void editPage;
     await openShareDialog(page);
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'Mermaid Live Editor' })).toBeVisible();
-    await expect(dialog.getByRole('heading', { name: t('share.embedHeading') })).toBeVisible();
-    // The Mermaid Chart Playground is retired and must not be offered any more.
+    const dialog = page.getByTestId(TID.shareDlg);
+    await expect(page.getByTestId(TID.shareDlgEditLink)).toHaveValue(/\/edit#pako:/);
+    await expect(page.getByTestId(TID.shareDlgViewLink)).toHaveValue(/\/view#pako:/);
+    await expect(dialog).toContainText(t('share.embedHeading'));
+    // No button opens the view page, and the retired Playground is not offered.
+    await expect(dialog.getByRole('link')).toHaveCount(0);
     await expect(dialog).not.toContainText('Playground');
   });
 
-  editorTest('should offer iframe and web component snippets', async ({ editPage, page }) => {
+  editorTest('copies each link', async ({ editPage, page, context, browserName }) => {
+    void editPage;
+    editorTest.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openShareDialog(page);
+    for (const [copy, field] of [
+      [TID.shareDlgEditCopy, TID.shareDlgEditLink],
+      [TID.shareDlgViewCopy, TID.shareDlgViewLink]
+    ] as const) {
+      await page.getByTestId(copy).click();
+      await expect(page.getByTestId(copy)).toHaveAttribute('data-copy-state', 'done');
+      const value = await page.getByTestId(field).inputValue();
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(value);
+    }
+  });
+
+  editorTest('offers iframe and web component snippets', async ({ editPage, page }) => {
     void editPage;
     await openShareDialog(page);
-    const snippet = page.getByTestId(TID.embedSnippet);
+    const snippet = page.getByTestId(TID.shareDlgSnippet);
     await expect(snippet).toBeVisible();
     await expect(snippet).toHaveValue(/\/embed\?.*#pako:/);
     await expect(snippet).toHaveValue(/<iframe/);
     await expect(snippet).toHaveValue(/sandbox="allow-scripts allow-same-origin/);
-    await page.getByRole('radio', { name: t('share.webComponent') }).click();
+    await page.getByTestId(`${TID.shareDlgEmbedMode}-wc`).click();
     await expect(snippet).toHaveValue(/<mermaid-embed/);
+    await expect(snippet).toHaveValue(/<script src="[^"]*\/embed\.js"/);
   });
+
+  editorTest('the size, grid, theme and frame go into the snippet', async ({ editPage, page }) => {
+    void editPage;
+    await openShareDialog(page);
+    const snippet = page.getByTestId(TID.shareDlgSnippet);
+    await page.getByTestId(TID.shareDlgWidth).fill('640px');
+    await page.getByTestId(TID.shareDlgHeight).fill('300');
+    await expect(snippet).toHaveValue(/width="640px" height="300"/);
+    await page.getByTestId(TID.shareDlgGrid).click();
+    await expect(snippet).toHaveValue(/grid=0/);
+    await page.getByTestId(TID.shareDlgTheme).selectOption('forest');
+    await expect(snippet).toHaveValue(/theme=forest/);
+    await page.getByTestId(`${TID.shareDlgChrome}-dark`).click();
+    await expect(snippet).toHaveValue(/mode=dark/);
+    await page.getByTestId(TID.shareDlgControls).click();
+    await expect(snippet).toHaveValue(/controls=0/);
+    // A size that is not a CSS length falls back to the default.
+    await page.getByTestId(TID.shareDlgWidth).fill('"><script>');
+    await expect(snippet).toHaveValue(/width="100%"/);
+  });
+
+  editorTest(
+    'previews the embed and copies the code',
+    async ({ editPage, page, context, browserName }) => {
+      void editPage;
+      editorTest.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await openShareDialog(page);
+      await expect(page.getByTestId(TID.embedPreview)).toHaveCount(0);
+      await page.getByTestId(TID.shareDlgPreview).click();
+      const preview = page.getByTestId(TID.embedPreview);
+      await expect(preview).toHaveAttribute('src', /\/embed\?.*#pako:/);
+      await expect(
+        page.frameLocator(`[data-testid="${TID.embedPreview}"]`).locator('#embed-container svg')
+      ).toBeVisible({ timeout: 20_000 });
+      await page.getByTestId(TID.shareDlgSnippetCopy).click();
+      const snippet = await page.getByTestId(TID.shareDlgSnippet).inputValue();
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(snippet);
+    }
+  );
 });

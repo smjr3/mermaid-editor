@@ -1,40 +1,61 @@
-# Saving files: names, .drawio and .vsdx
+# Saving files: the 書き出す dialog, names, .drawio and .vsdx
 
-What the 出す card's file buttons write, what other programs do with the `.drawio` and `.vsdx`
+What the header's 書き出す dialog writes, what other programs do with the `.drawio` and `.vsdx`
 files, and how that was checked. Added 2026-10-08 from user feedback (「ファイルで保存する際は名前を
-付けて保存できるように」「.drawio形式で保存可能なようにして」「.vsdx形式で保存可能なようにして」).
+付けて保存できるように」「.drawio形式で保存可能なようにして」「.vsdx形式で保存可能なようにして」);
+the dialog replaced the 出す card on 2026-10-12 (the inspector redesign).
 
-## 名前を付けて保存 (`src/lib/util/saveFile.ts`)
+## The dialog (`src/lib/components/dialogs/ExportDialog.svelte`, `src/lib/util/exportDiagram.ts`)
 
-Every file the card saves — PNG, SVG, HTML, the GitLab SVG, `.drawio`, `.vsdx` — goes through
-`pickSaveTarget`:
+- **Left:** a preview, a copy of the diagram on screen (`previewSvg`: the pan/zoom transform
+  removed, framed by its own drawing because svg-pan-zoom takes the viewBox away) on the
+  backdrop the file will get; transparent shows a checkerboard.
+- **Right:** the formats as cards in two columns, each a name and one line: PNG 画像, SVG,
+  draw.io, Visio, HTML, Markdown 用 (the GitLab export), 画像をコピー (only where the browser has
+  `ClipboardItem`). Under them only what the chosen format takes:
+  - 解像度 標準 / 高画質 / 最高画質 (1x / 2x / 3x) for PNG and the copy;
+  - 背景 白 / 透明 / テーマの色 for PNG, SVG, the copy and Markdown. The default for a new user is
+    透明; the choice and the scale are remembered (`exportBackground`, `exportScale`). A theme
+    preset's own background replaces white or the theme colour (`exportBackdrop`);
+  - 方法 ファイルで保存 / HTML タグをコピー for HTML;
+  - a note on what the file will be (the background and the scale, or the draw.io, Visio, HTML
+    and Markdown explanations).
+  - With an external renderer configured (`MERMAID_RENDERER_URL`, `MERMAID_KROKI_RENDERER_URL`;
+    empty by default) a 外部 row links to the mermaid.ink PNG and SVG and to Kroki, and the
+    mermaid.ink Markdown field (`TID.copyMarkdown`) appears. None of this shows by default.
+- **Bottom:** the file name (the diagram's title by default) with the extension next to it, and
+  キャンセル / 保存 (コピー for the two copies, which have no file name). The button shows the
+  outcome (`data-export-state`: busy, done, failed). Failures of PNG, SVG, `.drawio`, `.vsdx`
+  and the copy are notified; for HTML and Markdown, which render the diagram afresh, a diagram
+  that does not render is reported in the dialog and nothing is saved.
 
-- **Chromium and Edge** have the File System Access API: `window.showSaveFilePicker` opens the
-  system's own save dialog (name and folder), with the file type filled in. Cancelling it saves
-  nothing. The dialog only opens straight after a click, so the target is chosen first and the
-  file (the PNG and `.vsdx` take a second to draw) is written to it afterwards.
-- **Firefox and Safari** have no such API, and Chromium refuses it in a cross-origin frame (the
-  embed): a small dialog of ours (`SaveAsDialog.svelte`, 「名前を付けて保存」) asks for the name, with
-  the name selected up to the extension, and the file is downloaded as before into the browser's
-  download folder. Cancel or Escape saves nothing.
+The PNG width and height in pixels and the size presets are gone (user decisions, 2026-10-08 and
+2026-10-12). `.drawio` and `.vsdx` show no background choice; they use the remembered one, as
+the export card did, so with the default the draw.io page and the Visio picture are transparent.
+
+All exports draw from the diagram on screen with pan/zoom paused (`createPanZoomPause`), except
+HTML and Markdown, which render it afresh from one snapshot of the state (`takeExportSnapshot`).
+
+## File names (`src/lib/util/saveFile.ts`)
+
+The file is saved at once under the name in the dialog, through a temporary link
+(`anchorDownload`), into the browser's download folder. There is no second 「名前を付けて保存」 step
+and no browser save picker any more (user decision, 2026-10-12: 「ファイル名確認の別ダイアログは挟まない」).
+
 - The suggested name is the diagram's title (`diagramTitle.ts`: front matter, or the `title`
-  statement of timeline, C4, packet and ZenUML), else `diagram`, plus the extension. Characters
-  Windows rejects (`\ / : * ? " < > |`, control characters) become spaces, leading and trailing
-  dots go, reserved names (`CON`, `NUL`…) get a `_`, and the name is cut at 100 characters.
-  Japanese stays as it is. A name typed without the extension gets it.
-- The GitLab export's Markdown points at the name actually chosen (`handle.name`).
+  statement of timeline, C4, packet and ZenUML), else `diagram`. What is typed is made safe for
+  every file system (`fileNameFromInput`): characters Windows rejects (`\ / : * ? " < > |`,
+  control characters) become spaces, leading and trailing dots go, reserved names (`CON`,
+  `NUL`…) get a `_`, and the name is cut at 100 characters. Japanese stays as it is. The
+  extension is added unless it was typed; an empty name falls back to the suggestion.
+- The Markdown export's Markdown points at the name the SVG was saved under.
 
 Upstream named every file `mermaid-diagram-<timestamp>.<ext>`; that is gone.
 
-The e2e fixture (`tests/test.ts`, option `saveAs`) removes `showSaveFilePicker` in every spec,
-because headless Chromium has it and a test cannot answer the system dialog, and confirms our name
-dialog with the suggested name as soon as it opens, so a click on a download button still ends in
-a Playwright download. `tests/fileExports.spec.ts` uses `saveAs: 'manual'` to drive the dialog
-and `saveAs: 'picker'` with a stubbed picker that records what is written.
-
 Chromium on a system without a UTF-8 locale (`LANG` unset, as in some containers) saves a
 download with a non-ASCII name as `download`; that is the browser, not the editor. The e2e
-download names are ASCII for that reason; the Japanese names are unit-tested.
+download names are ASCII for that reason; the Japanese names are unit-tested. The e2e helpers
+for the dialog are in `tests/helpers/exportDlg.ts` (`saveExport`, `copyExport`, `chooseExport`).
 
 ## .drawio (`src/lib/util/drawioExport.ts`, `svgToDrawio.ts`, `svgPath.ts`)
 

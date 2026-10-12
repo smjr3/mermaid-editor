@@ -80,6 +80,13 @@ describe('svgFile', () => {
     );
     expect(svgFile(svg, '"><script>')).toContain('background-color: #fff');
   });
+
+  it('has no background for null (transparent)', () => {
+    const file = svgFile(svg, null);
+    expect(file.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<svg')).toBe(true);
+    expect(file).not.toContain('background-color');
+    expect(file).toContain('<text>図</text>');
+  });
 });
 
 // mermaid renders HTML: `&nbsp;` (block arrows), `<br>`, and kanban's `xlink:href`

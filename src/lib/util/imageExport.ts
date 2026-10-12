@@ -1,5 +1,5 @@
 /**
- * Local: the steps of the PNG export and the image copy (Actions.svelte) as
+ * Local: the steps of the PNG export and the image copy (exportDiagram.ts) as
  * promises, so the whole of it — image load, canvas, blob, clipboard write —
  * settles only when it is done and a failure reaches the caller (the copy
  * button then shows an error rather than a tick). Upstream registered the

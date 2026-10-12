@@ -1,24 +1,16 @@
 import { env } from '$/util/env';
 import type { Locale, MessageKey } from './messages';
-import { createTranslator, pickLocale } from './translate';
-
-const storageKey = 'locale';
-
-function readChosenLocale(): string | null {
-  try {
-    return localStorage.getItem(storageKey);
-  } catch {
-    // Storage can be blocked (private windows, site-data settings); use the build's locale.
-    return null;
-  }
-}
+import { createTranslator, resolveLocale } from './translate';
 
 /**
- * The locale this page renders: the viewer's choice from the language toggle,
- * else the build's MERMAID_LOCALE. Fixed for the page's lifetime — switching
- * reloads (see `switchLocale`) rather than re-rendering every string in place.
+ * The locale this page renders: the build's MERMAID_LOCALE (default ja).
+ *
+ * Local: there is no language button any more, so a choice an earlier version stored
+ * under `locale` is ignored rather than read. The migration that removes it
+ * (`migrateEditorLayout`) runs only after this module has loaded, so reading it here
+ * would still have rendered the old choice on the first visit after the update.
  */
-export const locale: Locale = pickLocale(readChosenLocale(), env.locale);
+export const locale: Locale = resolveLocale(env.locale);
 
 if (typeof document !== 'undefined') {
   document.documentElement.lang = locale;
@@ -38,29 +30,5 @@ if (typeof document !== 'undefined') {
  * 「この図の種類は {domain} ではサポートされていません」.
  */
 export const t = createTranslator(locale);
-
-/**
- * Remember `next` for this browser and reload into it.
- *
- * A reload keeps the switch correct everywhere at once: many labels are
- * computed once at module or component setup, so re-rendering in place would
- * leave some in the old language. The diagram survives, because the editor
- * state is already persisted to localStorage and the URL.
- */
-/**
- * Store the choice and reload. `beforeReload` runs once the choice is stored
- * and the reload is certain: the editor passes `flushHash`, so the diagram
- * comes back from a URL that carries the last edit, not a lagging one.
- */
-export function switchLocale(next: Locale, beforeReload?: () => void): void {
-  try {
-    localStorage.setItem(storageKey, next);
-  } catch {
-    // Nothing would change after a reload, so do not reload.
-    return;
-  }
-  beforeReload?.();
-  location.reload();
-}
 
 export type { Locale, MessageKey };

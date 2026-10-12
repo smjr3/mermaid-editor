@@ -1,68 +1,171 @@
-import { TID } from '$/constants';
+import { C, TID } from '$/constants';
+import type { Page } from '@playwright/test';
+import {
+  collapseCode,
+  collapseInspector,
+  expandCode,
+  expandInspector,
+  paneWidth
+} from './helpers/shell';
 import { expect, t, test } from './test';
 
 const urlFor = (code: string, mermaid = '{}') =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid })).toString('base64')}`;
 
-test.describe('Code pane', () => {
-  test('collapses to an icon rail and reopens a section from it', async ({ editPage, page }) => {
+const stored = <T>(page: Page, key: string) =>
+  page.evaluate((name) => {
+    const value = localStorage.getItem(name);
+    return value === null ? null : (JSON.parse(value) as unknown);
+  }, key) as Promise<T | null>;
+
+/** Drags the divider `index` (0: code | diagram, 1: diagram | inspector) by `dx` pixels. */
+const dragDivider = async (page: Page, index: number, dx: number) => {
+  const handle = page.locator('[data-pane-resizer]').nth(index);
+  const box = await handle.boundingBox();
+  if (!box) throw new Error('no divider');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let step = 1; step <= 10; step++) await page.mouse.move(x + (dx * step) / 10, y);
+  await page.mouse.up();
+};
+
+test.describe('Code pane and inspector', () => {
+  test.use({ viewport: { height: 900, width: 1440 } });
+
+  test('fold to thin rails and open again from them', async ({ editPage, page }) => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
-    await expect(editPage.editor).toBeVisible();
-
-    // Collapsed to zero width (Monaco keeps a few pixels of its own); the rail stays.
-    const editorWidth = async () => (await editPage.editor.boundingBox())?.width ?? 0;
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await expect.poll(editorWidth).toBeLessThan(10);
-    const rail = page.getByTestId(TID.editorRail);
-    const editorMode = () =>
-      page.evaluate(
-        () =>
-          (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { editorMode?: string })
-            .editorMode
-      );
-    await expect(rail).toBeVisible();
     await editPage.checkTextInView('Start');
-    // The tools keep their own pane, so the code rail offers only code and config.
-    await expect(rail.getByRole('button')).toHaveCount(3);
-    await expect(page.getByTestId(TID.layoutCard)).toBeVisible();
+    const canvasBefore = await paneWidth(page, 'canvas');
 
-    await page.getByTestId(`${TID.editorRail}-config`).click();
-    await expect.poll(editorWidth).toBeGreaterThan(100);
-    await expect(rail).toBeHidden();
-    await expect.poll(editorMode).toBe('config');
+    await collapseCode(page);
+    await expect.poll(() => paneWidth(page, 'code')).toBeLessThan(2);
+    await expect(page.getByTestId(TID.wsCodeExpand)).toHaveAttribute('title', t('ws.codeExpand'));
+    await editPage.checkTextInView('Start');
+    await collapseInspector(page);
+    await expect.poll(() => paneWidth(page, 'inspector')).toBeLessThan(2);
+    // The diagram takes the room the two columns left.
+    expect(await paneWidth(page, 'canvas')).toBeGreaterThan(canvasBefore + 400);
+    // A rail is thin.
+    const rail = await page.getByTestId(TID.wsCodeRail).boundingBox();
+    expect(rail?.width ?? 0).toBeLessThan(48);
 
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await page.getByTestId(`${TID.editorRail}-code`).click();
-    await expect.poll(editorWidth).toBeGreaterThan(100);
-    await expect.poll(editorMode).toBe('code');
-
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await page.getByTestId(TID.editorRailExpand).click();
-    await expect.poll(editorWidth).toBeGreaterThan(100);
+    await expandCode(page);
+    await expect.poll(() => paneWidth(page, 'code')).toBeGreaterThan(150);
+    await expect(editPage.editor).toBeVisible();
+    await expandInspector(page);
+    await expect.poll(() => paneWidth(page, 'inspector')).toBeGreaterThan(150);
+    await expect(page.getByTestId(TID.inspPanel)).toBeVisible();
   });
 
-  test('stays collapsed across a reload', async ({ editPage, page }) => {
+  test('remember what is folded across a reload', async ({ editPage, page }) => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await expect(page.getByTestId(TID.editorRail)).toBeVisible();
-    // paneforge stores the sizes after a short debounce; reload once the collapse is saved.
-    // The default order is tools | diagram | code, so the code is the last pane.
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          Object.values(
-            JSON.parse(localStorage.getItem('paneforge:liveEditorToolsLeft') ?? '{}') as Record<
-              string,
-              { layout: number[] }
-            >
-          ).some(({ layout }) => layout.length === 3 && layout[2] === 0)
-        )
-      )
-      .toBe(true);
+    await editPage.checkTextInView('Start');
+    await collapseCode(page);
+    await collapseInspector(page);
+    await expect.poll(() => stored<boolean>(page, 'editorCodeCollapsed')).toBe(true);
+    await expect.poll(() => stored<boolean>(page, 'editorInspectorCollapsed')).toBe(true);
+
     await page.reload();
     await editPage.checkTextInView('Start');
-    await expect(page.getByTestId(TID.editorRail)).toBeVisible();
-    await expect(page.getByTestId(TID.toolsPane)).toBeVisible();
+    await expect(page.getByTestId(TID.wsCodeRail)).toBeVisible();
+    await expect(page.getByTestId(TID.wsInspectorRail)).toBeVisible();
+
+    await expandCode(page);
+    await expect.poll(() => stored<boolean>(page, 'editorCodeCollapsed')).toBe(false);
+    await page.reload();
+    await editPage.checkTextInView('Start');
+    await expect(page.getByTestId(TID.wsCodeRail)).toBeHidden();
+    await expect(page.getByTestId(TID.wsInspectorRail)).toBeVisible();
+  });
+
+  test('remember the widths the dividers were dragged to', async ({ editPage, page }) => {
+    await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
+    await editPage.checkTextInView('Start');
+    const code = await paneWidth(page, 'code');
+    const inspector = await paneWidth(page, 'inspector');
+
+    await dragDivider(page, 0, 120);
+    await dragDivider(page, 1, -100);
+    await expect.poll(() => paneWidth(page, 'code')).toBeGreaterThan(code + 100);
+    await expect.poll(() => paneWidth(page, 'inspector')).toBeGreaterThan(inspector + 80);
+    const dragged = {
+      code: await paneWidth(page, 'code'),
+      inspector: await paneWidth(page, 'inspector')
+    };
+    await expect
+      .poll(async () => {
+        const sizes = await stored<{ code?: number; inspector?: number }>(page, 'editorPaneSizes');
+        return typeof sizes?.code === 'number' && typeof sizes.inspector === 'number';
+      })
+      .toBe(true);
+
+    await page.reload();
+    await editPage.checkTextInView('Start');
+    await expect.poll(() => paneWidth(page, 'code')).toBeGreaterThan(dragged.code - 8);
+    expect(await paneWidth(page, 'code')).toBeLessThan(dragged.code + 8);
+    await expect.poll(() => paneWidth(page, 'inspector')).toBeGreaterThan(dragged.inspector - 8);
+    expect(await paneWidth(page, 'inspector')).toBeLessThan(dragged.inspector + 8);
+  });
+});
+
+test.describe('Moving from the previous layout', () => {
+  test.use({ viewport: { height: 900, width: 1440 } });
+
+  // What the tools | diagram | code editor left behind, with every migration before the
+  // layout one already applied, and the language button's choice.
+  const seedPreviousLayout = (page: Page) =>
+    page.addInitScript((chooserKey) => {
+      if (localStorage.getItem('migrations') !== null) return;
+      localStorage.setItem('migrations', JSON.stringify({ version: 2 }));
+      localStorage.setItem(chooserKey, 'true');
+      localStorage.setItem('toolsPaneWidths', JSON.stringify({ fix: 30, normal: 25 }));
+      localStorage.setItem('paneOrder', JSON.stringify('tools-left'));
+      localStorage.setItem('foldCodeWhileFixing', 'true');
+      localStorage.setItem('codeFoldedForFix', 'true');
+      localStorage.setItem(
+        'paneforge:liveEditorToolsLeft',
+        JSON.stringify({ key: { expandToSizes: { 'pane-code': 25 }, layout: [30, 70, 0] } })
+      );
+      localStorage.setItem('locale', 'en');
+    }, C.editorChooserDismissedKey);
+
+  test('takes the old widths, unfolds the code and forgets the old keys', async ({ page }) => {
+    await seedPreviousLayout(page);
+    await page.goto('/edit');
+    await expect(page.locator('#view svg').first()).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(() => stored<{ version: number }>(page, 'migrations'))
+      .toEqual({ version: 3 });
+    expect(await stored(page, 'editorPaneSizes')).toEqual({ code: 25, inspector: 30 });
+    for (const key of [
+      'toolsPaneWidths',
+      'paneOrder',
+      'foldCodeWhileFixing',
+      'codeFoldedForFix',
+      'paneforge:liveEditorToolsLeft',
+      'locale'
+    ]) {
+      expect(await stored(page, key), key).toBeNull();
+    }
+    // The code pane was folded only while 直す was shown: it comes back open.
+    await expect(page.getByTestId(TID.wsCodeRail)).toBeHidden();
+    await expect.poll(() => paneWidth(page, 'code')).toBeGreaterThan(1440 * 0.25 - 12);
+    await expect.poll(() => paneWidth(page, 'inspector')).toBeGreaterThan(1440 * 0.3 - 12);
+  });
+
+  // W0 report #10: the stored language was removed by the migration, but only after the
+  // page had already been rendered in it.
+  test('renders the build’s language even on the first visit with a stored one', async ({
+    page
+  }) => {
+    await seedPreviousLayout(page);
+    await page.goto('/edit');
+    await expect(page.locator('#view svg').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('html')).toHaveAttribute('lang', process.env.MERMAID_LOCALE ?? 'ja');
+    await expect(page.getByTestId(TID.wsNewMenu)).toContainText(t('ws.newMenu'));
+    await expect(page.getByTestId(`${TID.wsCodeTab}-config`)).toHaveText(t('editor.configTab'));
   });
 });
 
@@ -85,96 +188,6 @@ test.describe('Dark site', () => {
     await expect(editPage.view.locator('.flowchart-link').first()).toHaveCSS(
       'stroke',
       'rgb(242, 242, 242)'
-    );
-  });
-});
-
-test.describe('Icon picker', () => {
-  test('inserts the clicked icon at the cursor', async ({ editPage, page }) => {
-    await editPage.start(urlFor('architecture-beta\n  service fn()[Function]'));
-    await page.getByTestId(TID.iconPacksCard).click();
-    await page.getByTestId(TID.iconPickerPack).selectOption('logos');
-    await page.getByTestId(TID.iconPickerSearch).fill('aws lambda');
-    const first = page.getByTestId(TID.iconPickerResults).getByRole('button').first();
-    await expect(first).toHaveAttribute('title', /^logos:aws-lambda /, { timeout: 30_000 });
-
-    // Cursor between the parentheses of fn().
-    await editPage.editor.getByText('fn()').click();
-    await page.keyboard.press('End');
-    for (let index = 0; index < '[Function]'.length + 1; index++) {
-      await page.keyboard.press('ArrowLeft');
-    }
-    await first.click();
-    await expect(page.getByTestId(TID.iconPickerMessage)).toContainText('logos:aws-lambda');
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { code?: string }).code
-        )
-      )
-      .toContain('service fn(logos:aws-lambda)[Function]');
-    await editPage.checkTextInView('Function');
-  });
-
-  test('picks from the enlarged view, with names under the icons', async ({ editPage, page }) => {
-    await editPage.start(urlFor('architecture-beta\n  service db()[Database]'));
-    await page.getByTestId(TID.iconPacksCard).click();
-    await page.getByTestId(TID.iconPickerEnlarge).click();
-    await page.getByTestId(TID.iconPickerLargePack).selectOption('tabler');
-    await page.getByTestId(TID.iconPickerLargeSearch).fill('database');
-    const results = page.getByTestId(TID.iconPickerLargeResults);
-    await expect(results.getByRole('button', { name: /^tabler:database —/ })).toBeVisible({
-      timeout: 30_000
-    });
-    await expect(results).toContainText('database');
-
-    await page.keyboard.press('Escape');
-    await editPage.editor.getByText('db()').click();
-    await page.keyboard.press('End');
-    for (let index = 0; index < '[Database]'.length + 1; index++) {
-      await page.keyboard.press('ArrowLeft');
-    }
-    await page.getByTestId(TID.iconPickerEnlarge).click();
-    await page
-      .getByTestId(TID.iconPickerLargeResults)
-      .getByRole('button', { name: /^tabler:database —/ })
-      .click();
-    await expect(page.getByTestId(TID.iconPickerLargeResults)).toBeHidden();
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { code?: string }).code
-        )
-      )
-      .toContain('service db(tabler:database)[Database]');
-  });
-
-  test('lists mermaid standard icons first, written without a prefix', async ({
-    editPage,
-    page
-  }) => {
-    await editPage.start(urlFor('architecture-beta\n  service db()[Database]'));
-    await page.getByTestId(TID.iconPacksCard).click();
-    await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
-    await page.getByTestId(TID.iconPickerSearch).fill('database');
-    const first = page.getByTestId(TID.iconPickerResults).getByRole('button').first();
-    await expect(first).toHaveAttribute('data-standard', 'true', { timeout: 30_000 });
-
-    await editPage.editor.getByText('db()').click();
-    await page.keyboard.press('End');
-    for (let index = 0; index < '[Database]'.length + 1; index++) {
-      await page.keyboard.press('ArrowLeft');
-    }
-    await first.click();
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { code?: string }).code
-        )
-      )
-      .toContain('service db(database)[Database]');
-    await expect(page.getByTestId(TID.iconPickerMessage)).not.toContainText(
-      t('icons.pickExtendedNote')
     );
   });
 });

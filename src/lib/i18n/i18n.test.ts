@@ -125,34 +125,21 @@ describe('nextLocale', () => {
   });
 });
 
-describe('switchLocale', () => {
-  it('runs the hook after storing the choice and before it reloads', async () => {
-    const order: string[] = [];
-    const reload = vi.fn(() => order.push('reload'));
-    vi.stubGlobal('location', { ...location, reload });
-    const fresh = await import('./index');
-    const next = nextLocale(locale);
-    fresh.switchLocale(next, () => order.push(`hook:${localStorage.getItem('locale')}`));
-    expect(order).toEqual([`hook:${next}`, 'reload']);
-    vi.unstubAllGlobals();
-    localStorage.clear();
-    vi.resetModules();
-  });
-});
-
 describe('the app locale', () => {
   afterEach(() => {
     localStorage.clear();
     vi.resetModules();
   });
 
-  it('follows the choice the language toggle stored, and sets <html lang>', async () => {
+  // There is no language button any more: a choice an earlier version stored is ignored
+  // on the very first load, before the migration that removes it has run.
+  it('ignores a stored choice and renders the build’s locale, with <html lang>', async () => {
     const other = nextLocale(locale);
     localStorage.setItem('locale', other);
     vi.resetModules();
     const fresh = await import('./index');
-    expect(fresh.locale).toBe(other);
-    expect(fresh.t('actions.title')).toBe(messages[other]['actions.title']);
-    expect(document.documentElement.lang).toBe(other);
+    expect(fresh.locale).toBe(locale);
+    expect(fresh.t('actions.title')).toBe(messages[locale]['actions.title']);
+    expect(document.documentElement.lang).toBe(locale);
   });
 });

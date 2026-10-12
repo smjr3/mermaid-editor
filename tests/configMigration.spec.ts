@@ -1,6 +1,5 @@
-import { C } from '$/constants';
+import { C, TID } from '$/constants';
 import { expect, test, type Page } from '@playwright/test';
-import { t } from './test';
 
 // What a pre-mermaid-12 install left in localStorage: the editor seeded every
 // config with the default theme.
@@ -14,7 +13,7 @@ const legacyCodeStore = JSON.stringify({
 });
 
 // Seeds the legacy install with the history-id migration already applied (v0); the
-// default-theme (v1) and legacy dark theme (v2) migrations then run.
+// default-theme (v1), legacy dark theme (v2) and editor layout (v3) migrations then run.
 // Guarded so reloads do not re-seed.
 const seedLegacyInstall = (page: Page) =>
   page.addInitScript(
@@ -30,8 +29,8 @@ const seedLegacyInstall = (page: Page) =>
 
 const openEditor = async (page: Page) => {
   await page.goto('/edit');
-  // Mounting can take a while on a cold dev server; the sidebar marks it done.
-  await page.getByText(t('preset.title'), { exact: true }).waitFor();
+  // Mounting can take a while on a cold dev server; the code pane marks it done.
+  await page.getByTestId(TID.wsCodePane).waitFor();
 };
 
 const storedConfig = (page: Page) =>
@@ -50,7 +49,7 @@ test.describe('Default theme config migration', () => {
     await seedLegacyInstall(page);
     await openEditor(page);
     await expect(page.locator('#view')).toContainText('Legacy');
-    await expect.poll(() => migrationVersion(page)).toBe(2);
+    await expect.poll(() => migrationVersion(page)).toBe(3);
     // A flowchart: mermaid 12's own default for it is redux-color.
     await expect.poll(() => storedConfig(page)).toBe('{\n  "theme": "redux-color"\n}');
   });
@@ -61,7 +60,7 @@ test.describe('Default theme config migration', () => {
     await seedLegacyInstall(page);
     await openEditor(page);
     await expect(page.locator('#view')).toContainText('Legacy');
-    await expect.poll(() => migrationVersion(page)).toBe(2);
+    await expect.poll(() => migrationVersion(page)).toBe(3);
     await expect
       .poll(async () => JSON.parse((await storedConfig(page)) ?? '{}') as unknown)
       .toEqual({ theme: 'redux-color' });

@@ -560,8 +560,8 @@ export const en = {
   'edit.unsupported':
     'This diagram type cannot be edited from here yet. Edit the code on the left instead.',
   'edit.updated': 'Arrow updated.',
-  'editor.configTab': 'Style',
-  'editor.configTabTooltip': 'Diagram style settings (JSON)',
+  'editor.configTab': 'Config JSON',
+  'editor.configTabTooltip': 'The diagram’s settings (mermaid config, written as JSON)',
   'editor.docsTab': 'Docs',
   'editor.docsTitle': 'View documentation for {type} diagram',
   'editor.hidePane': 'Hide the editor',
@@ -616,17 +616,17 @@ export const en = {
   'guide.progress': '{current} of {total}',
   'guide.restart': 'Show the first-visit guide again',
   'guide.step1.body':
-    'Add shapes, edit them, change colours and layout, and save or share from the tools here.',
-  'guide.step1.title': 'Build and fix the diagram here',
+    'Add shapes and lanes with the add bar above the diagram, and change names, colours, shapes, direction and themes in the panel on the right. With nothing selected, it holds the whole diagram’s settings.',
+  'guide.step1.title': 'Build and fix with the add bar and the panel',
   'guide.step2.body':
-    'Click a shape in the diagram to select it. Drag to move the picture and use the wheel to zoom.',
-  'guide.step2.title': 'Click, drag and zoom the diagram',
+    'Click a shape or an arrow to select it; the panel on the right switches to its settings. Right-click for rename, colour, shape, add and delete. Drag to move the picture and use the wheel to zoom.',
+  'guide.step2.title': 'Click or right-click the diagram',
   'guide.step3.body':
-    '"How to use" explains every tool. The Export tab saves the diagram as an image and has its share links. Press Ctrl+K to search for any command.',
-  'guide.step3.title': 'Help is in the header, sharing under Export',
+    'New in the header starts another diagram, Share gives links and embed code, and Export saves PNG, SVG and more. How to use explains everything.',
+  'guide.step3.title': 'New, Share and Export are in the header',
   'header.reset': 'Reset',
   'header.resetBody':
-    'This clears the diagram, its style settings, the view position and the selection, and starts again from the sample diagram. Saved History entries are kept. This cannot be undone.',
+    'This clears the diagram, its config (JSON), the view position and the selection, and starts again from the sample diagram. Saved History entries are kept. This cannot be undone.',
   'header.resetCancel': 'Cancel',
   'header.resetConfirm': 'Reset everything',
   'header.resetTitle': 'Reset everything?',
@@ -1114,6 +1114,7 @@ export const en = {
   'ws.close': 'Close',
   'ws.codeCollapse': 'Collapse the code pane',
   'ws.codeExpand': 'Expand the code pane',
+  'ws.codeFooterConfigOk': 'No errors in the config',
   'ws.codeFooterError': 'The code has a syntax error',
   'ws.codeFooterOk': 'No syntax errors · F2 renames an ID everywhere',
   'ws.codeTabs': 'Code pane tabs',

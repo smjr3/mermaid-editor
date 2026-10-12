@@ -1,4 +1,6 @@
+import { TID } from '$/constants';
 import { expect, test, type Page } from '@playwright/test';
+import { toggleHistory } from './helpers/shell';
 import { EditorPage, t } from './test';
 
 const config = '{\n  "theme": "default"\n}';
@@ -29,8 +31,10 @@ const autoHistory = [
 // does not depend on how Playwright normalises the newline.
 const firstLine = (message: string): string => message.split('\n')[0];
 
-const openHistory = (page: Page) =>
-  page.getByRole('button', { name: t('editor.historyToggle') }).click();
+const openHistory = async (page: Page) => {
+  await toggleHistory(page);
+  await expect(page.getByTestId(TID.historyPanel)).toBeVisible();
+};
 
 test.describe('History', () => {
   test.beforeEach(async ({ page }) => {
@@ -98,6 +102,29 @@ test.describe('History', () => {
     // Following it loads that entry's diagram.
     await page.goto(href ?? '');
     await expect(page.locator('#view')).toContainText('Halloween');
+  });
+
+  test('opens from the header as a sheet over the inspector side, with two tabs', async ({
+    page
+  }) => {
+    await page.setViewportSize({ height: 900, width: 1440 });
+    const button = page.getByTestId(TID.wsHistoryButton);
+    await expect(button).toHaveAttribute('aria-label', t('editor.historyToggle'));
+    await openHistory(page);
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+    const sheet = await page.getByTestId(TID.historyPanel).boundingBox();
+    const inspector = await page.getByTestId(TID.wsInspectorPane).boundingBox();
+    if (!sheet || !inspector) throw new Error('no sheet');
+    expect(sheet.x + sheet.width).toBeCloseTo(inspector.x + inspector.width, 0);
+    // The diagram keeps its width: the sheet floats rather than pushing a column aside.
+    await expect(page.getByTestId(TID.wsCanvasPane)).toBeVisible();
+    // 保存済み and タイムライン only: there is no Gist revisions tab any more.
+    const tabs = page.getByTestId(TID.historyPanel).getByRole('tab');
+    await expect(tabs).toHaveCount(2);
+    await expect(page.getByRole('tab', { name: t('history.tabRevisions') })).toHaveCount(0);
+
+    await toggleHistory(page);
+    await expect(page.getByTestId(TID.historyPanel)).toBeHidden();
   });
 
   test('keeps the active tab highlighted when switching modes', async ({ page }) => {

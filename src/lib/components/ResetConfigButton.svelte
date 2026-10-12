@@ -16,13 +16,14 @@
 {#if validatedState.current.editorMode === 'config'}
   <Button
     variant="ghost"
-    class="gap-1 px-2"
+    size="sm"
+    class="h-7 shrink-0 gap-1 px-2 text-xs whitespace-nowrap"
     data-testid={TID.resetConfigButton}
     title={t('editor.resetConfig')}
     aria-label={t('editor.resetConfig')}
     {onclick}>
     <ResetIcon />
-    <!-- Short label: the editor card header also holds the tabs and the Docs button. -->
-    {t('editor.resetConfigShort')}
+    <!-- The code pane's header is a size container: a narrow column shows the icon only. -->
+    <span class="hidden @[19rem]:inline">{t('editor.resetConfig')}</span>
   </Button>
 {/if}

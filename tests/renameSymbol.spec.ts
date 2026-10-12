@@ -1,3 +1,4 @@
+import { TID } from '$/constants';
 import { expect, t, test } from './test';
 
 const code = 'flowchart TD\n  order[Order] --> ship[Ship the order]\n  order --> cancel';
@@ -15,6 +16,8 @@ test.describe('Rename symbol (F2)', () => {
   test('renames every use of a node id and leaves label text alone', async ({ editPage, page }) => {
     await editPage.start(url);
     await editPage.checkTextInView('Ship the order');
+    // The code pane's footer says F2 does this.
+    await expect(page.getByTestId(TID.wsCodeFooter)).toHaveText(t('ws.codeFooterOk'));
 
     // Put the cursor inside the first `order` and rename it.
     await editPage.editor.getByText('order', { exact: true }).first().click();

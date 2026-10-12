@@ -563,8 +563,8 @@ export const ja = {
   'edit.unsupported':
     'この図の種類はまだここから編集できません。左のコードを直接編集してください。',
   'edit.updated': '矢印を変更しました。',
-  'editor.configTab': 'スタイル',
-  'editor.configTabTooltip': '図のスタイル設定（JSON）',
+  'editor.configTab': '設定 JSON',
+  'editor.configTabTooltip': '図の設定（Mermaid の config を JSON で書きます）',
   'editor.docsTab': 'ドキュメント',
   'editor.docsTitle': '{type} 図のドキュメントを表示',
   'editor.hidePane': 'エディタを隠す',
@@ -618,17 +618,17 @@ export const ja = {
   'guide.progress': '{current} / {total}',
   'guide.restart': '案内をもう一度見る',
   'guide.step1.body':
-    '要素の追加・編集、色や向きの変更、画像や共有リンクでの保存は、ここのツールから行えます。',
-  'guide.step1.title': 'ここで図を作る・直す',
+    '図の上の追加バーで図形やレーンを足し、右のパネルで名前・色・形・向き・テーマなどを変えます。何も選んでいないときは図全体の設定です。',
+  'guide.step1.title': '追加バーと右のパネルで作る・直す',
   'guide.step2.body':
-    '図の要素をクリックして選べます。ドラッグで移動、ホイールで拡大・縮小できます。',
-  'guide.step2.title': '図の要素をクリックして選べる',
+    '図形や矢印をクリックすると選ばれ、右のパネルがその設定に変わります。右クリックで名前の変更・色・形・追加・削除のメニュー。ドラッグで移動、ホイールで拡大・縮小できます。',
+  'guide.step2.title': '図の要素をクリック・右クリック',
   'guide.step3.body':
-    '「使い方」で各ツールの説明を読めます。画像での保存と共有リンクは「出す」タブにあります。Ctrl+K でコマンドを検索できます。',
-  'guide.step3.title': '使い方はヘッダー、共有は「出す」に',
+    'ヘッダーの「新規」で別の図を作り、「共有」でリンクや埋め込みコードを、「書き出す」で PNG・SVG などを保存します。くわしい説明は「使い方」にあります。',
+  'guide.step3.title': '新規・共有・書き出すはヘッダーに',
   'header.reset': '初期化',
   'header.resetBody':
-    '図のコード、スタイル設定、表示位置、選択をすべて消して、最初の図に戻します。履歴に保存した内容は残ります。この操作は元に戻せません。',
+    '図のコード、設定（JSON）、表示位置、選択をすべて消して、最初の図に戻します。履歴に保存した内容は残ります。この操作は元に戻せません。',
   'header.resetCancel': 'キャンセル',
   'header.resetConfirm': 'すべて初期化する',
   'header.resetTitle': 'すべて初期化しますか？',
@@ -1114,6 +1114,7 @@ export const ja = {
   'ws.close': '閉じる',
   'ws.codeCollapse': 'コード欄をたたむ',
   'ws.codeExpand': 'コード欄を開く',
+  'ws.codeFooterConfigOk': '設定（JSON）に誤りなし',
   'ws.codeFooterError': '構文エラーがあります',
   'ws.codeFooterOk': '構文エラーなし ・ F2 で ID を一括変更',
   'ws.codeTabs': 'コード欄のタブ',

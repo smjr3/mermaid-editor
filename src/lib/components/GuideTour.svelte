@@ -6,30 +6,44 @@
   import { finishGuide, guide, hasSeenGuide, startGuide } from '$/util/onboarding.svelte';
   import { onMount } from 'svelte';
 
-  // Local: the first-visit guide, three popovers that point at the tools pane, the
-  // diagram and the header's help button. Closing it (the button or Escape) records
-  // that it was seen; the How to use dialog can start it again.
-  const steps = [
+  // Local: the first-visit guide, three popovers: the add bar above the diagram and the
+  // inspector on the right, the diagram itself (click / right-click), and the header's
+  // 新規 / 共有 / 書き出す with 使い方 beside them. Closing it (the button or Escape)
+  // records that it was seen; the How to use dialog can start it again.
+  //
+  // `targets` are where the popover may point, in order (the first one on screen wins,
+  // each with the side it prefers); `highlight` is every part the step is about, each
+  // outlined.
+  type Side = 'bottom' | 'left' | 'right' | 'top';
+  const byTestID = (id: string) => `[data-testid="${id}"]`;
+  const steps: {
+    body: string;
+    highlight?: string[];
+    targets: { selector: string; side: Side }[];
+    title: string;
+  }[] = [
     {
       body: t('guide.step1.body'),
-      selectors: [
-        `[data-testid="${TID.canvasInsertBar}"]`,
-        `[data-testid="${TID.inspPanel}"]`,
-        '#view'
+      highlight: [byTestID(TID.canvasInsertBar), byTestID(TID.inspPanel)],
+      targets: [
+        { selector: byTestID(TID.canvasInsertBar), side: 'bottom' },
+        { selector: byTestID(TID.inspPanel), side: 'left' },
+        { selector: '#view', side: 'bottom' }
       ],
-      side: 'left' as const,
       title: t('guide.step1.title')
     },
     {
       body: t('guide.step2.body'),
-      selectors: ['#view'],
-      side: 'bottom' as const,
+      targets: [{ selector: '#view', side: 'bottom' }],
       title: t('guide.step2.title')
     },
     {
       body: t('guide.step3.body'),
-      selectors: [`[data-testid="${TID.helpButton}"]`],
-      side: 'bottom' as const,
+      highlight: [byTestID(TID.wsHeaderActions), byTestID(TID.helpButton)],
+      targets: [
+        { selector: byTestID(TID.wsHeaderActions), side: 'bottom' },
+        { selector: byTestID(TID.helpButton), side: 'bottom' }
+      ],
       title: t('guide.step3.title')
     }
   ];
@@ -37,10 +51,9 @@
   const step = $derived(steps[Math.min(guide.step, steps.length - 1)]);
   const isLast = $derived(guide.step >= steps.length - 1);
 
-  type Side = 'bottom' | 'left' | 'right' | 'top';
   let anchor = $state<HTMLElement | { getBoundingClientRect: () => DOMRect } | null>(null);
   let side = $state<Side>('bottom');
-  let rect = $state<DOMRect | null>(null);
+  let rects = $state<DOMRect[]>([]);
 
   const visible = (element: Element | null): element is HTMLElement =>
     !!element && element.getBoundingClientRect().width > 0;
@@ -84,18 +97,23 @@
   };
 
   const locate = () => {
-    for (const selector of step.selectors) {
+    // Locals first: reading `rects` here would make the effect that calls this rerun.
+    const outlined: DOMRect[] = [];
+    for (const selector of step.highlight ?? []) {
+      const element = document.querySelector(selector);
+      if (visible(element)) outlined.push(element.getBoundingClientRect());
+    }
+    for (const { selector, side: preferred } of step.targets) {
       const element = document.querySelector(selector);
       if (visible(element)) {
-        // A local first: reading `rect` here would make the effect that calls this rerun.
         const box = element.getBoundingClientRect();
-        rect = box;
-        place(element, box, step.side);
+        rects = outlined.length > 0 ? outlined : [box];
+        place(element, box, preferred);
         return;
       }
     }
     anchor = null;
-    rect = null;
+    rects = outlined;
   };
 
   $effect(() => {
@@ -118,15 +136,16 @@
 </script>
 
 {#if guide.open}
-  {#if rect}
+  {#each rects as box, index (index)}
     <div
       class="pointer-events-none fixed z-40 rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background"
-      style:left="{rect.left}px"
-      style:top="{rect.top}px"
-      style:width="{rect.width}px"
-      style:height="{rect.height}px">
+      data-testid={TID.wsGuideHighlight}
+      style:left="{box.left}px"
+      style:top="{box.top}px"
+      style:width="{box.width}px"
+      style:height="{box.height}px">
     </div>
-  {/if}
+  {/each}
   <Popover.Root
     open
     onOpenChange={(open) => {

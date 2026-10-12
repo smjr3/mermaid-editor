@@ -376,6 +376,7 @@ export const TID = {
   wsCodeRail: 'ws-code-rail',
   wsCodeTab: 'ws-code-tab',
   wsExportButton: 'ws-export-button',
+  wsGuideHighlight: 'ws-guide-highlight',
   wsHeaderActions: 'ws-header-actions',
   wsHistoryButton: 'ws-history-button',
   wsInspectorExpand: 'ws-inspector-expand',

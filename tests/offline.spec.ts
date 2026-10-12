@@ -1,5 +1,5 @@
 import { TID } from '$/constants';
-import { readFile } from 'node:fs/promises';
+import { readDownload, saveExport } from './helpers/exportDlg';
 import { expect, test } from './test';
 
 // MERMAID_OFFLINE (on by default here): the site asks nothing outside itself.
@@ -25,13 +25,11 @@ test.describe('Offline build', () => {
     // The config tab is where the schema used to be downloaded from.
     await editPage.setEditorMode('Config');
     await editPage.setEditorMode('Code');
-    await page.getByTestId(TID.actionsCard).click();
-
-    const download = page.waitForEvent('download');
-    await page.getByTestId(TID.downloadSVG).click();
-    const svg = await readFile(await (await download).path(), 'utf8');
-    expect(svg).not.toContain('cdnjs');
-    expect(svg).not.toContain('xml-stylesheet');
+    for (const format of ['svg', 'png', 'html', 'md', 'drawio', 'vsdx'] as const) {
+      const file = (await readDownload(await saveExport(page, format))).toString('utf8');
+      expect(file).not.toContain('cdnjs');
+      if (format === 'svg') expect(file).not.toContain('xml-stylesheet');
+    }
 
     // Loading a gist is not offered.
     await expect(page.getByPlaceholder(/gist/i)).toHaveCount(0);
@@ -79,7 +77,9 @@ test.describe('Offline build', () => {
     await editPage.start(
       `/edit#base64:${Buffer.from(JSON.stringify({ code: architecture, mermaid: '{}' })).toString('base64')}`
     );
-    await page.getByTestId(TID.iconPacksCard).click();
+    // The icon packs dialog of the inspector's 図全体 (W3).
+    await page.getByTestId(TID.inspIconPacks).click();
+    await expect(page.getByTestId(TID.inspIconPacksDialog)).toBeVisible();
     await page.getByTestId(TID.iconPackPrefix).fill('corp');
     await page.getByTestId(TID.iconPackFiles).setInputFiles({
       buffer: Buffer.from(tracker),
@@ -95,6 +95,10 @@ test.describe('Offline build', () => {
     expect(await page.locator('#view').innerHTML()).not.toContain('tracker.example.com');
 
     // The picker previews the icon too.
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.inspIconPacksDialog)).toBeHidden();
+    await page.getByTestId(TID.inspIconBrowse).click();
+    await expect(page.getByTestId(TID.inspIconDialog)).toBeVisible();
     await page.getByTestId(TID.iconPickerSearch).fill('tracker');
     await expect(page.getByTestId(TID.iconPickerResults).locator('svg').first()).toBeAttached();
     expect(await page.content()).not.toContain('tracker.example.com');
@@ -102,6 +106,9 @@ test.describe('Offline build', () => {
     await page.waitForTimeout(1000);
     expect([...external]).toEqual([]);
 
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.inspIconDialog)).toBeHidden();
+    await page.getByTestId(TID.inspIconPacks).click();
     page.once('dialog', (dialog) => void dialog.accept());
     await page.getByTestId(TID.iconPackList).getByRole('button').first().click();
   });

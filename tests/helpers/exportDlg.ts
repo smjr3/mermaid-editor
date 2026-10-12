@@ -1,6 +1,17 @@
 import { TID } from '$/constants';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Download, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { verifyFileSizeGreaterThan } from '../utils';
+
+export type ExportFormat = 'copy' | 'drawio' | 'html' | 'md' | 'png' | 'svg' | 'vsdx';
+
+export interface ExportChoice {
+  background?: 'theme' | 'transparent' | 'white';
+  htmlMode?: 'file' | 'tag';
+  /** The file name to type (without or with the extension). */
+  name?: string;
+  scale?: 1 | 2 | 3;
+}
 
 /** Opens the 書き出す dialog from the header. */
 export const openExport = async (page: Page): Promise<void> => {
@@ -15,33 +26,56 @@ export const closeExport = async (page: Page): Promise<void> => {
   await expect(dialog).toBeHidden();
 };
 
+/** Opens the dialog (if needed), picks `format` and sets the given options. */
+export const chooseExport = async (
+  page: Page,
+  format: ExportFormat,
+  { background, htmlMode, name, scale }: ExportChoice = {}
+): Promise<void> => {
+  await openExport(page);
+  const card = page.getByTestId(`${TID.exportDlgFormat}-${format}`);
+  await card.click();
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  if (htmlMode) await page.getByTestId(`${TID.exportDlgHtmlMode}-${htmlMode}`).click();
+  if (scale) await page.getByTestId(`${TID.exportDlgScale}-${scale}`).click();
+  if (background) await page.getByTestId(`${TID.exportDlgBackground}-${background}`).click();
+  if (name !== undefined) await page.getByTestId(TID.exportDlgFileName).fill(name);
+};
+
+/** Saves the diagram in `format` from the 書き出す dialog; resolves to the download. */
+export const saveExport = async (
+  page: Page,
+  format: Exclude<ExportFormat, 'copy'>,
+  choice: ExportChoice = {}
+): Promise<Download> => {
+  await chooseExport(page, format, choice);
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20_000 }),
+    page.getByTestId(TID.exportDlgSave).click()
+  ]);
+  return download;
+};
+
+/** The saved file's bytes. */
+export const readDownload = async (download: Download): Promise<Buffer> =>
+  readFileSync((await download.path()) ?? '');
+
 /**
- * Until the new dialog lands it shows the old export card, which saves through the
- * browser's save dialog (which a test cannot answer) or, without one, asks for the file
- * name: the picker is removed and the name dialog confirmed as soon as it opens.
+ * Copies from the 書き出す dialog (the image, or the HTML tag) and waits until the button
+ * reports the outcome: 'done' or 'failed'.
  */
-const legacySave = async (page: Page, button: string): Promise<void> => {
-  await page.evaluate(
-    ({ confirm, dialog }) => {
-      Object.defineProperty(window, 'showSaveFilePicker', {
-        configurable: true,
-        value: undefined,
-        writable: true
-      });
-      const target = window as unknown as { __autoConfirmSaveAs?: boolean };
-      if (target.__autoConfirmSaveAs) return;
-      target.__autoConfirmSaveAs = true;
-      new MutationObserver(() => {
-        document
-          .querySelector<HTMLButtonElement>(
-            `[data-testid="${dialog}"][data-state="open"] [data-testid="${confirm}"]:not([disabled])`
-          )
-          ?.click();
-      }).observe(document, { attributes: true, childList: true, subtree: true });
-    },
-    { confirm: TID.saveAsConfirm, dialog: TID.saveAsDialog }
-  );
-  await page.getByTestId(button).click();
+export const copyExport = async (
+  page: Page,
+  format: 'copy' | 'html',
+  choice: ExportChoice = {}
+): Promise<string | null> => {
+  await chooseExport(page, format, format === 'html' ? { htmlMode: 'tag', ...choice } : choice);
+  const button = page.getByTestId(TID.exportDlgSave);
+  await button.click();
+  await expect(button).toHaveAttribute('data-export-state', /^(done|failed)$/, {
+    timeout: 20_000
+  });
+  return await button.getAttribute('data-export-state');
 };
 
 const download = async (
@@ -49,14 +83,9 @@ const download = async (
   format: 'png' | 'svg',
   expectedSize: number
 ): Promise<number> => {
-  await openExport(page);
+  await chooseExport(page, format);
   const saved = verifyFileSizeGreaterThan(page, 'diagram', format, expectedSize);
-  if ((await page.getByTestId(`${TID.exportDlgFormat}-${format}`).count()) > 0) {
-    await page.getByTestId(`${TID.exportDlgFormat}-${format}`).click();
-    await page.getByTestId(TID.exportDlgSave).click();
-  } else {
-    await legacySave(page, format === 'png' ? TID.downloadPNG : TID.downloadSVG);
-  }
+  await page.getByTestId(TID.exportDlgSave).click();
   return await saved;
 };
 

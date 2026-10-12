@@ -1,5 +1,12 @@
 import { TID } from '$/constants';
+import type { Page } from '@playwright/test';
 import { expect, t, test } from './test';
+
+/** Opens the inspector's 「アイコン集」 dialog. */
+const openPacks = async (page: Page) => {
+  await page.getByTestId(TID.inspIconPacks).click();
+  await expect(page.getByTestId(TID.inspIconPacksDialog)).toBeVisible();
+};
 
 const firewall =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" fill="#123456"/></svg>';
@@ -13,7 +20,7 @@ test.describe('Icon import', () => {
     page
   }) => {
     await editPage.start(url);
-    await page.getByTestId(TID.iconPacksCard).click();
+    await openPacks(page);
 
     await page.getByTestId(TID.iconPackPrefix).fill('corp');
     await page.getByTestId(TID.iconPackFiles).setInputFiles({
@@ -23,6 +30,7 @@ test.describe('Icon import', () => {
     });
     await page.getByTestId(TID.iconPackImport).click();
     await expect(page.getByTestId(TID.iconPackList)).toContainText('corp');
+    await page.keyboard.press('Escape');
 
     const icon = editPage.view.locator('rect[fill="#123456"]');
     await expect(icon.first()).toBeAttached({ timeout: 15_000 });
@@ -31,7 +39,7 @@ test.describe('Icon import', () => {
     await page.reload();
     await expect(icon.first()).toBeAttached({ timeout: 15_000 });
 
-    await page.getByTestId(TID.iconPacksCard).click();
+    await openPacks(page);
     page.once('dialog', (dialog) => void dialog.accept());
     await page.getByTestId(TID.iconPackList).getByRole('button').first().click();
     await expect(page.getByTestId(TID.iconPackList)).not.toContainText('corp');
@@ -54,7 +62,7 @@ test.describe('Icon import', () => {
       };
     });
     await editPage.start(url);
-    await page.getByTestId(TID.iconPacksCard).click();
+    await openPacks(page);
     await page.getByTestId(TID.iconPackPrefix).fill('corp');
     await page.getByTestId(TID.iconPackFiles).setInputFiles({
       buffer: Buffer.from(firewall),

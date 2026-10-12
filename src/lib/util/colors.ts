@@ -452,6 +452,37 @@ export const resetTextStyle = (code: string, id: string, syntax: ColorSyntax): s
     syntax
   );
 
+/** The border colour the object's statement sets (`stroke:`, or C4's `$borderColor`). */
+export const getObjectStroke = (
+  code: string,
+  id: string,
+  syntax: ColorSyntax
+): string | undefined =>
+  syntax === 'c4' ? c4SettingsOf(code, id).borderColor : styleProperties(code, id).stroke;
+
+/**
+ * The code with only the object's border colour set (its fill and text stay), or the
+ * border colour removed when `color` is undefined: the inspector's 「枠」 colour.
+ */
+export const setObjectStroke = (
+  code: string,
+  id: string,
+  color: string | undefined,
+  syntax: ColorSyntax
+): string => {
+  if (color !== undefined && !hexPattern.test(color)) return code;
+  return syntax === 'c4'
+    ? updateC4(code, id, (settings) =>
+        placeText(settings, 'borderColor', color, new Set(['bgColor']))
+      )
+    : updateStyle(
+        code,
+        id,
+        (properties) => placeText(properties, 'stroke', color, new Set(['fill'])),
+        syntax
+      );
+};
+
 /**
  * The object behind a clicked SVG element, from its id: mermaid ids elements
  * `<svg id>-<id>` (requirement, block, C4) or `<svg id>-<kind>-<id>-<n>`

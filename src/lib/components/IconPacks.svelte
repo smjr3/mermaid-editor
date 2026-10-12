@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Card from '$/components/Card/Card.svelte';
-  import IconPicker from '$/components/IconPicker.svelte';
   import { Button } from '$/components/ui/button';
   import { Input } from '$/components/ui/input';
   import { TID } from '$/constants';
@@ -15,8 +13,9 @@
   import { iconPacks } from '$/util/iconPacks';
   import { onMount } from 'svelte';
   import DeleteIcon from '~icons/material-symbols/delete-outline';
-  import IconsIcon from '~icons/material-symbols/category-outline-rounded';
 
+  // Local: the icon packs — the bundled ones, and SVG / Iconify JSON packs imported into
+  // this browser (customIconStore.ts) — as the content of the inspector's 「アイコン集」 dialog.
   const bundled = iconPacks.map(({ name }) => name);
 
   let packs = $state<IconifyJSON[]>([]);
@@ -120,66 +119,65 @@
   };
 </script>
 
-<Card
-  title={t('icons.title')}
-  testID={TID.iconPacksCard}
-  isStackable
-  icon={{ component: IconsIcon }}>
-  <div class="flex min-w-fit flex-col gap-3 p-2 text-sm">
-    <IconPicker />
-    <p>
-      {t('icons.bundled', { packs: bundled.join(', ') })}
-      <a
-        class="text-accent underline"
-        href="https://icon-sets.iconify.design/"
-        target="_blank"
-        rel="noopener noreferrer">{t('icons.browse')}</a>
-    </p>
+<div class="flex flex-col gap-3 text-sm">
+  <p class="text-muted-foreground">
+    {t('icons.bundled', { packs: bundled.join(', ') })}
+    <a
+      class="text-accent underline"
+      href="https://icon-sets.iconify.design/"
+      target="_blank"
+      rel="noopener noreferrer">{t('icons.browse')}</a>
+  </p>
 
-    <div class="flex flex-col gap-1">
-      <span class="font-semibold">{t('icons.imported')}</span>
-      <ul class="flex flex-col gap-1" data-testid={TID.iconPackList}>
-        {#each packs as pack (pack.prefix)}
-          <li class="flex items-center justify-between gap-2">
-            <span>
-              <code>{pack.prefix}</code>
-              <span class="text-muted-foreground">
-                {t('icons.count', { count: String(Object.keys(pack.icons).length) })}
-              </span>
+  <div class="flex flex-col gap-1">
+    <span class="font-semibold">{t('icons.imported')}</span>
+    <ul class="flex flex-col gap-1" data-testid={TID.iconPackList}>
+      {#each packs as pack (pack.prefix)}
+        <li class="flex items-center justify-between gap-2">
+          <span>
+            <code>{pack.prefix}</code>
+            <span class="text-muted-foreground">
+              {t('icons.count', { count: String(Object.keys(pack.icons).length) })}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              title={t('icons.delete', { prefix: pack.prefix })}
-              aria-label={t('icons.delete', { prefix: pack.prefix })}
-              onclick={() => remove(pack.prefix)}>
-              <DeleteIcon />
-            </Button>
-          </li>
-        {:else}
-          <li class="text-muted-foreground">{t('icons.none')}</li>
-        {/each}
-      </ul>
-    </div>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            title={t('icons.delete', { prefix: pack.prefix })}
+            aria-label={t('icons.delete', { prefix: pack.prefix })}
+            onclick={() => remove(pack.prefix)}>
+            <DeleteIcon />
+          </Button>
+        </li>
+      {:else}
+        <li class="text-muted-foreground">{t('icons.none')}</li>
+      {/each}
+    </ul>
+  </div>
 
-    <label class="flex flex-col gap-1">
-      <span>{t('icons.prefix')}</span>
-      <Input bind:value={prefix} placeholder="corp-icons" data-testid={TID.iconPackPrefix} />
-    </label>
-    <label class="flex flex-col gap-1">
-      <span>{t('icons.files')}</span>
-      <input
-        type="file"
-        multiple
-        accept=".svg,.json,image/svg+xml,application/json"
-        bind:files
-        data-testid={TID.iconPackFiles} />
-    </label>
+  <label class="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2">
+    <span class="text-xs text-muted-foreground">{t('icons.prefix')}</span>
+    <Input
+      bind:value={prefix}
+      class="h-8"
+      placeholder="corp-icons"
+      data-testid={TID.iconPackPrefix} />
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs text-muted-foreground">{t('icons.files')}</span>
+    <input
+      type="file"
+      multiple
+      accept=".svg,.json,image/svg+xml,application/json"
+      bind:files
+      data-testid={TID.iconPackFiles} />
+  </label>
+  <div>
     <Button size="sm" onclick={importPack} data-testid={TID.iconPackImport}>
       {t('icons.import')}
     </Button>
-    {#if message}
-      <p class={isError ? 'text-destructive' : 'text-muted-foreground'} role="status">{message}</p>
-    {/if}
   </div>
-</Card>
+  {#if message}
+    <p class={isError ? 'text-destructive' : 'text-muted-foreground'} role="status">{message}</p>
+  {/if}
+</div>

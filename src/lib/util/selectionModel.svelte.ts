@@ -13,11 +13,13 @@ import type { MessageKey } from '$/i18n/messages';
 import {
   getEdgeColor,
   getObjectColor,
+  getObjectStroke,
   getTextColor,
   getTextStyle,
   resetTextStyle,
   setEdgeColor,
   setObjectColor,
+  setObjectStroke,
   setTextColor,
   setTextStyle,
   type Swatch,
@@ -56,7 +58,10 @@ import {
   type EditObject,
   type EditObjects
 } from './diagramModify';
-import { diagramObjects } from './mermaid';
+import { addSpecs, initialValues } from './addActions';
+import { diagramIds } from './diagramIds';
+import { diagramObjects, parse } from './mermaid';
+import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 import {
   addAfter,
   addedObject,
@@ -81,6 +86,13 @@ import {
 } from './selection.svelte';
 import { applyToolEdit, editsBlocked } from './codeHealth.svelte';
 import { inputState, updateCode } from './state.svelte';
+
+/** Why an id rename was refused, as F2 in the code says it. */
+const idRejections = {
+  breaks: 'editor.renameBreaks',
+  invalid: 'editor.renameInvalid',
+  taken: 'editor.renameTaken'
+} as const satisfies Record<string, MessageKey>;
 
 class SelectionModel {
   /** The code the lists below were read from. */
@@ -316,6 +328,17 @@ class SelectionModel {
       this.style(setObjectColor(inputState.code, this.object.id, swatch, this.syntax));
     }
   };
+  /** The border colour set on its own (the inspector's 「枠」). */
+  get stroke(): string | undefined {
+    return this.object && this.syntax
+      ? getObjectStroke(inputState.code, this.object.id, this.syntax)
+      : undefined;
+  }
+  setStroke = (color: string | undefined) => {
+    if (this.object && this.syntax) {
+      this.style(setObjectStroke(inputState.code, this.object.id, color, this.syntax));
+    }
+  };
   get textStyle(): TextStyle | undefined {
     return this.object && this.syntax && this.syntax !== 'c4'
       ? getTextStyle(inputState.code, this.object.id, this.syntax)
@@ -400,6 +423,65 @@ class SelectionModel {
       next,
       t(values ? 'edit.changed' : 'edit.deleted', { name: member.label.trim() })
     );
+  };
+
+  /** A new class member or entity attribute (the Add card's own action), last in the object. */
+  addMember = async () => {
+    const { kind, object } = this;
+    if (!object || (kind !== 'class' && kind !== 'er')) return;
+    const action = addSpecs
+      .find((spec) => spec.kind === kind)
+      ?.actions.find(({ id }) => id === (kind === 'class' ? 'member' : 'attribute'));
+    if (!action) return;
+    const result = action.apply(inputState.code, {
+      ...initialValues(action),
+      [kind === 'class' ? 'class' : 'entity']: object.id
+    });
+    if ('error' in result) {
+      this.warn(result.error);
+      return;
+    }
+    await this.apply(result.code, t('sel.added', { name: result.name }));
+  };
+
+  /** Whether the object's id is a name in the code that a rename can change everywhere. */
+  get canRenameId(): boolean {
+    const { object } = this;
+    return (
+      !!object &&
+      object.line === undefined &&
+      isValidIdentifier(object.id) &&
+      findOccurrences(inputState.code, object.id).length > 0
+    );
+  }
+
+  /** Changes the object's id everywhere it is used, as F2 in the code does (mermaidRename.ts). */
+  renameId = async (to: string) => {
+    const { object } = this;
+    const next = to.trim();
+    if (!object || !next || next === object.id) return;
+    if (editsBlocked()) {
+      this.warn('recover.blocked');
+      return;
+    }
+    const code = inputState.code;
+    const result = await checkedRename(
+      code,
+      object.id,
+      next,
+      async (text) => (await parse(text)).diagramType,
+      diagramIds
+    );
+    if ('reason' in result) {
+      this.warn(idRejections[result.reason], { name: next });
+      return;
+    }
+    // The code changed while mermaid checked the rename: it was made from the old code.
+    if (inputState.code !== code) return;
+    updateCode(result.code, { updateDiagram: true });
+    this.message = t('edit.renamed', { name: next });
+    this.warning = '';
+    select({ id: next, type: 'node' });
   };
 
   // ---- Arrows ----

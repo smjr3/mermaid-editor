@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FieldRow from '$/components/form/FieldRow.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { locale, t } from '$/i18n';
@@ -32,39 +33,48 @@
 </script>
 
 <div class="flex flex-col gap-1" data-testid={TID.aiPrompt}>
-  <span class="font-semibold">{t('icons.aiTitle')}</span>
-  <p class="text-xs text-muted-foreground">{t('icons.aiHint')}</p>
-  {#if aiCollection.ids.length > 0}
-    <ul class="flex flex-wrap gap-1" data-testid={TID.aiCollected}>
-      {#each aiCollection.ids as id (id)}
-        <li class="flex items-center gap-0.5 rounded-md border border-border px-1.5 text-xs">
-          <code>{iconReference(id)}</code>
-          <button
-            type="button"
-            class="rounded p-0.5 hover:bg-muted"
-            title={t('icons.aiRemove', { id: iconReference(id) })}
-            aria-label={t('icons.aiRemove', { id: iconReference(id) })}
-            onclick={() => aiCollection.remove(id)}>
-            <RemoveIcon class="size-3" />
-          </button>
-        </li>
-      {/each}
-    </ul>
-  {/if}
-  <div class="flex items-center gap-1">
-    <Button size="sm" data-testid={TID.aiCopyButton} onclick={copy}>
+  <FieldRow label={t('insp.ai')}>
+    <Button
+      size="sm"
+      variant="outline"
+      class="h-7 px-2 text-xs"
+      title={t('icons.aiHint')}
+      data-testid={TID.inspAiCopy}
+      onclick={copy}>
       <CopyIcon />
-      {t('icons.aiCopy')}
+      {t('insp.aiCopy')}
     </Button>
     {#if aiCollection.ids.length > 0}
       <Button
         size="sm"
         variant="ghost"
+        class="h-7 px-2 text-xs"
         data-testid={TID.aiClearButton}
         onclick={() => aiCollection.clear()}>{t('icons.aiClear')}</Button>
     {/if}
-  </div>
+  </FieldRow>
+  {#if aiCollection.ids.length > 0}
+    <FieldRow label="">
+      <ul class="flex flex-wrap gap-1" data-testid={TID.aiCollected}>
+        {#each aiCollection.ids as id (id)}
+          <li class="flex items-center gap-0.5 rounded-md border border-border px-1.5 text-xs">
+            <code>{iconReference(id)}</code>
+            <button
+              type="button"
+              class="rounded p-0.5 hover:bg-muted"
+              title={t('icons.aiRemove', { id: iconReference(id) })}
+              aria-label={t('icons.aiRemove', { id: iconReference(id) })}
+              onclick={() => aiCollection.remove(id)}>
+              <RemoveIcon class="size-3" />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </FieldRow>
+  {/if}
   {#if message}
-    <p role="status" class="text-muted-foreground" data-testid={TID.aiMessage}>{message}</p>
+    <p role="status" class="text-xs text-muted-foreground" data-testid={TID.aiMessage}>
+      {message}
+    </p>
   {/if}
 </div>

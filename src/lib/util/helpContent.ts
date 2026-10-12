@@ -52,8 +52,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'edit',
       items: [
         'Click a shape, an arrow or a lane in the picture to select it: the top of the settings panel shows "Whole diagram › Shape" (or Arrow, Lane, Task) and the panel switches to its settings; ✕, Escape or a click on the empty canvas clears. Double-click to rename; right-click for Rename, Change colour, Change shape, Add next, Draw an arrow from here and Delete.',
-        'A shape: name, shape, colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text (size, bold, reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it, and + Next, + Branch, Arrow and Delete.',
-        'An arrow: from and to, label, line (solid, dotted, thick), arrowheads (end, both, none), colour, reverse and delete.',
+        'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text (size, bold, reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it, and + Next, + Branch, Arrow and Delete.',
+        'An arrow: from and to, label, line (solid, dotted, thick), arrowhead (at the end, both ends, none), colour, reverse and delete.',
         'A lane: name, colour, how many shapes it holds with a button to add one, and delete (keeping or with what is inside). Architecture services: change the icon, or move the service to another group.',
         'A change that would break the diagram is not made; the panel says so instead.',
         'Diagrams whose parts cannot be clicked (gantt, kanban, pie, …) list them in the settings panel to choose from. Class members, ER attributes, gantt tasks (section, start, predecessor, days, status and marks) and pie values can be changed too; sections, composite states, C4 boundaries and nested blocks can go with or without what is inside.',
@@ -64,8 +64,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'layout',
       items: [
-        'Direction (Whole diagram in the settings panel): top to bottom, left to right, or automatic, which picks the one that shows larger.',
-        'Layout: Standard, or ELK for compact layouts of large diagrams.',
+        'Direction (Whole diagram in the settings panel): top to bottom, bottom to top, left to right, right to left, or automatic, which picks the one that shows larger.',
+        'Layout: Standard, or ELK for compact layouts of large diagrams; under ELK also Placement and Merge arrows.',
         'Spacing: compact, normal or wide (ELK ignores it).',
         'Title: shown above flowcharts, swimlanes, sequence, state, class, ER, gantt, pie, timeline and C4 diagrams; mindmaps, kanban, architecture and block diagrams show none. Rows a diagram type cannot use are not shown.'
       ],
@@ -90,7 +90,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         'A green dot marks mermaid’s standard icons (they render anywhere); others need this editor or the same icon packs.',
         'Architecture diagrams use them as service(icon)[Name].',
         'Licences and trademarks of the icon sets: see "Icon licences" in this guide; logos show ™ in the picker.',
-        'Asking an AI: "Copy a briefing for an AI" (Whole diagram) gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are counted under unknown icons, with "Replace with suggestions".'
+        'Asking an AI: "Copy icon briefing" in the AI row of Whole diagram gives it the syntax and real icon names (collect the ones you want in the picker first); names it still invents are counted under unknown icons, with "Replace with suggestions".'
       ],
       title: 'Icons'
     },
@@ -170,8 +170,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'edit',
       items: [
         '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの上に「図全体 › 図形」（矢印・レーン・タスク）と出て、その設定に変わります。✕ か Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更、右クリックで「名前を変更・色を変える・形を変える・次の処理を追加・ここから矢印を引く・削除」のメニューが出ます。',
-        '図形：名前、形、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字（大きさ・太字・元に戻す）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧、「＋次」「＋分岐」「矢印」「削除」。',
-        '矢印：つなぐ元と先、ラベル、線（実線・点線・太線）、矢じり（先・両方・なし）、色、向きの反転、削除。',
+        '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字（大きさ・太字・元に戻す）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧、「＋次」「＋分岐」「矢印」「削除」。',
+        '矢印：つなぐ元と先、ラベル、線（実線・点線・太線）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。',
         'レーン：名前、色、入っている図形の数と追加、削除（中身は残す・中身ごと）。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。',
         '図が壊れる変更は行われず、パネルにその旨が表示されます。',
         'クリックで選べない図（ガント・カンバン・円グラフなど）は、設定パネルの一覧から要素を選びます。クラスの属性・メソッド、ER 図の属性、ガントのタスク（区分・開始日・前のタスク・日数・状況・印）、円グラフの値なども変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。',
@@ -182,8 +182,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'layout',
       items: [
-        '設定パネルの「図全体」の「向き」：上→下・左→右・自動（大きく表示できる向きを自動で選びます）。',
-        '「配置」：標準 か ELK（大きな図を詰めて配置）。',
+        '設定パネルの「図全体」の「向き」：上→下・下→上・左→右・右→左・自動（大きく表示できる向きを自動で選びます）。',
+        '「配置」：標準 か ELK（大きな図を詰めて配置）。ELK のときは「並べ方」と「矢印をまとめる」も選べます。',
         '「間隔」：詰める・標準・広く（ELK のときは効きません）。',
         '「タイトル」：フローチャート・スイムレーン・シーケンス・状態・クラス・ER・ガント・円グラフ・タイムライン・C4 の図の上に表示されます。マインドマップ・カンバン・アーキテクチャ・ブロック図には表示されません。図の種類で使えない項目はパネルに出ません。'
       ],
@@ -208,7 +208,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
         '緑の印は Mermaid 標準のアイコンで、どこでも表示できます。ほかはこのエディタか同じアイコン集が必要です。',
         'アーキテクチャ図では service ID(アイコン名)[表示名] の形で使います。',
         'アイコン集のライセンスや商標については、この使い方の「アイコンの利用条件」を参照してください。ロゴは一覧に ™ が付きます。',
-        'AI に描かせるときは「図全体」の「AI用の説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は不明なアイコンの件数に出て、「候補に置換」で置き換えられます。'
+        'AI に描かせるときは「図全体」の「AI」の「アイコン説明をコピー」で書き方と実在するアイコン名を渡せます（使いたいアイコンは先に一覧で集めておく）。それでも AI が作ってしまった名前は不明なアイコンの件数に出て、「候補に置換」で置き換えられます。'
       ],
       title: 'アイコン'
     },

@@ -16,7 +16,7 @@ const edge = (
   extra: Partial<EditEdge> = {}
 ): EditEdge => ({
   from,
-  head: true,
+  head: 'end',
   index,
   label: '',
   style: 'solid',

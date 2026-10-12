@@ -42,6 +42,7 @@ import {
 } from './chartEdit';
 import { requirementName } from './codeText';
 import { freshId, headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
+import { canonicalShape, type FlowShapeName } from './flowShapes';
 import { memoByCode } from './memo';
 import {
   decodeEntities,
@@ -106,7 +107,7 @@ export interface EditEdge {
   /** How the list shows it. */
   title: string;
   style: EdgeStyle;
-  head: boolean;
+  head: EdgeHead;
   /** The 0-based line of the statement (not for flowcharts). */
   line?: number;
 }
@@ -115,7 +116,8 @@ export interface EditEdges {
   kind: EditKind;
   items: EditEdge[];
   /** What this type's arrow syntax allows. */
-  can: { label: boolean; reverse: boolean; styles: EdgeStyle[]; head: boolean };
+  /** `head`: an arrowhead can be added or taken off; `both`: it can be on both ends. */
+  can: { both: boolean; head: boolean; label: boolean; reverse: boolean; styles: EdgeStyle[] };
   /** The statements could not be matched to what mermaid drew, so the list is empty. */
   unsure?: boolean;
 }
@@ -583,6 +585,38 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
   return lines;
 };
 
+/**
+ * An arrow's heads: only at its end (`-->`), at both ends (`<-->`), or none (`---`).
+ * Local: 両方 joined 先だけ / なし with the inspector's 矢じり row.
+ */
+export type EdgeHead = 'end' | 'both' | 'none';
+
+/** The heads of an arrow whose ends carry `head` and `tail` marks ('' for none). */
+const headsOf = (head: string, tail: string): EdgeHead =>
+  head && tail ? 'both' : head || tail ? 'end' : 'none';
+
+/** The mark on the other end that matches `mark`: `>` and `<`, `|>` and `<|`, `o` and `o`. */
+const mirrorMark = (mark: string): string =>
+  ({ '<': '>', '<|': '|>', '>': '<', '|>': '<|' })[mark] ?? mark;
+
+/**
+ * New head and tail marks for `wanted`. 先だけ keeps a single mark where it is (a class's
+ * `<|--` stays) and drops the tail of a two-headed arrow; 両方 mirrors the mark there is.
+ */
+const withHeads = (
+  { head, tail }: { head: string; tail: string },
+  wanted: EdgeHead,
+  plain = '>'
+): { head: string; tail: string } => {
+  if (wanted === 'none') return { head: '', tail: '' };
+  if (wanted === 'end') {
+    if (head && tail) return { head, tail: '' };
+    return head || tail ? { head, tail } : { head: plain, tail: '' };
+  }
+  const end = head || (tail ? mirrorMark(tail) : plain);
+  return { head: end, tail: tail || mirrorMark(end) };
+};
+
 // Flowchart arrows: one link's parts and their text.
 
 interface Link {
@@ -698,9 +732,9 @@ interface EdgeSyntax {
   render: (statement: Statement) => string;
   reverse: (statement: Statement) => Statement;
   setStyle?: (statement: Statement, style: EdgeStyle) => Statement;
-  setHead?: (statement: Statement, head: boolean) => Statement;
+  setHead?: (statement: Statement, head: EdgeHead) => Statement;
   style: (statement: Statement) => EdgeStyle;
-  head: (statement: Statement) => boolean;
+  head: (statement: Statement) => EdgeHead;
   label: (text: string) => string;
   can: EditEdges['can'];
   /** How many arrows mermaid found, to confirm the patterns saw every one. */
@@ -708,14 +742,14 @@ interface EdgeSyntax {
 }
 
 const stateSyntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: [] },
+  can: { both: false, head: false, label: true, reverse: true, styles: [] },
   // Every transition, inside composite states too (getRelations has only the top level),
   // but not the lines that tie a note to its state.
   count: (db) =>
     list((read(db, 'getData') as Db | undefined)?.edges).filter(
       ({ start, end }) => !`${String(start)} ${String(end)}`.includes('----')
     ).length,
-  head: () => true,
+  head: () => 'end',
   label: (text) => oneLine(text).replaceAll(':', '：'),
   parse: ([, indent, from, to, label = '']) => ({ from, indent, label, parts: {}, to }),
   pattern: /^(\s*)(\[\*\]|[\p{L}\p{N}_-]+)\s*-->\s*(\[\*\]|[\p{L}\p{N}_-]+)\s*(?::\s*(.*?))?\s*$/u,
@@ -726,9 +760,9 @@ const stateSyntax: EdgeSyntax = {
 };
 
 const classSyntax: EdgeSyntax = {
-  can: { head: true, label: true, reverse: true, styles: ['solid', 'dotted'] },
+  can: { both: true, head: true, label: true, reverse: true, styles: ['solid', 'dotted'] },
   count: (db) => list(read(db, 'getRelations')).length,
-  head: ({ parts }) => parts.head !== '' || parts.tail !== '',
+  head: ({ parts }) => headsOf(parts.head, parts.tail),
   label: (text) => oneLine(text).replaceAll(/[:"]/g, ' ').replaceAll(/\s+/g, ' ').trim(),
   parse: ([
     ,
@@ -760,20 +794,16 @@ const classSyntax: EdgeSyntax = {
   }),
   setHead: (s, head) => ({
     ...s,
-    parts: {
-      ...s.parts,
-      head: head ? (s.parts.head || s.parts.tail ? s.parts.head : '>') : '',
-      tail: head ? s.parts.tail : ''
-    }
+    parts: { ...s.parts, ...withHeads({ head: s.parts.head, tail: s.parts.tail }, head) }
   }),
   setStyle: (s, style) => ({ ...s, parts: { ...s.parts, line: style === 'dotted' ? '..' : '--' } }),
   style: ({ parts }) => (parts.line === '..' ? 'dotted' : 'solid')
 };
 
 const erSyntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: ['solid', 'dotted'] },
+  can: { both: false, head: false, label: true, reverse: true, styles: ['solid', 'dotted'] },
   count: (db) => list(read(db, 'getRelationships')).length,
-  head: () => true,
+  head: () => 'end',
   label: (text) => oneLine(text).replaceAll('"', "'"),
   parse: ([, indent, from, cardA, line, cardB, to, label]) => ({
     from,
@@ -792,8 +822,10 @@ const erSyntax: EdgeSyntax = {
 };
 
 const sequenceSyntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: ['solid', 'dotted'] },
-  head: () => true,
+  can: { both: true, head: true, label: true, reverse: true, styles: ['solid', 'dotted'] },
+  // `->` and `-->` are lines without a head, `<<->>` and `<<-->>` have one at each end.
+  head: ({ parts }) =>
+    parts.both ? 'both' : parts.arrow === '->' || parts.arrow === '-->' ? 'none' : 'end',
   label: sequenceText,
   parse: ([, indent, from, both = '', arrow, mark = '', to, label = '']) => ({
     from,
@@ -807,6 +839,18 @@ const sequenceSyntax: EdgeSyntax = {
   render: ({ from, indent, label, parts, to }) =>
     `${indent}${from}${parts.both}${parts.arrow}${parts.mark}${to}: ${label}`,
   reverse: (s) => ({ ...s, from: s.to, to: s.from }),
+  // 先だけ keeps a cross or an open arrow (`-x`, `-)`) as it is; 両方 has only `<<->>`.
+  setHead: (s, head) => {
+    const dashes = s.parts.arrow.startsWith('--') ? '--' : '-';
+    const plain = s.parts.arrow === '->' || s.parts.arrow === '-->';
+    const arrow =
+      head === 'none'
+        ? `${dashes}>`
+        : head === 'both' || plain || s.parts.both
+          ? `${dashes}>>`
+          : s.parts.arrow;
+    return { ...s, parts: { ...s.parts, arrow, both: head === 'both' ? '<<' : '' } };
+  },
   setStyle: (s, style) => ({
     ...s,
     parts: {
@@ -818,9 +862,9 @@ const sequenceSyntax: EdgeSyntax = {
 };
 
 const architectureSyntax: EdgeSyntax = {
-  can: { head: true, label: false, reverse: true, styles: [] },
+  can: { both: true, head: true, label: false, reverse: true, styles: [] },
   count: (db) => list(read(db, 'getEdges')).length,
-  head: ({ parts }) => parts.head !== '' || parts.tail !== '',
+  head: ({ parts }) => headsOf(parts.head, parts.tail),
   label: () => '',
   parse: ([, indent, from, groupA = '', sideA, tail = '', head = '', sideB, to, groupB = '']) => ({
     from,
@@ -846,11 +890,7 @@ const architectureSyntax: EdgeSyntax = {
   }),
   setHead: (s, head) => ({
     ...s,
-    parts: {
-      ...s.parts,
-      head: head ? (s.parts.tail ? s.parts.head : '>') : '',
-      tail: head ? s.parts.tail : ''
-    }
+    parts: { ...s.parts, ...withHeads({ head: s.parts.head, tail: s.parts.tail }, head) }
   }),
   style: () => 'solid'
 };
@@ -883,9 +923,9 @@ const unpairActivation = (lines: string[], line: number, statement: Statement) =
 // C4: `Rel(from, to, "label", …)` and its variants (`Rel_D`, `BiRel`, `Rel_Back`, …);
 // what follows the label (technology, `$tags=…`) is kept as written.
 const c4Syntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: [] },
+  can: { both: false, head: false, label: true, reverse: true, styles: [] },
   count: (db) => list(read(db, 'getRels')).length,
-  head: () => true,
+  head: () => 'end',
   label: (text) => oneLine(text).replaceAll('"', "'"),
   parse: ([, indent, kind, from, to, label = '', rest = '']) => ({
     from,
@@ -904,9 +944,9 @@ const c4Syntax: EdgeSyntax = {
 
 // Block: `a --> b`, `a --- b` (no head) and `a -- "label" --> b`.
 const blockSyntax: EdgeSyntax = {
-  can: { head: true, label: true, reverse: true, styles: [] },
+  can: { both: false, head: true, label: true, reverse: true, styles: [] },
   count: (db) => list(read(db, 'getEdges')).length,
-  head: ({ parts }) => parts.link !== '---',
+  head: ({ parts }) => (parts.link === '---' ? 'none' : 'end'),
   label: (text) => oneLine(text).replaceAll('"', "'"),
   parse: ([, indent, from, label = '', link, to]) => ({
     from,
@@ -919,7 +959,7 @@ const blockSyntax: EdgeSyntax = {
   render: ({ from, indent, label, parts, to }) =>
     `${indent}${from} ${label ? `-- "${label}" ` : ''}${parts.link} ${to}`,
   reverse: (s) => ({ ...s, from: s.to, to: s.from }),
-  setHead: (s, head) => ({ ...s, parts: { ...s.parts, link: head ? '-->' : '---' } }),
+  setHead: (s, head) => ({ ...s, parts: { ...s.parts, link: head === 'none' ? '---' : '-->' } }),
   style: () => 'solid'
 };
 
@@ -2051,6 +2091,7 @@ export const editableEdges = memoByCode(async (code: string): Promise<EditEdges 
   const { lines } = splitLines(code);
   if (kind === 'flowchart') {
     const can = {
+      both: true,
       head: true,
       label: true,
       reverse: true,
@@ -2073,7 +2114,7 @@ export const editableEdges = memoByCode(async (code: string): Promise<EditEdges 
         const link = parseLink(chain ? expandChain(chain)[i - first.index].links[0] : '-->');
         return {
           from: edge.from.id,
-          head: link.head !== '' || link.tail !== '',
+          head: headsOf(link.head, link.tail),
           id: known[i].id,
           index: i,
           label: decodeEntities(link.text),
@@ -2256,17 +2297,26 @@ export const setEdgeStyle = (
       )
     : rewriteStatement(code, kind, edge, (s, syntax) => syntax.setStyle?.(s, style) ?? s);
 
-/** The arrow with or without its head. */
-export const setEdgeHead = (code: string, kind: EditKind, edge: EditEdge, head: boolean): string =>
+/** The arrow with its head at the end only, at both ends (`<-->`, `<-.->`, `<==>`), or none. */
+export const setEdgeHead = (
+  code: string,
+  kind: EditKind,
+  edge: EditEdge,
+  head: EdgeHead
+): string =>
   kind === 'flowchart'
     ? rewriteFlow(
         code,
         edge.index,
-        changeLink((link) => ({
-          ...link,
-          head: head ? (link.head || link.tail ? link.head : '>') : '',
-          tail: head ? link.tail : ''
-        }))
+        changeLink((link) => {
+          // A flowchart's head is always at the end: `x--x` and `o--o` mirror, `<--` is no arrow.
+          const marks = withHeads({ head: link.head, tail: link.tail }, head);
+          return {
+            ...link,
+            head: (marks.head || (marks.tail ? mirrorMark(marks.tail) : '')) as Link['head'],
+            tail: (head === 'both' ? marks.tail : '') as Link['tail']
+          };
+        })
       )
     : rewriteStatement(code, kind, edge, (s, syntax) => syntax.setHead?.(s, head) ?? s);
 
@@ -2413,6 +2463,8 @@ const laneOfNode = (lines: string[], id: string): string => {
 export interface NodeDetails {
   /** One of the Add card's shapes, 'other' for any other, undefined for an icon or image. */
   shape?: NodeShape | 'other';
+  /** mermaid's short name for the shape (`flowShapes.ts`), when it is one mermaid draws. */
+  shapeName?: FlowShapeName;
   /** `prefix:name`, or ''. */
   icon: string;
   /** The lane or subgraph it is drawn in, or ''. */
@@ -2425,13 +2477,47 @@ export const flowNodeDetails = (code: string, id: string): NodeDetails => {
   const lane = laneOfNode(lines, id);
   const target = nodeDefinition(lines, id);
   // A node written without a shape is drawn as a box.
-  if (!target || !hasShape(target.node)) return { icon: '', lane, shape: 'rect' };
+  if (!target || !hasShape(target.node))
+    return { icon: '', lane, shape: 'rect', shapeName: 'rect' };
   const { data, shape } = nodeParts(target.node);
   const icon = dataValue(data, 'icon');
-  if (shape) return { icon, lane, shape: bracketShapes[bracketParts(shape).open] ?? 'other' };
+  if (shape) {
+    const { open } = bracketParts(shape);
+    return {
+      icon,
+      lane,
+      shape: bracketShapes[open] ?? 'other',
+      shapeName: bracketShapeName(open, shape)
+    };
+  }
   const named = dataValue(data, 'shape');
   if (icon || dataValue(data, 'img')) return { icon, lane, shape: undefined };
-  return { icon, lane, shape: named ? (dataShapes[named] ?? 'other') : 'rect' };
+  return {
+    icon,
+    lane,
+    shape: named ? (dataShapes[named] ?? 'other') : 'rect',
+    shapeName: named ? canonicalShape(named) : 'rect'
+  };
+};
+
+/** mermaid's name for a bracket shape: `[(` is `cyl`, `[/ /]` `lean-r`, `[/ \]` `trap-b`, … */
+const bracketShapeName = (open: string, shape: string): FlowShapeName | undefined => {
+  const slanted = shape.slice(-2);
+  if (open === '[/') return slanted === '/]' ? 'lean-r' : 'trap-b';
+  if (open === '[\\') return slanted === '\\]' ? 'lean-l' : 'trap-t';
+  return bracketShapeNames[open];
+};
+const bracketShapeNames: Record<string, FlowShapeName> = {
+  '(': 'rounded',
+  '((': 'circle',
+  '(((': 'dbl-circ',
+  '([': 'stadium',
+  '>': 'odd',
+  '[': 'rect',
+  '[(': 'cyl',
+  '[[': 'fr-rect',
+  '{': 'diam',
+  '{{': 'hex'
 };
 
 /** A label for a bracket shape: kept as written unless its brackets would end the shape. */
@@ -2469,6 +2555,37 @@ export const setNodeShape = (code: string, id: string, shape: NodeShape): string
     }
     return `${open}${quoted(id)}${close}${rest}`;
   });
+
+// The shapes the Add card already wrote as brackets keep that form.
+const basicShapes: Partial<Record<FlowShapeName, NodeShape>> = {
+  circle: 'circle',
+  diam: 'diamond',
+  rect: 'rect',
+  rounded: 'rounded',
+  stadium: 'stadium'
+};
+
+/**
+ * The code with the node drawn in any of mermaid's shapes (`flowShapes.ts`). The Add card's
+ * five keep their brackets (`setNodeShape`); the others are written `id@{ shape: name }`,
+ * with the bracket text moved into `label`. An icon or image node is refused, as there.
+ */
+export const setNodeShapeName = (code: string, id: string, name: string): string | undefined => {
+  const shape = canonicalShape(name);
+  if (!shape) return undefined;
+  const basic = basicShapes[shape];
+  if (basic) return setNodeShape(code, id, basic);
+  return rewriteNode(code, id, ({ data, rest, shape: current }) => {
+    if (data && (dataValue(data, 'icon') || dataValue(data, 'img'))) return undefined;
+    const pairs = data ? dataPairs(data).filter(([key]) => key !== 'shape') : [];
+    if (current && !pairs.some(([key]) => key === 'label')) {
+      const inner = bracketParts(current).inner.trim();
+      pairs.push(['label', /^".*"$/.test(inner) ? inner : quoted(inner || id)]);
+    }
+    pairs.unshift(['shape', shape]);
+    return `${renderData(pairs)}${rest}`;
+  });
+};
 
 const iconPattern = /^[\w-]+:[\w-]+$/;
 const iconKeys = new Set(['icon', 'form', 'pos', 'h']);

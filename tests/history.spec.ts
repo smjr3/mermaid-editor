@@ -1,4 +1,4 @@
-import { TID } from '$/constants';
+import { C, TID } from '$/constants';
 import { expect, test, type Page } from '@playwright/test';
 import { toggleHistory } from './helpers/shell';
 import { EditorPage, t } from './test';
@@ -42,6 +42,8 @@ test.describe('History', () => {
     await page.addInitScript(() => {
       Object.defineProperty(Date, 'now', { value: () => new Date(2022, 0, 1).getTime() });
     });
+    // The first-visit guide floats over the header's 新規 menu that loading a sample uses.
+    await page.addInitScript((key) => window.localStorage.setItem(key, 'true'), C.guideDoneKey);
     await page.goto('/edit');
   });
 
@@ -153,8 +155,10 @@ test.describe('History', () => {
     await expect(page.locator('#historyList li')).toHaveCount(1);
 
     // Loading a different sample changes the state, so it saves as a new entry.
+    // The sample opens in a new tab (followed in this one): the history column opens again.
     await new EditorPage(page).loadSampleDiagram('Sequence');
     await expect(page.locator('#view')).not.toContainText('Christmas');
+    await openHistory(page);
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(2);
   });
@@ -172,8 +176,10 @@ test.describe('History', () => {
   test('deletes a single entry and clears all after confirmation', async ({ page }) => {
     await openHistory(page);
     await page.locator('#saveHistory').click();
+    // The sample opens in a new tab (followed in this one): the history column opens again.
     await new EditorPage(page).loadSampleDiagram('Sequence');
     await expect(page.locator('#view')).not.toContainText('Christmas');
+    await openHistory(page);
     await page.locator('#saveHistory').click();
     await expect(page.locator('#historyList li')).toHaveCount(2);
 

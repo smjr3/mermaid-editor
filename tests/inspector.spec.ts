@@ -1,7 +1,15 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
 import { nodeByText, selectByText } from './helpers/canvas';
-import { backToRoot, closeSelection, crumb, panel, pickObject } from './helpers/inspector';
+import {
+  backToRoot,
+  closeSelection,
+  crumb,
+  panel,
+  pickEdge,
+  pickObject,
+  renameTo
+} from './helpers/inspector';
 import { expect, t, test } from './test';
 
 // The inspector itself: 図全体 and the breadcrumb, the node / arrow / lane / task views,
@@ -182,11 +190,115 @@ test.describe('Inspector', () => {
     await editPage.checkTextInView('Pick');
     await nodeByText(page, 'Pick').click({ button: 'right' });
     await page.getByTestId(`${TID.contextMenuItem}-color`).click();
-    // Until the canvas stream's menu lands, its colour item opens a sub-menu instead.
-    test.skip(
-      await page.getByTestId(`${TID.contextMenuItem}-color-none`).isVisible(),
-      'the right-click menu does not ask the inspector yet'
-    );
     await expect(page.getByTestId(`${TID.inspColorTarget}-fill`)).toBeFocused();
+  });
+
+  test('the right-click menu’s other items focus their rows', async ({ editPage, page }) => {
+    await editPage.start(urlFor(flow));
+    await editPage.checkTextInView('Pick');
+    await nodeByText(page, 'Pick').click({ button: 'right' });
+    await page.getByTestId(`${TID.contextMenuItem}-shape`).click();
+    await expect(page.getByTestId(TID.inspShape)).toBeFocused();
+    await nodeByText(page, 'Pick').click({ button: 'right' });
+    await page.getByTestId(`${TID.contextMenuItem}-rename`).click();
+    await expect(page.getByTestId(TID.inspName)).toBeFocused();
+    await page.keyboard.press('Escape');
+    expect(await stored(page)).toBe(flow);
+  });
+
+  test('矢じり puts the head at the end, at both ends, or takes it off', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('flowchart LR\n  A[Order] -.-> B[Check]\n  B ==> C[Pick]'));
+    await editPage.checkTextInView('Pick');
+    await pickEdge(page, 0);
+    const head = (value: string) => page.getByTestId(`${TID.inspEdgeHead}-${value}`);
+    await expect(head('end')).toHaveAttribute('aria-pressed', 'true');
+    await head('both').click();
+    await expect.poll(() => stored(page)).toContain('  A[Order] <-.-> B[Check]');
+    await expect(head('both')).toHaveAttribute('aria-pressed', 'true');
+    await head('none').click();
+    await expect.poll(() => stored(page)).toContain('  A[Order] -.- B[Check]');
+    await head('end').click();
+    await expect.poll(() => stored(page)).toContain('  A[Order] -.-> B[Check]');
+    // A thick arrow, both ways.
+    await pickEdge(page, 1);
+    await head('both').click();
+    await expect.poll(() => stored(page)).toContain('  B <==> C');
+    await editPage.checkTextInView('Pick');
+
+    // A block diagram cannot draw a head at each end: 両方 is not offered there.
+    await editPage.start(urlFor('block-beta\n  a b\n  a --> b'));
+    await expect(page.locator('#view svg').first()).toBeVisible({ timeout: 15_000 });
+    await pickEdge(page, 0);
+    await expect(head('end')).toBeVisible();
+    await expect(head('both')).toHaveCount(0);
+  });
+
+  test('colours a node and makes its text bold from the 色 and 文字 rows', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor(flow));
+    await editPage.checkTextInView('Pick');
+    await selectByText(page, 'Check');
+    await page.getByTestId(`${TID.inspColor}-blue`).click();
+    await expect.poll(() => stored(page)).toContain('style B fill:#dde9fb');
+    await page.getByTestId(TID.inspTextBold).click();
+    await expect.poll(() => stored(page)).toContain('font-weight:bold');
+    await page.getByTestId(TID.inspTextReset).click();
+    await expect.poll(() => stored(page)).not.toContain('font-weight:bold');
+  });
+
+  test('renames a mindmap topic chosen from 図全体’s 要素 list', async ({ editPage, page }) => {
+    await editPage.start(urlFor('mindmap\n  root((Centre))\n    A\n    B'));
+    await editPage.checkTextInView('Centre');
+    const select = page.getByTestId(TID.inspObjectSelect);
+    const value = await select.locator('option', { hasText: 'B' }).first().getAttribute('value');
+    await select.selectOption(value ?? '');
+    await expect(page.getByTestId(TID.inspClose)).toBeVisible();
+    await renameTo(page, TID.inspName, '予算');
+    await expect.poll(() => stored(page)).toContain('    予算');
+    await editPage.checkTextInView('予算');
+  });
+
+  test('offers every mermaid shape, all four directions and ELK’s options', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('flowchart TD\n  A[Order] --> B[Check]'));
+    await editPage.checkTextInView('Check');
+    await selectByText(page, 'Order');
+    const shape = page.getByTestId(TID.inspShape);
+    expect(await shape.locator('option').count()).toBeGreaterThanOrEqual(53);
+    await shape.selectOption('cyl');
+    await expect.poll(() => stored(page)).toContain('A@{ shape: cyl, label: "Order" }');
+    await expect(shape).toHaveValue('cyl');
+    await shape.selectOption('diam');
+    await expect.poll(() => stored(page)).toContain('A@{ shape: diam, label: "Order" }');
+
+    await closeSelection(page);
+    await page.getByTestId(`${TID.inspDirection}-BT`).click();
+    await expect.poll(() => stored(page)).toMatch(/^flowchart BT/);
+    await page.getByTestId(`${TID.inspDirection}-RL`).click();
+    await expect.poll(() => stored(page)).toMatch(/^flowchart RL/);
+    await editPage.checkTextInView('Check');
+
+    // ELK is mermaid 12's default engine: its placement and merged arrows go into the config.
+    await page.getByTestId(TID.inspElkPlacement).selectOption('LINEAR_SEGMENTS');
+    await page.getByTestId(TID.inspElkMerge).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { mermaid?: string }).mermaid
+        )
+      )
+      .toMatch(
+        /"nodePlacementStrategy": "LINEAR_SEGMENTS"[\s\S]*"mergeEdges": true|"mergeEdges": true[\s\S]*"nodePlacementStrategy": "LINEAR_SEGMENTS"/
+      );
+    await page.getByTestId(`${TID.inspEngine}-dagre`).click();
+    await expect(page.getByTestId(TID.inspElkPlacement)).toHaveCount(0);
   });
 });

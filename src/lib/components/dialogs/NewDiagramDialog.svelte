@@ -221,52 +221,55 @@
             </button>
           {/each}
         </div>
-        <aside class="flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-border p-3">
-          <div
-            class="grid h-32 shrink-0 place-items-center rounded-md bg-muted"
-            data-testid={TID.newDlgPreview}>
-            <!-- eslint-disable-next-line svelte/no-at-html-tags -- a fixed drawing from newThumbs.ts -->
-            {@html thumbSvg(starterThumb[kind], 180)}
-          </div>
-          <div>
-            <h3 class="text-base font-semibold">{kindName(kind)}</h3>
-            <p class="text-sm text-muted-foreground">{t(`new.kind.${kind}.hint`)}</p>
-          </div>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="font-semibold">{t('new.diagramTitle')}</span>
-            {#if current.title}
-              <Input
-                bind:value={title}
-                class="h-9"
-                placeholder={t('newDlg.titlePlaceholder')}
-                data-testid={TID.newDlgTitle}
-                onkeydown={(event) => event.key === 'Enter' && createLink?.click()} />
-            {:else}
-              <span class="text-xs text-muted-foreground">{t('layout.titleUnsupported')}</span>
-            {/if}
-          </label>
-          {#if current.direction}
-            <div class="flex flex-col gap-1 text-sm">
-              <span class="font-semibold">{t('new.direction')}</span>
-              <div class="flex gap-1">
-                {#each ['TB', 'LR'] as const as option (option)}
-                  <Button
-                    size="sm"
-                    variant={choice(shownDirection === option)}
-                    class="flex-1"
-                    aria-pressed={shownDirection === option}
-                    data-testid={`${TID.newDlgDirection}-${option}`}
-                    onclick={() => (direction = option)}>{t(`layout.direction${option}`)}</Button>
-                {/each}
-              </div>
+        <aside class="flex min-h-0 flex-col gap-3 border-l border-border p-3">
+          <!-- What scrolls when the window is low; the create button below always stays in view. -->
+          <div class="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1">
+            <div
+              class="grid h-32 shrink-0 place-items-center rounded-md bg-muted"
+              data-testid={TID.newDlgPreview}>
+              <!-- eslint-disable-next-line svelte/no-at-html-tags -- a fixed drawing from newThumbs.ts -->
+              {@html thumbSvg(starterThumb[kind], 180)}
             </div>
-          {/if}
+            <div>
+              <h3 class="text-base font-semibold">{kindName(kind)}</h3>
+              <p class="text-sm text-muted-foreground">{t(`new.kind.${kind}.hint`)}</p>
+            </div>
+            <label class="flex flex-col gap-1 text-sm">
+              <span class="font-semibold">{t('new.diagramTitle')}</span>
+              {#if current.title}
+                <Input
+                  bind:value={title}
+                  class="h-9"
+                  placeholder={t('newDlg.titlePlaceholder')}
+                  data-testid={TID.newDlgTitle}
+                  onkeydown={(event) => event.key === 'Enter' && createLink?.click()} />
+              {:else}
+                <span class="text-xs text-muted-foreground">{t('layout.titleUnsupported')}</span>
+              {/if}
+            </label>
+            {#if current.direction}
+              <div class="flex flex-col gap-1 text-sm">
+                <span class="font-semibold">{t('new.direction')}</span>
+                <div class="flex gap-1">
+                  {#each ['TB', 'LR'] as const as option (option)}
+                    <Button
+                      size="sm"
+                      variant={choice(shownDirection === option)}
+                      class="flex-1"
+                      aria-pressed={shownDirection === option}
+                      data-testid={`${TID.newDlgDirection}-${option}`}
+                      onclick={() => (direction = option)}>{t(`layout.direction${option}`)}</Button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
           <Button
             bind:ref={createLink}
             href={starterHref}
             target="_blank"
             rel="noopener"
-            class="mt-auto w-full"
+            class="w-full shrink-0"
             data-testid={TID.newDlgCreate}
             onclick={() => {
               const name = kindName(kind);

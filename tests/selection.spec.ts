@@ -41,7 +41,7 @@ test.describe('Selection', () => {
     expect(Math.abs(nodeBox.x - outlineBox.x)).toBeLessThan(8);
     expect(Math.abs(nodeBox.width - outlineBox.width)).toBeLessThan(12);
     // No toolbar floats over the diagram any more.
-    await expect(page.getByTestId(TID.selectionToolbar)).toHaveCount(0);
+    await expect(page.getByTestId('selection-toolbar')).toHaveCount(0);
 
     await page.keyboard.press('Escape');
     await expect(outline(page)).toBeHidden();
@@ -223,8 +223,8 @@ test.describe('Selection', () => {
       )
       .toBe(false);
     // The old bar over the diagram is gone: no new-tab view, no hand-drawn toggle here.
-    await expect(page.getByTestId(TID.diagramToolbar)).toHaveCount(0);
-    await expect(page.getByTestId(TID.fullScreenButton)).toHaveCount(0);
+    await expect(page.getByTestId('diagram-toolbar')).toHaveCount(0);
+    await expect(page.getByTestId('full-screen-button')).toHaveCount(0);
   });
 
   test('works in other diagram types: a state diagram', async ({ editPage, page }) => {

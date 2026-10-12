@@ -33,10 +33,14 @@
       void tick().then(() => field.select());
     });
   });
-  // Closed: the field shows the current name.
+  // Closed: the field shows the current name. A click on the diagram ends the rename but
+  // leaves focus here (the pan/zoom keeps it), so let go of it: the selection keys (Enter,
+  // Tab, Delete, …) work again on the selection instead of moving between fields.
   $effect(() => {
     const name = model.label;
-    if (!active && input) input.value = name;
+    if (active || !input) return;
+    input.value = name;
+    if (document.activeElement === input) input.blur();
   });
 
   const onfocus = () => {

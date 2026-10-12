@@ -55,11 +55,11 @@ test.describe('Header', () => {
     }
 
     // Gone: the language button, the command search, the old share button and menu.
-    for (const id of [TID.localeToggleButton, TID.commandButton, TID.shareButton]) {
+    for (const id of ['locale-toggle-button', 'command-button', 'share-button']) {
       await expect(page.getByTestId(id), id).toHaveCount(0);
     }
     await page.keyboard.press('Control+k');
-    await expect(page.getByTestId(TID.commandPalette)).toHaveCount(0);
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
   });
 
   test('新規 offers exactly two items, each opening its tab of the new-diagram dialog', async ({

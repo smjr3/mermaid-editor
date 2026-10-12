@@ -171,13 +171,13 @@ measurements and `tests/performance.spec.ts` the guards.
 
 ### Swimlane samples and business templates
 
-| Path                                | Local change                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship; the Japanese "業務テンプレート" group                                                                                                                                                                                                                                                                                                                                   |
-| `src/lib/components/Preset.svelte`  | Rewritten as the one "テンプレート" picker (user feedback 2026-10-08): upstream's grid of sample chips is gone; the business templates, upstream's catalogue and `localSamples` are listed by category with a search box and a category choice, each a button that loads it; a business template with a form gets "フォームで作る…" (opens `<TemplateForms>`); `<NewDiagram>` sits above. The card keeps its `TID.sampleDiagramsCard` header |
-| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as its diagram type; none shadows an upstream sample; the templates are small and Japanese                                                                                                                                                                                                                                                                                                                         |
-| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines                                                                                                                                                                                                                                                                                                                                                                       |
-| `tests/templates.spec.ts`           | Added. Each business template loads from the card and renders without an error                                                                                                                                                                                                                                                                                                                                                               |
+| Path                                | Local change                                                                                                                                                                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/localSamples.ts`      | Added. Swimlane samples, which `@mermaid-js/examples` does not ship; the Japanese "業務テンプレート" group                                                                                                                                     |
+| `src/lib/components/Preset.svelte`  | Deleted (2026-10-12). The template picker became the 新規 dialog's サンプル tab (`dialogs/NewDiagramDialog.svelte`, `src/lib/util/sampleCatalog.ts`); carry an upstream change to `Preset.svelte` over there by hand and keep the file deleted |
+| `src/lib/util/localSamples.test.ts` | Added. Each sample parses as its diagram type; none shadows an upstream sample; the templates are small and Japanese                                                                                                                           |
+| `tests/swimlane.spec.ts`            | Added. `@smoke`: the default sample renders its lanes, in both engines                                                                                                                                                                         |
+| `tests/templates.spec.ts`           | Added. Each business template loads from the 新規 dialog's サンプル tab and renders without an error                                                                                                                                           |
 
 If `@mermaid-js/examples` starts shipping a `Swimlane` entry, `localSamples.test.ts`
 fails on purpose: drop the local entry and take upstream's.
@@ -208,16 +208,16 @@ Six source files carry small local guards that switch off upstream's promotional
 and community features, plus the two e2e specs that covered them. The full rationale
 and the variables are in `docs-dev/FEATURE-FLAGS.md`; what matters at merge time:
 
-| Path                                                                                                                                  | Local change                                                                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/env.ts`                                                                                                                 | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks`                                                                                                                      |
-| `src/lib/components/DesktopEditor.svelte`                                                                                             | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`; also gates its gutter button and glyph margin                                                                                                                        |
-| `src/lib/util/util.ts`, `src/lib/components/DesktopEditor.svelte`, `src/lib/components/Actions.svelte`, `src/lib/util/env.ts`, `.env` | `MERMAID_OFFLINE`: refuses `?code=`/`?config=`/gist loading from any origin but the site's own (`assertFetchAllowed`), skips the config-schema download and the Font Awesome stylesheet line in exported SVGs; hides "Load Gist" |
-| `src/routes/(app)/edit/+page.svelte`                                                                                                  | Wraps `<EnhancedEditsButton>` in the same guard                                                                                                                                                                                  |
-| `src/lib/components/Navbar.svelte`                                                                                                    | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                                                                                                                                               |
-| `src/lib/components/MainMenu.svelte`                                                                                                  | Spreads the Discord "Community" entry in conditionally                                                                                                                                                                           |
-| `.env`                                                                                                                                | Sets this fork's defaults                                                                                                                                                                                                        |
-| `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts`                                                                                 | Assert the configured behaviour rather than upstream's                                                                                                                                                                           |
+| Path                                                                                                                              | Local change                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/util/env.ts`                                                                                                             | Adds `isEnabledAiFeatures` and `isEnabledCommunityLinks` beside upstream's own `isEnabledMermaidChartLinks`                                                                                                                                                                          |
+| `src/lib/components/DesktopEditor.svelte`                                                                                         | Wraps `<AIPromptPopup>` in `{#if env.isEnabledAiFeatures}`; also gates its gutter button and glyph margin                                                                                                                                                                            |
+| `src/lib/util/util.ts`, `src/lib/components/DesktopEditor.svelte`, `src/lib/util/exportDiagram.ts`, `src/lib/util/env.ts`, `.env` | `MERMAID_OFFLINE`: refuses `?code=`/`?config=`/gist loading from any origin but the site's own (`assertFetchAllowed`), skips the config-schema download and the Font Awesome stylesheet line in exported SVGs. (The "Load Gist" field it hid went with the 出す card on 2026-10-12.) |
+| `src/routes/(app)/edit/+page.svelte`                                                                                              | Wraps `<EnhancedEditsButton>` in the same guard                                                                                                                                                                                                                                      |
+| `src/lib/components/Navbar.svelte`                                                                                                | Wraps the GitHub dropdown and its separator in `{#if env.isEnabledCommunityLinks}`                                                                                                                                                                                                   |
+| `src/lib/components/MainMenu.svelte`                                                                                              | No longer imported since 2026-10-12 (the header has no hamburger menu) and therefore restored to upstream's version. If a change mounts it again, spread the Discord "Community" entry in conditionally on `env.isEnabledCommunityLinks` first                                       |
+| `.env`                                                                                                                            | Sets this fork's defaults                                                                                                                                                                                                                                                            |
+| `tests/actions.spec.ts`, `tests/errorDisplay.spec.ts`                                                                             | Assert the configured behaviour rather than upstream's                                                                                                                                                                                                                               |
 
 These are additive guards, not rewrites: the guarded markup is upstream's own. On a
 conflict, take upstream's version of the inner content and re-apply the surrounding
@@ -235,78 +235,97 @@ Fork features that touch upstream files. Each upstream file gains a few lines th
 into a fork-local file; the logic lives in the fork-local file, so a conflict is resolved by
 taking upstream's version and re-adding those lines.
 
-| Path                                                                                                                                                | Local change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/components/DesktopEditor.svelte`                                                                                                           | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language; registers `insertAtCursor` so the icon picker can insert at the cursor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/util/mermaidRename.ts`                                                                                                                     | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider, which applies a rename only if the diagram still parses as the same type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/util/state.svelte.ts`                                                                                                                      | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `src/lib/components/ResetConfigButton.svelte`                                                                                                       | Added. The "Reset config" button on the config tab                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `src/lib/util/mermaid.ts`                                                                                                                           | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`; `diagramObjects` lists the objects the Colours card can colour; renders and the cards' `getDiagramFromText` reads take turns (`diagramFromText`), since every parse clears mermaid's shared title store                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `src/lib/util/architectureLabels.ts`                                                                                                                | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `src/lib/util/darkLines.ts`                                                                                                                         | Added. Dark themes render with near-white lines unless the user set `lineColor`; (the dark-mode backdrop for light themes was removed: the diagram looks the same in both modes)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/lib/util/iconPacks.ts`                                                                                                                         | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `src/lib/util/customIcons.ts`, `customIconStore.ts`                                                                                                 | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `src/lib/components/IconPacks.svelte`                                                                                                               | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `src/lib/util/env.ts`, `.env`                                                                                                                       | Add `iconPacks` / `MERMAID_ICON_PACKS` and `colorPresets` / `MERMAID_COLOR_PRESETS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `scripts/svg-to-iconify.js`                                                                                                                         | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `scripts/fetch-icon-packs.js`                                                                                                                       | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `.gitignore`                                                                                                                                        | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/components/LayoutControls.svelte`, `src/lib/util/layout.ts`                                                                                | Added. The "Layout" card: direction (top-to-bottom, left-to-right, fit to view), layout engine (standard / ELK) and spacing, written into the code and the config                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `src/lib/components/ColorControls.svelte`, `src/lib/util/colors.ts`                                                                                 | Added. The "Colours" card: theme buttons, line colour (config `themeVariables.lineColor`) lane/subgraph, object and arrow colours written into the code (`style`, `linkStyle`; `UpdateElementStyle` for C4), the deployment palette and freely picked recent colours; per-object text styling (bold, font size, text colour) in the same `style` statement, with the `opacity:1` lead-in class diagrams need (`tests/textStyle.spec.ts`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `src/lib/components/AddControls.svelte`, `src/lib/util/diagramEdit.ts`                                                                              | Added. The "Add" card: a new lane, or a node in a lane joined by an arrow from another node, for flowcharts and swimlane diagrams; groups, services and connections for architecture diagrams (`ArchitectureAdd.svelte`); per-type forms for sequence, state, class, ER, mindmap, gantt, pie, kanban, timeline, C4, block and requirement diagrams (`AddActions.svelte`, `src/lib/util/addActions.ts`; journey, XY, quadrant, sankey, git graph, packet and ZenUML, with their Edit and table operations, in `src/lib/util/chartEdit.ts`; class members and ER attributes in `src/lib/util/diagramDetails.ts`; line helpers shared with the Edit card in `src/lib/util/codeText.ts`, which imports nothing so the modules never import each other in a circle)                                                                                                                                                                |
-| `src/lib/components/EditControls.svelte`, `src/lib/util/diagramModify.ts`                                                                           | Added. The "Edit" card: rename (the shown text) and delete objects — flowchart/swimlane nodes and lanes, states, classes, ER entities, C4 elements, architecture services and groups, sequence participants, mindmap, kanban and timeline items — and relabel, reverse, restyle and delete arrows (flowchart/swimlane in full; state, class, ER, sequence and architecture where their syntax allows), with `linkStyle` renumbered; a flowchart node's shape, lane and icon, an architecture service's icon and group, and sequence notes and blocks; composite states, C4 boundaries, gantt sections and tasks, pie slices, requirements and blocks; class members, ER attributes, gantt task dates/status and pie values (`src/lib/util/diagramDetails.ts`); every edit is checked with mermaid's parse first                                                                                                               |
-| `src/lib/components/NewDiagram.svelte`, `src/lib/util/newDiagram.ts`                                                                                | Added. "New diagram" at the top of the Samples card: a type picker (14 types, a one-line description each), an optional title and a direction; replaces the code with a minimal starter with Japanese placeholders, asking first unless the code is a sample or an unchanged starter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `src/lib/components/TemplateForms.svelte`, `src/lib/util/templateForms.ts`, `src/lib/util/templateThumbnails.ts`                                    | Added. "Create from a template" under "New diagram": a dialog listing the nine business templates with a rendered preview each; a form per template (text, choices, lists of rows) whose generator writes the diagram; mounted by one line in `NewDiagram.svelte`. Tests `templateForms.test.ts`, `tests/templateForms.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/components/TableEditor.svelte`, `src/lib/util/tableEdit.ts`                                                                                | Added. "Edit as a table" at the end of the Edit card: gantt tasks, kanban cards, timeline periods, pie slices and an ER entity's attributes as rows with inline cells, add/delete/move rows, kanban column moves and TSV paste from Excel; writes through `diagramDetails.ts`, `diagramModify.ts` and `addActions.ts` where they can. Mounted by one line (plus its import) at the end of `EditControls.svelte`. Tests `tableEdit.test.ts`, the all-diagram check, `tests/tableEditor.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `src/lib/util/themePresets.ts`                                                                                                                      | Added. The named diagram themes (テーマ) of the Colours card and the command palette: `theme: "base"` + `themeVariables` + a marked `themeCSS` per preset; "standard" hands the theme back to the managed family. `mermaid.ts` paints a preset's background (`renderView.ts` copies it onto the rough sketch, `Actions.svelte` uses it for exports). Tests `themePresets.test.ts`, `tests/themePresets.spec.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/util/diagramTitle.ts`                                                                                                                      | Added. Sets, changes and removes the diagram title — front matter `title:`, or the `title` statement of timeline and C4, which ignore front matter — from the Layout card's title field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `src/lib/components/IconChooser.svelte`, `src/lib/util/iconCatalog.ts`                                                                              | Added. A small icon search in the Edit card over every pack the editor knows (standard, bundled, build-time, hosted, imported), for a flowchart node's or an architecture service's icon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `src/lib/components/HelpButton.svelte`, `src/lib/util/helpContent.ts`                                                                               | Added. The "How to use" button in the header (Navbar) and its guide dialog; the guide text per language                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `.claude/settings.json`, `.claude/hooks/session-start.sh`                                                                                           | Added. Claude Code on the web: a SessionStart hook puts Node 24 first on PATH, enables pnpm and installs the dependencies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `src/lib/components/EditorPaneToggle.svelte`, `EditorRail.svelte`, `ToolsBar.svelte`                                                                | Added. The code pane header button collapses the code pane to its icon rail (code, config); `ToolsBar` is the tools pane header, whose buttons swap the panes' sides and collapse that pane to its rail (`<EditorRail kind="tools">`: one icon per section, grouped by tab — samples, add; edit, colours, layout, icons; actions, AI). Each rail sits on its pane's side and each rail icon reopens its pane on that tab and section                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `src/lib/util/toolsPane.svelte.ts`                                                                                                                  | Added. The pane order (tools-left by default, code-left after "swap panes", kept in `localStorage` `paneOrder`), the three tools tabs and which sections each holds (`toolsTabs`, `tabOf`), and the accordion state: the tab shown, the section open (one in the whole pane) and the last one open per tab (`openSection`, `toggleSection`, `showTab`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `src/lib/components/Card/Card.svelte`                                                                                                               | In the desktop tools pane (`toolsAccordion.enabled`), a stackable card with a `testID` opens and closes through the accordion state (`toggleSection`, which also shows the card's tab), fills the pane when open and scrolls inside; elsewhere upstream's behaviour is unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/lib/components/ToolsTabs.svelte`                                                                                                               | Added. The tools pane's three tabs, 作る (templates with new diagram; AI and unknown icons), 直す (the selection panel; add, layout, edit, colours, icons) and 出す (actions; share links), each an accordion. The panels sit side by side in a strip scrolled sideways, so every section header stays in the page: a header in another tab can be clicked (the specs, the command palette's `uiBus.openCard`) and shows its tab                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/lib/components/ShareLinks.svelte`                                                                                                              | Added. The 出す tab's "共有リンク" section, which replaces the header's 共有 button: the edit link and the view-only link (copy, open), and `<Share>` (its trigger keeps `TID.shareButton`) for the embed code. `Share.svelte` takes a `label` for that trigger                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/components/AiTools.svelte`                                                                                                                 | Added. The 作る tab's "AI・アイコン確認" section: `<UnknownIcons>` and `<AiIconPrompt>`, which the Icons card (`IconPacks.svelte`) no longer renders                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `src/lib/util/selection.svelte.ts`, `selectionModel.svelte.ts`, `selectionActions.ts`, `selectionKeys.ts`, `diagramPick.ts`                         | Added. Selection-driven editing: the one selected object or arrow, the inline-rename and "ここから矢印" states; the model that reads the Edit and Colours cards' lists and applies their functions to the selection (checked with `checkEdit`); "この後に追加", branches, connections and "ノードを追加" built from the Add card's functions; the keys (Enter, Tab, Delete, F2, Escape, arrows); and which object or arrow a click in the SVG lands on, per diagram type                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `src/lib/components/SelectionLayer.svelte`, `SelectionToolbar.svelte`, `SelectionPanel.svelte`, `DiagramContextMenu.svelte`, `ColorSwatches.svelte` | Added. Over the diagram: clicks, double clicks, right clicks and keys, an outline drawn as an overlay (the SVG is never touched, so exports are not), the mini toolbar above the selection and the right-click menu; in the 直す tab, the "選択中" panel with the full controls; the colour buttons shared by the three                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `src/lib/components/DesktopEditor.svelte`                                                                                                           | The two Monaco models get a path per editor instance (`internal://editor/<n>/config.json`), so the remount on a pane swap does not create a duplicate model URI                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/util/panZoom.ts`                                                                                                                           | The resize observer ignores a zero-size (just removed) diagram, which a pane swap otherwise zooms into a "matrix is not invertible" error                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `src/lib/components/DiagramToolbar.svelte`                                                                                                          | Added. One toolbar across the top of the diagram pane, replacing upstream's `PanZoomToolbar` (on the editor page), `SyncRoughToolbar` and `VersionSecurityToolbar`: zoom out, zoom in, reset, full screen; hand-drawn and grid; and nothing else (theme and language are in the header, the version and privacy on the 使い方 "about" page). Carries the grid default for old states from `SyncRoughToolbar`. An upstream change to any of the three toolbars is ported here; `PanZoomToolbar.svelte` itself stays for the embed page                                                                                                                                                                                                                                                                                                                                                                                         |
-| `src/lib/components/UndoRedoButtons.svelte`, `src/lib/util/undoStack.svelte.ts`                                                                     | Added. Undo / redo buttons in the editor header: a history of the diagram code as it passes through the input state (one entry per pause in typing, 100 kept), so one undo covers Monaco, CodeMirror and the Add / Colours / Layout cards; applying an entry goes through `updateCode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `src/lib/components/CommandPalette.svelte`, `GuideTour.svelte`, `src/lib/util/commands.ts`, `uiBus.ts`, `onboarding.svelte.ts`                      | Added. The command palette (Ctrl+K / ⌘K and a search button in the header): 20 actions with a Japanese and an English label and keywords, a small fuzzy scorer, and `uiBus.ts`, which opens a tools card, focuses or presses a control by `data-testid` by driving the same header click and rail-expand button the page uses (no page hook). And the three-step first-visit guide (popovers on the tools pane, the diagram and the help button; `localStorage` flag `guideDoneKey`; restarted from the How to use dialog). `tests/test.ts` sets the flag for every spec unless `guideSeen: false`                                                                                                                                                                                                                                                                                                                            |
-| `src/lib/components/Navbar.svelte`, `src/lib/components/HelpButton.svelte`                                                                          | Mount `<CommandPalette />` and `<GuideTour />` (one line each, next to `<HelpButton />`); HelpButton gains a "show the guide again" button. Keep new header features mounted from these two files so `+page.svelte` stays untouched. `Share.svelte` carries a `data-testid` on its trigger so the palette can press it. The header also mounts `<ResetAllButton />`, the theme toggle and `<LocaleToggle />`, shows the app icon, and no longer mounts `MainMenu` (file kept unused)                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `src/lib/components/IconPicker.svelte`, `src/lib/util/iconSearch.ts`, `src/lib/util/monacoInsert.ts`                                                | Added. Search the icon packs in the "Icons" card, or browse hand-picked categories (`iconCategories.ts`) or a whole pack a page at a time, and click an icon to insert its `prefix:name` at the cursor (or copy it when no editor can take it)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `src/lib/util/standardIcons.ts`                                                                                                                     | Added. mermaid's five built-in architecture icons (copied, MIT) so the picker can show and mark them as standard                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/lib/components/IconLicenseTable.svelte`, `src/lib/util/iconLicenses.ts`                                                                        | Added. Licence, holder and trademark facts for every bundled icon set, shown in the "How to use" guide's licences section and in the picker's tooltips                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `src/lib/components/AiIconPrompt.svelte`, `UnknownIcons.svelte`, `src/lib/util/aiPrompt.ts`, `aiCollection.svelte.ts`, `iconCatalog.ts`             | Added. "Copy a briefing for an AI" (syntax, packs, curated and collected icon names) and the "Unknown icons" list with one-click replacement; the shared icon pack loader                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `src/lib/components/HtmlExport.svelte`, `src/lib/util/htmlExport.ts`                                                                                | Added. HTML export (standalone page, self-contained `<img>` tag) and GitLab export (SVG file plus Markdown with an edit link and the source); a diagram with an error is reported, not exported                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/lib/components/Actions.svelte`                                                                                                                 | Export options (background and scale, remembered in `localStorage`; PNG canvas from `exportPresets.ts`; the size presets were removed from the UI after user feedback, `preset` stays "asis") above the PNG / SVG buttons; renders `<HtmlExport>` under them; PNG / SVG serialise through `toXmlSvg` (upstream's `outerHTML` made `&nbsp;` or kanban links break the PNG silently)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `src/routes/(app)/edit/+page.svelte`                                                                                                                | Renders `<UndoRedoButtons>`, `<ResetConfigButton>` and `<EditorPaneToggle>` in the editor card (and resets the undo history once the diagram is loaded) and the three-pane desktop layout: the tools pane (left by default) with `<ToolsBar>` over `<ToolsTabs>`, the diagram with `<DiagramToolbar>` above it instead of upstream's three floating toolbars and `<SelectionLayer>` over it (centre), the history column when open, and the code. Both side panes are collapsible to an `<EditorRail>` whose icons open a tab and section (`openSection`); panes carry `id`/`order` so `autoSaveId` keeps each combination's sizes. On mobile the tool cards (with `<AiTools>`) stay under the editor. Also `sm:` classes on the pane group, visible `withHandle` dividers, flat sections, the window width as the first `width`, and a container query that shows the editor header's buttons as icons in a narrow code pane |
-| `src/lib/util/saveFile.ts`, `saveAsPrompt.svelte.ts`, `src/lib/components/SaveAsDialog.svelte`                                                      | Added. 名前を付けて保存 for every saved file: `showSaveFilePicker` where the browser has it, else a name dialog and the anchor download; the default name is the diagram title or `diagram` (`docs-dev/EXPORTS.md`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `src/lib/util/drawioExport.ts`, `vsdxExport.ts`, `xmlText.ts`                                                                                       | Added. The `.drawio` file (every element its own draw.io cell, converted from the rendered SVG by `svgToDrawio.ts` with `svgPath.ts`; source in the root cell's `mermaidData`) and the `.vsdx` package (one page, the diagram as a PNG picture, source in Shape Data; zipped with `fflate`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `src/lib/components/Actions.svelte`, `HtmlExport.svelte`                                                                                            | Every download goes through `pickSaveTarget` (target chosen at the click, written when the file is made); 「.drawio で保存」「.vsdx で保存」 buttons under PNG / SVG. On a conflict keep upstream's buttons and re-apply the target step around their download                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `tests/test.ts`                                                                                                                                     | Fixture option `saveAs`: removes `showSaveFilePicker` and confirms the name dialog by default, so download specs keep getting a Playwright download                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `package.json`                                                                                                                                      | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, clarity, eos-icons, fluent-color, simple-icons, devicon) `dompurify` and `fflate` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Path                                                                                                                                    | Local change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/DesktopEditor.svelte`                                                                                               | Calls `registerMermaidRename(monaco)` after `initEditor`: F2 / Rename Symbol for the `mermaid` language; registers `insertAtCursor` so the icon picker can insert at the cursor                                                                                                                                                                                                                                                                                                                |
+| `src/lib/util/mermaidRename.ts`                                                                                                         | Added. The rename scan (skips labels, edge text, messages, comments, strings) and the Monaco provider, which applies a rename only if the diagram still parses as the same type                                                                                                                                                                                                                                                                                                                |
+| `src/lib/util/state.svelte.ts`                                                                                                          | Adds `resetConfig()`, which returns the config to `{}` and keeps the diagram                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/lib/components/ResetConfigButton.svelte`                                                                                           | Added. The "Reset config" button on the config tab                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `src/lib/util/mermaid.ts`                                                                                                               | Registers the bundled and hosted packs at module load, waits for the stored ones before rendering, and passes the SVG through `addLabelHalo`; `diagramObjects` lists the objects the Colours card can colour; renders and the cards' `getDiagramFromText` reads take turns (`diagramFromText`), since every parse clears mermaid's shared title store                                                                                                                                          |
+| `src/lib/util/architectureLabels.ts`                                                                                                    | Added. Outlines architecture service and edge labels in the background colour so edges do not run through them (mermaid draws them that way)                                                                                                                                                                                                                                                                                                                                                   |
+| `src/lib/util/darkLines.ts`                                                                                                             | Added. Dark themes render with near-white lines unless the user set `lineColor`; (the dark-mode backdrop for light themes was removed: the diagram looks the same in both modes)                                                                                                                                                                                                                                                                                                               |
+| `src/lib/util/iconPacks.ts`                                                                                                             | Added. The nine bundled packs (generic and logo sets), loaded lazily — never from a CDN; `MERMAID_BUNDLE_LOGOS=false` drops the logos; plus the build-time vendor packs                                                                                                                                                                                                                                                                                                                        |
+| `src/lib/util/customIcons.ts`, `customIconStore.ts`                                                                                     | Added. Build-time vendor, hosted (`MERMAID_ICON_PACKS`) and user-imported packs, sanitised with DOMPurify; the IndexedDB store                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/lib/components/IconPacks.svelte`                                                                                                   | Added. The "Icons" card: the bundled pack list and SVG / Iconify JSON import                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `src/lib/util/env.ts`, `.env`                                                                                                           | Add `iconPacks` / `MERMAID_ICON_PACKS` and `colorPresets` / `MERMAID_COLOR_PRESETS`; `.env` also documents `MERMAID_BUNDLE_LOGOS`                                                                                                                                                                                                                                                                                                                                                              |
+| `scripts/svg-to-iconify.js`                                                                                                             | Added. Converts an SVG folder into a pack a deployment can host; inlines `<style>` class rules                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `scripts/fetch-icon-packs.js`                                                                                                           | Added. Imports vendor icon archives at build time (`MERMAID_FETCH_ICON_PACKS`) into the gitignored `src/lib/vendor-icons/`                                                                                                                                                                                                                                                                                                                                                                     |
+| `.gitignore`                                                                                                                            | Ignores `src/lib/vendor-icons/`                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `src/lib/util/layout.ts`                                                                                                                | Added. Direction (top-to-bottom, left-to-right, fit to view), the layout engine and spacing; the inspector's 図全体 rows 向き / 配置 / 間隔 call it (the Layout card is gone since 2026-10-12)                                                                                                                                                                                                                                                                                                 |
+| `src/lib/util/colors.ts`                                                                                                                | Added. Colours: line colour (config `themeVariables.lineColor`), lane and group colours, object fills and strokes, text style and arrow colours, applied from the inspector (図全体 and the selection's 色 / 文字 rows; the Colours card is gone since 2026-10-12)                                                                                                                                                                                                                             |
+| `src/lib/util/diagramEdit.ts`                                                                                                           | Added. Adding to a flowchart or swimlane: a lane, a node in a lane joined by an arrow, an arrow between two nodes; the add bar over the diagram calls it (`canvas/FlowInsert.svelte`, `src/lib/util/insertActions.ts`)                                                                                                                                                                                                                                                                         |
+| `src/lib/util/diagramModify.ts`                                                                                                         | Added. Renaming, deleting and the arrows (label, reverse, line style, the arrowhead at the end, at both ends or none) of every editable type, used by the inspector through `selectionModel.svelte.ts` (the Edit card is gone since 2026-10-12)                                                                                                                                                                                                                                                |
+| `src/lib/util/newDiagram.ts`                                                                                                            | Added. The starters of the 21 types (title, direction) that the 新規 dialog's 形式 tab opens in a new tab (`newTab.ts`)                                                                                                                                                                                                                                                                                                                                                                        |
+| `src/lib/components/TemplateForms.svelte`, `src/lib/util/templateForms.ts`, `src/lib/util/templateThumbnails.ts`                        | Added. "Create from a template" under "New diagram": a dialog listing the nine business templates with a rendered preview each; a form per template (text, choices, lists of rows) whose generator writes the diagram; mounted by one line in `NewDiagram.svelte`. Tests `templateForms.test.ts`, `tests/templateForms.spec.ts`                                                                                                                                                                |
+| `src/lib/components/TableEditor.svelte`, `src/lib/util/tableEdit.ts`                                                                    | Added. "Edit as a table" at the end of the Edit card: gantt tasks, kanban cards, timeline periods, pie slices and an ER entity's attributes as rows with inline cells, add/delete/move rows, kanban column moves and TSV paste from Excel; writes through `diagramDetails.ts`, `diagramModify.ts` and `addActions.ts` where they can. Mounted by one line (plus its import) at the end of `EditControls.svelte`. Tests `tableEdit.test.ts`, the all-diagram check, `tests/tableEditor.spec.ts` |
+| `src/lib/util/themePresets.ts`                                                                                                          | Added. The named diagram themes (テーマ) of the Colours card and the command palette: `theme: "base"` + `themeVariables` + a marked `themeCSS` per preset; "standard" hands the theme back to the managed family. `mermaid.ts` paints a preset's background (`renderView.ts` copies it onto the rough sketch, `Actions.svelte` uses it for exports). Tests `themePresets.test.ts`, `tests/themePresets.spec.ts`                                                                                |
+| `src/lib/util/diagramTitle.ts`                                                                                                          | Added. Sets, changes and removes the diagram title — front matter `title:`, or the `title` statement of timeline and C4, which ignore front matter — from the Layout card's title field                                                                                                                                                                                                                                                                                                        |
+| `src/lib/components/IconChooser.svelte`, `src/lib/util/iconCatalog.ts`                                                                  | Added. A small icon search in the Edit card over every pack the editor knows (standard, bundled, build-time, hosted, imported), for a flowchart node's or an architecture service's icon                                                                                                                                                                                                                                                                                                       |
+| `src/lib/components/HelpButton.svelte`, `src/lib/util/helpContent.ts`                                                                   | Added. The "How to use" button in the header (Navbar) and its guide dialog; the guide text per language                                                                                                                                                                                                                                                                                                                                                                                        |
+| `.claude/settings.json`, `.claude/hooks/session-start.sh`                                                                               | Added. Claude Code on the web: a SessionStart hook puts Node 24 first on PATH, enables pnpm and installs the dependencies                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/lib/util/selection.svelte.ts`, `selectionModel.svelte.ts`, `selectionActions.ts`, `selectionKeys.ts`, `diagramPick.ts`             | Added. Selection-driven editing: the one selected object or arrow, the inline-rename and "ここから矢印" states; the model that reads the Edit and Colours cards' lists and applies their functions to the selection (checked with `checkEdit`); "この後に追加", branches, connections and "ノードを追加" built from the Add card's functions; the keys (Enter, Tab, Delete, F2, Escape, arrows); and which object or arrow a click in the SVG lands on, per diagram type                       |
+| `src/lib/components/SelectionLayer.svelte`, `DiagramContextMenu.svelte`                                                                 | Added. Over the diagram: clicks, double clicks and right clicks select an object or an arrow, draw its outline, show the connect banner and refusals, and open the right-click menu, whose 色 / 形 ask the inspector for that row (`focusInspector`). The mini toolbar and the selection panel of 0.2.2 are gone (2026-10-12): their rows are in the inspector                                                                                                                                 |
+| `src/lib/components/DesktopEditor.svelte`                                                                                               | The two Monaco models get a path per editor instance (`internal://editor/<n>/config.json`), so the remount on a pane swap does not create a duplicate model URI                                                                                                                                                                                                                                                                                                                                |
+| `src/lib/util/panZoom.ts`                                                                                                               | The resize observer ignores a zero-size (just removed) diagram, which a pane swap otherwise zooms into a "matrix is not invertible" error                                                                                                                                                                                                                                                                                                                                                      |
+| `src/lib/components/UndoRedoButtons.svelte`, `src/lib/util/undoStack.svelte.ts`                                                         | Added. Undo / redo buttons in the editor header: a history of the diagram code as it passes through the input state (one entry per pause in typing, 100 kept), so one undo covers Monaco, CodeMirror and the Add / Colours / Layout cards; applying an entry goes through `updateCode`                                                                                                                                                                                                         |
+| `src/lib/components/GuideTour.svelte`, `src/lib/util/onboarding.svelte.ts`                                                              | Added. The first-visit guide (three steps: the add bar and the inspector, the diagram, the header's actions and 使い方). The command palette that shared this row was removed on 2026-10-12                                                                                                                                                                                                                                                                                                    |
+| `src/lib/components/Navbar.svelte`, `src/lib/components/HelpButton.svelte`                                                              | The header of the inspector layout: app icon and title, undo/redo, 新規 ▾ / 共有 / 書き出す (opening the dialogs through `editorUi.svelte.ts`), 使い方, 履歴, 初期化 and light/dark; it mounts `<GuideTour />` and the three dialogs. HelpButton gains a "show the guide again" button and the version page. No `MainMenu`, language button or command search. Keep new header features mounted from these two files                                                                           |
+| `src/lib/components/IconPicker.svelte`, `src/lib/util/iconSearch.ts`, `src/lib/util/monacoInsert.ts`                                    | Added. Search the icon packs in the "Icons" card, or browse hand-picked categories (`iconCategories.ts`) or a whole pack a page at a time, and click an icon to insert its `prefix:name` at the cursor (or copy it when no editor can take it)                                                                                                                                                                                                                                                 |
+| `src/lib/util/standardIcons.ts`                                                                                                         | Added. mermaid's five built-in architecture icons (copied, MIT) so the picker can show and mark them as standard                                                                                                                                                                                                                                                                                                                                                                               |
+| `src/lib/components/IconLicenseTable.svelte`, `src/lib/util/iconLicenses.ts`                                                            | Added. Licence, holder and trademark facts for every bundled icon set, shown in the "How to use" guide's licences section and in the picker's tooltips                                                                                                                                                                                                                                                                                                                                         |
+| `src/lib/components/AiIconPrompt.svelte`, `UnknownIcons.svelte`, `src/lib/util/aiPrompt.ts`, `aiCollection.svelte.ts`, `iconCatalog.ts` | Added. "Copy a briefing for an AI" (syntax, packs, curated and collected icon names) and the "Unknown icons" list with one-click replacement; the shared icon pack loader                                                                                                                                                                                                                                                                                                                      |
+| `src/lib/util/htmlExport.ts`                                                                                                            | Added. HTML export (standalone page, self-contained `<img>` tag), the GitLab Markdown and `toXmlSvg`; the 書き出す dialog calls it through `exportDiagram.ts`                                                                                                                                                                                                                                                                                                                                  |
+| `src/lib/components/Actions.svelte`                                                                                                     | Deleted (2026-10-12). Every export moved, unchanged in what the files hold, to `dialogs/ExportDialog.svelte` and `src/lib/util/exportDiagram.ts`; the share links to `dialogs/ShareDialog.svelte`. Carry an upstream change to `Actions.svelte` over to `exportDiagram.ts` by hand and keep the file deleted                                                                                                                                                                                   |
+| `src/routes/(app)/edit/+page.svelte`                                                                                                    | The inspector layout: the code column (`editor/CodePane.svelte` around upstream's editor), the diagram column (`canvas/CanvasPane.svelte`: add bar, view, `<SelectionLayer>`, zoom controls, table view) and the inspector, each side foldable to a `PaneRail`, widths kept in `editorLayout.svelte.ts` (paneforge without `autoSaveId`); the history column when open; the undo history reset once the diagram is loaded                                                                      |
+| `src/lib/util/saveFile.ts`                                                                                                              | Added. File names (the diagram's title by default, made safe for every file system) and the download under the name typed in the 書き出す dialog. The save picker and `SaveAsDialog.svelte` / `saveAsPrompt.svelte.ts` were removed on 2026-10-12 (user decision: no second name dialog)                                                                                                                                                                                                       |
+| `src/lib/util/drawioExport.ts`, `vsdxExport.ts`, `xmlText.ts`                                                                           | Added. The `.drawio` file (every element its own draw.io cell, converted from the rendered SVG by `svgToDrawio.ts` with `svgPath.ts`; source in the root cell's `mermaidData`) and the `.vsdx` package (one page, the diagram as a PNG picture, source in Shape Data; zipped with `fflate`)                                                                                                                                                                                                    |
+| `tests/test.ts`                                                                                                                         | The fixture opens the 書き出す and 新規 dialogs for the helpers upstream's specs call (`toggleActions`, `toggleSampleDiagrams`, `loadSampleDiagram`, the PNG/SVG downloads; `tests/helpers/`), sets the guide flag, and offers `captureWindowOpen` for what opens in a new tab. The `saveAs` option is gone with the name dialog                                                                                                                                                               |
+| `package.json`                                                                                                                          | Adds the `@iconify-json/*` packs (tabler, lucide, carbon, fluent, flat-color-icons, clarity, eos-icons, fluent-color, simple-icons, devicon) `dompurify` and `fflate` to `dependencies`, `fetch-icon-packs.js` to `build`, and `!src/lib/vendor-icons/` to `files`                                                                                                                                                                                                                             |
 
 The pane markup is local: upstream has one editor column and the view. On a conflict,
-take upstream's changes to what goes inside the editor card and the view, and keep the
-three panes (code, diagram, tools), their `id`/`order`, the rails and `<DiagramToolbar>`;
-`tests/fixedLayout.spec.ts`, `tests/editorPanes.spec.ts`, `tests/toolsPane.spec.ts` and
-`tests/toolsTabs.spec.ts` fail if the layout is lost; `tests/selection.spec.ts` if the
-selection layer is.
+take upstream's changes to what goes inside the editor and the view, and keep the three
+columns (code, diagram, inspector), the rails and the add bar; `tests/fixedLayout.spec.ts`,
+`tests/editorPanes.spec.ts` and `tests/header.spec.ts` fail if the layout is lost,
+`tests/selection.spec.ts` and `tests/inspector.spec.ts` if the selection layer or the
+inspector is.
+
+### Inspector layout (2026-10-12)
+
+The redesign of `/edit` into code | diagram | inspector (`STATUS.md`, "Editor layout: the
+inspector"). The new components and helpers are local files; these are the upstream files it
+touches, deletes or leaves unused:
+
+| Path                                                                                                                                | Local change                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/Editor.svelte`                                                                                                  | The syntax error under the editor is one compact block (mermaid's message in full; the code pane's footer says it in one line); the Mermaid Chart repair button keeps its guard. Still mounts `MobileEditor.svelte` (unchanged) for narrow windows |
+| `src/lib/components/Share.svelte`                                                                                                   | Rendered inside `dialogs/ShareDialog.svelte` instead of its own trigger: the embed code (iframe or web component, size, grid) with the links above it; copy buttons through `CopyButton`                                                           |
+| `src/lib/components/History/History.svelte`, `historyState.svelte.ts`                                                               | The Gist revisions tab is gone (user decision); import checks as before                                                                                                                                                                            |
+| `src/lib/util/migrations.svelte.ts`, `migrations.test.ts`                                                                           | Runs `migrateEditorLayout` (`editorLayout.svelte.ts`): the old pane keys and `locale` are read once and removed                                                                                                                                    |
+| `src/lib/components/Actions.svelte`, `src/lib/components/Preset.svelte`                                                             | Deleted; see their rows above                                                                                                                                                                                                                      |
+| `src/lib/components/MainMenu.svelte`, `src/lib/components/DiagramDocumentationButton.svelte`, `src/lib/components/Card/Card.svelte` | No longer imported (or no longer given a local prop) and therefore restored to upstream's version, so a merge takes upstream's side without a conflict                                                                                             |
+| `tests/docMap.spec.ts`                                                                                                              | Deleted: it checked the Docs link above the code, which the code pane no longer shows (user decision). `DiagramDocumentationButton.svelte` and `diagramDocs.ts` stay upstream's                                                                    |
+| `tests/*.spec.ts` (upstream's)                                                                                                      | Select through `tests/helpers/` (the dialogs, the add bar, the inspector) where upstream clicked cards that no longer exist                                                                                                                        |
+
+New local files: `src/lib/components/{canvas,dialogs,editor,form,inspector}/`,
+`src/lib/util/{colorRecent.svelte,diagramFont,flowShapes,editorLayout.svelte,editorUi.svelte,exportDiagram,insertActions,newTab,newThumbs,sampleCatalog}.ts`
+and their tests, `tests/helpers/` and `tests/inspector.spec.ts`. Removed local files (they were
+listed as Added): the tool cards (`AddControls`, `AddActions`, `ArchitectureAdd`,
+`EditControls`, `ColorControls`, `ColorSwatches`, `LayoutControls`, `AiTools`, `SelectionPanel`,
+`SelectionToolbar`, `NewDiagram`, `HtmlExport`, `ShareLinks`), the shell (`ToolsBar`,
+`ToolsTabs`, `EditorRail`, `EditorPaneToggle`, `DiagramToolbar`, `StyleCodeIcon`,
+`CommandPalette`, `LocaleToggle`, `SaveAsDialog`) and `commands.ts`, `uiBus.ts`, `toolsPane.svelte.ts`,
+`toolbarPlacement.ts`, `exportPresets.ts`, `saveAsPrompt.svelte.ts` with their tests and specs.
 
 ### Input hardening (source review of 2026-10-08)
 
-| Path                                                                                    | Local change                                                                                                                                                                                                                                                                    |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/util/sanitize.ts`                                                              | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                                                                                  |
-| `src/lib/components/History/historyState.svelte.ts`, `History.svelte`                   | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                                            |
-| `src/lib/components/Actions.svelte`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom goes back to its previous value in `finally`; the copy button shows the tick only after success and an error mark otherwise (R10)              |
-| `src/lib/util/serde.ts`                                                                 | `deserialize` refuses a link that unpacks (pako, inflated in chunks) or decodes (base64) to more than `MAX_INFLATED_BYTES` (5 MB); the pako bytes are decoded with `TextDecoder` as pako 2.1.0 does, so `serde.compat.test.ts` holds. On an upstream pako upgrade re-check both |
-| `src/lib/util/util.ts`, `src/lib/util/fileLoaders/loader.ts`                            | `fetchText`/`fetchJSON` reject a non-2xx answer naming the status; an empty `?code=` file is refused instead of replacing the diagram with the default; `initHandler` reports a failed URL load and keeps the current diagram                                                   |
-| `src/lib/util/embed.ts`                                                                 | The hash state goes through `normalizeState` (a state that is not one is a link error; a pan, zoom, rough or grid of the wrong type is dropped), and `?zoom=` must be positive                                                                                                  |
+| Path                                                                                | Local change                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/util/sanitize.ts`                                                          | `silentlySanitizeConfig` treats JSON whose root is not an object (`null`, a number, a string, an array) as no config instead of throwing or spreading it (R06)                                                                                                                  |
+| `src/lib/components/History/historyState.svelte.ts`, `History.svelte`               | Import checks each entry (known type, finite time, a saved state via `stateGuard.ts`, a text id or a new one), dedupes ids within the file too, and reports a file that is not a JSON list instead of throwing (R07)                                                            |
+| `src/lib/util/exportDiagram.ts`, `CopyButton.svelte`, `src/lib/util/imageExport.ts` | PNG export and image copy are one promise (image load, canvas, blob, clipboard write) whose failure reaches the caller; pan/zoom is paused while the image is taken                                                                                                             |
+| `src/lib/util/serde.ts`                                                             | `deserialize` refuses a link that unpacks (pako, inflated in chunks) or decodes (base64) to more than `MAX_INFLATED_BYTES` (5 MB); the pako bytes are decoded with `TextDecoder` as pako 2.1.0 does, so `serde.compat.test.ts` holds. On an upstream pako upgrade re-check both |
+| `src/lib/util/util.ts`, `src/lib/util/fileLoaders/loader.ts`                        | `fetchText`/`fetchJSON` reject a non-2xx answer naming the status; an empty `?code=` file is refused instead of replacing the diagram with the default; `initHandler` reports a failed URL load and keeps the current diagram                                                   |
+| `src/lib/util/embed.ts`                                                             | The hash state goes through `normalizeState` (a state that is not one is a link error; a pan, zoom, rough or grid of the wrong type is dropped), and `?zoom=` must be positive                                                                                                  |
 
 On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
 
@@ -375,15 +394,15 @@ keep that honest:
   carry the same keys and the same `{placeholders}`. Adding a key to one locale
   only fails `pnpm check` or the unit suite, not review.
 
-| Path                                     | Local change                                                                                             |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/lib/i18n/`                          | Added: the catalogue, `t()`, and their test                                                              |
-| `src/lib/util/env.ts`                    | Added `locale`, read from `MERMAID_LOCALE`                                                               |
-| `src/lib/util/state.svelte.ts`           | The broken-URL diagram comes from the catalogue, and no longer links to upstream's issue tracker (below) |
-| `src/lib/components/Card/Card.svelte`    | Added a `testID` prop so tests can target panels without depending on a translated title                 |
-| `tests/test.ts`                          | Exports a test-side `t()`; the specs select by catalogue key rather than by English text                 |
-| `src/lib/components/LocaleToggle.svelte` | Added: the language button; `Navbar.svelte` renders it beside the theme toggle                           |
-| `tests/locale.spec.ts`                   | Added: switching language keeps the diagram and survives a reload                                        |
+| Path                                     | Local change                                                                                                                                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/i18n/`                          | Added: the catalogue, `t()`, and their test                                                                                                    |
+| `src/lib/util/env.ts`                    | Added `locale`, read from `MERMAID_LOCALE`                                                                                                     |
+| `src/lib/util/state.svelte.ts`           | The broken-URL diagram comes from the catalogue, and no longer links to upstream's issue tracker (below)                                       |
+| `src/lib/components/Card/Card.svelte`    | Restored to upstream's version on 2026-10-12: the `testID` prop it gained for the tool cards has no user left (History passes none)            |
+| `tests/test.ts`                          | Exports a test-side `t()`; the specs select by catalogue key rather than by English text                                                       |
+| `src/lib/components/LocaleToggle.svelte` | Added for the language button, deleted on 2026-10-12 with it (user decision: Japanese only; `MERMAID_LOCALE` still picks the build's language) |
+| `tests/locale.spec.ts`                   | Deleted with the language button (2026-10-12); `tests/releaseAudit.spec.ts` checks that an English browser still gets the Japanese UI          |
 
 Upstream's new specs arrive selecting by English text and fail against the Japanese UI —
 `tests/configMigration.spec.ts` (waits for "Sample Diagrams") did exactly that in the
@@ -404,21 +423,21 @@ mermaid.live's own release, hosting and funding and misfire when they run under
 `smjr3/mermaid-editor`, nothing in this fork uses them and nothing is planned to, or a
 local component replaces them (the two floating toolbars).
 
-| Path                                                                                             | Why it is gone                                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/deploy.yml`                                                                   | Publishes to GitHub Pages for mermaid.live (custom domain, no sub-path); this fork's own `pages.yml` publishes under `/mermaid-editor`; `ci/gitlab-ci.example.yml` is a template for GitLab Pages.                                        |
-| `.github/workflows/docker-publish.yml`                                                           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it would publish for real rather than failing on upstream's.                                                            |
-| `.github/workflows/close-broken-link-issues.yml`                                                 | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                         |
-| `.github/workflows/update-browserlist.yml`                                                       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                    |
-| `.github/workflows/release-pr.yml`                                                               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                               |
-| `netlify.toml`                                                                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                            |
-| `CNAME`, `.nojekyll`                                                                             | GitHub Pages settings (the `mermaid.live` custom domain, Jekyll opt-out); this fork does not ship a hosting configuration.                                                                                                                |
-| `.github/FUNDING.yml`                                                                            | `github: [sidharthv96, knsv]` — renders a "Sponsor this project" button on this repository that pays the upstream maintainers.                                                                                                            |
-| `SECURITY.md`                                                                                    | Tells reporters to e-mail `security@mermaid.live`, which would send vulnerability reports about this deployment to upstream.                                                                                                              |
-| `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore`                                | This fork ships an npm package built into a static site and never builds or publishes a container. With `docker-publish.yml` gone nothing validated them either, so they could only rot.                                                  |
-| `bin/beta-release`, `bin/fix-path`, `bin/update-monaco.js`                                       | mermaid.live release helpers (publish into `mermaid-js/docs`, rewrite its paths, refresh Monaco CDN tags `src/app.html` no longer has). No script calls them.                                                                             |
-| `renovate.json`, `.github/dependabot.disabled.yml`                                               | Upstream's dependency bots, targeting `develop`. No bot is installed here; dependency updates are done by hand as recorded in `STATUS.md`.                                                                                                |
-| `src/lib/components/SyncRoughToolbar.svelte`, `src/lib/components/VersionSecurityToolbar.svelte` | Replaced by `DiagramToolbar.svelte`, the one bar above the diagram. Kept as dead files they would take upstream's changes silently; deleted, a change upstream makes to them surfaces as a conflict to port into `DiagramToolbar.svelte`. |
+| Path                                                                                             | Why it is gone                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/deploy.yml`                                                                   | Publishes to GitHub Pages for mermaid.live (custom domain, no sub-path); this fork's own `pages.yml` publishes under `/mermaid-editor`; `ci/gitlab-ci.example.yml` is a template for GitLab Pages.                                                 |
+| `.github/workflows/docker-publish.yml`                                                           | On pushes to `master` it publishes an image to `ghcr.io/${{ github.repository }}` — this fork's own namespace, so it would publish for real rather than failing on upstream's.                                                                     |
+| `.github/workflows/close-broken-link-issues.yml`                                                 | Auto-closes new issues with mermaid.live support boilerplate; it fires on this fork's own issues.                                                                                                                                                  |
+| `.github/workflows/update-browserlist.yml`                                                       | Scheduled PR against a `develop` base branch that does not exist here.                                                                                                                                                                             |
+| `.github/workflows/release-pr.yml`                                                               | Triggers on pushes to `develop`, which does not exist here.                                                                                                                                                                                        |
+| `netlify.toml`                                                                                   | Netlify build config carrying mermaid.live environment values.                                                                                                                                                                                     |
+| `CNAME`, `.nojekyll`                                                                             | GitHub Pages settings (the `mermaid.live` custom domain, Jekyll opt-out); this fork does not ship a hosting configuration.                                                                                                                         |
+| `.github/FUNDING.yml`                                                                            | `github: [sidharthv96, knsv]` — renders a "Sponsor this project" button on this repository that pays the upstream maintainers.                                                                                                                     |
+| `SECURITY.md`                                                                                    | Tells reporters to e-mail `security@mermaid.live`, which would send vulnerability reports about this deployment to upstream.                                                                                                                       |
+| `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore`                                | This fork ships an npm package built into a static site and never builds or publishes a container. With `docker-publish.yml` gone nothing validated them either, so they could only rot.                                                           |
+| `bin/beta-release`, `bin/fix-path`, `bin/update-monaco.js`                                       | mermaid.live release helpers (publish into `mermaid-js/docs`, rewrite its paths, refresh Monaco CDN tags `src/app.html` no longer has). No script calls them.                                                                                      |
+| `renovate.json`, `.github/dependabot.disabled.yml`                                               | Upstream's dependency bots, targeting `develop`. No bot is installed here; dependency updates are done by hand as recorded in `STATUS.md`.                                                                                                         |
+| `src/lib/components/SyncRoughToolbar.svelte`, `src/lib/components/VersionSecurityToolbar.svelte` | Deleted. Replaced first by one bar above the diagram, since 2026-10-12 by the zoom controls at its bottom right (`canvas/ZoomControls.svelte`) and the inspector's 手描き風 row. Kept as dead files they would take upstream's changes for nothing |
 
 `.github/workflows/tests.yml`, `unit-tests.yml` and `codeql-analysis.yml` are kept —
 they run CI, not releases. `codeql-analysis.yml` carries one local change: a job-level
@@ -506,351 +525,364 @@ at upstream 2.0.67. Once any upstream update has been merged, `HEAD` carries ups
 code newer than `d4f0d43`, so diffing against it reports upstream's own additions and
 modifications as if they were local customizations.
 
-| Status   | Path                                                   |
-| -------- | ------------------------------------------------------ |
-| Added    | `.claude/hooks/session-start.sh`                       |
-| Added    | `.claude/settings.json`                                |
-| Deleted  | `.dockerignore`                                        |
-| Modified | `.env`                                                 |
-| Added    | `.gitattributes`                                       |
-| Deleted  | `.github/FUNDING.yml`                                  |
-| Deleted  | `.github/dependabot.disabled.yml`                      |
-| Modified | `.github/pull_request_template.md`                     |
-| Deleted  | `.github/workflows/close-broken-link-issues.yml`       |
-| Modified | `.github/workflows/codeql-analysis.yml`                |
-| Deleted  | `.github/workflows/deploy.yml`                         |
-| Deleted  | `.github/workflows/docker-publish.yml`                 |
-| Added    | `.github/workflows/fork-checks.yml`                    |
-| Added    | `.github/workflows/pages.yml`                          |
-| Added    | `.github/workflows/publish.yml`                        |
-| Deleted  | `.github/workflows/release-pr.yml`                     |
-| Modified | `.github/workflows/tests.yml`                          |
-| Deleted  | `.github/workflows/update-browserlist.yml`             |
-| Modified | `.gitignore`                                           |
-| Added    | `ci/gitlab-ci.example.yml`                             |
-| Modified | `.husky/pre-commit`                                    |
-| Deleted  | `.nojekyll`                                            |
-| Added    | `.upstream-version.json`                               |
-| Modified | `CLAUDE.md`                                            |
-| Deleted  | `CNAME`                                                |
-| Deleted  | `Dockerfile`                                           |
-| Added    | `docs-dev/EXPORTS.md`                                  |
-| Added    | `NOTICE`                                               |
-| Modified | `README.md`                                            |
-| Added    | `README.upstream.md`                                   |
-| Deleted  | `SECURITY.md`                                          |
-| Added    | `src/lib/components/SaveAsDialog.svelte`               |
-| Added    | `src/lib/util/drawioExport.test.ts`                    |
-| Added    | `src/lib/util/drawioExport.ts`                         |
-| Added    | `src/lib/util/saveAsPrompt.svelte.test.ts`             |
-| Added    | `src/lib/util/saveAsPrompt.svelte.ts`                  |
-| Added    | `src/lib/util/saveFile.test.ts`                        |
-| Added    | `src/lib/util/saveFile.ts`                             |
-| Added    | `src/lib/util/svgPath.test.ts`                         |
-| Added    | `src/lib/util/svgPath.ts`                              |
-| Added    | `src/lib/util/svgToDrawio.test.ts`                     |
-| Added    | `src/lib/util/svgToDrawio.ts`                          |
-| Added    | `src/lib/util/vsdxExport.test.ts`                      |
-| Added    | `src/lib/util/vsdxExport.ts`                           |
-| Added    | `src/lib/util/xmlText.ts`                              |
-| Added    | `tests/fileExports.spec.ts`                            |
-| Added    | `THIRD-PARTY-LICENSES.md`                              |
-| Deleted  | `bin/beta-release`                                     |
-| Deleted  | `bin/fix-path`                                         |
-| Deleted  | `bin/update-monaco.js`                                 |
-| Deleted  | `docker-compose.yml`                                   |
-| Added    | `docs-dev/CROSS-PLATFORM.md`                           |
-| Added    | `docs-dev/FEATURE-FLAGS.md`                            |
-| Added    | `docs-dev/GITLAB-PAGES.md`                             |
-| Added    | `docs-dev/I18N.md`                                     |
-| Added    | `docs-dev/ICONS.md`                                    |
-| Added    | `docs-dev/PACKAGING.md`                                |
-| Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                 |
-| Added    | `docs-dev/STATUS.md`                                   |
-| Added    | `docs-dev/THEME.md`                                    |
-| Added    | `docs-dev/UPSTREAM.md`                                 |
-| Deleted  | `netlify.toml`                                         |
-| Deleted  | `nginx.conf`                                           |
-| Modified | `package.json`                                         |
-| Modified | `playwright.config.ts`                                 |
-| Modified | `pnpm-lock.yaml`                                       |
-| Deleted  | `renovate.json`                                        |
-| Added    | `scripts/check-local-delta.js`                         |
-| Added    | `scripts/copy-legal-files.js`                          |
-| Added    | `scripts/dev-force.js`                                 |
-| Added    | `scripts/fetch-icon-packs.d.ts`                        |
-| Added    | `scripts/fetch-icon-packs.js`                          |
-| Added    | `scripts/fetch-icon-packs.node-test.mjs`               |
-| Added    | `scripts/prepare-pages.js`                             |
-| Added    | `scripts/svg-to-iconify.d.ts`                          |
-| Added    | `scripts/svg-to-iconify.js`                            |
-| Added    | `scripts/update-from-registry.mjs`                     |
-| Added    | `scripts/update-from-registry.node-test.mjs`           |
-| Added    | `scripts/update-upstream.sh`                           |
-| Modified | `src/app.css`                                          |
-| Modified | `src/app.html`                                         |
-| Modified | `src/lib/components/Actions.svelte`                    |
-| Added    | `src/lib/components/AddActions.svelte`                 |
-| Added    | `src/lib/components/AddControls.svelte`                |
-| Added    | `src/lib/components/AiIconPrompt.svelte`               |
-| Added    | `src/lib/components/AiTools.svelte`                    |
-| Added    | `src/lib/components/ArchitectureAdd.svelte`            |
-| Modified | `src/lib/components/Card/Card.svelte`                  |
-| Modified | `src/lib/components/Card/Tabs.svelte`                  |
-| Added    | `src/lib/components/CodeErrorNotice.svelte`            |
-| Added    | `src/lib/components/ColorControls.svelte`              |
-| Added    | `src/lib/components/ColorSwatches.svelte`              |
-| Added    | `src/lib/components/CommandPalette.svelte`             |
-| Modified | `src/lib/components/CopyButton.svelte`                 |
-| Added    | `src/lib/components/CopyButton.test.ts`                |
-| Modified | `src/lib/components/CopyInput.svelte`                  |
-| Modified | `src/lib/components/DesktopEditor.svelte`              |
-| Added    | `src/lib/components/DiagramContextMenu.svelte`         |
-| Modified | `src/lib/components/DiagramDocumentationButton.svelte` |
-| Added    | `src/lib/components/DiagramToolbar.svelte`             |
-| Added    | `src/lib/components/EditControls.svelte`               |
-| Added    | `src/lib/components/EditControls.test.ts`              |
-| Modified | `src/lib/components/Editor.svelte`                     |
-| Added    | `src/lib/components/EditorPaneToggle.svelte`           |
-| Added    | `src/lib/components/EditorRail.svelte`                 |
-| Modified | `src/lib/components/ExternalLinkWrapper.svelte`        |
-| Added    | `src/lib/components/GuideTour.svelte`                  |
-| Added    | `src/lib/components/HelpButton.svelte`                 |
-| Modified | `src/lib/components/History/History.svelte`            |
-| Modified | `src/lib/components/History/historyState.svelte.ts`    |
-| Modified | `src/lib/components/History/historyState.test.ts`      |
-| Added    | `src/lib/components/HtmlExport.svelte`                 |
-| Added    | `src/lib/components/IconChooser.svelte`                |
-| Added    | `src/lib/components/IconLicenseTable.svelte`           |
-| Added    | `src/lib/components/IconPacks.svelte`                  |
-| Added    | `src/lib/components/IconPicker.svelte`                 |
-| Added    | `src/lib/components/LayoutControls.svelte`             |
-| Added    | `src/lib/components/LocaleToggle.svelte`               |
-| Modified | `src/lib/components/MainMenu.svelte`                   |
-| Modified | `src/lib/components/Navbar.svelte`                     |
-| Added    | `src/lib/components/NewDiagram.svelte`                 |
-| Modified | `src/lib/components/PanZoomToolbar.svelte`             |
-| Modified | `src/lib/components/Preset.svelte`                     |
-| Modified | `src/lib/components/Privacy.svelte`                    |
-| Added    | `src/lib/components/ResetAllButton.svelte`             |
-| Added    | `src/lib/components/ResetConfigButton.svelte`          |
-| Added    | `src/lib/components/SelectionLayer.svelte`             |
-| Added    | `src/lib/components/SelectionPanel.svelte`             |
-| Added    | `src/lib/components/SelectionToolbar.svelte`           |
-| Modified | `src/lib/components/Share.svelte`                      |
-| Added    | `src/lib/components/StyleCodeIcon.svelte`              |
-| Added    | `src/lib/components/ShareLinks.svelte`                 |
-| Deleted  | `src/lib/components/SyncRoughToolbar.svelte`           |
-| Added    | `src/lib/components/TableEditor.svelte`                |
-| Added    | `src/lib/components/TableEditor.test.ts`               |
-| Added    | `src/lib/components/TemplateForms.svelte`              |
-| Added    | `src/lib/components/ToolsBar.svelte`                   |
-| Added    | `src/lib/components/ToolsTabs.svelte`                  |
-| Added    | `src/lib/components/UndoRedoButtons.svelte`            |
-| Added    | `src/lib/components/UnknownIcons.svelte`               |
-| Added    | `src/lib/components/VersionInfo.svelte`                |
-| Deleted  | `src/lib/components/VersionSecurityToolbar.svelte`     |
-| Modified | `src/lib/components/View.svelte`                       |
-| Modified | `src/lib/constants.ts`                                 |
-| Added    | `src/lib/i18n/en.ts`                                   |
-| Added    | `src/lib/i18n/i18n.test.ts`                            |
-| Added    | `src/lib/i18n/index.ts`                                |
-| Added    | `src/lib/i18n/ja.ts`                                   |
-| Added    | `src/lib/i18n/messages.ts`                             |
-| Added    | `src/lib/i18n/translate.ts`                            |
-| Modified | `src/lib/types.d.ts`                                   |
-| Added    | `src/lib/util/addActions.test.ts`                      |
-| Added    | `src/lib/util/addActions.ts`                           |
-| Added    | `src/lib/util/aiCollection.svelte.ts`                  |
-| Added    | `src/lib/util/aiPrompt.test.ts`                        |
-| Added    | `src/lib/util/aiPrompt.ts`                             |
-| Added    | `src/lib/util/allDiagrams.test.ts`                     |
-| Added    | `src/lib/util/architectureLabels.test.ts`              |
-| Added    | `src/lib/util/architectureLabels.ts`                   |
-| Added    | `src/lib/util/autoSync.test.ts`                        |
-| Modified | `src/lib/util/autoSync.ts`                             |
-| Added    | `src/lib/util/chartEdit.test.ts`                       |
-| Added    | `src/lib/util/chartEdit.ts`                            |
-| Added    | `src/lib/util/codeError.test.ts`                       |
-| Added    | `src/lib/util/codeError.ts`                            |
-| Added    | `src/lib/util/codeHealth.svelte.ts`                    |
-| Added    | `src/lib/util/codeHealth.test.ts`                      |
-| Added    | `src/lib/util/codeText.ts`                             |
-| Added    | `src/lib/util/colors.test.ts`                          |
-| Added    | `src/lib/util/colors.ts`                               |
-| Added    | `src/lib/util/commands.test.ts`                        |
-| Added    | `src/lib/util/commands.ts`                             |
-| Added    | `src/lib/util/customIconStore.test.ts`                 |
-| Added    | `src/lib/util/customIconStore.ts`                      |
-| Added    | `src/lib/util/customIcons.test.ts`                     |
-| Added    | `src/lib/util/customIcons.ts`                          |
-| Added    | `src/lib/util/darkLines.test.ts`                       |
-| Added    | `src/lib/util/darkLines.ts`                            |
-| Added    | `src/lib/util/diagramDetails.test.ts`                  |
-| Added    | `src/lib/util/diagramDetails.ts`                       |
-| Added    | `src/lib/util/diagramEdit.test.ts`                     |
-| Added    | `src/lib/util/diagramEdit.ts`                          |
-| Added    | `src/lib/util/diagramIds.ts`                           |
-| Added    | `src/lib/util/diagramModify.test.ts`                   |
-| Added    | `src/lib/util/diagramModify.ts`                        |
-| Added    | `src/lib/util/diagramPick.test.ts`                     |
-| Added    | `src/lib/util/diagramPick.ts`                          |
-| Added    | `src/lib/util/diagramTitle.test.ts`                    |
-| Added    | `src/lib/util/diagramTitle.ts`                         |
-| Added    | `src/lib/util/displayName.test.ts`                     |
-| Added    | `src/lib/util/displayName.ts`                          |
-| Modified | `src/lib/util/embed.test.ts`                           |
-| Modified | `src/lib/util/embed.ts`                                |
-| Modified | `src/lib/util/env.ts`                                  |
-| Added    | `src/lib/util/exportPresets.test.ts`                   |
-| Added    | `src/lib/util/exportPresets.ts`                        |
-| Added    | `src/lib/util/fakeIndexedDB.ts`                        |
-| Added    | `src/lib/util/fetchIconPacks.test.ts`                  |
-| Added    | `src/lib/util/fileLoaders/loader.test.ts`              |
-| Modified | `src/lib/util/fileLoaders/loader.ts`                   |
-| Added    | `src/lib/util/helpContent.test.ts`                     |
-| Added    | `src/lib/util/helpContent.ts`                          |
-| Added    | `src/lib/util/htmlExport.test.ts`                      |
-| Added    | `src/lib/util/htmlExport.ts`                           |
-| Added    | `src/lib/util/iconCatalog.test.ts`                     |
-| Added    | `src/lib/util/iconCatalog.ts`                          |
-| Added    | `src/lib/util/iconCategories.test.ts`                  |
-| Added    | `src/lib/util/iconCategories.ts`                       |
-| Added    | `src/lib/util/iconLicenses.test.ts`                    |
-| Added    | `src/lib/util/iconLicenses.ts`                         |
-| Added    | `src/lib/util/iconPacks.test.ts`                       |
-| Added    | `src/lib/util/iconPacks.ts`                            |
-| Added    | `src/lib/util/iconSearch.test.ts`                      |
-| Added    | `src/lib/util/iconSearch.ts`                           |
-| Added    | `src/lib/util/imageExport.test.ts`                     |
-| Added    | `src/lib/util/imageExport.ts`                          |
-| Added    | `src/lib/util/layout.test.ts`                          |
-| Added    | `src/lib/util/layout.ts`                               |
-| Added    | `src/lib/util/localSamples.test.ts`                    |
-| Added    | `src/lib/util/localSamples.ts`                         |
-| Added    | `src/lib/util/memo.test.ts`                            |
-| Added    | `src/lib/util/memo.ts`                                 |
-| Modified | `src/lib/util/mermaid.test.ts`                         |
-| Modified | `src/lib/util/mermaid.ts`                              |
-| Added    | `src/lib/util/mermaidRename.test.ts`                   |
-| Added    | `src/lib/util/mermaidRename.ts`                        |
-| Modified | `src/lib/util/migrations.svelte.ts`                    |
-| Added    | `src/lib/util/mermaidRender.test.ts`                   |
-| Added    | `src/lib/util/monacoInsert.ts`                         |
-| Added    | `src/lib/util/newDiagram.test.ts`                      |
-| Added    | `src/lib/util/newDiagram.ts`                           |
-| Added    | `src/lib/util/offline.ts`                              |
-| Added    | `src/lib/util/onboarding.svelte.ts`                    |
-| Added    | `src/lib/util/panZoom.test.ts`                         |
-| Modified | `src/lib/util/panZoom.ts`                              |
-| Modified | `src/lib/util/persist.svelte.test.ts`                  |
-| Modified | `src/lib/util/persist.svelte.ts`                       |
-| Added    | `src/lib/util/renderScheduler.test.ts`                 |
-| Added    | `src/lib/util/renderScheduler.ts`                      |
-| Added    | `src/lib/util/renderView.test.ts`                      |
-| Modified | `src/lib/util/renderView.ts`                           |
-| Added    | `src/lib/util/sampleNames.test.ts`                     |
-| Added    | `src/lib/util/sampleNames.ts`                          |
-| Modified | `src/lib/util/sanitize.test.ts`                        |
-| Modified | `src/lib/util/sanitize.ts`                             |
-| Added    | `src/lib/util/selection.svelte.ts`                     |
-| Added    | `src/lib/util/selection.test.ts`                       |
-| Added    | `src/lib/util/selectionActions.test.ts`                |
-| Added    | `src/lib/util/selectionActions.ts`                     |
-| Added    | `src/lib/util/selectionKeys.test.ts`                   |
-| Added    | `src/lib/util/selectionKeys.ts`                        |
-| Added    | `src/lib/util/selectionModel.svelte.ts`                |
-| Added    | `src/lib/util/serde.compat.test.ts`                    |
-| Modified | `src/lib/util/serde.test.ts`                           |
-| Modified | `src/lib/util/serde.ts`                                |
-| Added    | `src/lib/util/settledState.svelte.ts`                  |
-| Added    | `src/lib/util/standardIcons.test.ts`                   |
-| Added    | `src/lib/util/standardIcons.ts`                        |
-| Modified | `src/lib/util/state.svelte.test.ts`                    |
-| Modified | `src/lib/util/state.svelte.ts`                         |
-| Added    | `src/lib/util/stateGuard.test.ts`                      |
-| Added    | `src/lib/util/stateGuard.ts`                           |
-| Added    | `src/lib/util/stateLoad.test.ts`                       |
-| Modified | `src/lib/util/stats.test.ts`                           |
-| Modified | `src/lib/util/stats.ts`                                |
-| Added    | `src/lib/util/svgToIconify.test.ts`                    |
-| Added    | `src/lib/util/tableEdit.test.ts`                       |
-| Added    | `src/lib/util/tableEdit.ts`                            |
-| Added    | `src/lib/util/templateForms.test.ts`                   |
-| Added    | `src/lib/util/templateForms.ts`                        |
-| Added    | `src/lib/util/templateNotice.svelte.ts`                |
-| Added    | `src/lib/util/templateThumbnails.ts`                   |
-| Added    | `src/lib/util/themePresets.test.ts`                    |
-| Added    | `src/lib/util/themePresets.ts`                         |
-| Added    | `src/lib/util/toolbarPlacement.test.ts`                |
-| Added    | `src/lib/util/toolbarPlacement.ts`                     |
-| Added    | `src/lib/util/toolsPane.svelte.ts`                     |
-| Added    | `src/lib/util/toolsPane.test.ts`                       |
-| Added    | `src/lib/util/uiBus.ts`                                |
-| Added    | `src/lib/util/undoStack.svelte.ts`                     |
-| Added    | `src/lib/util/undoStack.test.ts`                       |
-| Added    | `src/lib/util/util.test.ts`                            |
-| Modified | `src/lib/util/util.ts`                                 |
-| Modified | `src/routes/(app)/edit/+page.svelte`                   |
-| Modified | `src/routes/+error.svelte`                             |
-| Modified | `src/routes/embed/+page.svelte`                        |
-| Modified | `src/tests/setup.ts`                                   |
-| Modified | `static/favicon.ico`                                   |
-| Modified | `static/favicon.png`                                   |
-| Modified | `static/favicon.svg`                                   |
-| Deleted  | `static/icons/mermaid.svg`                             |
-| Modified | `static/manifest.json`                                 |
-| Modified | `tests/actions.spec.ts`                                |
-| Added    | `tests/addControls.spec.ts`                            |
-| Added    | `tests/aiIcons.spec.ts`                                |
-| Added    | `tests/allDiagrams.spec.ts`                            |
-| Added    | `tests/colors.spec.ts`                                 |
-| Added    | `tests/commandPalette.spec.ts`                         |
-| Modified | `tests/configMigration.spec.ts`                        |
-| Added    | `tests/configReset.spec.ts`                            |
-| Added    | `tests/contradictions.spec.ts`                         |
-| Modified | `tests/diagramUpdate.spec.ts`                          |
-| Added    | `tests/editControls.spec.ts`                           |
-| Added    | `tests/editorAiGlyph.spec.ts`                          |
-| Added    | `tests/editorPanes.spec.ts`                            |
-| Modified | `tests/embed.spec.ts`                                  |
-| Modified | `tests/errorDisplay.spec.ts`                           |
-| Added    | `tests/errorRecovery.spec.ts`                          |
-| Added    | `tests/exportOptions.spec.ts`                          |
-| Added    | `tests/fixedLayout.spec.ts`                            |
-| Added    | `tests/header.spec.ts`                                 |
-| Added    | `tests/help.spec.ts`                                   |
-| Modified | `tests/history.spec.ts`                                |
-| Added    | `tests/htmlExport.spec.ts`                             |
-| Added    | `tests/iconBrowse.spec.ts`                             |
-| Added    | `tests/iconImport.spec.ts`                             |
-| Added    | `tests/iconLicenses.spec.ts`                           |
-| Added    | `tests/iconPacks.spec.ts`                              |
-| Added    | `tests/invariants.ts`                                  |
-| Added    | `tests/layout.spec.ts`                                 |
-| Modified | `tests/loadSite.spec.ts`                               |
-| Added    | `tests/locale.spec.ts`                                 |
-| Modified | `tests/managedTheme.spec.ts`                           |
-| Added    | `tests/monkey.spec.ts`                                 |
-| Added    | `tests/newDiagram.spec.ts`                             |
-| Added    | `tests/offline.spec.ts`                                |
-| Added    | `tests/onboarding.spec.ts`                             |
-| Added    | `tests/performance.spec.ts`                            |
-| Added    | `tests/qaFindings.spec.ts`                             |
-| Added    | `tests/qaFindings2.spec.ts`                            |
-| Added    | `tests/releaseAudit.spec.ts`                           |
-| Added    | `tests/renameSymbol.spec.ts`                           |
-| Added    | `tests/selection.spec.ts`                              |
-| Added    | `tests/swimlane.spec.ts`                               |
-| Added    | `tests/tableEditor.spec.ts`                            |
-| Added    | `tests/templateForms.spec.ts`                          |
-| Added    | `tests/templates.spec.ts`                              |
-| Modified | `tests/test.ts`                                        |
-| Added    | `tests/textStyle.spec.ts`                              |
-| Added    | `tests/themePresets.spec.ts`                           |
-| Added    | `tests/toolsPane.spec.ts`                              |
-| Added    | `tests/toolsTabs.spec.ts`                              |
-| Added    | `tests/undo.spec.ts`                                   |
-| Modified | `vite.embed.config.js`                                 |
+| Status   | Path                                                  |
+| -------- | ----------------------------------------------------- |
+| Added    | `.claude/hooks/session-start.sh`                      |
+| Added    | `.claude/settings.json`                               |
+| Deleted  | `.dockerignore`                                       |
+| Modified | `.env`                                                |
+| Added    | `.gitattributes`                                      |
+| Deleted  | `.github/FUNDING.yml`                                 |
+| Deleted  | `.github/dependabot.disabled.yml`                     |
+| Modified | `.github/pull_request_template.md`                    |
+| Deleted  | `.github/workflows/close-broken-link-issues.yml`      |
+| Modified | `.github/workflows/codeql-analysis.yml`               |
+| Deleted  | `.github/workflows/deploy.yml`                        |
+| Deleted  | `.github/workflows/docker-publish.yml`                |
+| Added    | `.github/workflows/fork-checks.yml`                   |
+| Added    | `.github/workflows/pages.yml`                         |
+| Added    | `.github/workflows/publish.yml`                       |
+| Deleted  | `.github/workflows/release-pr.yml`                    |
+| Modified | `.github/workflows/tests.yml`                         |
+| Deleted  | `.github/workflows/update-browserlist.yml`            |
+| Modified | `.gitignore`                                          |
+| Modified | `.husky/pre-commit`                                   |
+| Deleted  | `.nojekyll`                                           |
+| Added    | `.upstream-version.json`                              |
+| Modified | `CLAUDE.md`                                           |
+| Deleted  | `CNAME`                                               |
+| Deleted  | `Dockerfile`                                          |
+| Added    | `NOTICE`                                              |
+| Modified | `README.md`                                           |
+| Added    | `README.upstream.md`                                  |
+| Deleted  | `SECURITY.md`                                         |
+| Added    | `THIRD-PARTY-LICENSES.md`                             |
+| Deleted  | `bin/beta-release`                                    |
+| Deleted  | `bin/fix-path`                                        |
+| Deleted  | `bin/update-monaco.js`                                |
+| Added    | `ci/gitlab-ci.example.yml`                            |
+| Deleted  | `docker-compose.yml`                                  |
+| Added    | `docs-dev/CROSS-PLATFORM.md`                          |
+| Added    | `docs-dev/EXPORTS.md`                                 |
+| Added    | `docs-dev/FEATURE-FLAGS.md`                           |
+| Added    | `docs-dev/GITLAB-PAGES.md`                            |
+| Added    | `docs-dev/I18N.md`                                    |
+| Added    | `docs-dev/ICONS.md`                                   |
+| Added    | `docs-dev/PACKAGING.md`                               |
+| Added    | `docs-dev/QUALITY-AUDIT-2026-08-31.md`                |
+| Added    | `docs-dev/STATUS.md`                                  |
+| Added    | `docs-dev/THEME.md`                                   |
+| Added    | `docs-dev/UPSTREAM.md`                                |
+| Deleted  | `netlify.toml`                                        |
+| Deleted  | `nginx.conf`                                          |
+| Modified | `package.json`                                        |
+| Modified | `playwright.config.ts`                                |
+| Modified | `pnpm-lock.yaml`                                      |
+| Deleted  | `renovate.json`                                       |
+| Added    | `scripts/check-local-delta.js`                        |
+| Added    | `scripts/copy-legal-files.js`                         |
+| Added    | `scripts/dev-force.js`                                |
+| Added    | `scripts/fetch-icon-packs.d.ts`                       |
+| Added    | `scripts/fetch-icon-packs.js`                         |
+| Added    | `scripts/fetch-icon-packs.node-test.mjs`              |
+| Added    | `scripts/prepare-pages.js`                            |
+| Added    | `scripts/svg-to-iconify.d.ts`                         |
+| Added    | `scripts/svg-to-iconify.js`                           |
+| Added    | `scripts/update-from-registry.mjs`                    |
+| Added    | `scripts/update-from-registry.node-test.mjs`          |
+| Added    | `scripts/update-upstream.sh`                          |
+| Modified | `src/app.css`                                         |
+| Modified | `src/app.html`                                        |
+| Deleted  | `src/lib/components/Actions.svelte`                   |
+| Added    | `src/lib/components/AiIconPrompt.svelte`              |
+| Modified | `src/lib/components/Card/Tabs.svelte`                 |
+| Added    | `src/lib/components/CodeErrorNotice.svelte`           |
+| Modified | `src/lib/components/CopyButton.svelte`                |
+| Added    | `src/lib/components/CopyButton.test.ts`               |
+| Modified | `src/lib/components/CopyInput.svelte`                 |
+| Modified | `src/lib/components/DesktopEditor.svelte`             |
+| Added    | `src/lib/components/DiagramContextMenu.svelte`        |
+| Modified | `src/lib/components/Editor.svelte`                    |
+| Modified | `src/lib/components/ExternalLinkWrapper.svelte`       |
+| Added    | `src/lib/components/GuideTour.svelte`                 |
+| Added    | `src/lib/components/HelpButton.svelte`                |
+| Modified | `src/lib/components/History/History.svelte`           |
+| Modified | `src/lib/components/History/historyState.svelte.ts`   |
+| Modified | `src/lib/components/History/historyState.test.ts`     |
+| Added    | `src/lib/components/IconChooser.svelte`               |
+| Added    | `src/lib/components/IconLicenseTable.svelte`          |
+| Added    | `src/lib/components/IconPacks.svelte`                 |
+| Added    | `src/lib/components/IconPicker.svelte`                |
+| Modified | `src/lib/components/Navbar.svelte`                    |
+| Modified | `src/lib/components/PanZoomToolbar.svelte`            |
+| Deleted  | `src/lib/components/Preset.svelte`                    |
+| Modified | `src/lib/components/Privacy.svelte`                   |
+| Added    | `src/lib/components/ResetAllButton.svelte`            |
+| Added    | `src/lib/components/ResetConfigButton.svelte`         |
+| Added    | `src/lib/components/SelectionLayer.svelte`            |
+| Modified | `src/lib/components/Share.svelte`                     |
+| Deleted  | `src/lib/components/SyncRoughToolbar.svelte`          |
+| Added    | `src/lib/components/TableEditor.svelte`               |
+| Added    | `src/lib/components/TableEditor.test.ts`              |
+| Added    | `src/lib/components/TemplateForms.svelte`             |
+| Added    | `src/lib/components/UndoRedoButtons.svelte`           |
+| Added    | `src/lib/components/UnknownIcons.svelte`              |
+| Added    | `src/lib/components/VersionInfo.svelte`               |
+| Deleted  | `src/lib/components/VersionSecurityToolbar.svelte`    |
+| Modified | `src/lib/components/View.svelte`                      |
+| Added    | `src/lib/components/canvas/AddActionForm.svelte`      |
+| Added    | `src/lib/components/canvas/AddFormFrame.svelte`       |
+| Added    | `src/lib/components/canvas/ArchAddForms.svelte`       |
+| Added    | `src/lib/components/canvas/CanvasPane.svelte`         |
+| Added    | `src/lib/components/canvas/FlowInsert.svelte`         |
+| Added    | `src/lib/components/canvas/InsertBar.svelte`          |
+| Added    | `src/lib/components/canvas/InsertItems.svelte`        |
+| Added    | `src/lib/components/canvas/SpecInsert.svelte`         |
+| Added    | `src/lib/components/canvas/ViewModeSwitch.svelte`     |
+| Added    | `src/lib/components/canvas/ZoomControls.svelte`       |
+| Added    | `src/lib/components/canvas/connectMode.svelte.ts`     |
+| Added    | `src/lib/components/dialogs/ExportDialog.svelte`      |
+| Added    | `src/lib/components/dialogs/NewDiagramDialog.svelte`  |
+| Added    | `src/lib/components/dialogs/ShareDialog.svelte`       |
+| Added    | `src/lib/components/editor/CodePane.svelte`           |
+| Added    | `src/lib/components/editor/PaneRail.svelte`           |
+| Added    | `src/lib/components/form/FieldRow.svelte`             |
+| Added    | `src/lib/components/form/PanelGroup.svelte`           |
+| Added    | `src/lib/components/form/Segmented.svelte`            |
+| Added    | `src/lib/components/form/SwitchRow.svelte`            |
+| Added    | `src/lib/components/inspector/ColorRow.svelte`        |
+| Added    | `src/lib/components/inspector/DiagramSettings.svelte` |
+| Added    | `src/lib/components/inspector/EdgeSection.svelte`     |
+| Added    | `src/lib/components/inspector/Inspector.svelte`       |
+| Added    | `src/lib/components/inspector/Inspector.test.ts`      |
+| Added    | `src/lib/components/inspector/LaneSection.svelte`     |
+| Added    | `src/lib/components/inspector/NameField.svelte`       |
+| Added    | `src/lib/components/inspector/NodeSection.svelte`     |
+| Added    | `src/lib/components/inspector/ObjectFields.svelte`    |
+| Modified | `src/lib/constants.ts`                                |
+| Added    | `src/lib/i18n/en.ts`                                  |
+| Added    | `src/lib/i18n/i18n.test.ts`                           |
+| Added    | `src/lib/i18n/index.ts`                               |
+| Added    | `src/lib/i18n/ja.ts`                                  |
+| Added    | `src/lib/i18n/messages.ts`                            |
+| Added    | `src/lib/i18n/translate.ts`                           |
+| Modified | `src/lib/types.d.ts`                                  |
+| Added    | `src/lib/util/addActions.test.ts`                     |
+| Added    | `src/lib/util/addActions.ts`                          |
+| Added    | `src/lib/util/aiCollection.svelte.ts`                 |
+| Added    | `src/lib/util/aiPrompt.test.ts`                       |
+| Added    | `src/lib/util/aiPrompt.ts`                            |
+| Added    | `src/lib/util/allDiagrams.test.ts`                    |
+| Added    | `src/lib/util/architectureLabels.test.ts`             |
+| Added    | `src/lib/util/architectureLabels.ts`                  |
+| Added    | `src/lib/util/autoSync.test.ts`                       |
+| Modified | `src/lib/util/autoSync.ts`                            |
+| Added    | `src/lib/util/chartEdit.test.ts`                      |
+| Added    | `src/lib/util/chartEdit.ts`                           |
+| Added    | `src/lib/util/codeError.test.ts`                      |
+| Added    | `src/lib/util/codeError.ts`                           |
+| Added    | `src/lib/util/codeHealth.svelte.ts`                   |
+| Added    | `src/lib/util/codeHealth.test.ts`                     |
+| Added    | `src/lib/util/codeText.ts`                            |
+| Added    | `src/lib/util/colorRecent.svelte.ts`                  |
+| Added    | `src/lib/util/colors.test.ts`                         |
+| Added    | `src/lib/util/colors.ts`                              |
+| Added    | `src/lib/util/customIconStore.test.ts`                |
+| Added    | `src/lib/util/customIconStore.ts`                     |
+| Added    | `src/lib/util/customIcons.test.ts`                    |
+| Added    | `src/lib/util/customIcons.ts`                         |
+| Added    | `src/lib/util/darkLines.test.ts`                      |
+| Added    | `src/lib/util/darkLines.ts`                           |
+| Added    | `src/lib/util/diagramDetails.test.ts`                 |
+| Added    | `src/lib/util/diagramDetails.ts`                      |
+| Added    | `src/lib/util/diagramEdit.test.ts`                    |
+| Added    | `src/lib/util/diagramEdit.ts`                         |
+| Added    | `src/lib/util/diagramFont.test.ts`                    |
+| Added    | `src/lib/util/diagramFont.ts`                         |
+| Added    | `src/lib/util/diagramIds.ts`                          |
+| Added    | `src/lib/util/diagramModify.test.ts`                  |
+| Added    | `src/lib/util/diagramModify.ts`                       |
+| Added    | `src/lib/util/diagramPick.test.ts`                    |
+| Added    | `src/lib/util/diagramPick.ts`                         |
+| Added    | `src/lib/util/diagramTitle.test.ts`                   |
+| Added    | `src/lib/util/diagramTitle.ts`                        |
+| Added    | `src/lib/util/displayName.test.ts`                    |
+| Added    | `src/lib/util/displayName.ts`                         |
+| Added    | `src/lib/util/drawioExport.test.ts`                   |
+| Added    | `src/lib/util/drawioExport.ts`                        |
+| Added    | `src/lib/util/editorLayout.svelte.ts`                 |
+| Added    | `src/lib/util/editorLayout.test.ts`                   |
+| Added    | `src/lib/util/editorUi.svelte.ts`                     |
+| Added    | `src/lib/util/editorUi.test.ts`                       |
+| Modified | `src/lib/util/embed.test.ts`                          |
+| Modified | `src/lib/util/embed.ts`                               |
+| Modified | `src/lib/util/env.ts`                                 |
+| Added    | `src/lib/util/exportDiagram.test.ts`                  |
+| Added    | `src/lib/util/exportDiagram.ts`                       |
+| Added    | `src/lib/util/fakeIndexedDB.ts`                       |
+| Added    | `src/lib/util/fetchIconPacks.test.ts`                 |
+| Added    | `src/lib/util/fileLoaders/loader.test.ts`             |
+| Modified | `src/lib/util/fileLoaders/loader.ts`                  |
+| Added    | `src/lib/util/flowShapes.test.ts`                     |
+| Added    | `src/lib/util/flowShapes.ts`                          |
+| Added    | `src/lib/util/helpContent.test.ts`                    |
+| Added    | `src/lib/util/helpContent.ts`                         |
+| Added    | `src/lib/util/htmlExport.test.ts`                     |
+| Added    | `src/lib/util/htmlExport.ts`                          |
+| Added    | `src/lib/util/iconCatalog.test.ts`                    |
+| Added    | `src/lib/util/iconCatalog.ts`                         |
+| Added    | `src/lib/util/iconCategories.test.ts`                 |
+| Added    | `src/lib/util/iconCategories.ts`                      |
+| Added    | `src/lib/util/iconLicenses.test.ts`                   |
+| Added    | `src/lib/util/iconLicenses.ts`                        |
+| Added    | `src/lib/util/iconPacks.test.ts`                      |
+| Added    | `src/lib/util/iconPacks.ts`                           |
+| Added    | `src/lib/util/iconSearch.test.ts`                     |
+| Added    | `src/lib/util/iconSearch.ts`                          |
+| Added    | `src/lib/util/imageExport.test.ts`                    |
+| Added    | `src/lib/util/imageExport.ts`                         |
+| Added    | `src/lib/util/insertActions.test.ts`                  |
+| Added    | `src/lib/util/insertActions.ts`                       |
+| Added    | `src/lib/util/layout.test.ts`                         |
+| Added    | `src/lib/util/layout.ts`                              |
+| Added    | `src/lib/util/localSamples.test.ts`                   |
+| Added    | `src/lib/util/localSamples.ts`                        |
+| Added    | `src/lib/util/memo.test.ts`                           |
+| Added    | `src/lib/util/memo.ts`                                |
+| Modified | `src/lib/util/mermaid.test.ts`                        |
+| Modified | `src/lib/util/mermaid.ts`                             |
+| Added    | `src/lib/util/mermaidRename.test.ts`                  |
+| Added    | `src/lib/util/mermaidRename.ts`                       |
+| Added    | `src/lib/util/mermaidRender.test.ts`                  |
+| Modified | `src/lib/util/migrations.svelte.ts`                   |
+| Modified | `src/lib/util/migrations.test.ts`                     |
+| Added    | `src/lib/util/monacoInsert.ts`                        |
+| Added    | `src/lib/util/newDiagram.test.ts`                     |
+| Added    | `src/lib/util/newDiagram.ts`                          |
+| Added    | `src/lib/util/newTab.ts`                              |
+| Added    | `src/lib/util/newThumbs.ts`                           |
+| Added    | `src/lib/util/offline.ts`                             |
+| Added    | `src/lib/util/onboarding.svelte.ts`                   |
+| Added    | `src/lib/util/panZoom.test.ts`                        |
+| Modified | `src/lib/util/panZoom.ts`                             |
+| Modified | `src/lib/util/persist.svelte.test.ts`                 |
+| Modified | `src/lib/util/persist.svelte.ts`                      |
+| Added    | `src/lib/util/renderScheduler.test.ts`                |
+| Added    | `src/lib/util/renderScheduler.ts`                     |
+| Added    | `src/lib/util/renderView.test.ts`                     |
+| Modified | `src/lib/util/renderView.ts`                          |
+| Added    | `src/lib/util/sampleCatalog.test.ts`                  |
+| Added    | `src/lib/util/sampleCatalog.ts`                       |
+| Added    | `src/lib/util/sampleNames.test.ts`                    |
+| Added    | `src/lib/util/sampleNames.ts`                         |
+| Modified | `src/lib/util/sanitize.test.ts`                       |
+| Modified | `src/lib/util/sanitize.ts`                            |
+| Added    | `src/lib/util/saveFile.test.ts`                       |
+| Added    | `src/lib/util/saveFile.ts`                            |
+| Added    | `src/lib/util/selection.svelte.ts`                    |
+| Added    | `src/lib/util/selection.test.ts`                      |
+| Added    | `src/lib/util/selectionActions.test.ts`               |
+| Added    | `src/lib/util/selectionActions.ts`                    |
+| Added    | `src/lib/util/selectionKeys.test.ts`                  |
+| Added    | `src/lib/util/selectionKeys.ts`                       |
+| Added    | `src/lib/util/selectionModel.svelte.ts`               |
+| Added    | `src/lib/util/serde.compat.test.ts`                   |
+| Modified | `src/lib/util/serde.test.ts`                          |
+| Modified | `src/lib/util/serde.ts`                               |
+| Added    | `src/lib/util/settledState.svelte.ts`                 |
+| Added    | `src/lib/util/standardIcons.test.ts`                  |
+| Added    | `src/lib/util/standardIcons.ts`                       |
+| Modified | `src/lib/util/state.svelte.test.ts`                   |
+| Modified | `src/lib/util/state.svelte.ts`                        |
+| Added    | `src/lib/util/stateGuard.test.ts`                     |
+| Added    | `src/lib/util/stateGuard.ts`                          |
+| Added    | `src/lib/util/stateLoad.test.ts`                      |
+| Modified | `src/lib/util/stats.test.ts`                          |
+| Modified | `src/lib/util/stats.ts`                               |
+| Added    | `src/lib/util/svgPath.test.ts`                        |
+| Added    | `src/lib/util/svgPath.ts`                             |
+| Added    | `src/lib/util/svgToDrawio.test.ts`                    |
+| Added    | `src/lib/util/svgToDrawio.ts`                         |
+| Added    | `src/lib/util/svgToIconify.test.ts`                   |
+| Added    | `src/lib/util/tableEdit.test.ts`                      |
+| Added    | `src/lib/util/tableEdit.ts`                           |
+| Added    | `src/lib/util/templateForms.test.ts`                  |
+| Added    | `src/lib/util/templateForms.ts`                       |
+| Added    | `src/lib/util/templateNotice.svelte.ts`               |
+| Added    | `src/lib/util/templateThumbnails.ts`                  |
+| Added    | `src/lib/util/themePresets.test.ts`                   |
+| Added    | `src/lib/util/themePresets.ts`                        |
+| Added    | `src/lib/util/undoStack.svelte.ts`                    |
+| Added    | `src/lib/util/undoStack.test.ts`                      |
+| Added    | `src/lib/util/util.test.ts`                           |
+| Modified | `src/lib/util/util.ts`                                |
+| Added    | `src/lib/util/vsdxExport.test.ts`                     |
+| Added    | `src/lib/util/vsdxExport.ts`                          |
+| Added    | `src/lib/util/xmlText.ts`                             |
+| Modified | `src/routes/(app)/edit/+page.svelte`                  |
+| Modified | `src/routes/+error.svelte`                            |
+| Modified | `src/routes/embed/+page.svelte`                       |
+| Modified | `src/tests/setup.ts`                                  |
+| Modified | `static/favicon.ico`                                  |
+| Modified | `static/favicon.png`                                  |
+| Modified | `static/favicon.svg`                                  |
+| Deleted  | `static/icons/mermaid.svg`                            |
+| Modified | `static/manifest.json`                                |
+| Modified | `tests/actions.spec.ts`                               |
+| Added    | `tests/addControls.spec.ts`                           |
+| Added    | `tests/aiIcons.spec.ts`                               |
+| Added    | `tests/allDiagrams.spec.ts`                           |
+| Added    | `tests/colors.spec.ts`                                |
+| Modified | `tests/configMigration.spec.ts`                       |
+| Added    | `tests/configReset.spec.ts`                           |
+| Added    | `tests/contradictions.spec.ts`                        |
+| Modified | `tests/diagramUpdate.spec.ts`                         |
+| Deleted  | `tests/docMap.spec.ts`                                |
+| Added    | `tests/editControls.spec.ts`                          |
+| Added    | `tests/editorAiGlyph.spec.ts`                         |
+| Added    | `tests/editorPanes.spec.ts`                           |
+| Modified | `tests/embed.spec.ts`                                 |
+| Modified | `tests/errorDisplay.spec.ts`                          |
+| Added    | `tests/errorRecovery.spec.ts`                         |
+| Added    | `tests/exportOptions.spec.ts`                         |
+| Added    | `tests/fileExports.spec.ts`                           |
+| Added    | `tests/fixedLayout.spec.ts`                           |
+| Added    | `tests/header.spec.ts`                                |
+| Added    | `tests/help.spec.ts`                                  |
+| Added    | `tests/helpers/canvas.ts`                             |
+| Added    | `tests/helpers/exportDlg.ts`                          |
+| Added    | `tests/helpers/inspector.ts`                          |
+| Added    | `tests/helpers/newDlg.ts`                             |
+| Added    | `tests/helpers/shell.ts`                              |
+| Modified | `tests/history.spec.ts`                               |
+| Added    | `tests/htmlExport.spec.ts`                            |
+| Added    | `tests/iconBrowse.spec.ts`                            |
+| Added    | `tests/iconImport.spec.ts`                            |
+| Added    | `tests/iconLicenses.spec.ts`                          |
+| Added    | `tests/iconPacks.spec.ts`                             |
+| Added    | `tests/inspector.spec.ts`                             |
+| Added    | `tests/invariants.ts`                                 |
+| Added    | `tests/layout.spec.ts`                                |
+| Modified | `tests/loadSite.spec.ts`                              |
+| Modified | `tests/managedTheme.spec.ts`                          |
+| Added    | `tests/monkey.spec.ts`                                |
+| Added    | `tests/newDiagram.spec.ts`                            |
+| Added    | `tests/offline.spec.ts`                               |
+| Added    | `tests/onboarding.spec.ts`                            |
+| Added    | `tests/performance.spec.ts`                           |
+| Added    | `tests/qaFindings.spec.ts`                            |
+| Added    | `tests/qaFindings2.spec.ts`                           |
+| Added    | `tests/releaseAudit.spec.ts`                          |
+| Added    | `tests/renameSymbol.spec.ts`                          |
+| Added    | `tests/selection.spec.ts`                             |
+| Added    | `tests/swimlane.spec.ts`                              |
+| Added    | `tests/tableEditor.spec.ts`                           |
+| Added    | `tests/templateForms.spec.ts`                         |
+| Added    | `tests/templates.spec.ts`                             |
+| Modified | `tests/test.ts`                                       |
+| Added    | `tests/textStyle.spec.ts`                             |
+| Added    | `tests/themePresets.spec.ts`                          |
+| Added    | `tests/undo.spec.ts`                                  |
+| Modified | `vite.embed.config.js`                                |
 
 Re-derive this inventory after each update; do not assume it remains unchanged.

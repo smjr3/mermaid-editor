@@ -6,7 +6,7 @@
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import type { EdgeStyle } from '$/util/diagramModify';
+  import type { EdgeHead, EdgeStyle } from '$/util/diagramModify';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import DeleteIcon from '~icons/material-symbols/delete-outline-rounded';
 
@@ -42,15 +42,17 @@
     {#if can?.head}
       <FieldRow label={t('sel.head')}>
         <Segmented
-          value={edge.head ? 'on' : 'off'}
+          value={edge.head}
           full
           ariaLabel={t('sel.head')}
           testID={TID.inspEdgeHead}
           options={[
-            { label: t('edit.edgeHeadOn'), value: 'on' },
-            { label: t('edit.edgeHeadOff'), value: 'off' }
+            { label: t('edit.edgeHeadEnd'), value: 'end' },
+            // Only where the type can draw a head at each end (not block, for one).
+            ...(can.both ? [{ label: t('edit.edgeHeadBoth'), value: 'both' }] : []),
+            { label: t('edit.edgeHeadOff'), value: 'none' }
           ]}
-          onchange={(head) => void model.setEdgeHead(head === 'on')} />
+          onchange={(head) => void model.setEdgeHead(head as EdgeHead)} />
       </FieldRow>
     {/if}
     {#if model.canColorEdge}

@@ -2,7 +2,8 @@ import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { formField, openForm, submitForm } from './helpers/canvas';
-import { expect, t, test } from './test';
+import { closeNewDialog, openNewDialog } from './helpers/newDlg';
+import { EditorPage, expect, t, test } from './test';
 
 // When the code has a mistake, nobody is left stuck: the last picture stays, a plain
 // notice over the diagram names the line, one click goes back to the last valid state,
@@ -70,7 +71,8 @@ test.describe('Error recovery: a mistake in the code', () => {
     await expect(notice(page)).toContainText(t('recover.showingLast'));
     // One notice, over the diagram.
     await expect(page.getByTestId(TID.diagramErrorNotice)).toHaveCount(1);
-    await editPage.checkError(unfinished);
+    // The code pane's footer says it in the same words.
+    await expect(page.getByTestId(TID.wsCodeFooter)).toContainText(unfinished);
     // The last valid picture is still there.
     await editPage.checkTextInView('Finish');
 
@@ -141,13 +143,13 @@ test.describe('Error recovery: a mistake in the code', () => {
     expect(await stored(page)).not.toContain('Changed');
   });
 
-  // The inspector's side of a broken code (its blocked notice) lands with the inspector;
-  // un-fixme this once `inspBlocked` is rendered.
-  test.fixme('the inspector says why it does not edit', async ({ page }) => {
+  test('the inspector and the add bar say why they do not edit', async ({ page }) => {
     await breakCode(page);
-    await expect(page.getByTestId(TID.inspBlocked)).toBeVisible();
-    await node(page, 'Middle').click();
-    await expect(page.getByTestId(TID.inspBlocked)).toBeVisible();
+    await expect(page.getByTestId(TID.inspBlocked)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId(TID.inspBlocked)).toContainText(t('insp.blocked'));
+    await expect(page.getByTestId(TID.canvasInsertBlocked)).toBeVisible();
+    // The theme rows stay usable: settings are not blocked.
+    await expect(page.locator(`[data-testid^="${TID.inspThemePreset}-"]`).first()).toBeEnabled();
   });
 
   test('an emptied editor says so and offers the last valid state', async ({ editPage, page }) => {
@@ -158,23 +160,31 @@ test.describe('Error recovery: a mistake in the code', () => {
     await expect.poll(() => stored(page)).toBe(flow);
   });
 
-  test('undo after a sample and after a new diagram never leaves a blank page', async ({
+  test('a sample is a way out of broken code: it opens in a new tab that starts clean', async ({
+    context,
     editPage,
     page
   }) => {
-    await editPage.loadSampleDiagram('Pie');
-    await editPage.checkTextInView('Dogs');
-    await page.getByTestId(TID.undoButton).click();
-    await expect.poll(() => stored(page)).toBe(flow);
-    await editPage.checkTextInView('Middle');
     await breakCode(page);
-    // A sample replaces broken code: it is a way out, not blocked.
-    await editPage.loadSampleDiagram('Pie');
-    await editPage.checkTextInView('Dogs');
-    await expect(notice(page)).toBeHidden();
-    await page.getByTestId(TID.undoButton).click();
-    await expect(notice(page)).toBeVisible({ timeout: 10_000 });
-    await editPage.checkTextInView('Dogs');
+    const broken = await stored(page);
+    // A sample is not blocked by the broken code; it opens in a new tab.
+    await openNewDialog(page, 'sample');
+    const dialog = page.getByTestId(TID.newDlg);
+    await dialog.locator(`[data-testid="${TID.newDlgSample}"][data-group="Pie"]`).first().click();
+    const url = await editPage.captureWindowOpen(() =>
+      dialog.getByTestId(TID.newDlgSampleStart).click()
+    );
+    await closeNewDialog(page);
+    // This tab keeps its code, broken as it is, with the notice and the last picture.
+    expect(await stored(page)).toBe(broken);
+    await expect(notice(page)).toBeVisible();
+    await editPage.checkTextInView('Middle');
+    // The new tab draws the sample, with nothing to undo into a blank page.
+    const other = new EditorPage(await context.newPage());
+    await other.start(url);
+    await other.checkTextInView('Dogs');
+    await expect(other.page.getByTestId(TID.diagramErrorNotice)).toBeHidden();
+    await expect(other.page.getByTestId(TID.undoButton)).toBeDisabled();
   });
 });
 

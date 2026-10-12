@@ -52,7 +52,9 @@ import {
   setEdgeStyle,
   setNodeIcon,
   setNodeShape,
+  setNodeShapeName,
   setServiceIcon,
+  type EdgeHead,
   type EdgeStyle,
   type EditEdges,
   type EditObject,
@@ -389,6 +391,15 @@ class SelectionModel {
       t('edit.changed', { name: this.label })
     );
   };
+  /** Any of mermaid's shapes by its name (flowShapes.ts); the five common ones keep brackets. */
+  setShapeName = async (shape: string) => {
+    const { object } = this;
+    if (!object) return;
+    await this.apply(
+      setNodeShapeName(inputState.code, object.id, shape),
+      t('edit.changed', { name: this.label })
+    );
+  };
   setIcon = async (icon: string) => {
     const { object } = this;
     if (!object) return;
@@ -501,7 +512,7 @@ class SelectionModel {
       await this.apply(setEdgeStyle(inputState.code, kind, edge, style), t('edit.updated'));
     }
   };
-  setEdgeHead = async (head: boolean) => {
+  setEdgeHead = async (head: EdgeHead) => {
     const { kind, edge } = this;
     if (kind && edge)
       await this.apply(setEdgeHead(inputState.code, kind, edge, head), t('edit.updated'));

@@ -132,7 +132,7 @@ test.describe('Editing in the inspector', () => {
 
     await segment(page, TID.inspEdgeStyle, 'dotted');
     await expect.poll(() => stored(page)).toContain('\n  D -.->|yes| C\n');
-    await segment(page, TID.inspEdgeHead, 'off');
+    await segment(page, TID.inspEdgeHead, 'none');
     await expect.poll(() => stored(page)).toContain('\n  D -.-|yes| C\n');
     await segment(page, TID.inspEdgeStyle, 'thick');
     await expect.poll(() => stored(page)).toContain('\n  D ===|yes| C\n');
@@ -221,7 +221,7 @@ test.describe('Editing in the inspector', () => {
     await editPage.checkTextInView('In stock?');
 
     await pickObject(page, 'D');
-    await expect(page.getByTestId(TID.inspShape)).toHaveValue('diamond');
+    await expect(page.getByTestId(TID.inspShape)).toHaveValue('diam');
     await page.getByTestId(TID.inspShape).selectOption('stadium');
     await expect.poll(() => stored(page)).toContain('    D([In stock?])\n');
     await expect(status(page)).toHaveText(t('edit.changed', { name: 'In stock?' }));

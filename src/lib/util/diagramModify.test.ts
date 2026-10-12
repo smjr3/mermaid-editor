@@ -18,6 +18,7 @@ import {
   setEdgeStyle,
   setNodeIcon,
   setNodeShape,
+  setNodeShapeName,
   setServiceIcon,
   type EditEdge,
   type EditObject
@@ -154,7 +155,7 @@ describe('flowchart edges', () => {
       'D>A:no',
       'D>B:'
     ]);
-    expect(edges?.items.map(({ style, head }) => `${style}${head ? '>' : ''}`)).toEqual([
+    expect(edges?.items.map(({ style, head }) => `${style}${head === 'none' ? '' : '>'}`)).toEqual([
       'solid>',
       'solid>',
       'solid>',
@@ -179,11 +180,11 @@ describe('flowchart edges', () => {
       '  C -.->|yes| D'
     );
     expect(setEdgeStyle(lanes, 'flowchart', await edge(lanes, 4), 'solid')).toContain('  D --> B');
-    expect(setEdgeHead(lanes, 'flowchart', await edge(lanes, 2), false)).toContain(
+    expect(setEdgeHead(lanes, 'flowchart', await edge(lanes, 2), 'none')).toContain(
       '  C ---|yes| D'
     );
     const dotted = setEdgeStyle(lanes, 'flowchart', await edge(lanes, 2), 'dotted');
-    expect(setEdgeHead(dotted, 'flowchart', await edge(dotted, 2), false)).toContain(
+    expect(setEdgeHead(dotted, 'flowchart', await edge(dotted, 2), 'none')).toContain(
       '  C -.-|yes| D'
     );
   });
@@ -379,7 +380,7 @@ describe('class diagrams', () => {
     );
     expect(reverseEdge(code, 'class', await edge(code, 1))).toContain('  Cat "*" --> "1" Animal');
     expect(setEdgeStyle(code, 'class', await edge(code, 2), 'solid')).toContain('  Dog --> Cat');
-    expect(setEdgeHead(code, 'class', await edge(code, 1), false)).toContain(
+    expect(setEdgeHead(code, 'class', await edge(code, 1), 'none')).toContain(
       '  Animal "1" -- "*" Cat'
     );
     expect(setEdgeLabel(code, 'class', await edge(code, 2), 'uses')).toContain(
@@ -546,15 +547,15 @@ describe('architecture diagrams', () => {
 
   it('edits connections', async () => {
     expect((await editableEdges(code))?.items.map(({ head }) => head)).toEqual([
-      true,
-      false,
-      false
+      'end',
+      'none',
+      'none'
     ]);
     expect(reverseEdge(code, 'architecture', await edge(code, 0))).toContain('  web:L --> R:db');
-    expect(setEdgeHead(code, 'architecture', await edge(code, 1), true)).toContain(
+    expect(setEdgeHead(code, 'architecture', await edge(code, 1), 'end')).toContain(
       '  web:T --> B:dns'
     );
-    expect(setEdgeHead(code, 'architecture', await edge(code, 0), false)).toContain(
+    expect(setEdgeHead(code, 'architecture', await edge(code, 0), 'none')).toContain(
       '  db:R -- L:web'
     );
     expect(deleteEdge(code, 'architecture', await edge(code, 2))).not.toContain('dns:R');
@@ -919,9 +920,9 @@ columns 1
     expect(setEdgeLabel(labelled, 'block', await edge(labelled, 1), '')).toBe(code);
     const reversed = reverseEdge(code, 'block', second);
     expect(reversed).toContain('  D --> C\n');
-    const headless = setEdgeHead(code, 'block', second, false);
+    const headless = setEdgeHead(code, 'block', second, 'none');
     expect(headless).toContain('  C --- D\n');
-    expect((await edge(headless, 1)).head).toBe(false);
+    expect((await edge(headless, 1)).head).toBe('none');
     const gone = deleteEdge(code, 'block', second);
     expect(gone).not.toContain('C --> D');
     for (const result of [labelled, reversed, headless, gone]) {
@@ -989,11 +990,15 @@ describe('non-ASCII ids', () => {
 
 describe('flowchart node shape, lane and icon', () => {
   it('reads a node’s shape, lane and icon', () => {
-    expect(flowNodeDetails(lanes, 'D')).toEqual({ icon: '', lane: 'Shop', shape: 'diamond' });
-    expect(flowNodeDetails(lanes, 'A')).toEqual({ icon: '', lane: 'Customer', shape: 'rect' });
+    expect(flowNodeDetails(lanes, 'D')).toMatchObject({ icon: '', lane: 'Shop', shape: 'diamond' });
+    expect(flowNodeDetails(lanes, 'A')).toMatchObject({
+      icon: '',
+      lane: 'Customer',
+      shape: 'rect'
+    });
     const icon = 'flowchart LR\n  A@{ icon: "tabler:user", label: "利用者" } --> B';
     expect(flowNodeDetails(icon, 'A')).toEqual({ icon: 'tabler:user', lane: '', shape: undefined });
-    expect(flowNodeDetails(icon, 'B')).toEqual({ icon: '', lane: '', shape: 'rect' });
+    expect(flowNodeDetails(icon, 'B')).toMatchObject({ icon: '', lane: '', shape: 'rect' });
     expect(flowNodeDetails('flowchart LR\n  A[[sub]]', 'A').shape).toBe('other');
   });
 
@@ -1210,5 +1215,98 @@ describe('sequence notes and blocks', () => {
     const loop = deleteObject(code, 'sequence', await object(code, 'line:10'));
     await expect(typeOf(loop)).resolves.toBe('sequence');
     expect(loop).not.toContain('loop');
+  });
+});
+
+describe('arrowheads at the end, at both ends, or none', () => {
+  const heads = async (code: string) =>
+    (await editableEdges(code))?.items.map(({ head }) => head) ?? [];
+
+  it('draws a flowchart arrow both ways in each line style, and back', async () => {
+    const code = 'flowchart LR\n  A --> B\n  B -.-> C\n  C ==> D\n  D --- E';
+    expect(await heads(code)).toEqual(['end', 'end', 'end', 'none']);
+    const solid = setEdgeHead(code, 'flowchart', await edge(code, 0), 'both');
+    expect(solid).toContain('  A <--> B\n');
+    const dotted = setEdgeHead(code, 'flowchart', await edge(code, 1), 'both');
+    expect(dotted).toContain('  B <-.-> C\n');
+    const thick = setEdgeHead(code, 'flowchart', await edge(code, 2), 'both');
+    expect(thick).toContain('  C <==> D\n');
+    const plain = setEdgeHead(code, 'flowchart', await edge(code, 3), 'both');
+    expect(plain).toContain('  D <--> E');
+    expect((await edge(solid, 0)).head).toBe('both');
+    for (const result of [solid, dotted, thick, plain]) {
+      await expect(checkEdit(code, result)).resolves.toBe(true);
+    }
+    // 先だけ takes the second head off again; なし both.
+    expect(setEdgeHead(solid, 'flowchart', await edge(solid, 0), 'end')).toBe(code);
+    expect(setEdgeHead(thick, 'flowchart', await edge(thick, 2), 'none')).toContain('  C === D');
+    // Crosses and circles are mirrored as they are.
+    const cross = 'flowchart LR\n  A --x B';
+    expect(setEdgeHead(cross, 'flowchart', await edge(cross, 0), 'both')).toContain('  A x--x B');
+  });
+
+  it('mirrors a class relation, an architecture edge and a sequence message', async () => {
+    const classes = 'classDiagram\n  Animal <|-- Dog\n  Dog --> Cat';
+    expect(await heads(classes)).toEqual(['end', 'end']);
+    const two = setEdgeHead(classes, 'class', await edge(classes, 0), 'both');
+    expect(two).toContain('  Animal <|--|> Dog');
+    await expect(checkEdit(classes, two)).resolves.toBe(true);
+    expect((await edge(two, 0)).head).toBe('both');
+    // 先だけ keeps the one mark where it is.
+    expect(setEdgeHead(classes, 'class', await edge(classes, 0), 'end')).toBe(classes);
+
+    const arch =
+      'architecture-beta\n  service a(server)[A]\n  service b(database)[B]\n  a:R --> L:b';
+    const archBoth = setEdgeHead(arch, 'architecture', await edge(arch, 0), 'both');
+    expect(archBoth).toContain('  a:R <--> L:b');
+    await expect(checkEdit(arch, archBoth)).resolves.toBe(true);
+
+    const seq = 'sequenceDiagram\n  A->>B: hi\n  B-->>A: ok\n  A-xB: lost';
+    expect(await heads(seq)).toEqual(['end', 'end', 'end']);
+    const seqBoth = setEdgeHead(seq, 'sequence', await edge(seq, 1), 'both');
+    expect(seqBoth).toContain('  B<<-->>A: ok');
+    await expect(checkEdit(seq, seqBoth)).resolves.toBe(true);
+    expect((await edge(seqBoth, 1)).head).toBe('both');
+    const seqNone = setEdgeHead(seq, 'sequence', await edge(seq, 0), 'none');
+    expect(seqNone).toContain('  A->B: hi');
+    expect((await edge(seqNone, 0)).head).toBe('none');
+    // 先だけ leaves a cross as it is, and puts the head back on a plain line.
+    expect(setEdgeHead(seq, 'sequence', await edge(seq, 2), 'end')).toBe(seq);
+    expect(setEdgeHead(seqNone, 'sequence', await edge(seqNone, 0), 'end')).toBe(seq);
+  });
+
+  it('offers both ends only where the type can draw them', async () => {
+    const block = 'block-beta\n  a b\n  a --> b';
+    expect((await editableEdges(block))?.can).toMatchObject({ both: false, head: true });
+    const er = 'erDiagram\n  A ||--o{ B : has';
+    expect((await editableEdges(er))?.can).toMatchObject({ both: false, head: false });
+    const flow = 'flowchart LR\n  A --> B';
+    expect((await editableEdges(flow))?.can).toMatchObject({ both: true, head: true });
+  });
+});
+
+describe('every mermaid shape for a flowchart node', () => {
+  it('writes the other shapes as data, keeps the common ones as brackets, and reads them back', async () => {
+    const code = 'flowchart TD\n  A[Order] --> B\n  C@{ shape: rect, label: "Pick" }';
+    const db = setNodeShapeName(code, 'A', 'cyl') ?? '';
+    expect(db).toContain('  A@{ shape: cyl, label: "Order" } --> B');
+    expect(flowNodeDetails(db, 'A')).toMatchObject({ shape: 'other', shapeName: 'cyl' });
+    await expect(checkEdit(code, db)).resolves.toBe(true);
+    // Back to a common shape: brackets as the Add card writes them.
+    expect(setNodeShapeName(db, 'A', 'diam')).toBeDefined();
+    expect(setNodeShapeName(code, 'A', 'diamond')).toContain('  A{Order} --> B');
+    // A bare node takes the shape with its id as the text; a data node keeps its label.
+    expect(setNodeShapeName(code, 'B', 'doc')).toContain('--> B@{ shape: doc }');
+    expect(setNodeShapeName(code, 'C', 'hex')).toContain('  C@{ shape: hex, label: "Pick" }');
+    expect(setNodeShapeName(code, 'A', 'no-such-shape')).toBeUndefined();
+    // Bracket forms of the other shapes are recognised.
+    const brackets = 'flowchart TD\n  P[(DB)]\n  Q[/In/]\n  R[\\Out/]\n  S{{Prep}}\n  T[[Sub]]';
+    expect(['P', 'Q', 'R', 'S', 'T'].map((id) => flowNodeDetails(brackets, id).shapeName)).toEqual([
+      'cyl',
+      'lean-r',
+      'trap-t',
+      'hex',
+      'fr-rect'
+    ]);
   });
 });

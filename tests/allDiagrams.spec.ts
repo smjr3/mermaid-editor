@@ -1,12 +1,12 @@
 import { TID } from '$/constants';
 import { localExamples, localSamples } from '$/util/localSamples';
 import { diagramData } from '@mermaid-js/examples';
-import { readFileSync } from 'node:fs';
+import { readDownload, saveExport } from './helpers/exportDlg';
 import { expect, t, test } from './test';
 
 // Every sample diagram the editor offers, through every feature that renders,
-// rewrites or exports it: light and dark rendering, the layout card, the HTML,
-// GitLab, PNG and SVG exports, and the view and embed pages.
+// rewrites or exports it: light and dark rendering, the inspector's 向き row, the HTML,
+// Markdown (SVG + link), PNG and SVG exports, and the view and embed pages.
 
 const zenuml =
   'zenuml\n  title Order\n  Client->OrderService.create() {\n    OrderService->Db.save()\n  }';
@@ -49,30 +49,24 @@ test.describe('Every sample diagram', () => {
       await editPage.start(`/edit#base64:${state(code)}`);
       await rendered(page);
 
-      // Layout card: each direction keeps the diagram rendering.
-      await page.getByTestId(TID.layoutCard).click();
-      if ((await page.getByTestId(TID.layoutDirectionLR).count()) > 0) {
-        for (const direction of [TID.layoutDirectionLR, TID.layoutDirectionTB]) {
-          await page.getByTestId(direction).click();
+      // 図全体 › 向き: each direction keeps the diagram rendering.
+      if ((await page.getByTestId(`${TID.inspDirection}-LR`).count()) > 0) {
+        for (const direction of ['LR', 'TB']) {
+          await page.getByTestId(`${TID.inspDirection}-${direction}`).click();
           await rendered(page);
         }
-        await page.getByTestId(TID.layoutFit).click();
-        await expect(page.getByTestId(TID.layoutMessage)).toHaveText(
+        await page.getByTestId(`${TID.inspDirection}-fit`).click();
+        await expect(page.getByTestId(TID.inspMessage)).toHaveText(
           new RegExp(`${t('layout.fitChoseLR')}|${t('layout.fitChoseTB')}`)
         );
         await rendered(page);
       }
-      await page.getByTestId(TID.layoutCard).click();
 
-      // Exports.
-      await page.getByTestId(TID.actionsCard).click();
-      const download = async (testID: string) => {
-        const [file] = await Promise.all([
-          page.waitForEvent('download'),
-          page.getByTestId(testID).click()
-        ]);
-        return readFileSync((await file.path()) ?? '');
-      };
+      // Exports, from the 書き出す dialog.
+      const download = async (format: 'html' | 'md' | 'png' | 'svg') =>
+        await readDownload(
+          await saveExport(page, format, format === 'html' ? { htmlMode: 'file' } : {})
+        );
       // An SVG file must be well-formed XML, or nothing but a browser's HTML parser opens it.
       const isXml = (text: string) =>
         page.evaluate(
@@ -80,11 +74,11 @@ test.describe('Every sample diagram', () => {
             !new DOMParser().parseFromString(svg, 'image/svg+xml').querySelector('parsererror'),
           text
         );
-      expect((await download(TID.downloadHTML)).toString()).toContain('<svg');
-      expect(await isXml((await download(TID.exportGitLab)).toString())).toBe(true);
-      await expect(page.getByTestId(TID.exportMessage)).toContainText('.svg');
-      expect(await isXml((await download(TID.downloadSVG)).toString())).toBe(true);
-      const png = await download(TID.downloadPNG);
+      expect((await download('html')).toString()).toContain('<svg');
+      expect(await isXml((await download('md')).toString())).toBe(true);
+      await expect(page.getByTestId(TID.exportDlgMessage)).toContainText('.svg');
+      expect(await isXml((await download('svg')).toString())).toBe(true);
+      const png = await download('png');
       expect(png.subarray(1, 4).toString()).toBe('PNG');
     });
 

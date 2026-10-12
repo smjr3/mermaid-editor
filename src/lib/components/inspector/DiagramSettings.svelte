@@ -37,13 +37,18 @@
   import { env } from '$/util/env';
   import {
     directionUnsupportedKey,
-    getDirection,
+    elkPlacements,
+    getElkOptions,
+    getFullDirection,
     getLayoutOptions,
     pickDirection,
     setDirection,
+    setElkOptions,
     setLayoutOptions,
     viewBoxSize,
     type Direction,
+    type ElkOptions,
+    type FullDirection,
     type LayoutOptions,
     type Size
   } from '$/util/layout';
@@ -110,8 +115,9 @@
   const lineColor = $derived(getLineColor(inputState.mermaid));
 
   // ---- Layout (code and config) ----
-  const direction = $derived(getDirection(inputState.code));
+  const direction = $derived(getFullDirection(inputState.code));
   const options = $derived(getLayoutOptions(inputState.mermaid));
+  const elk = $derived(getElkOptions(inputState.mermaid));
   // What the 向き choice shows: the code's direction, or 自動 while it is being worked out.
   let directionValue = $derived<string>(direction ?? 'TB');
   let message = $state('');
@@ -125,13 +131,13 @@
     const key = refusals[result];
     return key ? t(key) : '';
   };
-  const applyDirection = async (next: Direction): Promise<boolean> => {
+  const applyDirection = async (next: FullDirection): Promise<boolean> => {
     message = '';
     const result = await applyToolEdit(setDirection(inputState.code, next), {
       resetPanZoom: true
     });
     message = refusal(result);
-    directionValue = getDirection(inputState.code) ?? next;
+    directionValue = getFullDirection(inputState.code) ?? next;
     return result === 'applied' || result === 'unchanged';
   };
   const applyOptions = (next: Partial<LayoutOptions>) => {
@@ -178,12 +184,12 @@
       message = t('layout.fitFailed');
     } finally {
       busy = false;
-      directionValue = getDirection(inputState.code) ?? 'TB';
+      directionValue = getFullDirection(inputState.code) ?? 'TB';
     }
   };
   const onDirection = (value: string) => {
     if (value === 'fit') void fitToView();
-    else void applyDirection(value as Direction);
+    else void applyDirection(value as FullDirection);
   };
 
   // ---- Title (code) ----
@@ -338,7 +344,9 @@
           testID={TID.inspDirection}
           options={[
             { label: t('layout.directionTB'), value: 'TB' },
+            { label: t('layout.directionBT'), value: 'BT' },
             { label: t('layout.directionLR'), value: 'LR' },
+            { label: t('layout.directionRL'), value: 'RL' },
             { label: t('insp.directionFit'), title: t('layout.fitHint'), value: 'fit' }
           ]}
           onchange={onDirection} />
@@ -370,6 +378,34 @@
         }))}
         onchange={(spacing) => applyOptions({ spacing: spacing as LayoutOptions['spacing'] })} />
     </FieldRow>
+    {#if options.engine === 'elk'}
+      <!-- ELK's own options (mermaid's `elk` config): how nodes are placed, merged arrows. -->
+      <FieldRow label={t('insp.elkPlacement')}>
+        <select
+          class={selectClass}
+          value={elk.placement}
+          aria-label={t('insp.elkPlacement')}
+          title={t('insp.elkPlacementHint')}
+          data-testid={TID.inspElkPlacement}
+          onchange={(event) =>
+            updateConfig(
+              setElkOptions(inputState.mermaid, {
+                placement: event.currentTarget.value as ElkOptions['placement']
+              })
+            )}>
+          <option value="">{t('insp.elkPlacement.default')}</option>
+          {#each elkPlacements as placement (placement)}
+            <option value={placement}>{t(`insp.elkPlacement.${placement}`)}</option>
+          {/each}
+        </select>
+      </FieldRow>
+      <SwitchRow
+        label={t('insp.elkMerge')}
+        checked={elk.mergeEdges}
+        testID={TID.inspElkMerge}
+        onchange={(mergeEdges) =>
+          updateConfig(setElkOptions(inputState.mermaid, { mergeEdges }))} />
+    {/if}
   {:else}
     <FieldRow label={t('layout.direction')}>
       <span

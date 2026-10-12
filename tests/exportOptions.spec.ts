@@ -59,7 +59,7 @@ test.describe('Export options', () => {
       'aria-pressed',
       'true'
     );
-    await expect(page.locator(`[data-testid^="${TID.exportPreset}-"]`)).toHaveCount(0);
+    await expect(page.locator('[data-testid^="export-preset-"]')).toHaveCount(0);
     await expect(page.getByTestId(TID.exportDlg).locator('input[type="number"]')).toHaveCount(0);
     await expect(page.getByTestId(TID.exportDlgNote)).toContainText(t('actions.noteAsIs'));
   });
@@ -157,7 +157,7 @@ test.describe('Export options', () => {
   test('saves under the typed name at once, without a second dialog', async ({ page }) => {
     const download = await saveExport(page, 'png', { name: 'monthly: report' });
     expect(download.suggestedFilename()).toBe('monthly report.png');
-    await expect(page.getByTestId(TID.saveAsDialog)).toHaveCount(0);
+    await expect(page.getByTestId('save-as-dialog')).toHaveCount(0);
     // A name typed with its extension keeps it once; an empty one falls back.
     expect((await saveExport(page, 'svg', { name: 'chart.svg' })).suggestedFilename()).toBe(
       'chart.svg'

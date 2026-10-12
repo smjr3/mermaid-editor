@@ -62,10 +62,12 @@ const keys = [
 ];
 const quick = { timeout: 1500 };
 
-// Controls that leave the page, open the file picker or replace the whole state
-// in ways that say nothing about the tools (language, share, pack import).
+// Controls that leave the page, open the file picker or a modal dialog, or replace the
+// whole state in ways that say nothing about the tools (share, pack import, folding).
 const excluded = [
-  TID.toolsRailExpand,
+  TID.inspCollapse,
+  TID.inspIconBrowse,
+  TID.inspIconPacks,
   'icon-pack',
   'import',
   'reset-config',
@@ -149,12 +151,14 @@ const monkeyActions: Action[] = [
     }
   },
   {
-    name: 'toolbar button',
+    name: 'add bar button',
     run: async (page, pick) => {
       const buttons = await usable(
-        page.locator(`[data-testid="${TID.selectionToolbar}"] button:not([data-testid$="-more"])`)
+        page.locator(
+          `[data-testid="${TID.canvasInsertBar}"] button, [data-testid="${TID.canvasInsertMenu}"] button, [data-testid="${TID.canvasAddForm}"] button`
+        )
       );
-      if (buttons.length === 0) return 'no toolbar';
+      if (buttons.length === 0) return 'no add bar';
       const button = pick(buttons);
       const label = (await button.getAttribute('data-testid')) ?? '';
       await button.click(quick);
@@ -165,7 +169,9 @@ const monkeyActions: Action[] = [
     name: 'choose option',
     run: async (page, pick) => {
       const selects = await usable(
-        page.locator(`[data-testid="${TID.selectionToolbar}"] select, .tools-pane select`)
+        page.locator(
+          `[data-testid="${TID.inspPanel}"] select, [data-testid="${TID.canvasAddForm}"] select`
+        )
       );
       if (selects.length === 0) return 'no selects';
       const select = pick(selects);
@@ -189,7 +195,9 @@ const monkeyActions: Action[] = [
       if (!focused) {
         const fields = await usable(
           page.locator(
-            `[data-testid="${TID.selectionToolbar}"] input, .tools-pane input[type="text"], .tools-pane input:not([type])`
+            [TID.inspPanel, TID.canvasAddForm]
+              .map((id) => `[data-testid="${id}"] input:is([type="text"], :not([type]))`)
+              .join(', ')
           )
         );
         if (fields.length === 0) return 'no field';
@@ -203,25 +211,15 @@ const monkeyActions: Action[] = [
     }
   },
   {
-    name: 'tools button',
+    name: 'inspector button',
     run: async (page, pick) => {
-      const buttons = await usable(
-        page.locator('.tools-pane [role="tabpanel"] button, .tools-pane [data-testid$="-card"]')
-      );
+      const buttons = await usable(page.locator(`[data-testid="${TID.inspPanel}"] button`));
       if (buttons.length === 0) return 'no buttons';
       const button = pick(buttons);
       const label =
         (await button.getAttribute('data-testid')) ?? (await button.textContent()) ?? '';
       await button.click(quick);
       return label.trim().slice(0, 30);
-    }
-  },
-  {
-    name: 'switch tab',
-    run: async (page, pick) => {
-      const tab = pick(['make', 'fix', 'out']);
-      await page.getByTestId(`${TID.toolsTab}-${tab}`).click(quick);
-      return tab;
     }
   },
   {
@@ -264,7 +262,11 @@ for (const seed of seeds) {
     for (let step = 1; step <= actions; step++) {
       const action = pick(monkeyActions);
       const started = Date.now();
-      const renaming = await page.getByTestId(TID.selectionRename).isVisible();
+      // A text field of the inspector with focus (名前, ラベル, タイトル, ID, …) applies what was
+      // typed when focus leaves it, so the next action may be two undo steps.
+      const renaming = await page.evaluate(() =>
+        Boolean(document.activeElement?.closest('[data-testid="insp-panel"] input, textarea'))
+      );
       let detail: string;
       try {
         detail = await action.run(page, pick);

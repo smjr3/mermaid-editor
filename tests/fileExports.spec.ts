@@ -82,7 +82,7 @@ test.describe('The file name', () => {
     expect(download.suggestedFilename()).toBe('monthly report.png');
     const file = await readDownload(download);
     expect([...file.subarray(0, 4)]).toEqual(PNG_MAGIC);
-    await expect(page.getByTestId(TID.saveAsDialog)).toHaveCount(0);
+    await expect(page.getByTestId('save-as-dialog')).toHaveCount(0);
   });
 
   test('saves nothing when the dialog is cancelled', async ({ page }) => {

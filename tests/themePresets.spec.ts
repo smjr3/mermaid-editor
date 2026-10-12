@@ -1,6 +1,6 @@
 import { TID } from '$/constants';
 import { readFileSync } from 'node:fs';
-import { downloadPNG, downloadSVG } from './helpers/exportDlg';
+import { chooseExport, downloadPNG, downloadSVG } from './helpers/exportDlg';
 import { expect, t, test } from './test';
 import type { Page } from '@playwright/test';
 
@@ -81,7 +81,9 @@ test.describe('Theme presets', () => {
     expect(styles.some((css) => css.includes(`background-color:${neon.background}`))).toBe(true);
     expect(svg).toContain(neon.border);
 
-    // PNG export: the dark background fills the image instead of white.
+    // PNG export on a white background (the default is transparent, which stays transparent):
+    // the preset's dark background fills the image instead of white.
+    await chooseExport(page, 'png', { background: 'white' });
     const [pngDownload] = await Promise.all([
       page.waitForEvent('download'),
       downloadPNG(page, 100)

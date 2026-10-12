@@ -8,9 +8,11 @@
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
+  import type { MessageKey } from '$/i18n/messages';
   import { textSizeChoices, type TextSize } from '$/util/colors';
-  import { nodeShapes, type NodeShape } from '$/util/diagramEdit';
+  import type { NodeShape } from '$/util/diagramEdit';
   import { displayName } from '$/util/displayName';
+  import { flowShapeNames, type FlowShapeName } from '$/util/flowShapes';
   import { select, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import ConnectIcon from '~icons/material-symbols/arrow-right-alt-rounded';
@@ -52,6 +54,17 @@
   const selectClass =
     'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
   const smallButton = 'h-7 px-2 text-xs';
+  // The 形 row: the Add card's five under their names, then every other mermaid shape.
+  const commonShapes: [FlowShapeName, NodeShape][] = [
+    ['rect', 'rect'],
+    ['rounded', 'rounded'],
+    ['diam', 'diamond'],
+    ['circle', 'circle'],
+    ['stadium', 'stadium']
+  ];
+  const moreShapes = flowShapeNames.filter(
+    (name) => !commonShapes.some(([common]) => common === name)
+  );
 </script>
 
 {#if object}
@@ -70,19 +83,25 @@
           <span class="truncate text-xs text-muted-foreground" title={t('edit.shapeIcon')}
             >{t('edit.shapeIcon')}</span>
         {:else}
+          <!-- Every shape mermaid draws (flowShapes.ts): the Add card's five first, then the rest. -->
           <select
             class={selectClass}
-            value={model.node.shape}
+            value={model.node.shapeName ?? 'other'}
             aria-label={t('sel.shape')}
             data-insp-focus="shape"
             data-testid={TID.inspShape}
-            onchange={(event) => void model.setShape(event.currentTarget.value as NodeShape)}>
-            {#if model.node.shape === 'other'}
+            onchange={(event) => void model.setShapeName(event.currentTarget.value)}>
+            {#if !model.node.shapeName}
               <option value="other" disabled>{t('edit.shapeOther')}</option>
             {/if}
-            {#each nodeShapes as shape (shape)}
-              <option value={shape}>{t(`add.shape.${shape}`)}</option>
+            {#each commonShapes as [name, shape] (name)}
+              <option value={name}>{t(`add.shape.${shape}`)}</option>
             {/each}
+            <optgroup label={t('insp.shapeMore')}>
+              {#each moreShapes as name (name)}
+                <option value={name}>{t(`shape.${name}` as MessageKey)}</option>
+              {/each}
+            </optgroup>
           </select>
         {/if}
       </FieldRow>

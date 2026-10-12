@@ -27,6 +27,7 @@ test.describe('Managed theme', () => {
     await expect.poll(() => storedTheme(page)).toBe('redux-color');
     await page.emulateMedia({ colorScheme: 'light' });
     await editPage.checkTheme('light');
+    await expect(page.locator('#view .node').first()).toBeVisible({ timeout: 15_000 });
 
     const picture = () =>
       page.evaluate(() => {

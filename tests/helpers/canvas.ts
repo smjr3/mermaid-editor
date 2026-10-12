@@ -48,8 +48,12 @@ export const insert = async (page: Page, key: string): Promise<void> => {
   await menu.locator(itemSelector(key)).click();
 };
 
-/** The open add form (one at a time). */
-export const addForm = (page: Page) => page.getByTestId(TID.canvasAddForm);
+/**
+ * The open add form (one at a time). The popover of the form opened before fades out for a
+ * moment, so only a form inside an open popover counts.
+ */
+export const addForm = (page: Page) =>
+  page.locator(`[data-state="open"] [data-testid="${TID.canvasAddForm}"]`);
 
 /** A field of the open add form by its `data-key`. */
 export const formField = (page: Page, key: string) =>
@@ -58,7 +62,7 @@ export const formField = (page: Page, key: string) =>
 export const submitForm = (page: Page) =>
   addForm(page).getByTestId(TID.canvasAddFormSubmit).click();
 
-export const formMessage = (page: Page) => page.getByTestId(TID.canvasAddFormMessage);
+export const formMessage = (page: Page) => addForm(page).getByTestId(TID.canvasAddFormMessage);
 
 export const closeForm = async (page: Page): Promise<void> => {
   await addForm(page).getByTestId(TID.canvasAddFormClose).click();

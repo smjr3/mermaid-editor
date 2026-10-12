@@ -10,6 +10,8 @@
 import type { MessageKey } from '$/i18n/messages';
 
 export type Direction = 'TB' | 'LR';
+/** All four of mermaid's directions (`TD` is read as `TB`). */
+export type FullDirection = Direction | 'BT' | 'RL';
 export type Engine = 'dagre' | 'elk';
 export type Spacing = 'compact' | 'normal' | 'wide';
 export interface LayoutOptions {
@@ -75,8 +77,25 @@ export const getDirection = (code: string): Direction | undefined => {
   return orientation(statement === -1 ? undefined : statementPattern.exec(lines[statement])?.[2]);
 };
 
+/**
+ * The diagram's direction as written — top-to-bottom, bottom-to-top, left-to-right or
+ * right-to-left — or undefined for a type whose direction cannot be set.
+ */
+export const getFullDirection = (code: string): FullDirection | undefined => {
+  const { lines } = splitLines(code);
+  const header = headerIndex(lines);
+  const line = lines[header] ?? '';
+  const exact = (value: string | undefined): FullDirection =>
+    value === 'BT' || value === 'RL' || value === 'LR' ? value : 'TB';
+  const match = headerPattern.exec(line);
+  if (match) return exact(match[2]);
+  if (!statementHeaderPattern.test(line)) return undefined;
+  const statement = statementIndex(lines, header);
+  return exact(statement === -1 ? undefined : statementPattern.exec(lines[statement])?.[2]);
+};
+
 /** The code with its direction set; unchanged for a diagram type that has none. */
-export const setDirection = (code: string, direction: Direction): string => {
+export const setDirection = (code: string, direction: FullDirection): string => {
   const { eol, lines } = splitLines(code);
   const header = headerIndex(lines);
   const line = lines[header] ?? '';
@@ -183,6 +202,48 @@ export const setLayoutOptions = (config: string, { engine, spacing }: LayoutOpti
     )
   );
   return JSON.stringify(result, undefined, 2);
+};
+
+/** ELK's ways of placing the nodes in a layer (mermaid's `elk.nodePlacementStrategy`). */
+export const elkPlacements = [
+  'SIMPLE',
+  'NETWORK_SIMPLEX',
+  'LINEAR_SEGMENTS',
+  'BRANDES_KOEPF'
+] as const;
+export type ElkPlacement = (typeof elkPlacements)[number];
+export interface ElkOptions {
+  /** '' leaves mermaid's default. */
+  placement: ElkPlacement | '';
+  mergeEdges: boolean;
+}
+
+/** The ELK options in the config JSON (the `elk` section). */
+export const getElkOptions = (config: string): ElkOptions => {
+  const elk = (parse(config)?.elk ?? {}) as {
+    mergeEdges?: unknown;
+    nodePlacementStrategy?: unknown;
+  };
+  const placement = elkPlacements.find((value) => value === elk.nodePlacementStrategy) ?? '';
+  return { mergeEdges: elk.mergeEdges === true, placement };
+};
+
+/**
+ * The config JSON with ELK's node placement and edge merging set; mermaid's defaults are
+ * written as the absence of the key, and an empty `elk` section is dropped.
+ */
+export const setElkOptions = (config: string, next: Partial<ElkOptions>): string => {
+  const parsed = parse(config);
+  if (!parsed) return config;
+  const { mergeEdges, placement } = { ...getElkOptions(config), ...next };
+  const elk = { ...((parsed.elk ?? {}) as Config) };
+  delete elk.nodePlacementStrategy;
+  delete elk.mergeEdges;
+  if (placement) elk.nodePlacementStrategy = placement;
+  if (mergeEdges) elk.mergeEdges = true;
+  if (Object.keys(elk).length > 0) parsed.elk = elk;
+  else delete parsed.elk;
+  return JSON.stringify(parsed, undefined, 2);
 };
 
 // Diagram types without a direction that have their own reason for it.

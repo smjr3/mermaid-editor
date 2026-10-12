@@ -6,12 +6,10 @@
   import MobileEditor from '$/components/MobileEditor.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
-  import { codeHealth, describe } from '$/util/codeHealth.svelte';
   import { env } from '$/util/env';
   import { updateCode, updateConfig, urls, validatedState } from '$lib/util/state.svelte';
   import { logMermaidChartClick } from '$lib/util/stats';
   import { debounce } from 'lodash-es';
-  import ExclamationCircleIcon from '~icons/material-symbols/error-outline-rounded';
 
   const { isMobile } = $props<{ isMobile: boolean }>();
   const onUpdate = (text: string) => {
@@ -49,26 +47,15 @@
     <DesktopEditor {onUpdate} />
   {/if}
   {#if showError && validatedState.current.error instanceof Error}
-    <div class="flex flex-col text-sm" data-testid={TID.errorContainer}>
-      <div class="flex items-center justify-between gap-2 bg-slate-900 p-2 text-white">
-        <div class="flex w-fit items-center gap-2">
-          <ExclamationCircleIcon class="size-6 text-destructive" aria-hidden="true" />
-          <div class="flex flex-col">
-            <p>{t('editor.syntaxError')}</p>
-            <!-- Local: the same plain description as the notice by the diagram. -->
-            {#if codeHealth.description}
-              <p class="text-xs text-white/80">{describe(codeHealth.description)}</p>
-            {:else if codeHealth.configBroken}
-              <p class="text-xs text-white/80">{t('recover.config')}</p>
-            {/if}
-            {#if env.isEnabledMermaidChartLinks && validatedState.current.editorMode === 'code'}
-              <p class="text-xs text-white/60" data-testid={TID.aiHelpText}>
-                Create a free account to repair with AI
-              </p>
-            {/if}
-          </div>
-        </div>
-        {#if validatedState.current.editorMode === 'code'}
+    <!-- Local: the code pane's footer says what is wrong in one line (CodePane.svelte);
+         this is mermaid's own message in full, under the editor. -->
+    <div class="flex flex-col border-t border-border text-xs" data-testid={TID.errorContainer}>
+      <p class="sr-only">{t('editor.syntaxError')}</p>
+      {#if env.isEnabledMermaidChartLinks && validatedState.current.editorMode === 'code'}
+        <div class="flex items-center justify-between gap-2 bg-slate-900 p-2 text-white">
+          <p class="text-xs text-white/60" data-testid={TID.aiHelpText}>
+            Create a free account to repair with AI
+          </p>
           <McWrapper>
             <Button
               variant="accent"
@@ -81,10 +68,10 @@
               AI Repair
             </Button>
           </McWrapper>
-        {/if}
-      </div>
-      <output class="max-h-32 overflow-auto bg-muted p-2" name="mermaid-error" for="editor">
-        <pre>{validatedState.current.error?.toString()}</pre>
+        </div>
+      {/if}
+      <output class="max-h-24 overflow-auto bg-muted px-2 py-1" name="mermaid-error" for="editor">
+        <pre class="whitespace-pre-wrap">{validatedState.current.error?.toString()}</pre>
       </output>
     </div>
   {/if}

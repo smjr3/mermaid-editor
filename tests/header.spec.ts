@@ -1,4 +1,6 @@
 import { defaultState, TID } from '$/constants';
+import type { Locator } from '@playwright/test';
+import { codeTab, headerActions, openNewMenu } from './helpers/shell';
 import { expect, t, test } from './test';
 
 const stored = (page: import('@playwright/test').Page) =>
@@ -6,14 +8,17 @@ const stored = (page: import('@playwright/test').Page) =>
     () =>
       JSON.parse(localStorage.getItem('codeStore') ?? '{}') as {
         code?: string;
+        editorMode?: string;
         mermaid?: string;
         pan?: unknown;
         zoom?: number;
       }
   );
 
+const left = async (locator: Locator): Promise<number> => (await locator.boundingBox())?.x ?? -1;
+
 test.describe('Header', () => {
-  test('shows the app icon and the English title, and carries the site controls', async ({
+  test('shows the app name, undo / redo, 新規 / 共有 / 書き出す, then the site buttons', async ({
     editPage,
     page
   }) => {
@@ -22,17 +27,80 @@ test.describe('Header', () => {
     const header = page.getByTestId(TID.headerBar);
     await expect(header.getByTestId(TID.appIcon)).toContainText('Mermaid Live Editor');
     await expect(header.getByTestId(TID.appIcon).locator('img')).toBeVisible();
-    for (const id of [
-      TID.themeToggleButton,
-      TID.localeToggleButton,
+
+    // Left to right, in the order the layout gives them.
+    const order = [
+      TID.appIcon,
+      TID.undoButton,
+      TID.redoButton,
+      TID.wsNewMenu,
+      TID.wsShareButton,
+      TID.wsExportButton,
+      TID.helpButton,
+      TID.wsHistoryButton,
       TID.resetAllButton,
-      TID.helpButton
-    ]) {
-      await expect(header.getByTestId(id)).toBeVisible();
+      TID.themeToggleButton
+    ];
+    const xs: number[] = [];
+    for (const id of order) {
+      const item = header.getByTestId(id);
+      await expect(item, id).toBeVisible();
+      xs.push(await left(item));
     }
-    // The hamburger menu and the Share button are gone from the header.
-    await expect(header.getByTestId(TID.shareButton)).toHaveCount(0);
-    await expect(header.getByRole('button', { name: t('menu.new') })).toHaveCount(0);
+    expect(xs).toEqual([...xs].sort((a, b) => a - b));
+
+    // 新規 / 共有 / 書き出す are one group (the guide points at it).
+    for (const id of [TID.wsNewMenu, TID.wsShareButton, TID.wsExportButton]) {
+      await expect(headerActions(page).getByTestId(id)).toBeVisible();
+    }
+
+    // Gone: the language button, the command search, the old share button and menu.
+    for (const id of ['locale-toggle-button', 'command-button', 'share-button']) {
+      await expect(page.getByTestId(id), id).toHaveCount(0);
+    }
+    await page.keyboard.press('Control+k');
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
+  });
+
+  test('新規 offers exactly two items, each opening its tab of the new-diagram dialog', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.checkTextInView('Car');
+    await openNewMenu(page);
+    const menu = page.getByTestId(TID.wsNewFromType).locator('..');
+    await expect(menu.getByRole('button')).toHaveCount(2);
+    await expect(page.getByTestId(TID.wsNewFromType)).toHaveText(t('ws.newFromType'));
+    await expect(page.getByTestId(TID.wsNewFromSample)).toHaveText(t('ws.newFromSample'));
+
+    await page.getByTestId(TID.wsNewFromType).click();
+    await expect(page.getByTestId(TID.newDlg)).toBeVisible();
+    await expect(page.getByTestId(`${TID.newDlgTab}-type`)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.newDlg)).toBeHidden();
+
+    await openNewMenu(page);
+    await page.getByTestId(TID.wsNewFromSample).click();
+    await expect(page.getByTestId(`${TID.newDlgTab}-sample`)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  test('共有 and 書き出す open their dialogs', async ({ editPage, page }) => {
+    await editPage.checkTextInView('Car');
+    await page.getByTestId(TID.wsShareButton).click();
+    await expect(page.getByTestId(TID.shareDlg)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.shareDlg)).toBeHidden();
+
+    await page.getByTestId(TID.wsExportButton).click();
+    await expect(page.getByTestId(TID.exportDlg)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.exportDlg)).toBeHidden();
   });
 
   test('keeps the version numbers, and no owner or repository, on a page of 使い方', async ({
@@ -40,9 +108,6 @@ test.describe('Header', () => {
     page
   }) => {
     await editPage.checkTextInView('Car');
-    await expect(page.getByTestId(TID.diagramToolbar).getByTestId(TID.mermaidVersion)).toHaveCount(
-      0
-    );
     await page.getByTestId(TID.helpButton).click();
     await page.getByTestId(`${TID.helpSection}-about`).click();
     await expect(page.getByTestId(TID.appVersion)).toHaveText(/\d+\.\d+\.\d+/);
@@ -55,16 +120,36 @@ test.describe('Header', () => {
     await expect(page.getByTestId(TID.appVersion)).not.toContainText('@');
   });
 
-  test('the style tab is labelled as diagram style code, not settings', async ({
+  test('the code pane has コード and 設定 JSON tabs, and 設定をリセット only on 設定 JSON', async ({
     editPage,
     page
   }) => {
     await editPage.checkTextInView('Car');
-    const tab = page.getByRole('tab').filter({ hasText: t('editor.configTab') });
-    await expect(tab).toHaveAttribute('title', t('editor.configTabTooltip'));
-    await expect(tab.locator('svg')).toHaveCount(2);
-    await editPage.setEditorMode('Config');
-    await expect.poll(async () => (await stored(page)).code).toBeTruthy();
+    const configTab = page.getByTestId(`${TID.wsCodeTab}-config`);
+    await expect(page.getByTestId(`${TID.wsCodeTab}-code`)).toHaveText(t('editor.textTab'));
+    await expect(configTab).toHaveText(t('editor.configTab'));
+    await expect(configTab).toHaveAttribute('title', t('editor.configTabTooltip'));
+    await expect(page.getByTestId(`${TID.wsCodeTab}-code`)).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    await expect(page.getByTestId(TID.resetConfigButton)).toHaveCount(0);
+
+    await codeTab(page, 'config');
+    await expect(configTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId(TID.resetConfigButton)).toBeVisible();
+    await expect(page.getByTestId(TID.resetConfigButton)).toHaveAttribute(
+      'title',
+      t('editor.resetConfig')
+    );
+    await expect.poll(async () => (await stored(page)).editorMode).toBe('config');
+    // No Docs link and no undo / redo in the code pane: undo lives in the header.
+    const pane = page.getByTestId(TID.wsCodePane);
+    await expect(pane.getByTestId(TID.undoButton)).toHaveCount(0);
+    await expect(pane.locator('a[href*="mermaid"]')).toHaveCount(0);
+
+    await codeTab(page, 'code');
+    await expect(page.getByTestId(TID.resetConfigButton)).toHaveCount(0);
   });
 
   test('Reset asks first, then restores the starting diagram and keeps History', async ({
@@ -75,7 +160,8 @@ test.describe('Header', () => {
     await editPage.setEditorMode('Code');
     await editPage.typeInEditor('\n    G[Extra node]');
     await editPage.checkTextInView('Extra node');
-    for (let i = 0; i < 4; i++) await page.getByTestId(TID.zoomInButton).click();
+    await page.locator('#view').hover();
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -120);
     await expect.poll(async () => (await stored(page)).zoom).toBeGreaterThan(1.2);
 
     // A saved History entry (its own store) must outlive the reset.
@@ -110,5 +196,7 @@ test.describe('Header', () => {
     await expect.poll(async () => (await stored(page)).zoom).toBeLessThan(1.2);
     // History is its own store and survives.
     expect(await page.evaluate(() => localStorage.getItem('manualHistoryStore'))).toBe(seeded);
+    // Undo starts again from the starting diagram.
+    await expect(page.getByTestId(TID.undoButton)).toBeDisabled();
   });
 });

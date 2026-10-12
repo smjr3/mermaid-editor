@@ -33,41 +33,8 @@ test.describe('Site Loads', () => {
     await editPage.checkInEditor('classDiagram');
   });
 
-  test.describe.skip('github', () => {
-    test('should load diagram from gist', async ({ editPage, page }) => {
-      await editPage.start(
-        `/edit?gist=https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a`
-      );
-      await page.getByText(t('editor.historyToggle')).click();
-      await editPage.checkTextInView('Go shopping!!');
-      await expect(page.getByText(t('history.tabRevisions'))).toBeVisible();
-      await expect(page.getByText('sidharthv96 v8f8f1e2')).toBeVisible();
-      await expect(page.getByText('sidharthv96 v7851e19')).toBeVisible();
-      const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
-      expect(codeStore).toBeTruthy();
-    });
-
-    test('should load diagram from gist revision', async ({ editPage, page }) => {
-      await editPage.start(
-        '/edit?gist=https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a/ec9b4ab0e41e4ff6287326cd3cb47affd7851e19'
-      );
-      await page.getByText(t('editor.historyToggle')).click();
-      await editPage.checkTextInView('Party');
-      await expect(page.getByText(t('history.tabRevisions'))).toBeVisible();
-      await expect(page.getByText('sidharthv96 v7851e19')).toBeVisible();
-      const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
-      expect(codeStore).toBeTruthy();
-    });
-
-    test('should load diagram from raw files', async ({ editPage, page }) => {
-      await editPage.start(
-        '/edit?code=https://gist.githubusercontent.com/sidharthv96/6268a23e673a533dcb198f241fd7012a/raw/4eb03887e6a41397e80bdcdbf94017c498f8f1e2/code.mmd&config=https://gist.githubusercontent.com/sidharthv96/6268a23e673a533dcb198f241fd7012a/raw/4eb03887e6a41397e80bdcdbf94017c498f8f1e2/config.json'
-      );
-      await editPage.checkTextInView('Party');
-      const codeStore = await page.evaluate(() => localStorage.getItem('codeStore'));
-      expect(codeStore).toBeTruthy();
-    });
-  });
+  // Local: no Gist loader any more (its revisions tab in History is gone too); a raw
+  // file URL in ?code= / ?config= still loads, see below.
 
   // Local: an HTTP error page is not a diagram; the one on screen is kept.
   test('keeps the current diagram when a ?code= URL answers 404', async ({ editPage, page }) => {

@@ -4,6 +4,7 @@ import {
   colorAll,
   colorAllGroups,
   getObjectColor,
+  getObjectStroke,
   getStyleColor,
   getEdgeColor,
   getLineColor,
@@ -18,6 +19,7 @@ import {
   parsePresets,
   pickedObject,
   setObjectColor,
+  setObjectStroke,
   setStyleColor,
   setLineColor,
   setTextColor,
@@ -446,5 +448,31 @@ describe('getTextColor / setTextColor / resetTextStyle', () => {
     expect(resetTextStyle(`${boxes}\n  style A font-weight:bold`, 'A', 'style')).toBe(boxes);
     expect(resetTextStyle(boxes, 'A', 'style')).toBe(boxes);
     expect(resetTextStyle(setTextColor(c4, 'a', '#d64545', 'c4'), 'a', 'c4')).toBe(c4);
+  });
+});
+
+describe('getObjectStroke / setObjectStroke', () => {
+  it('sets the border alone, after the fill, and removes it again', () => {
+    const stroked = setObjectStroke(boxes, 'A', '#d64545', 'style');
+    expect(stroked).toBe(`${boxes}\n  style A stroke:#d64545`);
+    expect(getObjectStroke(stroked, 'A', 'style')).toBe('#d64545');
+    const filled = `${boxes}\n  style A fill:#fff,color:#111,font-weight:bold`;
+    expect(setObjectStroke(filled, 'A', '#3b73c9', 'style')).toBe(
+      `${boxes}\n  style A fill:#fff,stroke:#3b73c9,color:#111,font-weight:bold`
+    );
+    expect(setObjectStroke(stroked, 'A', undefined, 'style')).toBe(boxes);
+  });
+
+  it('writes C4 border colours and refuses what is not a colour', () => {
+    const c4Stroke = setObjectStroke(c4, 'a', '#d64545', 'c4');
+    expect(c4Stroke).toBe(`${c4}\n  UpdateElementStyle(a, $borderColor="#d64545")`);
+    expect(getObjectStroke(c4Stroke, 'a', 'c4')).toBe('#d64545');
+    expect(setObjectStroke(c4Stroke, 'a', undefined, 'c4')).toBe(c4);
+    expect(setObjectStroke(boxes, 'A', 'red;}', 'style')).toBe(boxes);
+  });
+
+  it('writes a class border as a plain style statement', () => {
+    const cls = 'classDiagram\n  class A';
+    expect(setObjectStroke(cls, 'A', '#d64545', 'class')).toBe(`${cls}\n  style A stroke:#d64545`);
   });
 });

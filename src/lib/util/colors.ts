@@ -16,7 +16,11 @@ export const themeChoices = [
   'forest',
   'base',
   'redux-dark',
-  'neo-dark'
+  'neo-dark',
+  // Local: mermaid's dark built-ins. The editor once set these itself for the site's dark
+  // mode; a migration removed those, so a theme found here now is the user's choice.
+  'dark',
+  'redux-dark-color'
 ] as const;
 export type ThemeChoice = 'auto' | (typeof themeChoices)[number];
 
@@ -451,6 +455,37 @@ export const resetTextStyle = (code: string, id: string, syntax: ColorSyntax): s
     undefined,
     syntax
   );
+
+/** The border colour the object's statement sets (`stroke:`, or C4's `$borderColor`). */
+export const getObjectStroke = (
+  code: string,
+  id: string,
+  syntax: ColorSyntax
+): string | undefined =>
+  syntax === 'c4' ? c4SettingsOf(code, id).borderColor : styleProperties(code, id).stroke;
+
+/**
+ * The code with only the object's border colour set (its fill and text stay), or the
+ * border colour removed when `color` is undefined: the inspector's 「枠」 colour.
+ */
+export const setObjectStroke = (
+  code: string,
+  id: string,
+  color: string | undefined,
+  syntax: ColorSyntax
+): string => {
+  if (color !== undefined && !hexPattern.test(color)) return code;
+  return syntax === 'c4'
+    ? updateC4(code, id, (settings) =>
+        placeText(settings, 'borderColor', color, new Set(['bgColor']))
+      )
+    : updateStyle(
+        code,
+        id,
+        (properties) => placeText(properties, 'stroke', color, new Set(['fill'])),
+        syntax
+      );
+};
 
 /**
  * The object behind a clicked SVG element, from its id: mermaid ids elements

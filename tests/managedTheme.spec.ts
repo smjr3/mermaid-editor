@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test';
-import { TID } from '$/constants';
-import { readFileSync } from 'node:fs';
+import { closeExport, readDownload, saveExport } from './helpers/exportDlg';
 import { expect, test } from './test';
 
 const storedTheme = (page: Page) =>
@@ -28,6 +27,7 @@ test.describe('Managed theme', () => {
     await expect.poll(() => storedTheme(page)).toBe('redux-color');
     await page.emulateMedia({ colorScheme: 'light' });
     await editPage.checkTheme('light');
+    await expect(page.locator('#view .node').first()).toBeVisible({ timeout: 15_000 });
 
     const picture = () =>
       page.evaluate(() => {
@@ -44,13 +44,9 @@ test.describe('Managed theme', () => {
         };
       });
     const exported = async () => {
-      await page.getByTestId(TID.actionsCard).click();
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        page.getByTestId(TID.downloadSVG).click()
-      ]);
-      await page.getByTestId(TID.actionsCard).click();
-      return readFileSync((await download.path()) ?? '', 'utf8');
+      const download = await saveExport(page, 'svg', { background: 'white' });
+      await closeExport(page);
+      return (await readDownload(download)).toString('utf8');
     };
 
     const light = await picture();

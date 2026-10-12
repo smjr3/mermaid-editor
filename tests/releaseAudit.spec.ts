@@ -1,10 +1,12 @@
 import { defaultState, TID } from '$/constants';
 import { serializeState } from '$/util/serde';
+import { chooseExport, readDownload, saveExport } from './helpers/exportDlg';
+import { collapseCode, expandCode } from './helpers/shell';
 import { expect, t, test } from './test';
 
 // Cross-feature checks for the 0.2.0 additions: each one in a place the
-// feature-specific specs do not cover (other pages, mobile, other tabs,
-// exports, other diagram types, the English UI, failure paths).
+// feature-specific specs do not cover (other pages, other tabs, exports, other
+// diagram types, an English browser, failure paths).
 
 const logoDiagram = 'architecture-beta\n  service db(logos:postgresql)[Orders DB]';
 const editUrl = (code: string, mermaid = '{}') =>
@@ -38,39 +40,21 @@ test.describe('Icons outside the editor', () => {
   });
 });
 
-test.describe('Editor column', () => {
-  test('stays reachable when the page reloads with the column collapsed', async ({
+test.describe('Code column', () => {
+  test('stays reachable when the page reloads with the column folded', async ({
     editPage,
     page
   }) => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await expect(page.getByTestId(TID.editorRail)).toBeVisible();
-    // The pane group saves its layout shortly after a change.
+    await collapseCode(page);
     await expect
-      .poll(() =>
-        page.evaluate(() =>
-          Object.entries(localStorage).some(
-            // The code pane is last by default (tools | diagram | code), first after a swap.
-            ([key, value]) =>
-              key.startsWith('paneforge:') && /"layout":\[(0,|[^\]]*,0\])/.test(value)
-          )
-        )
-      )
-      .toBe(true);
+      .poll(() => page.evaluate(() => localStorage.getItem('editorCodeCollapsed')))
+      .toBe('true');
     await page.reload();
     await editPage.checkTextInView('B');
-    await expect(page.getByTestId(TID.editorRail)).toBeVisible();
-    await page.getByTestId(TID.editorRailExpand).click();
-    await expect(page.getByTestId(TID.editorPaneToggle)).toBeVisible();
-  });
-
-  test('the rail opens the config tab', async ({ editPage, page }) => {
-    await editPage.start(editUrl('flowchart TD\n  A --> B'));
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await page.getByTestId(`${TID.editorRail}-config`).click();
-    await expect(page.getByTestId(TID.editorRail)).toBeHidden();
-    await expect(page.getByTestId(TID.resetConfigButton)).toBeVisible();
+    await expect(page.getByTestId(TID.wsCodeRail)).toBeVisible();
+    await expandCode(page);
+    await expect(page.getByTestId(TID.wsCodeCollapse)).toBeVisible();
   });
 });
 
@@ -80,7 +64,7 @@ test.describe('Icon picker', () => {
     page
   }) => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
-    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.inspIconBrowse).click();
     const search = page.getByTestId(TID.iconPickerSearch);
     await search.fill('database');
     await expect(page.getByText(t('icons.pickLoading'))).toBeVisible();
@@ -95,19 +79,18 @@ test.describe('Icon picker', () => {
   }) => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
     await editPage.checkTextInView('B');
-    await page.getByTestId(TID.iconPacksCard).click();
-    await expect(page.getByTestId(TID.iconPacksCard).locator('..')).toContainText(
-      t('icons.pickStandardLegend')
-    );
-    await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
-    await page.getByTestId(TID.iconPickerSearch).fill('server');
     // The cursor on a line of its own: a name written mid-line would break the diagram,
     // and the picker takes such an insertion back (qaFindings.spec.ts).
     await editPage.editor.getByText('A --> B').click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
+    await page.getByTestId(TID.inspIconBrowse).click();
+    await expect(page.getByTestId(TID.inspIconDialog)).toContainText(t('icons.pickStandardLegend'));
+    await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
+    await page.getByTestId(TID.iconPickerSearch).fill('server');
     await page.getByTestId(TID.iconPickerResults).getByRole('button').first().click();
-    await expect(page.getByTestId(TID.iconPickerMessage)).toContainText(
+    // The dialog closes on an insertion; 図全体 repeats what it did.
+    await expect(page.getByTestId(TID.inspIconMessage)).toContainText(
       t('icons.pickStandardArchitectureOnly')
     );
   });
@@ -123,7 +106,7 @@ test.describe('Icon picker', () => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
     const before = await storedConfig(page);
     await editPage.setEditorMode('Config');
-    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.inspIconBrowse).click();
     await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
     await page.getByTestId(TID.iconPickerSearch).fill('cloud');
     await page.getByTestId(TID.iconPickerResults).getByRole('button').first().click();
@@ -133,87 +116,61 @@ test.describe('Icon picker', () => {
   });
 });
 
-test.describe('Mobile', () => {
-  test.use({ viewport: { height: 800, width: 390 } });
-
-  test('has no rail, and the picker copies the name', async ({ page, context, browserName }) => {
-    test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.goto(editUrl('architecture-beta\n  service a(server)[A]'));
-    await page.getByText(t('editor.mobileEdit')).first().click();
-    await expect(page.getByTestId(TID.editorPaneToggle)).toHaveCount(0);
-    await expect(page.getByTestId(TID.editorRail)).toHaveCount(0);
-    await page.getByTestId(TID.iconPacksCard).scrollIntoViewIfNeeded();
-    await page.getByTestId(TID.iconPacksCard).click();
-    await page.getByTestId(TID.iconPickerPack).selectOption('mermaid');
-    await page.getByTestId(TID.iconPickerSearch).fill('disk');
-    await page.getByTestId(TID.iconPickerResults).getByRole('button').first().click();
-    await expect(page.getByTestId(TID.iconPickerMessage)).toContainText('disk');
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('disk');
-  });
-});
-
 test.describe('Exports with icons', () => {
-  test('HTML and GitLab exports report a diagram that does not render', async ({
+  test('HTML and Markdown exports report a diagram that does not render', async ({
     editPage,
     page
   }) => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
     await editPage.checkTextInView('B');
     await editPage.typeInEditor('\n  C -->');
-    await page.getByTestId(TID.actionsCard).click();
-    await page.getByTestId(TID.downloadHTML).click();
-    await expect(page.getByTestId(TID.exportMessage)).toHaveText(t('actions.exportFailed'));
-    await page.getByTestId(TID.exportGitLab).click();
-    await expect(page.getByTestId(TID.exportMessage)).toHaveText(t('actions.exportFailed'));
+    const save = page.getByTestId(TID.exportDlgSave);
+    for (const format of ['html', 'md'] as const) {
+      await chooseExport(page, format, format === 'html' ? { htmlMode: 'file' } : {});
+      await save.click();
+      await expect(save).toHaveAttribute('data-export-state', 'failed');
+      await expect(page.getByTestId(TID.exportDlgMessage)).toHaveText(t('actions.exportFailed'));
+    }
   });
 
   test('PNG export works for a diagram with logos', async ({ editPage, page }) => {
     await editPage.start(editUrl(logoDiagram));
     await editPage.checkTextInView('Orders DB');
-    await page.getByTestId(TID.actionsCard).click();
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.getByTestId(TID.downloadPNG).click()
-    ]);
-    const { size } = await import('node:fs').then(async (fs) =>
-      fs.promises.stat((await download.path()) ?? '')
-    );
-    expect(size).toBeGreaterThan(5000);
+    const png = await readDownload(await saveExport(page, 'png'));
+    expect(png.length).toBeGreaterThan(5000);
   });
 });
 
-test.describe('Layout card', () => {
+test.describe('図全体 › 向き', () => {
   test('turns a state diagram left to right', async ({ editPage, page }) => {
     await editPage.start(editUrl('stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy'));
     await editPage.checkTextInView('Busy');
-    await page.getByTestId(TID.layoutCard).click();
-    await page.getByTestId(TID.layoutDirectionLR).click();
+    await page.getByTestId(`${TID.inspDirection}-LR`).click();
     await expect.poll(() => storedCode(page)).toContain('  direction LR\n');
     await editPage.checkTextInView('Busy');
   });
 
-  test('reports when the diagram cannot be compared', async ({ editPage, page }) => {
+  test('is not offered while the diagram cannot be compared', async ({ editPage, page }) => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
     await editPage.checkTextInView('B');
-    await page.getByTestId(TID.layoutCard).click();
     await editPage.typeInEditor('\n  C -->');
-    // The code has a mistake: the card says so instead of trying (errorRecovery.spec.ts).
+    // The code has a mistake: the inspector says so instead of trying (errorRecovery.spec.ts).
     await expect(page.getByTestId(TID.diagramErrorNotice)).toBeVisible({ timeout: 10_000 });
-    await page.getByTestId(TID.layoutFit).click();
-    await expect(page.getByTestId(TID.layoutMessage)).toHaveText(t('recover.blocked'));
+    await expect(page.getByTestId(TID.inspBlocked)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId(`${TID.inspDirection}-fit`)).toBeDisabled();
+    expect(await storedCode(page)).toContain('C -->');
   });
 });
 
-test.describe('English UI', () => {
-  test('shows the new cards and controls in English', async ({ editPage, page }) => {
+test.describe('An English browser', () => {
+  test.use({ locale: 'en-US' });
+
+  test('still gets the Japanese UI, with no language button', async ({ editPage, page }) => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
-    await page.getByTestId(TID.localeToggleButton).click();
-    await expect(page.getByTestId(TID.layoutCard)).toContainText('Layout');
-    await expect(page.getByTestId(TID.iconPacksCard)).toContainText('Icons');
-    await expect(page.getByTestId(TID.toolsPane)).toContainText('Tools');
-    await expect(page.getByTestId(TID.toolsPaneToggle)).toHaveAttribute('title', 'Hide the tools');
-    await page.getByTestId(TID.actionsCard).click();
-    await expect(page.getByTestId(TID.exportGitLab)).toContainText('Export for GitLab');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+    await expect(page.getByTestId(TID.wsExportButton)).toContainText(t('ws.export'));
+    await expect(page.getByTestId(TID.inspCrumbRoot)).toHaveText(t('ws.inspectorRoot'));
+    // The removed language button.
+    await expect(page.getByTestId('locale-toggle-button')).toHaveCount(0);
   });
 });

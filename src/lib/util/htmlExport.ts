@@ -5,7 +5,7 @@ import { serializeState } from './serde';
 import { parseConfigObject } from './stateGuard';
 
 /**
- * Local: HTML export (HtmlExport.svelte). The diagram is already rendered SVG
+ * Local: HTML export (the 書き出す dialog, exportDiagram.ts). The diagram is already rendered SVG
  * with its icons inlined, so both forms work anywhere, offline, without this
  * editor or mermaid: a standalone page, or a single <img> tag to paste into a
  * wiki, a private page or an e-mail.
@@ -77,8 +77,12 @@ export const toXmlSvg = (svg: string): string => {
 export const toImgTag = (svg: string, alt: string): string =>
   `<img alt="${escapeHtml(alt)}" src="data:image/svg+xml;base64,${toBase64(toXmlSvg(svg))}">`;
 
-/** An SVG file from rendered SVG: XML declaration and an opaque background. */
-export const svgFile = (svg: string, background: string): string => {
+/**
+ * An SVG file from rendered SVG: XML declaration and the background (none for `null`,
+ * the transparent choice of the export dialog).
+ */
+export const svgFile = (svg: string, background: null | string): string => {
+  if (background === null) return `<?xml version="1.0" encoding="UTF-8"?>\n${toXmlSvg(svg)}`;
   const colour = safeColour(background);
   const withBackground = toXmlSvg(svg).replace(/<svg\b[^>]*>/, (open) =>
     /\sstyle="/.test(open)
@@ -174,7 +178,8 @@ export const buildGitLabExport = async (
     labels,
     render
   }: {
-    background: string;
+    /** The SVG's backdrop colour, or null for none. */
+    background: null | string;
     /** The editor's absolute URL, without the hash. */
     editBase: string;
     fileName: string;

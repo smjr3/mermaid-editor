@@ -1,5 +1,6 @@
 /**
- * Local: the Add card for every other diagram type (AddActions.svelte). Each
+ * Local: the add actions for every other diagram type (the add bar over the diagram,
+ * canvas/SpecInsert.svelte, renders each as a form). Each
  * type lists its actions — add a participant, a message, a state, a task, … —
  * as fields the card renders and a function that writes the mermaid lines.
  * New lines go after the last statement (before trailing style statements),
@@ -158,7 +159,7 @@ const objects = async (code: string) => (await diagramObjects(code))?.items ?? [
 // A message statement, `A->>+B: text`, and the header of a block (`alt …`, `else …`):
 // a new message, note or block can go after a message, or first inside a block.
 const messageLine =
-  /^\s*([\p{L}\p{N}_]+)\s*(?:<<)?(?:-->>|->>|-->|->|--x|-x|--\)|-\))\s*[+-]?\s*([\p{L}\p{N}_]+)\s*:\s*(.*?)\s*$/u;
+  /^\s*([\p{L}\p{N}_]+)\s*(?:<<)?(?:--?\|\\|--?\|\/|--?\\\\|--?\/\/|-->>|->>|-->|->|--x|-x|--\)|-\))\s*[+-]?\s*([\p{L}\p{N}_]+)\s*:\s*(.*?)\s*$/u;
 const blockHeader = /^\s*(?:alt|loop|opt|par|critical|break|else|and|option)\b/;
 
 /** The messages and block headers past the header, by line; a block reads `alt … ⋯` (inside it). */
@@ -221,7 +222,32 @@ const wrapMessage = (code: string, at: number, header: string) => {
   return lines.join(eol);
 };
 
-const blockDefaults: Record<string, string> = { alt: '条件', loop: '繰り返し', opt: '任意' };
+const blockDefaults: Record<string, string> = {
+  alt: '条件',
+  break: '中断',
+  critical: '必須',
+  loop: '繰り返し',
+  opt: '任意',
+  par: '並行',
+  // Local: a background, not a label: `rect` takes a colour.
+  rect: 'rgb(235, 242, 255)'
+};
+/** Local: a colour mermaid's `rect` takes (rgb/rgba/hsl/hsla or a name; `#` starts a comment). */
+const rectColor = (text: string) =>
+  /^(?:rgba?|hsla?)\([\d\s.,%]+\)$|^[a-zA-Z]+$/.test(text.trim())
+    ? text.trim()
+    : blockDefaults.rect;
+/** Local: the participant symbols mermaid draws (`participant A@{ "type": "boundary" }`). */
+const participantKinds = [
+  'participant',
+  'actor',
+  'boundary',
+  'control',
+  'entity',
+  'database',
+  'collections',
+  'queue'
+];
 
 const c4Parts = memoByCode(async (code: string) => {
   try {
@@ -248,8 +274,13 @@ const sequence: AddSpec = {
       apply: (code, values) => {
         const id = freshId(code, 'p');
         const name = sequenceText(values.name) || defaultName(id, '参加者');
+        const kind = participantKinds.includes(values.kind) ? values.kind : 'participant';
+        const declared =
+          kind === 'participant' || kind === 'actor'
+            ? `${kind} ${id}`
+            : `participant ${id}@{ "type": "${kind}" }`;
         return {
-          code: insert(code, [`  ${values.kind || 'participant'} ${id} as ${name}`]),
+          code: insert(code, [`  ${declared} as ${name}`]),
           follow: { to: id },
           name
         };
@@ -262,7 +293,7 @@ const sequence: AddSpec = {
           key: 'kind',
           kind: 'choice',
           label: 'add.seq.kind',
-          options: ['participant', 'actor']
+          options: participantKinds
         }
       ],
       id: 'participant',
@@ -271,7 +302,16 @@ const sequence: AddSpec = {
     {
       apply: (code, values) => {
         if (!need(values, 'from', 'to')) return { error: 'add.choose' };
-        const arrows: Record<string, string> = { async: '-)', reply: '-->>', sync: '->>' };
+        const arrows: Record<string, string> = {
+          async: '-)',
+          both: '<<->>',
+          cross: '-x',
+          line: '->',
+          reply: '-->>',
+          replyAsync: '--)',
+          replyCross: '--x',
+          sync: '->>'
+        };
         const text = sequenceText(values.text);
         return {
           code: insertAfterAnchor(
@@ -292,7 +332,7 @@ const sequence: AddSpec = {
           key: 'kind',
           kind: 'choice',
           label: 'add.seq.arrow',
-          options: ['sync', 'reply', 'async']
+          options: ['sync', 'reply', 'async', 'replyAsync', 'cross', 'replyCross', 'line', 'both']
         },
         { key: 'after', kind: 'item', label: 'add.f.after', optional: true, source: 'messages' }
       ],
@@ -341,7 +381,10 @@ const sequence: AddSpec = {
     {
       apply: (code, values) => {
         const kind = values.kind in blockDefaults ? values.kind : 'alt';
-        const text = sequenceText(values.text) || blockDefaults[kind];
+        const text =
+          kind === 'rect'
+            ? rectColor(values.text ?? '')
+            : sequenceText(values.text) || blockDefaults[kind];
         const { lines } = splitLines(code);
         const chosen = values.after ? Number(values.after) : Number.NaN;
         const chosenMessage = Number.isInteger(chosen) && messageLine.test(lines[chosen] ?? '');
@@ -365,7 +408,7 @@ const sequence: AddSpec = {
           key: 'kind',
           kind: 'choice',
           label: 'add.seq.blockKind',
-          options: ['alt', 'loop', 'opt']
+          options: ['alt', 'loop', 'opt', 'par', 'critical', 'break', 'rect']
         },
         { key: 'text', kind: 'text', label: 'add.seq.blockText', optional: true },
         { key: 'after', kind: 'item', label: 'add.f.after', optional: true, source: 'messages' },
@@ -509,6 +552,64 @@ const state: AddSpec = {
       ],
       id: 'composite',
       title: 'add.state.composite'
+    },
+    {
+      // Local: mermaid's pseudo-states: a choice (◇), a fork and a join (bars).
+      apply: (code, values) => {
+        const kind = ['choice', 'fork', 'join'].includes(values.kind) ? values.kind : 'choice';
+        const id = freshId(code, kind === 'choice' ? 'c' : kind === 'fork' ? 'f' : 'j');
+        const declared = intoComposite(code, values.parent || undefined, [
+          `state ${id} <<${kind}>>`
+        ]);
+        const result = values.from
+          ? insert(declared, [transition(values.from, id, values.text ?? '')])
+          : declared;
+        return { code: result, follow: { from: id }, name: id };
+      },
+      button: 'add.state.pseudoButton',
+      fields: [
+        {
+          initial: 'choice',
+          key: 'kind',
+          kind: 'choice',
+          label: 'add.state.pseudoKind',
+          options: ['choice', 'fork', 'join']
+        },
+        {
+          key: 'parent',
+          kind: 'item',
+          label: 'add.state.inComposite',
+          optional: true,
+          source: 'composites'
+        },
+        { key: 'from', kind: 'item', label: 'add.f.arrowFrom', optional: true, source: 'states' },
+        { key: 'text', kind: 'text', label: 'add.f.arrowText', optional: true }
+      ],
+      id: 'pseudo',
+      title: 'add.state.pseudo'
+    },
+    {
+      // Local: a note beside a state.
+      apply: (code, values) => {
+        if (!values.at || values.at === '[*]') return { error: 'add.state.noteChoose' };
+        const text = oneLine(values.text ?? '').replaceAll(':', '：') || 'メモ';
+        const place = values.place === 'left' ? 'left' : 'right';
+        return { code: insert(code, [`  note ${place} of ${values.at} : ${text}`]), name: text };
+      },
+      button: 'add.state.noteButton',
+      fields: [
+        { key: 'at', kind: 'item', label: 'add.state.noteAt', source: 'plain' },
+        {
+          initial: 'right',
+          key: 'place',
+          kind: 'choice',
+          label: 'add.state.notePlace',
+          options: ['right', 'left']
+        },
+        { key: 'text', kind: 'text', label: 'add.f.text' }
+      ],
+      id: 'note',
+      title: 'add.state.note'
     }
   ],
   header: /^\s*stateDiagram(?:-v2)?\b/,
@@ -516,12 +617,25 @@ const state: AddSpec = {
   parts: stateParts
 };
 
-const classRelation: Record<string, (from: string, to: string) => string> = {
-  aggregation: (from, to) => `${to} o-- ${from}`,
-  association: (from, to) => `${from} --> ${to}`,
-  composition: (from, to) => `${to} *-- ${from}`,
-  dependency: (from, to) => `${from} ..> ${to}`,
-  inheritance: (from, to) => `${to} <|-- ${from}`
+// `card` writes the multiplicities: `A "1" --> "*" B` (from's next to from).
+const classRelation: Record<string, (from: string, to: string, card: Cards) => string> = {
+  aggregation: (from, to, c) => `${to}${c.to} o--${c.from} ${from}`,
+  association: (from, to, c) => `${from}${c.from} -->${c.to} ${to}`,
+  composition: (from, to, c) => `${to}${c.to} *--${c.from} ${from}`,
+  dashedLink: (from, to, c) => `${from}${c.from} ..${c.to} ${to}`,
+  dependency: (from, to, c) => `${from}${c.from} ..>${c.to} ${to}`,
+  inheritance: (from, to, c) => `${to}${c.to} <|--${c.from} ${from}`,
+  link: (from, to, c) => `${from}${c.from} --${c.to} ${to}`,
+  lollipop: (from, to, c) => `${from}${c.from} --()${c.to} ${to}`,
+  realization: (from, to, c) => `${to}${c.to} <|..${c.from} ${from}`
+};
+interface Cards {
+  from: string;
+  to: string;
+}
+const card = (text: string | undefined) => {
+  const value = noQuotes(text ?? '').trim();
+  return value ? ` "${value}"` : '';
 };
 
 const classSpec: AddSpec = {
@@ -542,7 +656,8 @@ const classSpec: AddSpec = {
         if (!need(values, 'from', 'to')) return { error: 'add.choose' };
         const relation = (classRelation[values.kind] ?? classRelation.association)(
           values.from,
-          values.to
+          values.to,
+          { from: card(values.cardFrom), to: card(values.cardTo) }
         );
         // A colon or a double quote in the label ends the statement.
         const text = noQuotes(values.text).replaceAll(':', ' ').replaceAll(/\s+/g, ' ').trim();
@@ -560,9 +675,21 @@ const classSpec: AddSpec = {
           key: 'kind',
           kind: 'choice',
           label: 'add.class.kind',
-          options: ['association', 'inheritance', 'composition', 'aggregation', 'dependency']
+          options: [
+            'association',
+            'inheritance',
+            'realization',
+            'composition',
+            'aggregation',
+            'dependency',
+            'link',
+            'dashedLink',
+            'lollipop'
+          ]
         },
-        { key: 'text', kind: 'text', label: 'add.f.text', optional: true }
+        { key: 'text', kind: 'text', label: 'add.f.text', optional: true },
+        { key: 'cardFrom', kind: 'text', label: 'add.class.cardFrom', optional: true },
+        { key: 'cardTo', kind: 'text', label: 'add.class.cardTo', optional: true }
       ],
       id: 'relation',
       title: 'add.class.relation'

@@ -1,18 +1,18 @@
 <script lang="ts">
-  import ColorSwatches from '$/components/ColorSwatches.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { nodeShapes } from '$/util/diagramEdit';
   import { displayName } from '$/util/displayName';
-  import type { EdgeStyle } from '$/util/diagramModify';
+  import { focusInspector } from '$/util/editorUi.svelte';
   import { requestRename, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { onMount, tick } from 'svelte';
 
-  // Local: the right-click menu over the diagram (SelectionLayer.svelte). On an object
-  // or arrow: the selection's edits, as in the mini toolbar; on the empty canvas: add
-  // a node, fit the diagram to the view. Arrow keys move, Enter or Space choose,
-  // Escape closes.
+  // Local: the right-click menu over the diagram (SelectionLayer.svelte), a short cut to
+  // the common edits, one line each with its key: 名前を変更 F2 / 色を変える / 形を変える /
+  // 次の処理を追加 Enter / ここから矢印を引く / 削除 Del. 色 and 形 open the inspector at that
+  // row (focusInspector), where every other change of the selection is. On an arrow:
+  // its label, colour, turning it round and deleting it; on the empty canvas: add a node,
+  // fit the diagram to the view. Arrow keys move, Enter or Space choose, Escape closes.
   let {
     x,
     y,
@@ -32,7 +32,6 @@
   let menu: HTMLDivElement | undefined = $state();
   let width = $state(0);
   let height = $state(0);
-  let sub = $state<'color' | 'shape' | 'style' | undefined>();
   const left = $derived(Math.max(4, Math.min(x, hostWidth - width - 4)));
   const top = $derived(Math.max(4, Math.min(y, hostHeight - height - 4)));
 
@@ -75,13 +74,12 @@
     }
   };
   const item =
-    'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted focus:bg-muted focus:outline-none';
-  const edgeStyles: EdgeStyle[] = ['solid', 'dotted', 'thick'];
+    'flex w-full items-center gap-4 rounded px-2 py-1.5 text-left text-sm whitespace-nowrap hover:bg-muted focus:bg-muted focus:outline-none';
 </script>
 
 <div
   bind:this={menu}
-  class="absolute z-30 flex w-56 flex-col rounded-lg border bg-card p-1 shadow-lg"
+  class="absolute z-30 flex w-60 flex-col rounded-lg border bg-card p-1 shadow-lg"
   style:left={`${left}px`}
   style:top={`${top}px`}
   role="menu"
@@ -92,21 +90,22 @@
   bind:offsetWidth={width}
   bind:offsetHeight={height}
   {onkeydown}>
-  {#if target === 'canvas'}
-    {#if model.kind}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        data-testid={`${TID.contextMenuItem}-add-node`}
-        onclick={() => run(model.addNode)}>{t('sel.addNode')}</button>
-    {/if}
+  {#snippet entry(key: string, label: string, action: () => unknown, shortcut = '', danger = false)}
     <button
       type="button"
       role="menuitem"
-      class={item}
-      data-testid={`${TID.contextMenuItem}-fit`}
-      onclick={() => run(fit)}>{t('sel.fit')}</button>
+      class={[item, danger && 'text-destructive']}
+      data-testid={`${TID.contextMenuItem}-${key}`}
+      onclick={() => run(action)}>
+      <span class="flex-1 truncate">{label}</span>
+      {#if shortcut}<kbd class="font-sans text-xs text-muted-foreground">{shortcut}</kbd>{/if}
+    </button>
+  {/snippet}
+  {#if target === 'canvas'}
+    {#if model.kind}
+      {@render entry('add-node', t('sel.addNode'), model.addNode)}
+    {/if}
+    {@render entry('fit', t('sel.fit'), fit)}
   {:else}
     {#if model.object || model.edge}
       <div
@@ -122,116 +121,36 @@
       </div>
     {/if}
     {#if (model.object && !model.object.noRename) || (model.edge && model.edges?.can.label)}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        data-testid={`${TID.contextMenuItem}-rename`}
-        onclick={() => run(requestRename)}
-        >{model.edge ? t('sel.renameLabel') : t('sel.rename')}</button>
+      {@render entry(
+        'rename',
+        model.edge ? t('sel.renameLabel') : t('canvas.menuRename'),
+        requestRename,
+        'F2'
+      )}
     {/if}
     {#if model.syntax || model.canColorEdge}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        aria-expanded={sub === 'color'}
-        data-testid={`${TID.contextMenuItem}-color`}
-        onclick={() => (sub = sub === 'color' ? undefined : 'color')}
-        >{model.edge ? t('sel.edgeColor') : t('sel.color')} ▸</button>
-      {#if sub === 'color'}
-        <div class="px-2 py-1">
-          {#if model.edge}
-            <ColorSwatches
-              mode="line"
-              compact
-              current={model.edgeColor}
-              onpick={(color) => run(() => model.setEdgeColor(color))}
-              testID={`${TID.contextMenuItem}-color`} />
-          {:else}
-            <ColorSwatches
-              mode="fill"
-              compact
-              current={model.color}
-              onpick={(swatch) => run(() => model.setColor(swatch))}
-              testID={`${TID.contextMenuItem}-color`} />
-          {/if}
-        </div>
-      {/if}
+      {@render entry('color', t('canvas.menuColor'), () => focusInspector('color'))}
     {/if}
     {#if model.node?.shape !== undefined && !model.node.icon}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        aria-expanded={sub === 'shape'}
-        data-testid={`${TID.contextMenuItem}-shape`}
-        onclick={() => (sub = sub === 'shape' ? undefined : 'shape')}>{t('sel.shape')} ▸</button>
-      {#if sub === 'shape'}
-        {#each nodeShapes as shape (shape)}
-          <button
-            type="button"
-            role="menuitem"
-            class={[item, 'pl-6']}
-            aria-current={model.node.shape === shape}
-            data-testid={`${TID.contextMenuItem}-shape-${shape}`}
-            onclick={() => run(() => model.setShape(shape))}>{t(`add.shape.${shape}`)}</button>
-        {/each}
-      {/if}
-    {/if}
-    {#if model.edge && (model.edges?.can.styles.length ?? 0) > 0}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        aria-expanded={sub === 'style'}
-        data-testid={`${TID.contextMenuItem}-style`}
-        onclick={() => (sub = sub === 'style' ? undefined : 'style')}
-        >{t('sel.edgeStyle')} ▸</button>
-      {#if sub === 'style'}
-        {#each edgeStyles.filter( (style) => model.edges?.can.styles.includes(style) ) as style (style)}
-          <button
-            type="button"
-            role="menuitem"
-            class={[item, 'pl-6']}
-            data-testid={`${TID.contextMenuItem}-style-${style}`}
-            onclick={() => run(() => model.setEdgeStyle(style))}
-            >{t(`edit.edgeStyle.${style}`)}</button>
-        {/each}
-      {/if}
+      {@render entry('shape', t('canvas.menuShape'), () => focusInspector('shape'))}
     {/if}
     {#if model.edge && model.edges?.can.reverse}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        data-testid={`${TID.contextMenuItem}-reverse`}
-        onclick={() => run(model.reverse)}>{t('sel.reverse')}</button>
+      {@render entry('reverse', t('sel.reverse'), model.reverse)}
     {/if}
     {#if model.canAddAfter}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        data-testid={`${TID.contextMenuItem}-add-after`}
-        onclick={() => run(model.addAfter)}>{t('sel.addAfter')}</button>
+      {@render entry(
+        'add-after',
+        t(model.kind === 'flowchart' ? 'canvas.menuAddNext' : 'canvas.menuAddNextOther'),
+        model.addAfter,
+        'Enter'
+      )}
     {/if}
     {#if model.canConnect}
-      <button
-        type="button"
-        role="menuitem"
-        class={item}
-        data-testid={`${TID.contextMenuItem}-connect`}
-        onclick={() => run(startConnect)}>{t('sel.connect')}</button>
+      {@render entry('connect', t('canvas.menuConnect'), startConnect)}
     {/if}
     {#if (model.object && !model.object.noDelete) || model.edge}
       <div class="my-1 h-px bg-border"></div>
-      <button
-        type="button"
-        role="menuitem"
-        class={[item, 'text-destructive']}
-        data-testid={`${TID.contextMenuItem}-delete`}
-        onclick={() => run(() => model.remove())}>{t('sel.delete')}</button>
+      {@render entry('delete', t('sel.delete'), () => model.remove(), 'Del', true)}
     {/if}
   {/if}
 </div>

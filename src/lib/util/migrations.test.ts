@@ -1,5 +1,5 @@
 import type { HistoryEntry, State } from '$lib/types';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('migrations', () => {
   beforeEach(() => {
@@ -49,5 +49,27 @@ describe('migrations', () => {
     const codeStore = JSON.parse(window.localStorage.getItem('codeStore') ?? '{}') as State;
     expect(codeStore.mermaid).toBe('{}');
     expect(codeStore.code).toContain('Christmas');
+
+    // migrateEditorLayout, the last one: the old layout keys and the stored locale go.
+    expect(window.localStorage.getItem('paneOrder')).toBeNull();
+    expect(window.localStorage.getItem('locale')).toBeNull();
+    expect(JSON.parse(window.localStorage.getItem('migrations') ?? '{}')).toEqual({ version: 3 });
+  });
+
+  it('removes the old layout and the stored language on an install that is up to v2', async () => {
+    // A fresh module, so the migration version is read from storage again.
+    vi.resetModules();
+    window.localStorage.setItem('migrations', JSON.stringify({ version: 2 }));
+    window.localStorage.setItem('paneOrder', JSON.stringify('code-left'));
+    window.localStorage.setItem('toolsPaneWidths', JSON.stringify({ fix: 30 }));
+    window.localStorage.setItem('locale', 'en');
+    const { applyMigrations } = await import('./migrations.svelte');
+    applyMigrations();
+    expect(window.localStorage.getItem('paneOrder')).toBeNull();
+    expect(window.localStorage.getItem('toolsPaneWidths')).toBeNull();
+    expect(window.localStorage.getItem('locale')).toBeNull();
+    expect(JSON.parse(window.localStorage.getItem('editorPaneSizes') ?? '{}')).toEqual({
+      inspector: 30
+    });
   });
 });

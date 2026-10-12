@@ -384,7 +384,18 @@ describe.each(samples)('$name', ({ code }) => {
           'label',
           edges.can.label ? setEdgeLabel(code, edges.kind, edge, 'Edited: "x" | [1]') : undefined
         ],
-        ['head', edges.can.head ? setEdgeHead(code, edges.kind, edge, !edge.head) : undefined],
+        [
+          'head',
+          edges.can.head
+            ? setEdgeHead(code, edges.kind, edge, edge.head === 'none' ? 'end' : 'none')
+            : undefined
+        ],
+        [
+          'both heads',
+          edges.can.both && edge.head !== 'both'
+            ? setEdgeHead(code, edges.kind, edge, 'both')
+            : undefined
+        ],
         ...edges.can.styles.map((style): [string, string] => [
           style,
           setEdgeStyle(code, edges.kind, edge, style)

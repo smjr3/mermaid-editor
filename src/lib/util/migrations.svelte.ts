@@ -1,5 +1,6 @@
 import { injectHistoryIDs } from '$lib/components/History/historyState.svelte';
 import { persisted } from '$lib/util/persist.svelte';
+import { migrateEditorLayout } from './editorLayout.svelte';
 import { clearDefaultThemeConfig, normalizeLegacyDarkTheme } from './state.svelte';
 import { logEvent } from './stats';
 
@@ -14,7 +15,8 @@ interface MigrationState {
 const getMigrations = (): Record<string, () => void> => ({
   injectHistoryIDs,
   clearDefaultThemeConfig,
-  normalizeLegacyDarkTheme
+  normalizeLegacyDarkTheme,
+  migrateEditorLayout
 });
 
 const migrationState = persisted<MigrationState>('migrations', { version: -1 });

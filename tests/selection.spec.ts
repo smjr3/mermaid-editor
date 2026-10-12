@@ -1,9 +1,12 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
+import { menuItem, resetView, zoomIn } from './helpers/canvas';
 import { expect, t, test } from './test';
 
-// "Click the diagram, then change it": selecting objects and arrows in the drawing,
-// the mini toolbar above the selection, the keys, and the right-click menu.
+// "Click the diagram, then change it", the diagram's side: selecting objects and arrows
+// in the drawing, the outline, the keys, the right-click menu, drawing an arrow from the
+// selection, and the zoom controls. (What the inspector shows for the selection, and the
+// rename field it holds, are the inspector's specs.)
 const urlFor = (code: string) =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid: '{}' })).toString('base64')}`;
 const flow = 'flowchart TD\n  A[Start] -->|yes| B[Middle]\n  B --> C[End]';
@@ -13,6 +16,9 @@ const code = (page: Page) =>
     () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { code: string }).code
   );
 const node = (page: Page, text: string) => page.locator('#view .node', { hasText: text }).first();
+/** A flowchart node by its id (`flowchart-n2-…`), for nodes that show the same text. */
+const nodeById = (page: Page, id: string) => page.locator(`#view g.node[id*="-${id}-"]`).first();
+const outline = (page: Page) => page.getByTestId(TID.selectionOutline);
 
 test.describe('Selection', () => {
   test.use({ viewport: { height: 900, width: 1400 } });
@@ -22,113 +28,66 @@ test.describe('Selection', () => {
     await editPage.checkTextInView('Middle');
   });
 
-  test('a click selects an object and shows the mini toolbar; Escape clears', async ({ page }) => {
-    const toolbar = page.getByTestId(TID.selectionToolbar);
-    const outline = page.getByTestId(TID.selectionOutline);
-    await expect(toolbar).toBeHidden();
+  test('a click selects an object and outlines it; Escape or the canvas clears', async ({
+    page
+  }) => {
+    await expect(outline(page)).toBeHidden();
     await node(page, 'Middle').click();
-    await expect(outline).toHaveAttribute('data-selected', 'B');
-    await expect(toolbar).toBeVisible();
-    // Floating just above the selection.
-    const toolbarBox = await toolbar.boundingBox();
-    const outlineBox = await outline.boundingBox();
-    if (!toolbarBox || !outlineBox) throw new Error('boxes missing');
-    expect(toolbarBox.y + toolbarBox.height).toBeLessThanOrEqual(outlineBox.y);
-    expect(toolbarBox.y + toolbarBox.height).toBeGreaterThan(outlineBox.y - 40);
+    await expect(outline(page)).toHaveAttribute('data-selected', 'B');
+    // The outline sits on the drawn node.
+    const nodeBox = await node(page, 'Middle').boundingBox();
+    const outlineBox = await outline(page).boundingBox();
+    if (!nodeBox || !outlineBox) throw new Error('boxes missing');
+    expect(Math.abs(nodeBox.x - outlineBox.x)).toBeLessThan(8);
+    expect(Math.abs(nodeBox.width - outlineBox.width)).toBeLessThan(12);
+    // No toolbar floats over the diagram any more.
+    await expect(page.getByTestId('selection-toolbar')).toHaveCount(0);
 
     await page.keyboard.press('Escape');
-    await expect(toolbar).toBeHidden();
-    await expect(outline).toBeHidden();
+    await expect(outline(page)).toBeHidden();
 
     // A click on the empty canvas clears too.
     await node(page, 'Start').click();
-    await expect(outline).toHaveAttribute('data-selected', 'A');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'A');
     const view = await page.locator('#view').boundingBox();
     if (!view) throw new Error('view missing');
     await page.mouse.click(view.x + 20, view.y + view.height - 20);
-    await expect(outline).toBeHidden();
-  });
-
-  test('renames inline after a double click', async ({ editPage, page }) => {
-    await node(page, 'Middle').dblclick();
-    const input = page.getByTestId(TID.selectionRename);
-    await expect(input).toBeFocused();
-    await expect(input).toHaveValue('Middle');
-    await input.fill('Center');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => code(page)).toMatch(/B\["?Center"?\]/);
-    await editPage.checkTextInView('Center');
-    // F2 opens it again on the selection.
-    await node(page, 'Center').click();
-    await page.keyboard.press('F2');
-    await expect(page.getByTestId(TID.selectionRename)).toBeFocused();
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId(TID.selectionRename)).toBeHidden();
-    await expect(page.getByTestId(TID.selectionOutline)).toHaveAttribute('data-selected', 'B');
-  });
-
-  test('a colour and bold from the mini toolbar reach the code', async ({ page }) => {
-    await node(page, 'Middle').click();
-    await page.getByTestId(`${TID.selectionToolbar}-color`).click();
-    await page.getByTestId(`${TID.selectionColor}-blue`).click();
-    await expect.poll(() => code(page)).toContain('style B fill:#dde9fb,stroke:#3b73c9');
-    await page.getByTestId(TID.selectionBold).click();
-    await expect
-      .poll(() => code(page))
-      .toMatch(/style B fill:#dde9fb,stroke:#3b73c9.*font-weight:bold/);
-    await page.getByTestId(TID.selectionSize).selectOption('large');
-    await expect.poll(() => code(page)).toContain('font-size:18px');
-  });
-
-  test('"この後に追加" chains new nodes, each selected and named in place', async ({
-    editPage,
-    page
-  }) => {
-    await node(page, 'End').click();
-    await page.getByTestId(TID.selectionAddAfter).click();
-    await page.getByTestId(TID.selectionRename).fill('Step 4');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => code(page)).toContain('n1["Step 4"]');
-    await expect(page.getByTestId(TID.selectionOutline)).toHaveAttribute('data-selected', 'n1');
-
-    await page.getByTestId(TID.selectionAddAfter).click();
-    await page.getByTestId(TID.selectionRename).fill('Step 5');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => code(page)).toContain('n2["Step 5"]');
-    const result = await code(page);
-    expect(result).toContain('C --> n1');
-    expect(result).toContain('n1 --> n2');
-    await editPage.checkTextInView('Step 5');
+    await expect(outline(page)).toBeHidden();
   });
 
   test('Enter adds after the selection, Tab adds a branch, Delete deletes', async ({
     editPage,
     page
   }) => {
-    const outline = page.getByTestId(TID.selectionOutline);
     await node(page, 'Middle').click();
     await page.keyboard.press('Enter');
-    await expect(outline).toHaveAttribute('data-selected', 'n1');
-    // The new node's name is open for typing; Escape keeps the default.
-    await page.keyboard.press('Escape');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n1');
     await expect.poll(() => code(page)).toContain('B --> n1');
+    expect(await code(page)).toContain(`n1["${t('sel.newNode')}"]`);
+    await editPage.checkTextInView(t('sel.newNode'));
 
     // Tab: a second node from where the selected one comes from (B).
+    await nodeById(page, 'n1').click();
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n1');
     await page.keyboard.press('Tab');
-    await expect(outline).toHaveAttribute('data-selected', 'n2');
-    await page.keyboard.press('Escape');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n2');
     await expect.poll(() => code(page)).toContain('B --> n2');
 
+    await nodeById(page, 'n2').click();
     await page.keyboard.press('Delete');
     await expect.poll(() => code(page)).not.toContain('n2');
-    await expect(outline).toBeHidden();
+    await expect(outline(page)).toBeHidden();
 
     // The arrow keys follow the arrows.
     await node(page, 'Start').click();
     await page.keyboard.press('ArrowDown');
-    await expect(outline).toHaveAttribute('data-selected', 'B');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'B');
     await page.keyboard.press('ArrowUp');
-    await expect(outline).toHaveAttribute('data-selected', 'A');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'A');
+
+    // Ctrl+Z outside the fields is the diagram's undo.
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => code(page)).toContain('n2');
 
     // Keys typed in the code editor are the editor's.
     await editPage.editor.click();
@@ -137,33 +96,40 @@ test.describe('Selection', () => {
     await expect.poll(() => code(page)).not.toContain('n3');
   });
 
-  test("typing straight after Enter or Tab lands in the new node's name", async ({ page }) => {
-    // No waiting between the keys: the field opens at once, before the node is in the
-    // code and drawn, and a final Enter names the node instead of adding another.
-    await node(page, 'Middle').click();
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('Quick name');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => code(page)).toMatch(/n1\[["']?Quick name["']?\]/);
-    await expect(page.getByTestId(TID.selectionRename)).toBeHidden();
-    expect(await code(page)).not.toContain('n2');
-
-    await page.keyboard.press('Tab');
-    await page.keyboard.type('Branch');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => code(page)).toMatch(/n2\[["']?Branch["']?\]/);
-    expect(await code(page)).not.toContain('n3');
-  });
-
-  test('the right-click menu deletes, and offers "図形を追加" on the canvas', async ({
+  test('the right-click menu has the six edits, one line each, and deletes', async ({
     editPage,
     page
   }) => {
     await node(page, 'End').click({ button: 'right' });
     const menu = page.getByTestId(TID.contextMenu);
     await expect(menu).toBeVisible();
-    await expect(menu.getByTestId(`${TID.contextMenuItem}-rename`)).toBeVisible();
-    await menu.getByTestId(`${TID.contextMenuItem}-delete`).click();
+    await expect(outline(page)).toHaveAttribute('data-selected', 'C');
+    const items = menu.getByRole('menuitem');
+    expect(
+      await items.evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('data-testid'))
+      )
+    ).toEqual(
+      ['rename', 'color', 'shape', 'add-after', 'connect', 'delete'].map(
+        (key) => `${TID.contextMenuItem}-${key}`
+      )
+    );
+    await expect(items).toHaveText([
+      `${t('canvas.menuRename')} F2`,
+      t('canvas.menuColor'),
+      t('canvas.menuShape'),
+      `${t('canvas.menuAddNext')} Enter`,
+      t('canvas.menuConnect'),
+      `${t('sel.delete')} Del`
+    ]);
+    // Each item is a single line.
+    for (const box of await items.evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().height)
+    )) {
+      expect(box).toBeLessThan(36);
+    }
+
+    await menuItem(page, 'delete').click();
     await expect(menu).toBeHidden();
     await expect.poll(() => code(page)).not.toContain('End');
     await editPage.checkTextNotInView('End');
@@ -171,59 +137,106 @@ test.describe('Selection', () => {
     const view = await page.locator('#view').boundingBox();
     if (!view) throw new Error('view missing');
     await page.mouse.click(view.x + 30, view.y + view.height - 30, { button: 'right' });
-    await expect(menu.getByTestId(`${TID.contextMenuItem}-fit`)).toBeVisible();
-    await menu.getByTestId(`${TID.contextMenuItem}-add-node`).click();
-    await expect(page.getByTestId(TID.selectionRename)).toBeFocused();
-    await page.keyboard.press('Escape');
+    await expect(menuItem(page, 'fit')).toBeVisible();
+    await menuItem(page, 'add-node').click();
     await expect.poll(() => code(page)).toContain(`n1["${t('sel.newNode')}"]`);
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n1');
   });
 
-  test('the right-click menu colours an object from its palette', async ({ page }) => {
+  test('色を変える and 形を変える open the inspector at that row', async ({ page }) => {
+    await page.getByTestId(TID.inspCollapse).click();
+    await expect(page.getByTestId(TID.wsInspectorRail)).toBeVisible();
     await node(page, 'Start').click({ button: 'right' });
-    await page.getByTestId(`${TID.contextMenuItem}-color`).click();
-    await page.getByTestId(`${TID.contextMenuItem}-color-green`).click();
-    await expect.poll(() => code(page)).toContain('style A fill:#def5e1,stroke:#3f9b52');
+    await menuItem(page, 'color').click();
+    await expect(page.getByTestId(TID.contextMenu)).toBeHidden();
+    // The inspector was asked to show its colour row: it unfolds.
+    await expect(page.getByTestId(TID.wsInspectorRail)).toBeHidden();
+    await page.getByTestId(TID.inspCollapse).click();
+    await node(page, 'Start').click({ button: 'right' });
+    await menuItem(page, 'shape').click();
+    await expect(page.getByTestId(TID.wsInspectorRail)).toBeHidden();
+    expect(await code(page)).toBe(flow);
   });
 
-  test('an arrow is selected by its label and reversed from the toolbar', async ({ page }) => {
+  test('次の処理を追加 from the menu adds after the node', async ({ page }) => {
+    await node(page, 'End').click({ button: 'right' });
+    await menuItem(page, 'add-after').click();
+    await expect.poll(() => code(page)).toContain('C --> n1');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n1');
+  });
+
+  test('an arrow is selected by its label; its menu turns it round', async ({ page }) => {
     await page.locator('#view g.edgeLabel', { hasText: 'yes' }).click();
-    await expect(page.getByTestId(TID.selectionOutline)).toHaveAttribute('data-selected', 'edge-0');
-    await expect(page.getByTestId(TID.selectionAddAfter)).toBeHidden();
-    await page.getByTestId(TID.selectionEdgeReverse).click();
+    await expect(outline(page)).toHaveAttribute('data-selected', 'edge-0');
+    await page.locator('#view g.edgeLabel', { hasText: 'yes' }).click({ button: 'right' });
+    const items = page.getByTestId(TID.contextMenu).getByRole('menuitem');
+    await expect(items).toHaveText([
+      `${t('sel.renameLabel')} F2`,
+      t('canvas.menuColor'),
+      t('sel.reverse'),
+      `${t('sel.delete')} Del`
+    ]);
+    await menuItem(page, 'reverse').click();
     await expect.poll(() => code(page)).toMatch(/B(?:\[Middle\])? -->\|yes\| A/);
-    await page.getByTestId(TID.selectionEdgeStyle).selectOption('dotted');
-    await expect.poll(() => code(page)).toContain('-.->|yes|');
   });
 
-  test('"ここから矢印" joins the selection to the next node clicked', async ({ page }) => {
-    await node(page, 'Start').click();
-    await page.getByTestId(TID.selectionConnect).click();
-    await expect(page.getByText(t('sel.connecting'))).toBeVisible();
+  test('"ここから矢印を引く" joins the selection to the next node clicked', async ({ page }) => {
+    await node(page, 'Start').click({ button: 'right' });
+    await menuItem(page, 'connect').click();
+    const banner = page.getByTestId(TID.canvasConnectBanner);
+    await expect(banner).toHaveAttribute('data-step', 'target');
+    await expect(banner).toContainText(t('canvas.connectTarget'));
     await node(page, 'End').click();
     await expect.poll(() => code(page)).toContain('A --> C');
-    await expect(page.getByTestId(TID.selectionOutline)).toHaveAttribute('data-selected', 'C');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'C');
+    await expect(banner).toBeHidden();
+
+    // The same arrow again is refused, and says so over the diagram.
+    await node(page, 'Start').click({ button: 'right' });
+    await menuItem(page, 'connect').click();
+    await node(page, 'End').click();
+    await expect(page.getByTestId(TID.selectionWarning)).toHaveText(
+      t('sel.alreadyConnected', { from: 'Start', to: 'End' })
+    );
   });
 
-  test('the 直す tab shows the selection with its full controls', async ({ page }) => {
-    await page.getByTestId(`${TID.toolsTab}-fix`).click();
-    const panel = page.getByTestId(TID.selectionPanel);
-    await expect(panel).toContainText(t('sel.hint'));
-    await expect(page.getByTestId(TID.selectionHint)).toHaveAttribute('title', t('sel.keys'));
-    await node(page, 'Middle').click();
-    await expect(page.getByTestId(`${TID.selectionPanel}-name`)).toContainText('Middle');
-    await page.getByTestId(`${TID.selectionPanel}-shape`).selectOption('rounded');
-    await expect.poll(() => code(page)).toContain('B(Middle)');
+  test('the zoom controls zoom, fit and switch the grid', async ({ page }) => {
+    const level = page.getByTestId(TID.canvasZoomLevel);
+    const percent = async () => Number.parseInt((await level.textContent()) ?? '', 10);
+    await expect(level).toHaveText(/^\d+%$/);
+    const fitted = await percent();
+    await zoomIn(page);
+    await expect.poll(percent).toBeGreaterThan(fitted);
+    await resetView(page);
+    await expect.poll(async () => Math.abs((await percent()) - fitted)).toBeLessThanOrEqual(2);
+    await page.getByTestId(TID.zoomOutButton).click();
+    await expect.poll(percent).toBeLessThan(fitted);
+    const grid = page.getByTestId(TID.gridToggle);
+    await expect(grid).toHaveAttribute('aria-pressed', 'true');
+    await grid.click();
+    await expect(grid).toHaveAttribute('aria-pressed', 'false');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { grid?: boolean }).grid
+        )
+      )
+      .toBe(false);
+    // The old bar over the diagram is gone: no new-tab view, no hand-drawn toggle here.
+    await expect(page.getByTestId('diagram-toolbar')).toHaveCount(0);
+    await expect(page.getByTestId('full-screen-button')).toHaveCount(0);
   });
 
   test('works in other diagram types: a state diagram', async ({ editPage, page }) => {
     await editPage.start(urlFor('stateDiagram-v2\n  [*] --> s1\n  s1 --> s2'));
     await editPage.checkTextInView('s2');
     await page.locator('#view .node', { hasText: 's2' }).first().click();
-    await expect(page.getByTestId(TID.selectionOutline)).toHaveAttribute('data-selected', 's2');
-    await page.keyboard.press('Enter');
-    await page.getByTestId(TID.selectionRename).fill('Done');
+    await expect(outline(page)).toHaveAttribute('data-selected', 's2');
     await page.keyboard.press('Enter');
     await expect.poll(() => code(page)).toContain('s2 --> s3');
-    await editPage.checkTextInView('Done');
+    await expect(outline(page)).toHaveAttribute('data-selected', 's3');
+    // The menu says 次を追加 outside flowcharts.
+    await page.locator('#view .node', { hasText: 's1' }).first().click({ button: 'right' });
+    await expect(menuItem(page, 'add-after')).toHaveText(`${t('canvas.menuAddNextOther')} Enter`);
   });
 });

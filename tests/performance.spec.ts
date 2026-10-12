@@ -46,7 +46,11 @@ const openWith = async (page: Page, code: string) => {
 
 /** Puts the cursor at the end of the code, on a new comment line. */
 const commentLine = async (page: Page) => {
-  await page.locator('.monaco-editor .view-lines').first().click();
+  // Near the top: the centre of a long document's lines is far below the editor's edge.
+  await page
+    .locator('.monaco-editor .view-lines')
+    .first()
+    .click({ position: { x: 20, y: 10 } });
   await page.keyboard.press('Control+End');
   await page.keyboard.press('Enter');
   await page.keyboard.type('%%');
@@ -57,7 +61,11 @@ test.describe('rendering performance', () => {
     test.slow();
     await openWith(page, flowchart(100));
     await settled(page);
-    await page.locator('.monaco-editor .view-lines').first().click();
+    // Near the top: the centre of a long document's lines is far below the editor's edge.
+    await page
+      .locator('.monaco-editor .view-lines')
+      .first()
+      .click({ position: { x: 20, y: 10 } });
     await page.keyboard.press('Control+End');
     await page.keyboard.press('Enter');
     await page.keyboard.type('  n99 --> Fresh[Typed]', { delay: 15 });

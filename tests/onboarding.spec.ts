@@ -20,6 +20,7 @@ test.describe('First-visit guide', () => {
     await expect(popover).toContainText(t('guide.step2.title'));
     await page.getByTestId(TID.guideNext).click();
     await expect(popover).toContainText(t('guide.step3.title'));
+    await expect(popover).toContainText(t('guide.step3.body'));
     // The last step has no "next".
     await expect(page.getByTestId(TID.guideNext)).toHaveCount(0);
     await page.getByTestId(TID.guideClose).click();
@@ -52,6 +53,40 @@ test.describe('First-visit guide', () => {
     const popover = page.getByTestId(TID.guidePopover);
     await expect(popover).toBeVisible();
     await expect(popover).toContainText(t('guide.step1.title'));
+  });
+
+  test('outlines what each step is about', async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 1440 });
+    await page.goto('/edit');
+    const popover = page.getByTestId(TID.guidePopover);
+    const outlines = page.getByTestId(TID.wsGuideHighlight);
+    const lefts = async () =>
+      (await outlines.evaluateAll((elements) =>
+        elements.map((element) => Math.round(element.getBoundingClientRect().left))
+      )) as number[];
+    const leftOf = async (id: string) =>
+      Math.round((await page.getByTestId(id).boundingBox())?.x ?? -1);
+
+    // 1: the add bar above the diagram and the inspector on the right (each when present).
+    await expect(popover).toContainText(t('guide.step1.title'));
+    await expect.poll(lefts).toContain(await leftOf(TID.inspPanel));
+    if ((await page.getByTestId(TID.canvasInsertBar).count()) > 0) {
+      await expect(outlines).toHaveCount(2);
+    }
+    // 2: the diagram.
+    await page.getByTestId(TID.guideNext).click();
+    await expect(popover).toContainText(t('guide.step2.title'));
+    await expect(outlines).toHaveCount(1);
+    await expect
+      .poll(lefts)
+      .toEqual([Math.round((await page.locator('#view').boundingBox())?.x ?? -1)]);
+    // 3: 新規 / 共有 / 書き出す, and 使い方 beside them.
+    await page.getByTestId(TID.guideNext).click();
+    await expect(popover).toContainText(t('guide.step3.title'));
+    await expect(outlines).toHaveCount(2);
+    await expect
+      .poll(lefts)
+      .toEqual([await leftOf(TID.wsHeaderActions), await leftOf(TID.helpButton)]);
   });
 
   // User feedback (2026-10-08): step 2, pointing at the diagram in the middle, was drawn

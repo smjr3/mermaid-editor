@@ -1,6 +1,5 @@
 <script lang="ts">
   import McWrapper from '$/components/McWrapper.svelte';
-  import { t } from '$/i18n';
   import * as Popover from '$/components/ui/popover';
   import { Switch } from '$/components/ui/switch';
   import { env } from '$/util/env';
@@ -33,13 +32,8 @@
   }
 
   const menuItems: MenuItem[] = $derived([
-    { label: t('menu.new'), icon: AddIcon, href: urls.current.new, renderer: menuItem },
-    {
-      label: t('menu.duplicate'),
-      icon: DuplicateIcon,
-      href: window.location.href,
-      renderer: menuItem
-    },
+    { label: 'New', icon: AddIcon, href: urls.current.new, renderer: menuItem },
+    { label: 'Duplicate', icon: DuplicateIcon, href: window.location.href, renderer: menuItem },
     {
       href: urls.current.mermaidChart({ medium: 'main_menu' }).playground,
       icon: PlaygroundIcon,
@@ -49,27 +43,23 @@
       renderer: mcMenuItem
     },
     {
-      label: t('menu.mermaidJs'),
+      label: 'Mermaid.js',
       icon: MermaidTailIcon,
       href: env.docsUrl,
       renderer: menuItem
     },
     {
-      label: t('menu.documentation'),
+      label: 'Documentation',
       icon: BookIcon,
       href: `${env.docsUrl}/intro/`,
       renderer: menuItem
     },
-    ...(env.isEnabledCommunityLinks
-      ? [
-          {
-            label: t('menu.community'),
-            icon: CommunityIcon,
-            href: 'https://discord.gg/sKeNQX4Wtj',
-            renderer: menuItem
-          }
-        ]
-      : []),
+    {
+      label: 'Community',
+      icon: CommunityIcon,
+      href: 'https://discord.gg/sKeNQX4Wtj',
+      renderer: menuItem
+    },
     {
       checkDiagramType: false,
       href: urls.current.mermaidChart({ medium: 'main_menu' }).plugins,
@@ -83,7 +73,7 @@
       href: '#',
       icon: ContrastIcon,
       isSectionEnd: true,
-      label: t('menu.darkMode'),
+      label: 'Dark Mode',
       renderer: darkModeMenuItem
     },
     {
@@ -117,7 +107,7 @@
 {#snippet mcMenuItem(item: Omit<MenuItem, 'renderer'>)}
   <McWrapper
     side="right"
-    labelPrefix={item.sharesData === false ? t('external.opensNewTab') : undefined}
+    labelPrefix={item.sharesData === false ? 'Opens a new tab in' : undefined}
     sharesData={item.sharesData}
     shouldCheckDiagramType={item.checkDiagramType}>
     {@render menuItem(item)}
@@ -133,7 +123,7 @@
     )}>
     <span class="flex items-center gap-2">
       <ContrastIcon />
-      {t('menu.darkMode')}
+      Dark Mode
     </span>
     <Switch
       checked={mode.current === 'dark'}

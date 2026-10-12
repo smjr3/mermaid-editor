@@ -1,9 +1,11 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
+import { formField, formMessage, menuItem, openForm, submitForm } from './helpers/canvas';
+import { openNewDialog } from './helpers/newDlg';
 import { expect, t, test } from './test';
 
-// Regressions from an exploratory pass as someone who only uses the tools pane and
-// never types code: each test is one thing that used to get a person stuck.
+// Regressions from an exploratory pass as someone who only uses the add bar and the
+// inspector and never types code: each test is one thing that used to get a person stuck.
 const urlFor = (code: string) =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid: '{}' })).toString('base64')}`;
 const stored = (page: Page) =>
@@ -13,20 +15,19 @@ const stored = (page: Page) =>
     )
     .then((code) => code.replaceAll('\r\n', '\n'));
 const node = (page: Page, text: string) => page.locator('#view .node', { hasText: text }).first();
-const field = (action: string, key: string) => `${TID.addAction}-${action}-${key}`;
 
 test.describe('QA findings', () => {
   test.use({ viewport: { height: 900, width: 1400 } });
 
-  test('a name typed after "この後に追加" replaces the placeholder instead of joining it', async ({
+  test('a name typed after ＋次 replaces the placeholder instead of joining it', async ({
     editPage,
     page
   }) => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
     await editPage.checkTextInView('End');
     await node(page, 'Start').click();
-    await page.getByTestId(TID.selectionAddAfter).click();
-    const input = page.getByTestId(TID.selectionRename);
+    await page.getByTestId(TID.inspAddNext).click();
+    const input = page.getByTestId(TID.inspName);
     await expect(input).toBeFocused();
     // The whole placeholder is selected, so typing replaces it.
     await expect
@@ -38,33 +39,35 @@ test.describe('QA findings', () => {
     expect(await stored(page)).not.toContain(t('sel.newNode'));
   });
 
-  test('the toolbar rename button selects the current name too', async ({ editPage, page }) => {
+  test('the right-click 名前を変更 selects the current name too', async ({ editPage, page }) => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
     await editPage.checkTextInView('End');
-    await node(page, 'End').click();
-    await page.getByTestId('selection-toolbar-rename').click();
-    const input = page.getByTestId(TID.selectionRename);
+    await node(page, 'End').click({ button: 'right' });
+    await menuItem(page, 'rename').click();
+    const input = page.getByTestId(TID.inspName);
+    await expect(input).toBeFocused();
     await expect
       .poll(() => input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd]))
       .toEqual([0, 3]);
   });
 
-  test('the Layout card offers engine and spacing only where they change the picture', async ({
+  test('図全体 offers engine and spacing only where they change the picture', async ({
     editPage,
     page
   }) => {
     await editPage.start(urlFor('pie title Pets\n  "Dogs": 3\n  "Cats": 2'));
     await editPage.checkTextInView('Dogs');
-    await page.getByTestId(TID.layoutCard).click();
-    await expect(page.getByTestId(TID.layoutNoEngine)).toHaveText(t('layout.noEngine'));
-    await expect(page.getByTestId(TID.layoutEngineElk)).toHaveCount(0);
-    await expect(page.getByTestId(`${TID.layoutSpacing}-wide`)).toHaveCount(0);
+    await expect(page.getByTestId(TID.layoutNoEngine)).toHaveAttribute(
+      'title',
+      new RegExp(t('layout.noEngine'))
+    );
+    await expect(page.getByTestId(`${TID.inspEngine}-elk`)).toHaveCount(0);
+    await expect(page.getByTestId(`${TID.inspSpacing}-wide`)).toHaveCount(0);
 
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
     await editPage.checkTextInView('End');
-    await page.getByTestId(TID.layoutCard).click();
-    await expect(page.getByTestId(TID.layoutEngineElk)).toBeVisible();
-    await expect(page.getByTestId(`${TID.layoutSpacing}-wide`)).toBeVisible();
+    await expect(page.getByTestId(`${TID.inspEngine}-elk`)).toBeVisible();
+    await expect(page.getByTestId(`${TID.inspSpacing}-wide`)).toBeVisible();
     await expect(page.getByTestId(TID.layoutNoEngine)).toHaveCount(0);
   });
 
@@ -75,13 +78,13 @@ test.describe('QA findings', () => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
     await editPage.checkTextInView('End');
     await node(page, 'Start').click();
-    await page.getByTestId(TID.iconPacksCard).click();
-    await page.getByTestId(TID.iconPickerPack).selectOption('tabler');
-    await page.getByTestId(TID.iconPickerSearch).fill('server');
-    const first = page.getByTestId(TID.iconPickerResults).getByRole('button').first();
-    await expect(first).toHaveAttribute('title', /^tabler:/, { timeout: 30_000 });
+    // The selected shape's アイコン row.
+    await page.getByTestId(TID.inspIcon).fill('server');
+    const first = page
+      .locator(`[data-testid="${TID.inspIconResult}"][data-icon^="tabler:"]`)
+      .first();
+    await expect(first).toBeVisible({ timeout: 30_000 });
     await first.click();
-    await expect(page.getByTestId(TID.iconPickerMessage)).toContainText('Start');
     await expect.poll(() => stored(page)).toMatch(/A@\{ icon: "tabler:[\w-]+", label: "Start" \}/);
     await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
   });
@@ -93,14 +96,15 @@ test.describe('QA findings', () => {
     const code = 'flowchart TD\n  A[Start] --> B[End]';
     await editPage.start(urlFor(code));
     await editPage.checkTextInView('End');
-    await page.getByTestId(TID.iconPacksCard).click();
+    // The cursor goes to the end of the last line: a name written there is a syntax error.
+    await editPage.editor.getByText('B[End]').click();
+    await page.keyboard.press('End');
+    // 図全体 › アイコン › 探して挿入.
+    await page.getByTestId(TID.inspIconBrowse).click();
     await page.getByTestId(TID.iconPickerPack).selectOption('tabler');
     await page.getByTestId(TID.iconPickerSearch).fill('server');
     const first = page.getByTestId(TID.iconPickerResults).getByRole('button').first();
     await expect(first).toHaveAttribute('title', /^tabler:/, { timeout: 30_000 });
-    // The cursor goes to the end of the last line: a name written there is a syntax error.
-    await editPage.editor.getByText('B[End]').click();
-    await page.keyboard.press('End');
     await first.click();
     await expect(page.getByTestId(TID.iconPickerMessage)).toHaveText(t('icons.pickBroke'));
     await expect.poll(() => stored(page)).toBe(code);
@@ -120,9 +124,9 @@ test.describe('QA findings', () => {
       urlFor('sequenceDiagram\n  participant A\n  participant B\n  A->>B: hi\n  B-->>A: hello')
     );
     await editPage.checkTextInView('hello');
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(field('block', 'text')).fill('stock');
-    await page.getByTestId(field('block', 'button')).click();
+    await openForm(page, 'block');
+    await formField(page, 'text').fill('stock');
+    await submitForm(page);
     await expect
       .poll(() => stored(page))
       .toContain('  A->>B: hi\n  alt stock\n    B-->>A: hello\n  end');
@@ -138,13 +142,11 @@ test.describe('QA findings', () => {
   }) => {
     await editPage.start(urlFor('classDiagram\n  class c1["Customer"]\n  class c2["Order"]'));
     await editPage.checkTextInView('Order');
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(field('relation', 'from')).selectOption('c1');
-    await page.getByTestId(field('relation', 'to')).selectOption('c2');
-    await page.getByTestId(field('relation', 'button')).click();
-    await expect(page.getByTestId(TID.addMessage)).toHaveText(
-      t('add.done', { name: 'Customer → Order' })
-    );
+    await openForm(page, 'relation');
+    await formField(page, 'from').selectOption('c1');
+    await formField(page, 'to').selectOption('c2');
+    await submitForm(page);
+    await expect(formMessage(page)).toHaveText(t('add.done', { name: 'Customer → Order' }));
   });
 
   test('the next gantt task does not inherit "done" and "critical" from the last one', async ({
@@ -155,17 +157,17 @@ test.describe('QA findings', () => {
       urlFor('gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n    Spec : 2024-01-01, 3d')
     );
     await editPage.checkTextInView('Spec');
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(field('task', 'name')).fill('Review');
-    await page.getByTestId(field('task', 'status')).selectOption('done');
-    await page.getByTestId(field('task', 'crit')).selectOption('yes');
-    await page.getByTestId(field('task', 'button')).click();
+    await openForm(page, 'task');
+    await formField(page, 'name').fill('Review');
+    await formField(page, 'status').selectOption('done');
+    await formField(page, 'crit').selectOption('yes');
+    await submitForm(page);
     await expect.poll(() => stored(page)).toContain('Review : done, crit,');
     // The text was cleared; these choices go back to their start, too.
-    await expect(page.getByTestId(field('task', 'status'))).toHaveValue('none');
-    await expect(page.getByTestId(field('task', 'crit'))).toHaveValue('no');
-    await page.getByTestId(field('task', 'name')).fill('Ship');
-    await page.getByTestId(field('task', 'button')).click();
+    await expect(formField(page, 'status')).toHaveValue('none');
+    await expect(formField(page, 'crit')).toHaveValue('no');
+    await formField(page, 'name').fill('Ship');
+    await submitForm(page);
     await expect.poll(() => stored(page)).toMatch(/\n\s+Ship : (?!done|crit)/);
   });
 
@@ -183,27 +185,38 @@ test.describe('QA findings', () => {
       )
     );
     await editPage.checkTextInView('Build');
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(field('task', 'name')).fill('Ship');
-    await page.getByTestId(field('task', 'button')).click();
+    await openForm(page, 'task');
+    await formField(page, 'name').fill('Ship');
+    await submitForm(page);
     await expect.poll(() => stored(page)).toContain('Ship : t1, after task2, 3d');
     await editPage.checkTextInView('Ship');
     await page.waitForTimeout(500);
     expect(errors.filter((text) => text.includes('NaN'))).toEqual([]);
   });
 
-  test('the 作成 button of the new-diagram form stays in reach without scrolling', async ({
+  test('the 作成 button of the 新規 dialog stays in reach without scrolling', async ({
+    editPage,
     page
   }) => {
-    await page.goto('/edit');
-    await page.getByTestId(TID.newDiagramToggle).click();
-    const create = page.getByTestId(TID.newDiagramCreate);
+    await editPage.checkTextInView('Car');
+    await openNewDialog(page, 'type');
+    const create = page.getByTestId(TID.newDlgCreate);
     await expect(create).toBeVisible();
-    const pane = await page.getByTestId(TID.toolsPane).boundingBox();
-    const button = await create.boundingBox();
-    if (!pane || !button) throw new Error('boxes missing');
-    expect(button.y + button.height).toBeLessThanOrEqual(pane.y + pane.height);
-    expect(button.y).toBeGreaterThanOrEqual(pane.y);
+    // Measured once the dialog's opening animation has settled.
+    const boxes = async () => {
+      const dialog = await page.getByTestId(TID.newDlg).boundingBox();
+      const button = await create.boundingBox();
+      if (!dialog || !button) throw new Error('boxes missing');
+      return { button, dialog };
+    };
+    await expect
+      .poll(async () => {
+        const { button, dialog } = await boxes();
+        return button.y + button.height <= dialog.y + dialog.height && button.y >= dialog.y;
+      })
+      .toBe(true);
+    const { dialog } = await boxes();
+    expect(dialog.y + dialog.height).toBeLessThanOrEqual(900);
   });
 
   test('an unnamed slice and the pie value toggle use words a person would read', async ({
@@ -212,25 +225,11 @@ test.describe('QA findings', () => {
   }) => {
     await editPage.start(urlFor('pie title Pets\n  "Dogs": 3\n  "Cats": 2'));
     await editPage.checkTextInView('Dogs');
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(field('slice', 'button')).click();
+    await openForm(page, 'slice');
+    await submitForm(page);
     await expect.poll(() => stored(page)).toContain('"項目" : 10');
-    await page.getByTestId(field('display', 'button')).click();
-    await expect(page.getByTestId(TID.addMessage)).toHaveText(t('add.pie.shownDone'));
-  });
-});
-
-test.describe('QA findings on a phone', () => {
-  test.use({ viewport: { height: 844, width: 390 } });
-
-  test('"ツール欄で詳しく" leaves the diagram view for the tools', async ({ page }) => {
-    await page.goto(urlFor('flowchart TD\n  A[Start] --> B[End]'));
-    await expect(page.locator('#view')).toContainText('End', { timeout: 15_000 });
-    const mode = page.locator('#editorMode');
-    await expect(mode).toHaveAttribute('aria-checked', 'true');
-    await node(page, 'End').click();
-    await page.getByTestId(TID.selectionToolbar).getByTestId('selection-toolbar-more').click();
-    await expect(mode).toHaveAttribute('aria-checked', 'false');
-    await expect(page.getByTestId(TID.editObjectSelect)).toBeVisible();
+    await openForm(page, 'display');
+    await submitForm(page);
+    await expect(formMessage(page)).toHaveText(t('add.pie.shownDone'));
   });
 });

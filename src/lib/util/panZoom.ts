@@ -2,12 +2,14 @@ import type { State } from '$/types';
 import Hammer from 'hammerjs';
 import type { Point } from 'mermaid/dist/types.js';
 import panzoom from 'svg-pan-zoom';
+import { revealPlan, type Box } from './revealView';
 type PanZoom = typeof panzoom;
 
 export class PanZoomState {
   private pan?: Point;
   private zoom?: number;
   private pzoom: PanZoom | undefined;
+  private svg: SVGElement | undefined;
   private isDirty = false;
   private resizeObserver: ResizeObserver;
 
@@ -33,6 +35,7 @@ export class PanZoomState {
 
   public updateElement(diagramView: SVGElement, { pan, zoom }: Pick<State, 'pan' | 'zoom'>) {
     this.pzoom?.destroy();
+    this.svg = diagramView;
     let hammer: HammerManager | undefined;
     this.pzoom = panzoom(diagramView, {
       center: true,
@@ -155,6 +158,26 @@ export class PanZoomState {
   public zoomOut() {
     this.pzoom?.zoomOut();
     this.onPanZoomSettled?.();
+  }
+
+  /**
+   * Local: moves the view so `box` (screen pixels) is fully visible in `viewport`, at the
+   * current zoom unless it is bigger than the viewport (revealView.ts). False when the
+   * view did not move.
+   */
+  public reveal(box: Box, viewport: Box): boolean {
+    const plan = revealPlan(box, viewport);
+    if (!this.pzoom || !this.svg || !plan) return false;
+    if (plan.scale !== 1) {
+      const origin = this.svg.getBoundingClientRect();
+      this.pzoom.zoomAtPointBy(plan.scale, {
+        x: box.left + box.width / 2 - origin.left,
+        y: box.top + box.height / 2 - origin.top
+      });
+    }
+    this.pzoom.panBy({ x: plan.dx, y: plan.dy });
+    this.onPanZoomSettled?.();
+    return true;
   }
 
   public reset() {

@@ -1,5 +1,6 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
+import { openNewDialog } from './helpers/newDlg';
 import { EditorPage, expect, t, test } from './test';
 
 const urlFor = (code: string) =>
@@ -12,38 +13,31 @@ const stored = async (page: Page) =>
     )
     .then((code) => code.replaceAll('\r\n', '\n'));
 
-/** Opens "New diagram" in the Templates card (the fixture may have folded the card). */
-const openNewDiagram = async (page: Page) => {
-  const toggle = page.getByTestId(TID.newDiagramToggle);
-  if (!(await toggle.isVisible())) await page.getByTestId(TID.sampleDiagramsCard).click();
-  await toggle.click();
-};
-
-// The types "New diagram" offers (newDiagram.ts, which loads mermaid and so stays out of
-// Playwright's Node process), and whether each draws a title.
+// The types the 形式 tab offers (newDiagram.ts, which loads mermaid and so stays out of
+// Playwright's Node process), whether each draws a title, and whether it has a direction.
 const starterKinds = [
-  { id: 'flowchart', title: true },
-  { id: 'swimlane', title: true },
-  { id: 'architecture', title: false },
-  { id: 'sequence', title: true },
-  { id: 'state', title: true },
-  { id: 'class', title: true },
-  { id: 'er', title: true },
-  { id: 'gantt', title: true },
-  { id: 'mindmap', title: false },
-  { id: 'kanban', title: false },
-  { id: 'timeline', title: true },
-  { id: 'pie', title: true },
-  { id: 'c4', title: true },
-  { id: 'block', title: false },
-  { id: 'journey', title: true },
-  { id: 'xychart', title: true },
-  { id: 'quadrant', title: true },
-  { id: 'sankey', title: false },
-  { id: 'git', title: true },
-  { id: 'packet', title: true },
+  { direction: true, id: 'flowchart', title: true },
+  { direction: true, id: 'swimlane', title: true },
+  { direction: false, id: 'architecture', title: false },
+  { direction: false, id: 'sequence', title: true },
+  { direction: true, id: 'state', title: true },
+  { direction: true, id: 'class', title: true },
+  { direction: true, id: 'er', title: true },
+  { direction: false, id: 'gantt', title: true },
+  { direction: false, id: 'mindmap', title: false },
+  { direction: false, id: 'kanban', title: false },
+  { direction: false, id: 'timeline', title: true },
+  { direction: false, id: 'pie', title: true },
+  { direction: false, id: 'c4', title: true },
+  { direction: false, id: 'block', title: false },
+  { direction: false, id: 'journey', title: true },
+  { direction: false, id: 'xychart', title: true },
+  { direction: false, id: 'quadrant', title: true },
+  { direction: false, id: 'sankey', title: false },
+  { direction: false, id: 'git', title: true },
+  { direction: false, id: 'packet', title: true },
   // Last: leaving a ZenUML diagram reloads the page (state.svelte.ts).
-  { id: 'zenuml', title: true }
+  { direction: false, id: 'zenuml', title: true }
 ];
 
 // A placeholder each starter draws, to know its render arrived.
@@ -71,20 +65,23 @@ const placeholder: Record<string, string> = {
   zenuml: '注文する'
 };
 
-/** The link "Create in a new tab" opens (a share-style hash URL). */
-const createHref = async (page: Page) => {
-  const link = page.getByTestId(TID.newDiagramCreate);
-  await expect(link).toHaveAttribute('target', '_blank');
-  await expect(link).toHaveAttribute('rel', /noopener/);
-  const href = await link.getAttribute('href');
-  expect(href).toMatch(/\/edit#pako:/);
-  return href ?? '';
-};
+const kindCard = (page: Page, id: string) =>
+  page.locator(`[data-testid="${TID.newDlgKind}"][data-kind="${id}"]`);
 
 // User feedback (2026-10-08): "New diagram" opens in a new tab, so the diagram in the
 // current tab stays as it is (and nothing has to ask before replacing it).
-test.describe('New diagram', () => {
-  test('builds a titled left-to-right flowchart in a new tab, then grows it with Add', async ({
+test.describe('New diagram dialog: from a type', () => {
+  test('lists the 21 types and opens from the header menu', async ({ editPage, page }) => {
+    await editPage.start(urlFor('pie\n  "a" : 1'));
+    await openNewDialog(page, 'type');
+    await expect(page.getByTestId(TID.newDlgKind)).toHaveCount(starterKinds.length);
+    for (const { id } of starterKinds) await expect(kindCard(page, id)).toBeVisible();
+    await expect(page.getByTestId(TID.newDlgCreate)).toHaveText(
+      t('newDlg.createType', { name: t('new.kind.flowchart') })
+    );
+  });
+
+  test('builds a titled left-to-right flowchart in a new tab and leaves this one alone', async ({
     context,
     editPage,
     page
@@ -94,16 +91,17 @@ test.describe('New diagram', () => {
     });
     await editPage.start(urlFor('flowchart TD\n  X[My own work] --> Y'));
     await editPage.checkTextInView('My own work');
-    await openNewDiagram(page);
-    await page.getByTestId(`${TID.newDiagramKind}-flowchart`).click();
-    await page.getByTestId(TID.newDiagramTitle).fill('経費精算の流れ');
-    await page.getByTestId(`${TID.newDiagramDirection}-LR`).click();
-    await createHref(page);
+    await openNewDialog(page, 'type');
+    await kindCard(page, 'flowchart').click();
+    await page.getByTestId(TID.newDlgTitle).fill('経費精算の流れ');
+    await page.getByTestId(`${TID.newDlgDirection}-LR`).click();
+    // A real link to a new tab: it keeps working where pop-ups are blocked.
+    const create = page.getByTestId(TID.newDlgCreate);
+    await expect(create).toHaveAttribute('target', '_blank');
+    await expect(create).toHaveAttribute('rel', /noopener/);
+    await expect(create).toHaveAttribute('href', /\/edit#pako:/);
 
-    const [popup] = await Promise.all([
-      context.waitForEvent('page'),
-      page.getByTestId(TID.newDiagramCreate).click()
-    ]);
+    const [popup] = await Promise.all([context.waitForEvent('page'), create.click()]);
     const other = new EditorPage(popup);
     await other.checkTextInView('経費精算の流れ');
     await other.checkTextInView('終了');
@@ -115,64 +113,56 @@ test.describe('New diagram', () => {
     // This tab keeps its own diagram.
     await editPage.checkTextInView('My own work');
     await expect(editPage.editor).toContainText('My own work');
-    await expect(page.getByTestId(TID.newDiagramMessage)).toHaveText(
-      t('new.openedInTab', { name: t('new.kind.flowchart') })
+    await expect(page.getByTestId(TID.newDlgMessage)).toHaveText(
+      t('newDlg.opened', { name: t('new.kind.flowchart') })
     );
+  });
 
-    await popup.getByTestId(TID.addCard).click();
-    await popup.getByTestId(TID.addNodeFrom).selectOption('n2');
-    await popup.getByTestId(TID.addNodeName).fill('承認');
-    await popup.getByTestId(TID.addNodeButton).click();
-    await other.checkTextInView('承認');
-    expect(await stored(popup)).toContain('  n2 --> n4');
+  test('shows the title and direction only where the type has them, swimlane starting left to right', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('pie\n  "a" : 1'));
+    await openNewDialog(page, 'type');
+    for (const { direction, id, title } of starterKinds) {
+      await kindCard(page, id).click();
+      await expect(kindCard(page, id)).toHaveAttribute('aria-checked', 'true');
+      await expect(page.getByTestId(TID.newDlgTitle)).toHaveCount(title ? 1 : 0);
+      await expect(page.getByTestId(`${TID.newDlgDirection}-TB`)).toHaveCount(direction ? 1 : 0);
+      await expect(page.getByTestId(`${TID.newDlgDirection}-LR`)).toHaveCount(direction ? 1 : 0);
+      if (!title) await expect(page.getByText(t('layout.titleUnsupported'))).toBeVisible();
+      await expect(page.getByTestId(TID.newDlgCreate)).toHaveText(
+        t('newDlg.createType', { name: t(`new.kind.${id}` as 'new.kind.flowchart') })
+      );
+      if (id === 'swimlane') {
+        await expect(page.getByTestId(`${TID.newDlgDirection}-LR`)).toHaveAttribute(
+          'aria-pressed',
+          'true'
+        );
+      }
+    }
   });
 
   test('every type opens as a starter that renders', async ({ context, editPage, page }) => {
-    test.slow();
+    // 21 starters, each rendered in a second page: about 85 s here, too close to test.slow()'s 90.
+    test.setTimeout(180_000);
     page.on('dialog', () => {
       throw new Error('a new diagram must not ask anything');
     });
     await editPage.start(urlFor('pie\n  "a" : 1'));
-    await openNewDiagram(page);
+    await openNewDialog(page, 'type');
     const other = new EditorPage(await context.newPage());
     for (const { id } of starterKinds) {
-      await page.getByTestId(`${TID.newDiagramKind}-${id}`).click();
-      await other.start(await createHref(page));
+      await kindCard(page, id).click();
+      const url = await editPage.captureWindowOpen(() =>
+        page.getByTestId(TID.newDlgCreate).click()
+      );
+      expect(url).toMatch(/\/edit#pako:/);
+      await other.start(url);
       await other.checkTextInView(placeholder[id]);
       await expect(other.page.getByTestId(TID.errorContainer)).toHaveCount(0);
     }
-  });
-
-  test('sets, changes and removes the title from the Layout card, where the type shows one', async ({
-    editPage,
-    page
-  }) => {
-    test.slow();
-    await editPage.start(urlFor('pie\n  "a" : 1'));
-    await openNewDiagram(page);
-    const hrefs: [(typeof starterKinds)[number], string][] = [];
-    for (const kind of starterKinds) {
-      await page.getByTestId(`${TID.newDiagramKind}-${kind.id}`).click();
-      hrefs.push([kind, await createHref(page)]);
-    }
-    for (const [kind, href] of hrefs) {
-      await editPage.start(href);
-      await editPage.checkTextInView(placeholder[kind.id]);
-      await page.getByTestId(TID.layoutCard).click();
-      if (!kind.title) {
-        await expect(page.getByText(t('layout.titleUnsupported'))).toBeVisible();
-        await expect(page.getByTestId(TID.layoutTitleInput)).toHaveCount(0);
-        continue;
-      }
-      await page.getByTestId(TID.layoutTitleInput).fill(`題名 ${kind.id}`);
-      await page.getByTestId(TID.layoutTitleSet).click();
-      // Front matter (`title: "…"`), or the title statement of timeline and C4.
-      await expect.poll(() => stored(page)).toMatch(new RegExp(`title:? "?題名 ${kind.id}`));
-      // The title is drawn in the diagram, not only written in the code.
-      await editPage.checkTextInView(`題名 ${kind.id}`);
-      await page.getByTestId(TID.layoutTitleRemove).click();
-      await expect.poll(() => stored(page)).not.toMatch(/^\s*title\b/m);
-      await editPage.checkTextNotInView(`題名 ${kind.id}`);
-    }
+    // This tab still has its own diagram.
+    await expect(editPage.editor).toContainText('"a" : 1');
   });
 });

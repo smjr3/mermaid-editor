@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   directionUnsupportedKey,
   getDirection,
+  getElkOptions,
+  getFullDirection,
   getLayoutOptions,
   pickDirection,
   setDirection,
+  setElkOptions,
   setLayoutOptions,
   viewBoxSize
 } from './layout';
@@ -145,5 +148,53 @@ describe('directionUnsupportedKey', () => {
         }
       }
     }
+  });
+});
+
+describe('all four directions', () => {
+  it('reads and writes bottom-to-top and right-to-left too', () => {
+    expect(getFullDirection('flowchart BT\n  A --> B')).toBe('BT');
+    expect(getFullDirection('graph TD\n  A --> B')).toBe('TB');
+    expect(getFullDirection('stateDiagram-v2\n  direction RL\n  [*] --> A')).toBe('RL');
+    expect(getFullDirection('pie\n  "a" : 1')).toBeUndefined();
+    expect(setDirection('flowchart TD\n  A --> B', 'RL')).toBe('flowchart RL\n  A --> B');
+    expect(setDirection('classDiagram\n  class A', 'BT')).toBe(
+      'classDiagram\n  direction BT\n  class A'
+    );
+    // The fit-to-view orientation still reads them as one of its two.
+    expect(getDirection('flowchart RL\n  A --> B')).toBe('LR');
+  });
+});
+
+describe('ELK options', () => {
+  it('reads and writes the node placement and merged arrows, leaving the defaults unwritten', () => {
+    expect(getElkOptions('{}')).toEqual({
+      cycle: '',
+      mergeEdges: false,
+      modelOrder: '',
+      placement: ''
+    });
+    const set = setElkOptions('{"theme":"base"}', { mergeEdges: true, placement: 'SIMPLE' });
+    expect(JSON.parse(set)).toEqual({
+      elk: { mergeEdges: true, nodePlacementStrategy: 'SIMPLE' },
+      theme: 'base'
+    });
+    expect(getElkOptions(set)).toMatchObject({ mergeEdges: true, placement: 'SIMPLE' });
+    const back = setElkOptions(set, { mergeEdges: false, placement: '' });
+    expect(JSON.parse(back)).toEqual({ theme: 'base' });
+    expect(getElkOptions('{"elk":{"nodePlacementStrategy":"bogus"}}').placement).toBe('');
+    expect(setElkOptions('not json', { mergeEdges: true })).toBe('not json');
+  });
+
+  it('reads and writes how cycles are broken and the model order', () => {
+    const set = setElkOptions('{}', { cycle: 'DEPTH_FIRST', modelOrder: 'NODES_AND_EDGES' });
+    expect(JSON.parse(set)).toEqual({
+      elk: { considerModelOrder: 'NODES_AND_EDGES', cycleBreakingStrategy: 'DEPTH_FIRST' }
+    });
+    expect(getElkOptions(set)).toMatchObject({
+      cycle: 'DEPTH_FIRST',
+      modelOrder: 'NODES_AND_EDGES'
+    });
+    expect(JSON.parse(setElkOptions(set, { cycle: '', modelOrder: '' }))).toEqual({});
   });
 });

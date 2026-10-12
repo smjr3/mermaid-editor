@@ -13,11 +13,13 @@ import type { MessageKey } from '$/i18n/messages';
 import {
   getEdgeColor,
   getObjectColor,
+  getObjectStroke,
   getTextColor,
   getTextStyle,
   resetTextStyle,
   setEdgeColor,
   setObjectColor,
+  setObjectStroke,
   setTextColor,
   setTextStyle,
   type Swatch,
@@ -39,24 +41,33 @@ import {
   deleteObject,
   editableEdges,
   editableObjects,
+  edgeFields,
   flowNodeDetails,
   moveNodeToLane,
   moveService,
   renameObject,
   reverseEdge,
   serviceDetails,
+  setEdgeFields,
   setEdgeHead,
   setEdgeLabel,
   setEdgeStyle,
   setNodeIcon,
+  setNodeIconOptions,
   setNodeShape,
+  setNodeShapeName,
   setServiceIcon,
+  type EdgeHead,
   type EdgeStyle,
   type EditEdges,
   type EditObject,
   type EditObjects
 } from './diagramModify';
-import { diagramObjects } from './mermaid';
+import { addSpecs, initialValues } from './addActions';
+import { objectOptionKeys, objectOptions, setObjectOption } from './diagramOptions';
+import { diagramIds } from './diagramIds';
+import { diagramObjects, parse } from './mermaid';
+import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 import {
   addAfter,
   addedObject,
@@ -74,6 +85,7 @@ import {
   clearSelection,
   endRename,
   requestRename,
+  requestReveal,
   sameSelection,
   select,
   selection,
@@ -81,6 +93,13 @@ import {
 } from './selection.svelte';
 import { applyToolEdit, editsBlocked } from './codeHealth.svelte';
 import { inputState, updateCode } from './state.svelte';
+
+/** Why an id rename was refused, as F2 in the code says it. */
+const idRejections = {
+  breaks: 'editor.renameBreaks',
+  invalid: 'editor.renameInvalid',
+  taken: 'editor.renameTaken'
+} as const satisfies Record<string, MessageKey>;
 
 class SelectionModel {
   /** The code the lists below were read from. */
@@ -142,11 +161,19 @@ class SelectionModel {
   members = $derived(
     this.kind && this.object ? objectMembers(inputState.code, this.kind, this.object.id) : undefined
   );
-  fields = $derived(
-    this.kind && this.object ? objectFields(inputState.code, this.kind, this.object) : undefined
-  );
+  // Local: the object's properties, then its options mermaid offers for the type (diagramOptions.ts).
+  fields = $derived.by(() => {
+    if (!this.kind || !this.object) return undefined;
+    const own = objectFields(inputState.code, this.kind, this.object);
+    const options = objectOptions(inputState.code, this.kind, this.object);
+    return own || options.length > 0 ? [...(own ?? []), ...options] : undefined;
+  });
   label = $derived(
     this.object ? this.object.label.trim() || this.object.id : (this.edge?.label ?? '')
+  );
+  /** Local: the selected arrow's other properties (head shape, length, kind, …). */
+  edgeFields = $derived(
+    this.kind && this.edge ? edgeFields(inputState.code, this.kind, this.edge) : []
   );
 
   /** Reads the lists for valid code; drops a selection the code no longer has. */
@@ -316,6 +343,17 @@ class SelectionModel {
       this.style(setObjectColor(inputState.code, this.object.id, swatch, this.syntax));
     }
   };
+  /** The border colour set on its own (the inspector's 「枠」). */
+  get stroke(): string | undefined {
+    return this.object && this.syntax
+      ? getObjectStroke(inputState.code, this.object.id, this.syntax)
+      : undefined;
+  }
+  setStroke = (color: string | undefined) => {
+    if (this.object && this.syntax) {
+      this.style(setObjectStroke(inputState.code, this.object.id, color, this.syntax));
+    }
+  };
   get textStyle(): TextStyle | undefined {
     return this.object && this.syntax && this.syntax !== 'c4'
       ? getTextStyle(inputState.code, this.object.id, this.syntax)
@@ -366,6 +404,15 @@ class SelectionModel {
       t('edit.changed', { name: this.label })
     );
   };
+  /** Any of mermaid's shapes by its name (flowShapes.ts); the five common ones keep brackets. */
+  setShapeName = async (shape: string) => {
+    const { object } = this;
+    if (!object) return;
+    await this.apply(
+      setNodeShapeName(inputState.code, object.id, shape),
+      t('edit.changed', { name: this.label })
+    );
+  };
   setIcon = async (icon: string) => {
     const { object } = this;
     if (!object) return;
@@ -385,8 +432,19 @@ class SelectionModel {
   setFields = async (values: DetailValues) => {
     const { kind, object } = this;
     if (!kind || !object) return;
+    const [key, value] = Object.entries(values)[0] ?? [];
+    const next =
+      key !== undefined && objectOptionKeys.has(key)
+        ? setObjectOption(inputState.code, kind, object, key, value)
+        : setObjectFields(inputState.code, kind, object, values);
+    await this.apply(next, t('edit.changed', { name: this.label }));
+  };
+  /** Local: an icon node's background and label position. */
+  setIconOptions = async (options: { form?: string; pos?: string }) => {
+    const { object } = this;
+    if (!object || !this.node?.icon) return;
     await this.apply(
-      setObjectFields(inputState.code, kind, object, values),
+      setNodeIconOptions(inputState.code, object.id, options),
       t('edit.changed', { name: this.label })
     );
   };
@@ -400,6 +458,65 @@ class SelectionModel {
       next,
       t(values ? 'edit.changed' : 'edit.deleted', { name: member.label.trim() })
     );
+  };
+
+  /** A new class member or entity attribute (the Add card's own action), last in the object. */
+  addMember = async () => {
+    const { kind, object } = this;
+    if (!object || (kind !== 'class' && kind !== 'er')) return;
+    const action = addSpecs
+      .find((spec) => spec.kind === kind)
+      ?.actions.find(({ id }) => id === (kind === 'class' ? 'member' : 'attribute'));
+    if (!action) return;
+    const result = action.apply(inputState.code, {
+      ...initialValues(action),
+      [kind === 'class' ? 'class' : 'entity']: object.id
+    });
+    if ('error' in result) {
+      this.warn(result.error);
+      return;
+    }
+    await this.apply(result.code, t('sel.added', { name: result.name }));
+  };
+
+  /** Whether the object's id is a name in the code that a rename can change everywhere. */
+  get canRenameId(): boolean {
+    const { object } = this;
+    return (
+      !!object &&
+      object.line === undefined &&
+      isValidIdentifier(object.id) &&
+      findOccurrences(inputState.code, object.id).length > 0
+    );
+  }
+
+  /** Changes the object's id everywhere it is used, as F2 in the code does (mermaidRename.ts). */
+  renameId = async (to: string) => {
+    const { object } = this;
+    const next = to.trim();
+    if (!object || !next || next === object.id) return;
+    if (editsBlocked()) {
+      this.warn('recover.blocked');
+      return;
+    }
+    const code = inputState.code;
+    const result = await checkedRename(
+      code,
+      object.id,
+      next,
+      async (text) => (await parse(text)).diagramType,
+      diagramIds
+    );
+    if ('reason' in result) {
+      this.warn(idRejections[result.reason], { name: next });
+      return;
+    }
+    // The code changed while mermaid checked the rename: it was made from the old code.
+    if (inputState.code !== code) return;
+    updateCode(result.code, { updateDiagram: true });
+    this.message = t('edit.renamed', { name: next });
+    this.warning = '';
+    select({ id: next, type: 'node' });
   };
 
   // ---- Arrows ----
@@ -419,7 +536,12 @@ class SelectionModel {
       await this.apply(setEdgeStyle(inputState.code, kind, edge, style), t('edit.updated'));
     }
   };
-  setEdgeHead = async (head: boolean) => {
+  setEdgeFields = async (values: DetailValues) => {
+    const { kind, edge } = this;
+    if (kind && edge)
+      await this.apply(setEdgeFields(inputState.code, kind, edge, values), t('edit.updated'));
+  };
+  setEdgeHead = async (head: EdgeHead) => {
     const { kind, edge } = this;
     if (kind && edge)
       await this.apply(setEdgeHead(inputState.code, kind, edge, head), t('edit.updated'));
@@ -462,6 +584,8 @@ class SelectionModel {
         await this.sync(result.code);
         this.lastAdded = id;
         select({ id, type: 'node' }, { keepRename: true });
+        // It may be drawn outside the part of the diagram on screen.
+        requestReveal();
         // Nothing was selected to open it on (a node added on the empty canvas).
         if (!openedEarly) requestRename();
         ok = true;
@@ -474,6 +598,9 @@ class SelectionModel {
       done(ok);
     }
   }
+
+  /** Applies an addition made elsewhere (the add bar, a lane's ＋追加), as `added` does. */
+  insert = (result: Added | undefined) => this.added(result);
 
   addAfter = async () => {
     const { kind, object } = this;

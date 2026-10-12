@@ -181,8 +181,12 @@ describe('class', () => {
       aggregation: '  Animal o-- c1',
       association: '  c1 --> Animal : uses',
       composition: '  Animal *-- c1',
+      dashedLink: '  c1 .. Animal',
       dependency: '  c1 ..> Animal',
-      inheritance: '  Animal <|-- c1'
+      inheritance: '  Animal <|-- c1',
+      link: '  c1 -- Animal',
+      lollipop: '  c1 --() Animal',
+      realization: '  Animal <|.. c1'
     };
     for (const [kind, line] of Object.entries(expected)) {
       const result = await run(first.code, 'relation', {
@@ -769,5 +773,92 @@ describe('what is missing', () => {
     for (const key of ['add.choose', 'add.chooseParent', 'add.chooseColumn', 'add.choosePeriod']) {
       for (const catalogue of Object.values(messages)) expect(catalogue).toHaveProperty([key]);
     }
+  });
+});
+
+describe('mermaid’s other choices in the add forms', () => {
+  it('adds each participant symbol', async () => {
+    const code = 'sequenceDiagram\n  A->>B: hi';
+    for (const kind of ['boundary', 'control', 'entity', 'database', 'collections', 'queue']) {
+      const result = await run(code, 'participant', { kind, name: kind });
+      if ('error' in result) throw new Error(kind);
+      expect(added(code, result.code)).toEqual([
+        `  participant p1@{ "type": "${kind}" } as ${kind}`
+      ]);
+    }
+  });
+
+  it('adds each kind of message', async () => {
+    const code = 'sequenceDiagram\n  participant A\n  participant B';
+    const arrows: Record<string, string> = {
+      both: '<<->>',
+      cross: '-x',
+      line: '->',
+      replyAsync: '--)',
+      replyCross: '--x'
+    };
+    for (const [kind, arrow] of Object.entries(arrows)) {
+      const result = await run(code, 'message', { from: 'A', kind, text: 'x', to: 'B' });
+      if ('error' in result) throw new Error(kind);
+      expect(added(code, result.code)).toEqual([`  A${arrow}B: x`]);
+    }
+  });
+
+  it('adds par, critical, break and a coloured rect around a message', async () => {
+    const code = 'sequenceDiagram\n  A->>B: hi';
+    for (const kind of ['par', 'critical', 'break']) {
+      const result = await run(code, 'block', { kind, wrap: 'around' });
+      if ('error' in result) throw new Error(kind);
+      expect(result.code.split('\n')[1]).toMatch(new RegExp(`^  ${kind} \\S`));
+    }
+    const rect = await run(code, 'block', {
+      kind: 'rect',
+      text: 'rgba(0, 0, 255, 0.1)',
+      wrap: 'around'
+    });
+    if ('error' in rect) throw new Error();
+    expect(rect.code.split('\n')[1]).toBe('  rect rgba(0, 0, 255, 0.1)');
+    // Anything but a colour mermaid reads gets the default background.
+    const named = await run(code, 'block', { kind: 'rect', text: '#fff', wrap: 'around' });
+    if ('error' in named) throw new Error();
+    expect(named.code.split('\n')[1]).toBe('  rect rgb(235, 242, 255)');
+  });
+
+  it('writes a class relation’s multiplicities', async () => {
+    const code = 'classDiagram\n  class A\n  class B';
+    const result = await run(code, 'relation', {
+      cardFrom: '1',
+      cardTo: '0..*',
+      from: 'A',
+      kind: 'association',
+      to: 'B'
+    });
+    if ('error' in result) throw new Error();
+    expect(added(code, result.code)).toEqual(['  A "1" --> "0..*" B']);
+    const inherit = await run(code, 'relation', {
+      cardFrom: '1',
+      cardTo: 'n',
+      from: 'A',
+      kind: 'inheritance',
+      to: 'B'
+    });
+    if ('error' in inherit) throw new Error();
+    expect(added(code, inherit.code)).toEqual(['  B "n" <|-- "1" A']);
+  });
+
+  it('adds a choice, fork or join and a note to a state diagram', async () => {
+    const code = 'stateDiagram-v2\n  [*] --> Idle';
+    const choice = await run(code, 'pseudo', { from: 'Idle', kind: 'choice' });
+    if ('error' in choice) throw new Error();
+    expect(added(code, choice.code)).toEqual(['  state c1 <<choice>>', '  Idle --> c1']);
+    const fork = await run(code, 'pseudo', { kind: 'fork' });
+    if ('error' in fork) throw new Error();
+    expect(added(code, fork.code)).toEqual(['  state f1 <<fork>>']);
+    const note = await run(code, 'note', { at: 'Idle', place: 'left', text: 'wait: here' });
+    if ('error' in note) throw new Error();
+    expect(added(code, note.code)).toEqual(['  note left of Idle : wait： here']);
+    expect(await run(code, 'note', { at: '', text: 'x' })).toEqual({
+      error: 'add.state.noteChoose'
+    });
   });
 });

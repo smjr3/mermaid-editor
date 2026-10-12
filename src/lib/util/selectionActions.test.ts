@@ -131,8 +131,8 @@ describe('connect', () => {
 
 describe('moving along the arrows', () => {
   const edges = [
-    { from: 'A', head: true, index: 0, label: '', style: 'solid', title: '', to: 'B' },
-    { from: 'B', head: true, index: 1, label: '', style: 'solid', title: '', to: 'C' }
+    { from: 'A', head: 'end', index: 0, label: '', style: 'solid', title: '', to: 'B' },
+    { from: 'B', head: 'end', index: 1, label: '', style: 'solid', title: '', to: 'C' }
   ] as const;
   it('finds the next and previous node', () => {
     expect(neighbour([...edges], 'B', 'next')).toBe('C');

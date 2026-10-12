@@ -1,7 +1,7 @@
 import { TID } from '$/constants';
+import type { Page } from '@playwright/test';
+import { panel, pickObject, segment } from './helpers/inspector';
 import { expect, t, test } from './test';
-
-type Page = import('@playwright/test').Page;
 
 const urlFor = (code: string, mermaid = '{}') =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid })).toString('base64')}`;
@@ -25,7 +25,7 @@ const labelStyle = (page: Page, text: string) =>
 const rgb = (hex: string) =>
   `rgb(${[1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16)).join(', ')})`;
 
-test.describe('Text styling in the Colours card', () => {
+test.describe('Text styling in the inspector', () => {
   test('makes a flowchart node bold, larger and red in one style statement, then resets it', async ({
     editPage,
     page
@@ -33,30 +33,35 @@ test.describe('Text styling in the Colours card', () => {
     const code = 'flowchart TD\n  A[Alpha] --> B[Beta]';
     await editPage.start(urlFor(code));
     await editPage.checkTextInView('Alpha');
-    await page.getByTestId(TID.colorsCard).click();
-    await page.getByTestId(TID.colorsNodeSelect).selectOption('A');
+    await pickObject(page, 'A');
 
-    await page.getByTestId(TID.colorsTextBold).click();
+    await page.getByTestId(TID.inspTextBold).click();
     await expect.poll(() => storedCode(page)).toBe(`${code}\n  style A font-weight:bold`);
     await expect.poll(() => labelStyle(page, 'Alpha')).toMatchObject({ weight: '700' });
-    await expect(page.getByTestId(TID.colorsTextBold)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId(TID.inspTextBold)).toHaveAttribute('aria-pressed', 'true');
 
-    await page.getByTestId(TID.colorsTextSize).selectOption('xlarge');
+    await segment(page, TID.inspTextSize, 'xlarge');
     await expect
       .poll(() => storedCode(page))
       .toBe(`${code}\n  style A font-weight:bold,font-size:24px`);
     await expect
       .poll(() => labelStyle(page, 'Alpha'))
       .toMatchObject({ size: '24px', weight: '700' });
+    await expect(page.getByTestId(`${TID.inspTextSize}-xlarge`)).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
 
-    await page.getByTestId(`${TID.colorsTextColor}-#d64545`).click();
+    await segment(page, TID.inspColorTarget, 'text');
+    await page.getByTestId(`${TID.inspColor}-#d64545`).click();
     await expect
       .poll(() => storedCode(page))
       .toBe(`${code}\n  style A color:#d64545,font-weight:bold,font-size:24px`);
     await expect.poll(() => labelStyle(page, 'Alpha')).toMatchObject({ color: rgb('#d64545') });
 
     // A fill joins the same statement and keeps the chosen text colour.
-    await page.getByTestId(`${TID.colorsNode}-green`).click();
+    await segment(page, TID.inspColorTarget, 'fill');
+    await page.getByTestId(`${TID.inspColor}-green`).click();
     await expect
       .poll(() => storedCode(page))
       .toBe(
@@ -64,13 +69,13 @@ test.describe('Text styling in the Colours card', () => {
       );
 
     // Bold is a toggle.
-    await page.getByTestId(TID.colorsTextBold).click();
+    await page.getByTestId(TID.inspTextBold).click();
     await expect
       .poll(() => storedCode(page))
       .toBe(`${code}\n  style A fill:#def5e1,stroke:#3f9b52,color:#d64545,font-size:24px`);
-    await expect(page.getByTestId(TID.colorsTextBold)).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId(TID.inspTextBold)).toHaveAttribute('aria-pressed', 'false');
 
-    await page.getByTestId(TID.colorsTextReset).click();
+    await page.getByTestId(TID.inspTextReset).click();
     await expect
       .poll(() => storedCode(page))
       .toBe(`${code}\n  style A fill:#def5e1,stroke:#3f9b52`);
@@ -123,11 +128,11 @@ test.describe('Text styling in the Colours card', () => {
     test(`renders bold, larger text in a ${kind} diagram`, async ({ editPage, page }) => {
       await editPage.start(urlFor(code));
       await editPage.checkTextInView(text);
-      await page.getByTestId(TID.colorsCard).click();
-      await page.getByTestId(TID.colorsNodeSelect).selectOption(id);
+      await pickObject(page, id);
 
-      await page.getByTestId(TID.colorsTextBold).click();
-      await page.getByTestId(TID.colorsTextSize).selectOption('large');
+      await page.getByTestId(TID.inspTextBold).click();
+      await expect.poll(() => storedCode(page)).toContain('font-weight:bold');
+      await segment(page, TID.inspTextSize, 'large');
       await expect
         .poll(() => storedCode(page))
         .toBe(`${code}\n  style ${id} ${lead}font-weight:bold,font-size:18px`);
@@ -135,7 +140,7 @@ test.describe('Text styling in the Colours card', () => {
         .poll(() => labelStyle(page, text))
         .toMatchObject({ size: '18px', weight: '700' });
 
-      await page.getByTestId(TID.colorsTextReset).click();
+      await page.getByTestId(TID.inspTextReset).click();
       await expect.poll(() => storedCode(page)).toBe(code);
     });
   }
@@ -144,14 +149,14 @@ test.describe('Text styling in the Colours card', () => {
     const code = 'C4Context\n  Person(a, "Alice")\n  System(s, "Shop")';
     await editPage.start(urlFor(code));
     await editPage.checkTextInView('Shop');
-    await page.getByTestId(TID.colorsCard).click();
-    await page.getByTestId(TID.colorsNodeSelect).selectOption('s');
+    await pickObject(page, 's');
 
-    await expect(page.getByText(t('colors.textC4'))).toBeVisible();
-    await expect(page.getByTestId(TID.colorsTextBold)).toHaveCount(0);
-    await expect(page.getByTestId(TID.colorsTextSize)).toHaveCount(0);
+    await expect(panel(page)).toContainText(t('colors.textC4'));
+    await expect(page.getByTestId(TID.inspTextBold)).toHaveCount(0);
+    await expect(page.getByTestId(TID.inspTextSize)).toHaveCount(0);
 
-    await page.getByTestId(`${TID.colorsTextColor}-#d64545`).click();
+    await segment(page, TID.inspColorTarget, 'text');
+    await page.getByTestId(`${TID.inspColor}-#d64545`).click();
     await expect
       .poll(() => storedCode(page))
       .toBe(`${code}\n  UpdateElementStyle(s, $fontColor="#d64545")`);
@@ -169,7 +174,7 @@ test.describe('Text styling in the Colours card', () => {
       )
       .toBe(true);
 
-    await page.getByTestId(TID.colorsTextReset).click();
+    await page.getByTestId(TID.inspTextReset).click();
     await expect.poll(() => storedCode(page)).toBe(code);
   });
 
@@ -179,8 +184,9 @@ test.describe('Text styling in the Colours card', () => {
   }) => {
     await editPage.start(urlFor('sequenceDiagram\n  A->>B: hi'));
     await editPage.checkTextInView('hi');
-    await page.getByTestId(TID.colorsCard).click();
-    await expect(page.getByText(t('colors.objectsNone'))).toBeVisible();
-    await expect(page.getByTestId(TID.colorsText)).toHaveCount(0);
+    await expect(panel(page)).toContainText(t('colors.objectsNone'));
+    await pickObject(page, 'A');
+    await expect(page.getByTestId(TID.inspTextBold)).toHaveCount(0);
+    await expect(page.getByTestId(TID.inspTextReset)).toHaveCount(0);
   });
 });

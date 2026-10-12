@@ -33,6 +33,8 @@ import {
   renderGanttTask,
   type GanttTask
 } from './diagramDetails';
+import type { DetailField, DetailValues } from './diagramDetails';
+import type { MessageKey } from '$/i18n/messages';
 import {
   chartHeaders,
   chartObjects,
@@ -42,6 +44,7 @@ import {
 } from './chartEdit';
 import { requirementName } from './codeText';
 import { freshId, headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
+import { canonicalShape, type FlowShapeName } from './flowShapes';
 import { memoByCode } from './memo';
 import {
   decodeEntities,
@@ -93,7 +96,8 @@ export interface EditObjects {
   items: EditObject[];
 }
 
-export type EdgeStyle = 'solid' | 'dotted' | 'thick';
+/** Local: `invisible` is a flowchart's `~~~` (an arrow that only places its ends). */
+export type EdgeStyle = 'solid' | 'dotted' | 'thick' | 'invisible';
 
 export interface EditEdge {
   /** Its position in the list (for flowcharts: its `linkStyle` number). */
@@ -106,7 +110,7 @@ export interface EditEdge {
   /** How the list shows it. */
   title: string;
   style: EdgeStyle;
-  head: boolean;
+  head: EdgeHead;
   /** The 0-based line of the statement (not for flowcharts). */
   line?: number;
 }
@@ -115,7 +119,8 @@ export interface EditEdges {
   kind: EditKind;
   items: EditEdge[];
   /** What this type's arrow syntax allows. */
-  can: { label: boolean; reverse: boolean; styles: EdgeStyle[]; head: boolean };
+  /** `head`: an arrowhead can be added or taken off; `both`: it can be on both ends. */
+  can: { both: boolean; head: boolean; label: boolean; reverse: boolean; styles: EdgeStyle[] };
   /** The statements could not be matched to what mermaid drew, so the list is empty. */
   unsure?: boolean;
 }
@@ -267,8 +272,9 @@ const parseNode = (text: string, at: number): { node: NodeRef; end: number } | u
 // `-- text -->`, `-. text .->`, `== text ==>`; or `-->`, `-.->`, `==>`, `---`, `--o`, `<-->`,
 // `~~~` …, optionally followed by `|text|`.
 const arrowBody = String.raw`-{2,}(?:>|[xo])|-{3,}|={2,}(?:>|[xo])|={3,}|-\.+-(?:>|[xo])?|~{3,}`;
+// Local: an arrow may carry an id (`A e1@--> B`), which `e1@{ animate: true }` refers to.
 const linkPattern = new RegExp(
-  `^(?:[<xo]?(?:--|==|-\\.)\\s+\\S.*?\\s+(?:${arrowBody}|\\.+-(?:>|[xo])?)(?![-=.>xo])|[<xo]?(?:${arrowBody})(?:\\|[^|]*\\|)?)`
+  `^(?:[\\w-]+@)?(?:[<xo]?(?:--|==|-\\.)\\s+\\S.*?\\s+(?:${arrowBody}|\\.+-(?:>|[xo])?)(?![-=.>xo])|[<xo]?(?:${arrowBody})(?:\\|[^|]*\\|)?)`
 );
 
 /** The statements of one line, or undefined when it is not made of node chains. */
@@ -583,10 +589,44 @@ const renameFlowObject = (lines: string[], object: EditObject, label: string): s
   return lines;
 };
 
+/**
+ * An arrow's heads: only at its end (`-->`), at both ends (`<-->`), or none (`---`).
+ * Local: 両方 joined 先だけ / なし with the inspector's 矢じり row.
+ */
+export type EdgeHead = 'end' | 'both' | 'none';
+
+/** The heads of an arrow whose ends carry `head` and `tail` marks ('' for none). */
+const headsOf = (head: string, tail: string): EdgeHead =>
+  head && tail ? 'both' : head || tail ? 'end' : 'none';
+
+/** The mark on the other end that matches `mark`: `>` and `<`, `|>` and `<|`, `o` and `o`. */
+const mirrorMark = (mark: string): string =>
+  ({ '<': '>', '<|': '|>', '>': '<', '|>': '<|' })[mark] ?? mark;
+
+/**
+ * New head and tail marks for `wanted`. 先だけ keeps a single mark where it is (a class's
+ * `<|--` stays) and drops the tail of a two-headed arrow; 両方 mirrors the mark there is.
+ */
+const withHeads = (
+  { head, tail }: { head: string; tail: string },
+  wanted: EdgeHead,
+  plain = '>'
+): { head: string; tail: string } => {
+  if (wanted === 'none') return { head: '', tail: '' };
+  if (wanted === 'end') {
+    if (head && tail) return { head, tail: '' };
+    return head || tail ? { head, tail } : { head: plain, tail: '' };
+  }
+  const end = head || (tail ? mirrorMark(tail) : plain);
+  return { head: end, tail: tail || mirrorMark(end) };
+};
+
 // Flowchart arrows: one link's parts and their text.
 
 interface Link {
-  style: EdgeStyle | 'invisible';
+  /** The arrow's own id (`e1@-->`), or ''. */
+  id: string;
+  style: EdgeStyle;
   head: '' | '>' | 'x' | 'o';
   tail: '' | '<' | 'x' | 'o';
   /** Extra length beyond the shortest arrow (`--->` is 1). */
@@ -594,7 +634,9 @@ interface Link {
   text: string;
 }
 
-const parseLink = (link: string): Link => {
+const parseLink = (written: string): Link => {
+  const id = /^([\w-]+)@/.exec(written)?.[1] ?? '';
+  const link = id ? written.slice(id.length + 1) : written;
   let text = '';
   let arrow = link;
   const pipe = /^(\S+)\|([^|]*)\|$/.exec(link);
@@ -617,17 +659,19 @@ const parseLink = (link: string): Link => {
         ? 'dotted'
         : 'solid';
   const shortest = style === 'dotted' ? 3 : head || tail ? 2 : 3;
-  return { extra: Math.max(0, body.length - shortest), head, style, tail, text };
+  return { extra: Math.max(0, body.length - shortest), head, id, style, tail, text };
 };
 
-const renderLink = ({ extra, head, style, tail, text }: Link): string => {
+const renderLink = ({ extra, head, id, style, tail, text }: Link): string => {
   const body =
     style === 'dotted'
       ? `-${'.'.repeat(1 + extra)}-`
       : style === 'invisible'
         ? '~'.repeat(3 + extra)
         : (style === 'thick' ? '=' : '-').repeat((head || tail ? 2 : 3) + extra);
-  return `${tail}${body}${head}${text ? `|${text}|` : ''}`;
+  // `~~~` has no head: `~~~>` is not an arrow mermaid knows.
+  const [start, end] = style === 'invisible' ? ['', ''] : [tail, head];
+  return `${id ? `${id}@` : ''}${start}${body}${end}${text ? `|${text}|` : ''}`;
 };
 
 /** Rewrites one arrow; a chain is first split so the arrow stands on its own and numbers stay. */
@@ -646,11 +690,13 @@ const rewriteFlowEdge = (
   const position = index - first.index;
   const expanded = expandChain(chain);
   const changed = change(expanded[position]);
+  let removedLink = '';
   if (changed) {
     expanded[position] = changed;
   } else {
     // Deleted: a shape its nodes carried moves to their next mention, or stays as a statement.
     const [removed] = expanded.splice(position, 1);
+    removedLink = removed.links[0] ?? '';
     const left: Chain[] = [];
     for (const node of removed.groups.flat()) {
       const later = expanded.flatMap((c) => c.groups.flat()).find((n) => n.id === node.id);
@@ -665,9 +711,15 @@ const rewriteFlowEdge = (
   if (!changed) {
     dropRedundantBare(lines, bare);
     renumberLinkStyles(lines, afterRemoving(new Set([index])));
+    // Local: the arrow's `id@{ … }` statement goes with it; left alone it would draw a node.
+    const removedId = parseLink(removedLink).id;
+    if (removedId) removeWhere(lines, (line) => edgeDataLine(removedId).test(line));
   }
   return lines;
 };
+
+/** Local: the `id@{ … }` statement of the arrow with that id. */
+const edgeDataLine = (id: string) => new RegExp(`^\\s*${escape(id)}@\\{.*\\}\\s*$`);
 
 const changeLink = (update: (link: Link) => Link) => (chain: Chain) => ({
   ...chain,
@@ -698,9 +750,9 @@ interface EdgeSyntax {
   render: (statement: Statement) => string;
   reverse: (statement: Statement) => Statement;
   setStyle?: (statement: Statement, style: EdgeStyle) => Statement;
-  setHead?: (statement: Statement, head: boolean) => Statement;
+  setHead?: (statement: Statement, head: EdgeHead) => Statement;
   style: (statement: Statement) => EdgeStyle;
-  head: (statement: Statement) => boolean;
+  head: (statement: Statement) => EdgeHead;
   label: (text: string) => string;
   can: EditEdges['can'];
   /** How many arrows mermaid found, to confirm the patterns saw every one. */
@@ -708,14 +760,14 @@ interface EdgeSyntax {
 }
 
 const stateSyntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: [] },
+  can: { both: false, head: false, label: true, reverse: true, styles: [] },
   // Every transition, inside composite states too (getRelations has only the top level),
   // but not the lines that tie a note to its state.
   count: (db) =>
     list((read(db, 'getData') as Db | undefined)?.edges).filter(
       ({ start, end }) => !`${String(start)} ${String(end)}`.includes('----')
     ).length,
-  head: () => true,
+  head: () => 'end',
   label: (text) => oneLine(text).replaceAll(':', '：'),
   parse: ([, indent, from, to, label = '']) => ({ from, indent, label, parts: {}, to }),
   pattern: /^(\s*)(\[\*\]|[\p{L}\p{N}_-]+)\s*-->\s*(\[\*\]|[\p{L}\p{N}_-]+)\s*(?::\s*(.*?))?\s*$/u,
@@ -726,9 +778,9 @@ const stateSyntax: EdgeSyntax = {
 };
 
 const classSyntax: EdgeSyntax = {
-  can: { head: true, label: true, reverse: true, styles: ['solid', 'dotted'] },
+  can: { both: true, head: true, label: true, reverse: true, styles: ['solid', 'dotted'] },
   count: (db) => list(read(db, 'getRelations')).length,
-  head: ({ parts }) => parts.head !== '' || parts.tail !== '',
+  head: ({ parts }) => headsOf(parts.head, parts.tail),
   label: (text) => oneLine(text).replaceAll(/[:"]/g, ' ').replaceAll(/\s+/g, ' ').trim(),
   parse: ([
     ,
@@ -760,20 +812,16 @@ const classSyntax: EdgeSyntax = {
   }),
   setHead: (s, head) => ({
     ...s,
-    parts: {
-      ...s.parts,
-      head: head ? (s.parts.head || s.parts.tail ? s.parts.head : '>') : '',
-      tail: head ? s.parts.tail : ''
-    }
+    parts: { ...s.parts, ...withHeads({ head: s.parts.head, tail: s.parts.tail }, head) }
   }),
   setStyle: (s, style) => ({ ...s, parts: { ...s.parts, line: style === 'dotted' ? '..' : '--' } }),
   style: ({ parts }) => (parts.line === '..' ? 'dotted' : 'solid')
 };
 
 const erSyntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: ['solid', 'dotted'] },
+  can: { both: false, head: false, label: true, reverse: true, styles: ['solid', 'dotted'] },
   count: (db) => list(read(db, 'getRelationships')).length,
-  head: () => true,
+  head: () => 'end',
   label: (text) => oneLine(text).replaceAll('"', "'"),
   parse: ([, indent, from, cardA, line, cardB, to, label]) => ({
     from,
@@ -792,8 +840,10 @@ const erSyntax: EdgeSyntax = {
 };
 
 const sequenceSyntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: ['solid', 'dotted'] },
-  head: () => true,
+  can: { both: true, head: true, label: true, reverse: true, styles: ['solid', 'dotted'] },
+  // `->` and `-->` are lines without a head, `<<->>` and `<<-->>` have one at each end.
+  head: ({ parts }) =>
+    parts.both ? 'both' : parts.arrow === '->' || parts.arrow === '-->' ? 'none' : 'end',
   label: sequenceText,
   parse: ([, indent, from, both = '', arrow, mark = '', to, label = '']) => ({
     from,
@@ -803,10 +853,22 @@ const sequenceSyntax: EdgeSyntax = {
     to
   }),
   pattern:
-    /^(\s*)([\p{L}\p{N}_]+)\s*(<<)?(-->>|->>|-->|->|--x|-x|--\)|-\))\s*([+-]?)\s*([\p{L}\p{N}_]+)\s*:\s*(.*?)\s*$/u,
+    /^(\s*)([\p{L}\p{N}_]+)\s*(<<)?(--?\|\\|--?\|\/|--?\\\\|--?\/\/|-->>|->>|-->|->|--x|-x|--\)|-\))\s*([+-]?)\s*([\p{L}\p{N}_]+)\s*:\s*(.*?)\s*$/u,
   render: ({ from, indent, label, parts, to }) =>
     `${indent}${from}${parts.both}${parts.arrow}${parts.mark}${to}: ${label}`,
   reverse: (s) => ({ ...s, from: s.to, to: s.from }),
+  // 先だけ keeps a cross or an open arrow (`-x`, `-)`) as it is; 両方 has only `<<->>`.
+  setHead: (s, head) => {
+    const dashes = s.parts.arrow.startsWith('--') ? '--' : '-';
+    const plain = s.parts.arrow === '->' || s.parts.arrow === '-->';
+    const arrow =
+      head === 'none'
+        ? `${dashes}>`
+        : head === 'both' || plain || s.parts.both
+          ? `${dashes}>>`
+          : s.parts.arrow;
+    return { ...s, parts: { ...s.parts, arrow, both: head === 'both' ? '<<' : '' } };
+  },
   setStyle: (s, style) => ({
     ...s,
     parts: {
@@ -818,9 +880,9 @@ const sequenceSyntax: EdgeSyntax = {
 };
 
 const architectureSyntax: EdgeSyntax = {
-  can: { head: true, label: false, reverse: true, styles: [] },
+  can: { both: true, head: true, label: false, reverse: true, styles: [] },
   count: (db) => list(read(db, 'getEdges')).length,
-  head: ({ parts }) => parts.head !== '' || parts.tail !== '',
+  head: ({ parts }) => headsOf(parts.head, parts.tail),
   label: () => '',
   parse: ([, indent, from, groupA = '', sideA, tail = '', head = '', sideB, to, groupB = '']) => ({
     from,
@@ -846,11 +908,7 @@ const architectureSyntax: EdgeSyntax = {
   }),
   setHead: (s, head) => ({
     ...s,
-    parts: {
-      ...s.parts,
-      head: head ? (s.parts.tail ? s.parts.head : '>') : '',
-      tail: head ? s.parts.tail : ''
-    }
+    parts: { ...s.parts, ...withHeads({ head: s.parts.head, tail: s.parts.tail }, head) }
   }),
   style: () => 'solid'
 };
@@ -883,9 +941,9 @@ const unpairActivation = (lines: string[], line: number, statement: Statement) =
 // C4: `Rel(from, to, "label", …)` and its variants (`Rel_D`, `BiRel`, `Rel_Back`, …);
 // what follows the label (technology, `$tags=…`) is kept as written.
 const c4Syntax: EdgeSyntax = {
-  can: { head: false, label: true, reverse: true, styles: [] },
+  can: { both: false, head: false, label: true, reverse: true, styles: [] },
   count: (db) => list(read(db, 'getRels')).length,
-  head: () => true,
+  head: () => 'end',
   label: (text) => oneLine(text).replaceAll('"', "'"),
   parse: ([, indent, kind, from, to, label = '', rest = '']) => ({
     from,
@@ -904,9 +962,9 @@ const c4Syntax: EdgeSyntax = {
 
 // Block: `a --> b`, `a --- b` (no head) and `a -- "label" --> b`.
 const blockSyntax: EdgeSyntax = {
-  can: { head: true, label: true, reverse: true, styles: [] },
+  can: { both: false, head: true, label: true, reverse: true, styles: [] },
   count: (db) => list(read(db, 'getEdges')).length,
-  head: ({ parts }) => parts.link !== '---',
+  head: ({ parts }) => (parts.link === '---' ? 'none' : 'end'),
   label: (text) => oneLine(text).replaceAll('"', "'"),
   parse: ([, indent, from, label = '', link, to]) => ({
     from,
@@ -919,7 +977,7 @@ const blockSyntax: EdgeSyntax = {
   render: ({ from, indent, label, parts, to }) =>
     `${indent}${from} ${label ? `-- "${label}" ` : ''}${parts.link} ${to}`,
   reverse: (s) => ({ ...s, from: s.to, to: s.from }),
-  setHead: (s, head) => ({ ...s, parts: { ...s.parts, link: head ? '-->' : '---' } }),
+  setHead: (s, head) => ({ ...s, parts: { ...s.parts, link: head === 'none' ? '---' : '-->' } }),
   style: () => 'solid'
 };
 
@@ -1297,7 +1355,9 @@ const deleteArch = (lines: string[], object: EditObject, keepContents: boolean) 
 };
 
 const participant = (id: string) =>
-  new RegExp(`^(\\s*(?:create\\s+)?(?:participant|actor)\\s+${escape(id)})(?:\\s+as\\s+.*)?\\s*$`);
+  new RegExp(
+    `^(\\s*(?:create\\s+)?(?:participant|actor)\\s+${escape(id)}(?:@\\{[^}]*\\})?)(?:\\s+as\\s+.*)?\\s*$`
+  );
 
 const renameParticipant = (lines: string[], object: EditObject, label: string) => {
   const index = lines.findIndex((line) => participant(object.id).test(line));
@@ -1419,7 +1479,7 @@ const deleteSequenceExtra = (lines: string[], line: number) => {
 };
 
 // Mindmap and kanban lines: `id[Text]`, `id((Text))`, `root)Text(` or plain text.
-const shapedLine =
+export const shapedLine =
   /^(\s*)([\p{L}\p{N}_-]*)(\[|\(\(\(|\(\(|\(|\)\)|\)|\{\{)(.*?)(\]|\)\)\)|\)\)|\)|\(\(|\(|\}\})\s*$/u;
 const plainText = (text: string) =>
   oneLine(text)
@@ -1659,14 +1719,14 @@ const deleteRequirement = (lines: string[], id: string) => {
 const blockKeyword = /^\s*(?:block-beta|block|columns|space|end|style|class|classDef)\b/;
 const blockOpener = /^\s*block:([\w-]+)(?::\d+)?\s*$/;
 
-interface BlockToken {
+export interface BlockToken {
   id: string;
   start: number;
   end: number;
 }
 
 /** The blocks a placement line names, or undefined for any other line. */
-const blockTokens = (line: string): BlockToken[] | undefined => {
+export const blockTokens = (line: string): BlockToken[] | undefined => {
   if (blockKeyword.test(line) && !/^\s*space\s*\S/.test(line)) return undefined;
   // A line with an arrow is a connection, not a placement (quoted labels aside).
   const bare = line.replaceAll(/"[^"]*"/g, '""');
@@ -2051,10 +2111,11 @@ export const editableEdges = memoByCode(async (code: string): Promise<EditEdges 
   const { lines } = splitLines(code);
   if (kind === 'flowchart') {
     const can = {
+      both: true,
       head: true,
       label: true,
       reverse: true,
-      styles: ['solid', 'dotted', 'thick'] as EdgeStyle[]
+      styles: ['solid', 'dotted', 'thick', 'invisible'] as EdgeStyle[]
     };
     const [known, db] = await Promise.all([diagramEdges(code), parseDb(code)]);
     const mine = flowEdges(flowLines(lines));
@@ -2073,11 +2134,11 @@ export const editableEdges = memoByCode(async (code: string): Promise<EditEdges 
         const link = parseLink(chain ? expandChain(chain)[i - first.index].links[0] : '-->');
         return {
           from: edge.from.id,
-          head: link.head !== '' || link.tail !== '',
+          head: link.style === 'invisible' ? 'none' : headsOf(link.head, link.tail),
           id: known[i].id,
           index: i,
           label: decodeEntities(link.text),
-          style: link.style === 'invisible' ? 'solid' : link.style,
+          style: link.style,
           title: known[i].label,
           to: edge.to.id
         };
@@ -2171,7 +2232,7 @@ export const deleteObject = (
       object.group ? deleteC4Boundary(lines, object, keepContents) : deleteC4(lines, object.id),
     class: () => deleteClass(lines, object.id),
     er: () => deleteEntity(lines, object.id),
-    flowchart: () => deleteFlowObject(lines, object, keepContents),
+    flowchart: () => dropEdgeData(lines, deleteFlowObject([...lines], object, keepContents)),
     gantt: () => deleteGantt(lines, object, keepContents),
     kanban: () => deleteLines(lines, object.line ?? -1, false),
     mindmap: () => deleteLines(lines, object.line ?? -1, keepContents),
@@ -2252,21 +2313,35 @@ export const setEdgeStyle = (
     ? rewriteFlow(
         code,
         edge.index,
-        changeLink((link) => ({ ...link, style }))
+        // Local: `~~~` has no head; an arrow made visible again gets one.
+        changeLink((link) =>
+          style === 'invisible'
+            ? { ...link, head: '', style, tail: '' }
+            : { ...link, head: link.style === 'invisible' ? '>' : link.head, style }
+        )
       )
     : rewriteStatement(code, kind, edge, (s, syntax) => syntax.setStyle?.(s, style) ?? s);
 
-/** The arrow with or without its head. */
-export const setEdgeHead = (code: string, kind: EditKind, edge: EditEdge, head: boolean): string =>
+/** The arrow with its head at the end only, at both ends (`<-->`, `<-.->`, `<==>`), or none. */
+export const setEdgeHead = (
+  code: string,
+  kind: EditKind,
+  edge: EditEdge,
+  head: EdgeHead
+): string =>
   kind === 'flowchart'
     ? rewriteFlow(
         code,
         edge.index,
-        changeLink((link) => ({
-          ...link,
-          head: head ? (link.head || link.tail ? link.head : '>') : '',
-          tail: head ? link.tail : ''
-        }))
+        changeLink((link) => {
+          // A flowchart's head is always at the end: `x--x` and `o--o` mirror, `<--` is no arrow.
+          const marks = withHeads({ head: link.head, tail: link.tail }, head);
+          return {
+            ...link,
+            head: (marks.head || (marks.tail ? mirrorMark(marks.tail) : '')) as Link['head'],
+            tail: (head === 'both' ? marks.tail : '') as Link['tail']
+          };
+        })
       )
     : rewriteStatement(code, kind, edge, (s, syntax) => syntax.setHead?.(s, head) ?? s);
 
@@ -2275,6 +2350,396 @@ export const deleteEdge = (code: string, kind: EditKind, edge: EditEdge): string
   kind === 'flowchart'
     ? rewriteFlow(code, edge.index, () => undefined)
     : rewriteStatement(code, kind, edge, () => undefined);
+
+// ---- Local: the arrow's other properties, as the inspector's rows (edgeFields) ----
+
+/** The ids the arrows of a flowchart carry (`e1@-->`). */
+const linkIds = (lines: string[]) =>
+  new Set(
+    flowLines(lines).flatMap(({ chains }) =>
+      chains.flatMap((chain) => chain.links.map((link) => parseLink(link).id).filter(Boolean))
+    )
+  );
+
+/** `lines` without the `id@{ … }` statements of arrows that `before` had and `after` lost. */
+const dropEdgeData = (before: string[], after: string[]): string[] => {
+  const kept = linkIds(after);
+  for (const id of linkIds(before)) {
+    if (!kept.has(id)) removeWhere(after, (line) => edgeDataLine(id).test(line));
+  }
+  return after;
+};
+
+/** An id no word of the code uses yet, for an arrow that needs one. */
+const freshEdgeId = (code: string) => {
+  for (let n = 1; ; n++) {
+    const id = `e${n}`;
+    if (!new RegExp(`(?<![\\w-])${id}(?![\\w-])`).test(code)) return id;
+  }
+};
+
+/** Speeds of a flowchart arrow's animation (`e1@{ animate: true }`, `animation: fast`). */
+export const edgeAnimations = ['none', 'on', 'fast', 'slow'] as const;
+/** mermaid's line curves (`flowchart.curve`, and an arrow's own `curve`). */
+export const edgeCurves = [
+  'basis',
+  'bumpX',
+  'bumpY',
+  'cardinal',
+  'catmullRom',
+  'linear',
+  'monotoneX',
+  'monotoneY',
+  'natural',
+  'rounded',
+  'step',
+  'stepAfter',
+  'stepBefore'
+] as const;
+const flowMarks = { arrow: '>', circle: 'o', cross: 'x' } as const;
+const flowMarkOf = (mark: string) =>
+  (Object.entries(flowMarks).find(
+    ([, value]) => value === mark || (mark === '<' && value === '>')
+  )?.[0] ?? 'arrow') as keyof typeof flowMarks;
+const flowLengths = ['1', '2', '3', '4'] as const;
+
+/** A sequence message's end: `>>`, a cross, an open (async) arrow or a half arrow. */
+const sequenceMarks = {
+  arrow: '>>',
+  cross: 'x',
+  halfBottom: '|/',
+  halfTop: '|\\',
+  open: ')',
+  stickBottom: '//',
+  stickTop: '\\\\'
+} as const;
+const sequenceActivations = { activate: '+', deactivate: '-', none: '' } as const;
+
+/** A class relation as its line and the mark at one end (written at the head unless at the tail). */
+const classRelations = {
+  aggregation: ['--', 'o'],
+  association: ['--', '>'],
+  composition: ['--', '*'],
+  dashedLink: ['..', ''],
+  dependency: ['..', '>'],
+  inheritance: ['--', '|>'],
+  link: ['--', ''],
+  lollipop: ['--', '()'],
+  realization: ['..', '|>']
+} as const;
+type ClassRelation = keyof typeof classRelations;
+const classRelationOf = ({ head, line, tail }: Record<string, string>): string => {
+  if (head && tail) return 'custom';
+  const mark = head || (tail ? mirrorMark(tail) : '');
+  return (
+    Object.entries(classRelations).find(([, [l, m]]) => l === line && m === mark)?.[0] ?? 'custom'
+  );
+};
+/** ER cardinality, by what it means: the left end's mark, then the right end's. */
+const erCards = {
+  many: ['}|', '|{'],
+  one: ['||', '||'],
+  zeroMany: ['}o', 'o{'],
+  zeroOne: ['|o', 'o|']
+} as const;
+const erCardOf = (mark: string, side: 0 | 1) =>
+  Object.entries(erCards).find(([, marks]) => marks[side] === mark)?.[0] ?? 'one';
+const archSides = ['L', 'R', 'T', 'B'] as const;
+const c4Rels = ['Rel', 'BiRel', 'Rel_Up', 'Rel_Down', 'Rel_Left', 'Rel_Right', 'Rel_Back'] as const;
+/** The short forms mermaid takes for the C4 directions (`Rel_U` is `Rel_Up`). */
+const c4RelOf = (kind: string) =>
+  ({ Rel_D: 'Rel_Down', Rel_L: 'Rel_Left', Rel_R: 'Rel_Right', Rel_U: 'Rel_Up' })[kind] ?? kind;
+
+/** The flowchart arrow as written: its link and the line it is on. */
+const flowLink = (lines: string[], index: number) => {
+  const flow = flowLines(lines);
+  const edges = flowEdges(flow);
+  const edge = edges.find((candidate) => candidate.index === index);
+  const chain = edge && flow.find((line) => line.index === edge.line)?.chains[edge.chain];
+  if (!edge || !chain) return undefined;
+  const first = edges.find((e) => e.line === edge.line && e.chain === edge.chain) ?? edge;
+  return { line: edge.line, link: parseLink(expandChain(chain)[index - first.index].links[0]) };
+};
+
+/** The `id@{ … }` properties of the arrow with that id, and the statement's line. */
+const edgeData = (lines: string[], id: string) => {
+  const line = id ? lines.findIndex((text) => edgeDataLine(id).test(text)) : -1;
+  return {
+    line,
+    pairs: line === -1 ? [] : dataPairs(lines[line].trim().slice(id.length + 1))
+  };
+};
+
+const field = (
+  key: string,
+  label: MessageKey,
+  options: readonly string[],
+  value: string
+): DetailField => ({ key, kind: 'choice', label, options, value });
+
+/**
+ * The arrow's properties beyond its line, head and label — what mermaid lets this type
+ * say about one arrow: a flowchart arrow's head shape, length, animation and curve; a
+ * message's end and activation; a class relation's kind and multiplicities; an ER
+ * relationship's cardinality; an architecture edge's sides; a C4 relation's direction.
+ */
+export const edgeFields = (code: string, kind: EditKind, edge: EditEdge): DetailField[] => {
+  const { lines } = splitLines(code);
+  if (kind === 'flowchart') {
+    const found = flowLink(lines, edge.index);
+    if (!found) return [];
+    const { link } = found;
+    const { pairs } = edgeData(lines, link.id);
+    const value = (key: string) => pairs.find(([name]) => name === key)?.[1] ?? '';
+    const animation = value('animation') || (value('animate') === 'true' ? 'on' : 'none');
+    const curve = value('curve');
+    const fields: DetailField[] = [];
+    if (link.style !== 'invisible' && (link.head || link.tail)) {
+      fields.push(
+        field('mark', 'edge.mark', Object.keys(flowMarks), flowMarkOf(link.head || link.tail))
+      );
+    }
+    fields.push(
+      field('length', 'edge.length', flowLengths, String(Math.min(link.extra, 3) + 1)),
+      field(
+        'animation',
+        'edge.animation',
+        edgeAnimations,
+        (edgeAnimations as readonly string[]).includes(animation) ? animation : 'on'
+      ),
+      field(
+        'curve',
+        'edge.curve',
+        ['default', ...edgeCurves],
+        (edgeCurves as readonly string[]).includes(curve) ? curve : 'default'
+      )
+    );
+    return link.style === 'invisible' ? fields.filter(({ key }) => key === 'length') : fields;
+  }
+  const syntax = syntaxes[kind];
+  const match = syntax && edge.line !== undefined ? syntax.pattern.exec(lines[edge.line]) : null;
+  if (!syntax || !match) return [];
+  const { parts } = syntax.parse(match);
+  if (kind === 'sequence') {
+    const end = parts.arrow.replace(/^-+/, '');
+    const fields: DetailField[] = [];
+    if (!parts.both && end !== '>') {
+      const mark = Object.entries(sequenceMarks).find(([, value]) => value === end)?.[0] ?? 'arrow';
+      fields.push(field('mark', 'edge.seqMark', Object.keys(sequenceMarks), mark));
+    }
+    const activation =
+      Object.entries(sequenceActivations).find(([, value]) => value === parts.mark)?.[0] ?? 'none';
+    fields.push(
+      field('activation', 'edge.activation', Object.keys(sequenceActivations), activation)
+    );
+    return fields;
+  }
+  if (kind === 'class') {
+    const relation = classRelationOf(parts);
+    return [
+      field(
+        'relation',
+        'edge.relation',
+        [...(relation === 'custom' ? ['custom'] : []), ...Object.keys(classRelations)],
+        relation
+      ),
+      { key: 'cardFrom', kind: 'text', label: 'edge.cardFrom', value: parts.cardA },
+      { key: 'cardTo', kind: 'text', label: 'edge.cardTo', value: parts.cardB }
+    ];
+  }
+  if (kind === 'er') {
+    return [
+      field('cardFrom', 'edge.erFrom', Object.keys(erCards), erCardOf(parts.cardA, 0)),
+      field('cardTo', 'edge.erTo', Object.keys(erCards), erCardOf(parts.cardB, 1))
+    ];
+  }
+  if (kind === 'architecture') {
+    return [
+      field('sideFrom', 'edge.sideFrom', archSides, parts.sideA),
+      field('sideTo', 'edge.sideTo', archSides, parts.sideB)
+    ];
+  }
+  if (kind === 'c4') {
+    const rel = c4RelOf(parts.kind);
+    return [
+      field(
+        'rel',
+        'edge.c4Rel',
+        [...((c4Rels as readonly string[]).includes(rel) ? [] : [rel]), ...c4Rels],
+        rel
+      )
+    ];
+  }
+  return [];
+};
+
+/** The flowchart arrow's `id@{ … }` properties rewritten; the arrow gets an id when it needs one. */
+const setFlowEdgeData = (
+  code: string,
+  index: number,
+  change: (pairs: [string, string][]) => [string, string][]
+): string | undefined => {
+  const { eol, lines } = splitLines(code);
+  const found = flowLink(lines, index);
+  if (!found) return undefined;
+  const { line, pairs } = edgeData(lines, found.link.id);
+  const next = change(pairs);
+  if (next.length === 0) {
+    if (line === -1) return code;
+    lines.splice(line, 1);
+    // The id goes too, when nothing else names it.
+    const rest = lines.join(eol);
+    const others = new RegExp(`(?<![\\w-])${escape(found.link.id)}(?![\\w-])`, 'g');
+    if ((rest.match(others) ?? []).length > 1) return rest;
+    return rewriteFlow(
+      rest,
+      index,
+      changeLink((link) => ({ ...link, id: '' }))
+    );
+  }
+  if (line !== -1) {
+    lines[line] = `${/^\s*/.exec(lines[line])?.[0] ?? ''}${found.link.id}${renderData(next)}`;
+    return lines.join(eol);
+  }
+  const id = found.link.id || freshEdgeId(code);
+  const withId = splitLines(
+    found.link.id
+      ? code
+      : rewriteFlow(
+          code,
+          index,
+          changeLink((link) => ({ ...link, id }))
+        )
+  ).lines;
+  const at = flowLink(withId, index)?.line ?? withId.length - 1;
+  withId.splice(at + 1, 0, `${/^\s*/.exec(withId[at] ?? '')?.[0] ?? '  '}${id}${renderData(next)}`);
+  return withId.join(eol);
+};
+
+const withPair = (pairs: [string, string][], key: string, value: string | undefined) => {
+  const rest = pairs.filter(([name]) => name !== key);
+  return value === undefined ? rest : [...rest, [key, value] as [string, string]];
+};
+
+/** The code with the arrow's properties (edgeFields) changed; undefined when that is not possible. */
+export const setEdgeFields = (
+  code: string,
+  kind: EditKind,
+  edge: EditEdge,
+  values: DetailValues
+): string | undefined => {
+  let next = code;
+  for (const [key, value] of Object.entries(values)) {
+    const changed = setEdgeField(next, kind, edge, key, value);
+    if (changed === undefined) return undefined;
+    next = changed;
+  }
+  return next;
+};
+
+const setEdgeField = (
+  code: string,
+  kind: EditKind,
+  edge: EditEdge,
+  key: string,
+  value: string
+): string | undefined => {
+  if (kind === 'flowchart') {
+    if (key === 'mark' && value in flowMarks) {
+      const mark = flowMarks[value as keyof typeof flowMarks];
+      return rewriteFlow(
+        code,
+        edge.index,
+        changeLink((link) => ({
+          ...link,
+          head: link.head ? mark : link.head,
+          tail: (link.tail ? (mark === '>' ? '<' : mark) : link.tail) as Link['tail']
+        }))
+      );
+    }
+    if (key === 'length' && (flowLengths as readonly string[]).includes(value)) {
+      return rewriteFlow(
+        code,
+        edge.index,
+        changeLink((link) => ({ ...link, extra: Number(value) - 1 }))
+      );
+    }
+    if (key === 'animation' && (edgeAnimations as readonly string[]).includes(value)) {
+      return setFlowEdgeData(code, edge.index, (pairs) => {
+        const rest = pairs.filter(([name]) => name !== 'animate' && name !== 'animation');
+        if (value === 'none') return rest;
+        return value === 'on' ? [...rest, ['animate', 'true']] : [...rest, ['animation', value]];
+      });
+    }
+    if (
+      key === 'curve' &&
+      (value === 'default' || (edgeCurves as readonly string[]).includes(value))
+    ) {
+      return setFlowEdgeData(code, edge.index, (pairs) =>
+        withPair(pairs, 'curve', value === 'default' ? undefined : value)
+      );
+    }
+    return undefined;
+  }
+  const change = (update: (parts: Record<string, string>) => Record<string, string> | undefined) =>
+    rewriteStatement(code, kind, edge, (s) => {
+      const parts = update(s.parts);
+      return parts ? { ...s, parts } : s;
+    });
+  if (kind === 'sequence') {
+    if (key === 'mark' && value in sequenceMarks) {
+      return change((parts) => ({
+        ...parts,
+        arrow: `${parts.arrow.startsWith('--') ? '--' : '-'}${sequenceMarks[value as keyof typeof sequenceMarks]}`,
+        both: ''
+      }));
+    }
+    if (key === 'activation' && value in sequenceActivations) {
+      return change((parts) => ({
+        ...parts,
+        mark: sequenceActivations[value as keyof typeof sequenceActivations]
+      }));
+    }
+    return undefined;
+  }
+  if (kind === 'class') {
+    if (key === 'relation' && value in classRelations) {
+      const [line, mark] = classRelations[value as ClassRelation];
+      return change((parts) => {
+        // A mark written at the tail (`<|--`) stays there.
+        const atTail = !!parts.tail && !parts.head;
+        return {
+          ...parts,
+          head: atTail ? '' : mark,
+          line,
+          tail: atTail ? mirrorMark(mark) : ''
+        };
+      });
+    }
+    if (key === 'cardFrom' || key === 'cardTo') {
+      const text = oneLine(value).replaceAll('"', "'").trim();
+      return change((parts) => ({ ...parts, [key === 'cardFrom' ? 'cardA' : 'cardB']: text }));
+    }
+    return undefined;
+  }
+  if (kind === 'er' && (key === 'cardFrom' || key === 'cardTo') && value in erCards) {
+    const marks = erCards[value as keyof typeof erCards];
+    return change((parts) =>
+      key === 'cardFrom' ? { ...parts, cardA: marks[0] } : { ...parts, cardB: marks[1] }
+    );
+  }
+  if (
+    kind === 'architecture' &&
+    (key === 'sideFrom' || key === 'sideTo') &&
+    (archSides as readonly string[]).includes(value)
+  ) {
+    return change((parts) => ({ ...parts, [key === 'sideFrom' ? 'sideA' : 'sideB']: value }));
+  }
+  if (kind === 'c4' && key === 'rel' && (c4Rels as readonly string[]).includes(value)) {
+    return change((parts) => ({ ...parts, kind: value }));
+  }
+  return undefined;
+};
 
 /** Whether the edited code still parses as the same diagram type as before. */
 export const checkEdit = async (before: string, after: string): Promise<boolean> => {
@@ -2413,8 +2878,13 @@ const laneOfNode = (lines: string[], id: string): string => {
 export interface NodeDetails {
   /** One of the Add card's shapes, 'other' for any other, undefined for an icon or image. */
   shape?: NodeShape | 'other';
+  /** mermaid's short name for the shape (`flowShapes.ts`), when it is one mermaid draws. */
+  shapeName?: FlowShapeName;
   /** `prefix:name`, or ''. */
   icon: string;
+  /** Local: an icon node's background (`form`) and where its label goes (`pos`), or ''. */
+  form?: string;
+  pos?: string;
   /** The lane or subgraph it is drawn in, or ''. */
   lane: string;
 }
@@ -2425,13 +2895,56 @@ export const flowNodeDetails = (code: string, id: string): NodeDetails => {
   const lane = laneOfNode(lines, id);
   const target = nodeDefinition(lines, id);
   // A node written without a shape is drawn as a box.
-  if (!target || !hasShape(target.node)) return { icon: '', lane, shape: 'rect' };
+  if (!target || !hasShape(target.node))
+    return { icon: '', lane, shape: 'rect', shapeName: 'rect' };
   const { data, shape } = nodeParts(target.node);
   const icon = dataValue(data, 'icon');
-  if (shape) return { icon, lane, shape: bracketShapes[bracketParts(shape).open] ?? 'other' };
+  if (shape) {
+    const { open } = bracketParts(shape);
+    return {
+      icon,
+      lane,
+      shape: bracketShapes[open] ?? 'other',
+      shapeName: bracketShapeName(open, shape)
+    };
+  }
   const named = dataValue(data, 'shape');
-  if (icon || dataValue(data, 'img')) return { icon, lane, shape: undefined };
-  return { icon, lane, shape: named ? (dataShapes[named] ?? 'other') : 'rect' };
+  if (icon) {
+    return {
+      form: dataValue(data, 'form') || undefined,
+      icon,
+      lane,
+      pos: dataValue(data, 'pos') || undefined,
+      shape: undefined
+    };
+  }
+  if (dataValue(data, 'img')) return { icon, lane, shape: undefined };
+  return {
+    icon,
+    lane,
+    shape: named ? (dataShapes[named] ?? 'other') : 'rect',
+    shapeName: named ? canonicalShape(named) : 'rect'
+  };
+};
+
+/** mermaid's name for a bracket shape: `[(` is `cyl`, `[/ /]` `lean-r`, `[/ \]` `trap-b`, … */
+const bracketShapeName = (open: string, shape: string): FlowShapeName | undefined => {
+  const slanted = shape.slice(-2);
+  if (open === '[/') return slanted === '/]' ? 'lean-r' : 'trap-b';
+  if (open === '[\\') return slanted === '\\]' ? 'lean-l' : 'trap-t';
+  return bracketShapeNames[open];
+};
+const bracketShapeNames: Record<string, FlowShapeName> = {
+  '(': 'rounded',
+  '((': 'circle',
+  '(((': 'dbl-circ',
+  '([': 'stadium',
+  '>': 'odd',
+  '[': 'rect',
+  '[(': 'cyl',
+  '[[': 'fr-rect',
+  '{': 'diam',
+  '{{': 'hex'
 };
 
 /** A label for a bracket shape: kept as written unless its brackets would end the shape. */
@@ -2470,6 +2983,37 @@ export const setNodeShape = (code: string, id: string, shape: NodeShape): string
     return `${open}${quoted(id)}${close}${rest}`;
   });
 
+// The shapes the Add card already wrote as brackets keep that form.
+const basicShapes: Partial<Record<FlowShapeName, NodeShape>> = {
+  circle: 'circle',
+  diam: 'diamond',
+  rect: 'rect',
+  rounded: 'rounded',
+  stadium: 'stadium'
+};
+
+/**
+ * The code with the node drawn in any of mermaid's shapes (`flowShapes.ts`). The Add card's
+ * five keep their brackets (`setNodeShape`); the others are written `id@{ shape: name }`,
+ * with the bracket text moved into `label`. An icon or image node is refused, as there.
+ */
+export const setNodeShapeName = (code: string, id: string, name: string): string | undefined => {
+  const shape = canonicalShape(name);
+  if (!shape) return undefined;
+  const basic = basicShapes[shape];
+  if (basic) return setNodeShape(code, id, basic);
+  return rewriteNode(code, id, ({ data, rest, shape: current }) => {
+    if (data && (dataValue(data, 'icon') || dataValue(data, 'img'))) return undefined;
+    const pairs = data ? dataPairs(data).filter(([key]) => key !== 'shape') : [];
+    if (current && !pairs.some(([key]) => key === 'label')) {
+      const inner = bracketParts(current).inner.trim();
+      pairs.push(['label', /^".*"$/.test(inner) ? inner : quoted(inner || id)]);
+    }
+    pairs.unshift(['shape', shape]);
+    return `${renderData(pairs)}${rest}`;
+  });
+};
+
 const iconPattern = /^[\w-]+:[\w-]+$/;
 const iconKeys = new Set(['icon', 'form', 'pos', 'h']);
 
@@ -2498,6 +3042,33 @@ export const setNodeIcon = (code: string, id: string, icon: string): string | un
       pairs.push(['label', label]);
     }
     return `${renderData(pairs.filter(([key]) => key !== 'shape'))}${rest}`;
+  });
+};
+
+/** Local: an icon node's backgrounds (`form`) and label positions (`pos`) mermaid draws. */
+export const iconForms = ['none', 'square', 'circle', 'rounded'] as const;
+export const iconPositions = ['b', 't'] as const;
+
+/** The icon node with another background or label position; 'none' / 'b' are the defaults. */
+export const setNodeIconOptions = (
+  code: string,
+  id: string,
+  options: { form?: string; pos?: string }
+): string | undefined => {
+  const { form, pos } = options;
+  if (form !== undefined && !(iconForms as readonly string[]).includes(form)) return undefined;
+  if (pos !== undefined && !(iconPositions as readonly string[]).includes(pos)) return undefined;
+  return rewriteNode(code, id, ({ data, rest }) => {
+    if (!data || !dataValue(data, 'icon')) return undefined;
+    let pairs = dataPairs(data);
+    const put = (key: string, value: string | undefined, fallback: string) => {
+      if (value === undefined) return;
+      pairs = pairs.filter(([name]) => name !== key);
+      if (value !== fallback) pairs.push([key, `"${value}"`]);
+    };
+    put('form', form, 'none');
+    put('pos', pos, 'b');
+    return `${renderData(pairs)}${rest}`;
   });
 };
 

@@ -1,5 +1,5 @@
 /**
- * Local: "New diagram" in the Samples card (NewDiagram.svelte). For someone who
+ * Local: "New diagram" in the 新規 dialog (NewDiagramDialog.svelte). For someone who
  * cannot write mermaid: choose a type, optionally a title and a direction, and
  * the code is replaced by a minimal valid starter — a header and one or two
  * placeholders named in Japanese (ids ASCII, as the Add, Edit and Colours

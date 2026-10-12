@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button } from '$/components/ui/button';
+  import { Button, type ButtonSize, type ButtonVariant } from '$/components/ui/button';
   import { t } from '$/i18n';
   import { notify } from '$/util/notify';
   import { scale } from 'svelte/transition';
@@ -7,10 +7,20 @@
   import CopyIcon from '~icons/material-symbols/content-copy-outline-rounded';
   import ErrorIcon from '~icons/material-symbols/error-outline-rounded';
 
+  // Local: `testID`, `size` and `variant` let the share dialog place its copy buttons.
   let {
+    label = t('actions.copy'),
     onclick,
-    label = t('actions.copy')
-  }: { onclick: (event?: Event) => Promise<unknown>; label?: string } = $props();
+    size = 'default',
+    testID,
+    variant = 'default'
+  }: {
+    label?: string;
+    onclick: (event?: Event) => Promise<unknown>;
+    size?: ButtonSize;
+    testID?: string;
+    variant?: ButtonVariant;
+  } = $props();
 
   // Local: the tick is shown once the copy has succeeded, not when it starts (an
   // image copy takes a second or more and can still fail); a failure shows an
@@ -27,6 +37,9 @@
 </script>
 
 <Button
+  {size}
+  {variant}
+  data-testid={testID}
   data-copy-state={copyState}
   aria-busy={copyState === 'busy'}
   onclick={async (event) => {

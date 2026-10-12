@@ -1,26 +1,23 @@
 <script lang="ts">
   import { t } from '$/i18n';
-  import { buttonVariants } from '$/components/ui/button';
-  import * as Dialog from '$/components/ui/dialog';
+  import CopyButton from '$/components/CopyButton.svelte';
+  import FieldRow from '$/components/form/FieldRow.svelte';
+  import Segmented from '$/components/form/Segmented.svelte';
   import { Input } from '$/components/ui/input';
-  import { Separator } from '$/components/ui/separator';
   import { Switch } from '$/components/ui/switch';
-  import * as ToggleGroup from '$/components/ui/toggle-group';
   import { MERMAID_LOOKS, MERMAID_THEMES, TID } from '$/constants';
   import { isDarkTheme, type EmbedMode } from '$/util/embed';
   import { EMBED_IFRAME_SANDBOX, buildEmbedSnippets, buildEmbedUrls } from '$/util/embedCode';
   import { silentlySanitizeConfig } from '$/util/sanitize';
   import { validatedState } from '$/util/state.svelte';
   import { copyToClipboard } from '$/util/util';
-  import { asset, base } from '$app/paths';
-  import CodeIcon from '~icons/material-symbols/code';
-  import ShareIcon from '~icons/material-symbols/share';
-  import CopyButton from './CopyButton.svelte';
-  import CopyInput from './CopyInput.svelte';
+  import { base } from '$app/paths';
 
-  // Local: the 出す tab's share section (ShareLinks.svelte) opens this dialog for the embed
-  // code, under a label of its own.
-  let { label = t('share.title') }: { label?: string } = $props();
+  // Local: the embed code of the header's 共有 dialog (ShareDialog.svelte), as one-line
+  // rows: the format (iframe / Web コンポーネント), the size and the grid, the diagram theme
+  // and look, the widget frame (light/dark, controls) with a live preview, and the code to
+  // copy. Upstream's dialog, its live-editor link and its trigger are gone; the links are
+  // the dialog's own rows.
 
   const sanitizedConfig = $derived(silentlySanitizeConfig(validatedState.current.mermaid));
   // Deliberate initial-value capture: the embed form seeds from the config at
@@ -30,12 +27,13 @@
   const initialTheme = (initialConfig.theme as string | undefined) ?? 'default';
   let theme = $state(initialTheme);
   let look = $state((initialConfig.look as string | undefined) ?? 'classic');
-  let mode = $state<EmbedMode>(isDarkTheme(initialTheme) ? 'dark' : 'light');
+  // Strings, for the segmented controls; only their own values are ever set.
+  let mode = $state<string>(isDarkTheme(initialTheme) ? 'dark' : 'light');
   let controls = $state(true);
   let grid = $state(true);
   let width = $state('100%');
   let height = $state('480');
-  let format = $state<'iframe' | 'webComponent'>('iframe');
+  let format = $state<string>('iframe');
   let showPreview = $state(false);
 
   // The expensive half (config sanitize + pako serialize) is independent of
@@ -48,130 +46,110 @@
       grid,
       host: window.location.origin + base,
       look,
-      mode,
+      mode: mode as EmbedMode,
       theme
     })
   );
   const snippets = $derived(buildEmbedSnippets(embedUrls, { height, width }));
-  const snippet = $derived(format === 'webComponent' ? snippets.webComponent : snippets.iframe);
+  const snippet = $derived(format === 'wc' ? snippets.webComponent : snippets.iframe);
+
+  const selectClass =
+    'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
 </script>
 
-<Dialog.Root>
-  <Dialog.Trigger class={buttonVariants({ size: 'sm' })} data-testid={TID.shareButton}
-    >{label}</Dialog.Trigger>
-  <Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-    <Dialog.Header>
-      <Dialog.Title class="flex items-center gap-2 text-xl">
-        <ShareIcon class="size-5" />
-        {t('share.shareableLinks')}
-      </Dialog.Title>
-      <Dialog.Description>{t('share.subtitle')}</Dialog.Description>
-    </Dialog.Header>
-
-    <div class="flex flex-col gap-4">
-      <div class="flex flex-col gap-2">
-        <h2 class="flex items-center gap-2">
-          <img class="size-5" src={asset('/favicon.svg')} alt="Mermaid Live Editor" />
-          Mermaid Live Editor
-        </h2>
-        <CopyInput value={window.location.href} />
-        <Dialog.Description>{t('share.linkDescription')}</Dialog.Description>
-      </div>
-      <Separator />
-      <div class="flex flex-col gap-3">
-        <h2 class="flex items-center gap-2">
-          <CodeIcon class="size-5" />
-          {t('share.embedHeading')}
-        </h2>
-        <Dialog.Description>{t('share.embedDescription')}</Dialog.Description>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="flex flex-col gap-1 text-sm">
-            {t('share.theme')}
-            <select
-              bind:value={theme}
-              class="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground">
-              {#each MERMAID_THEMES as themeName (themeName)}
-                <option value={themeName}>{themeName}</option>
-              {/each}
-            </select>
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            {t('share.look')}
-            <select
-              bind:value={look}
-              class="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground">
-              {#each MERMAID_LOOKS as lookName (lookName)}
-                <option value={lookName}>{lookName}</option>
-              {/each}
-            </select>
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            {t('share.width')}
-            <Input bind:value={width} />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            {t('share.height')}
-            <Input bind:value={height} />
-          </label>
-        </div>
-        <div class="flex flex-wrap items-center gap-4">
-          <ToggleGroup.Root
-            type="single"
-            variant="outline"
-            value={mode}
-            onValueChange={(value) => {
-              if (value === 'light' || value === 'dark') {
-                mode = value;
-              }
-            }}>
-            <ToggleGroup.Item value="light">{t('share.themeLight')}</ToggleGroup.Item>
-            <ToggleGroup.Item value="dark">{t('share.themeDark')}</ToggleGroup.Item>
-          </ToggleGroup.Root>
-          <label class="flex items-center gap-2 text-sm">
-            <Switch bind:checked={controls} />
-            {t('share.controls')}
-          </label>
-          <label class="flex items-center gap-2 text-sm">
-            <Switch bind:checked={grid} />
-            {t('share.grid')}
-          </label>
-          <label class="flex items-center gap-2 text-sm">
-            <Switch bind:checked={showPreview} />
-            {t('share.preview')}
-          </label>
-        </div>
-        {#if showPreview}
-          <iframe
-            data-testid={TID.embedPreview}
-            src={embedUrls.url}
-            title={t('share.embedPreview')}
-            class="h-52 w-full rounded-lg border"
-            sandbox={EMBED_IFRAME_SANDBOX}></iframe>
-        {/if}
-        <div class="flex items-start gap-2">
-          <div class="flex min-w-0 flex-1 flex-col gap-2">
-            <ToggleGroup.Root
-              type="single"
-              variant="outline"
-              value={format}
-              onValueChange={(value) => {
-                if (value === 'iframe' || value === 'webComponent') {
-                  format = value;
-                }
-              }}>
-              <ToggleGroup.Item value="iframe">{t('share.iframe')}</ToggleGroup.Item>
-              <ToggleGroup.Item value="webComponent">{t('share.webComponent')}</ToggleGroup.Item>
-            </ToggleGroup.Root>
-            <textarea
-              data-testid={TID.embedSnippet}
-              readonly
-              rows="4"
-              class="w-full rounded-md border border-input bg-background p-2 font-mono text-xs text-foreground"
-              value={snippet}></textarea>
-          </div>
-          <CopyButton onclick={() => copyToClipboard(snippet)} />
-        </div>
-      </div>
-    </div>
-  </Dialog.Content>
-</Dialog.Root>
+<div class="flex flex-col gap-1.5">
+  <p class="text-xs text-muted-foreground">{t('share.embedDescription')}</p>
+  <FieldRow label={t('shareDlg.embedFormat')}>
+    <Segmented
+      bind:value={format}
+      full
+      ariaLabel={t('shareDlg.embedFormat')}
+      testID={TID.shareDlgEmbedMode}
+      options={[
+        { label: t('share.iframe'), value: 'iframe' },
+        { label: t('share.webComponent'), value: 'wc' }
+      ]} />
+  </FieldRow>
+  <FieldRow label={t('shareDlg.size')}>
+    <Input
+      bind:value={width}
+      class="h-7 w-20 px-2 text-xs"
+      aria-label={t('share.width')}
+      title={t('share.width')}
+      data-testid={TID.shareDlgWidth} />
+    <span class="text-xs text-muted-foreground">×</span>
+    <Input
+      bind:value={height}
+      class="h-7 w-20 px-2 text-xs"
+      aria-label={t('share.height')}
+      title={t('share.height')}
+      data-testid={TID.shareDlgHeight} />
+    <span class="flex-1"></span>
+    <label class="flex items-center gap-1.5 text-xs">
+      <Switch bind:checked={grid} data-testid={TID.shareDlgGrid} />
+      {t('share.grid')}
+    </label>
+  </FieldRow>
+  <FieldRow label={t('share.theme')}>
+    <select
+      bind:value={theme}
+      class={selectClass}
+      aria-label={t('share.theme')}
+      data-testid={TID.shareDlgTheme}>
+      {#each MERMAID_THEMES as themeName (themeName)}
+        <option value={themeName}>{themeName}</option>
+      {/each}
+    </select>
+    <select
+      bind:value={look}
+      class={selectClass}
+      aria-label={t('share.look')}
+      title={t('share.look')}
+      data-testid={TID.shareDlgLook}>
+      {#each MERMAID_LOOKS as lookName (lookName)}
+        <option value={lookName}>{lookName}</option>
+      {/each}
+    </select>
+  </FieldRow>
+  <FieldRow label={t('shareDlg.chrome')}>
+    <Segmented
+      bind:value={mode}
+      ariaLabel={t('shareDlg.chrome')}
+      testID={TID.shareDlgChrome}
+      options={[
+        { label: t('share.themeLight'), value: 'light' },
+        { label: t('share.themeDark'), value: 'dark' }
+      ]} />
+    <span class="flex-1"></span>
+    <label class="flex items-center gap-1.5 text-xs whitespace-nowrap">
+      <Switch bind:checked={controls} data-testid={TID.shareDlgControls} />
+      {t('share.controls')}
+    </label>
+    <label class="flex items-center gap-1.5 text-xs whitespace-nowrap">
+      <Switch bind:checked={showPreview} data-testid={TID.shareDlgPreview} />
+      {t('share.preview')}
+    </label>
+  </FieldRow>
+  <FieldRow label={t('shareDlg.code')}>
+    <textarea
+      data-testid={TID.shareDlgSnippet}
+      readonly
+      rows="2"
+      aria-label={t('shareDlg.code')}
+      class="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-2 py-1 font-mono text-[11px] leading-snug text-foreground"
+      value={snippet}></textarea>
+    <CopyButton
+      onclick={() => copyToClipboard(snippet)}
+      size="sm"
+      variant="outline"
+      testID={TID.shareDlgSnippetCopy} />
+  </FieldRow>
+  {#if showPreview}
+    <iframe
+      data-testid={TID.embedPreview}
+      src={embedUrls.url}
+      title={t('share.embedPreview')}
+      class="h-52 w-full rounded-lg border"
+      sandbox={EMBED_IFRAME_SANDBOX}></iframe>
+  {/if}
+</div>

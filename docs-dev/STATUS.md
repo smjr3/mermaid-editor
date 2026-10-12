@@ -3,8 +3,9 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-10-09**, including the 0.2.0 to 0.2.5 work: the upstream merge of `a70ed76`,
-mermaid 12.1.0, and the editor, layout and icon features below.
+Accurate as of **2026-10-12**, including the 0.2.0 to 0.2.5 work (the upstream merge of `a70ed76`,
+mermaid 12.1.0, and the editor, layout and icon features below) and the redesign of `/edit` into
+three columns with an inspector ("Editor layout: the inspector" below).
 
 ## What this is
 
@@ -19,7 +20,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **344**.
+  every locally changed path — currently **362**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -38,12 +39,16 @@ The standing constraints, which shape almost every decision recorded here:
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | A GitLab Pages publishing example                                                                                                        |
-| `EXPORTS.md`                  | 名前を付けて保存 (the save dialog and its fallback), what the `.drawio` and `.vsdx` files hold and what draw.io and Visio do with them   |
+| `EXPORTS.md`                  | The 書き出す dialog, file names, what the `.drawio` and `.vsdx` files hold and what draw.io and Visio do with them                       |
 | `QUALITY-AUDIT-2026-08-31.md` | An external portability audit, its three findings, and a follow-up for each recording how it was resolved                                |
 
 ## What is delivered
 
-All of this is on `master`.
+All of this is on `master`. The paragraphs from 0.2.0 to 0.2.5 name the places features had
+then (the tools pane's cards: Add, Edit, Colours, Layout, Icons, Actions; the mini toolbar;
+the command palette). Since 2026-10-12 every one of them lives in the three-column editor
+described in **"Editor layout: the inspector"**, which says where each went; what a feature
+does is unchanged unless that section says otherwise.
 
 **Base and packaging.** Upstream imported on a `vendor/upstream` branch, derivative-OSS
 licensing and attribution in place, npm packaging verified by an actual tarball → install →
@@ -103,17 +108,12 @@ mermaid inserts it. A "System Architecture" sample entry shows a web system, an 
 a generic cloud and an AWS example with logos. The packs add about 39 MB to the built site (17 MB
 of it the logo sets, 2.8 MB the three 0.2.2 packs); a page loads only the ones its diagram names.
 
-**Command palette and first-visit guide.** Ctrl+K (⌘K) or the search button in the header opens
-a palette of twenty actions (and one per diagram theme) in Japanese with English keywords (`src/lib/util/commands.ts`, a
-registry plus a small scorer; arrow keys, Enter, Escape; Enter that confirms an IME conversion
-is ignored). An entry opens the right tools card and focuses or presses a control by
-`data-testid` (`uiBus.ts` drives the card header click and the tools rail's expand button, so
-`+page.svelte` needed no change), or runs undo/redo, theme, language, help, share or history.
-The first visit shows a three-step popover guide (tools pane, diagram, the help button and
-sharing) from `GuideTour.svelte`; closing it or pressing Escape stores `guideDoneKey` and it
-never opens by itself again; "最初の案内をもう一度見る" in the How to use dialog restarts it.
-`tests/test.ts` sets that flag in every spec's browser context (`guideSeen: false` opts out,
-as `tests/onboarding.spec.ts` does).
+**First-visit guide.** The first visit shows a three-step popover guide (the add bar and the
+inspector, the diagram, the header's 新規 / 共有 / 書き出す and 使い方) from `GuideTour.svelte`;
+closing it or pressing Escape stores `guideDoneKey` and it never opens by itself again;
+"最初の案内をもう一度見る" in the How to use dialog restarts it. `tests/test.ts` sets that flag in
+every spec's browser context (`guideSeen: false` opts out, as `tests/onboarding.spec.ts` does).
+The command palette (Ctrl+K) that used to sit beside it was removed by user decision (2026-10-12).
 
 **Layout card (0.2.0)** (`src/lib/util/layout.ts`). mermaid has no aspect-ratio setting, so the
 "Layout" card adjusts what shapes a diagram instead: its direction (top-to-bottom, left-to-right,
@@ -170,7 +170,7 @@ C4 person, architecture) and a `themeCSS` for what variables cannot do (glow via
 corners via `rx`, line weight, dashed clusters). The CSS starts with `/* theme-preset: <id> */`, which is
 how `presetOf` recognises a preset after a shared link, a reload or a hand-changed line colour.
 Applying a preset replaces the previous theme, variables and CSS as a whole and keeps every other key;
-標準 drops all three. Each preset is also in the command palette as 「テーマ: ネオン」 etc.
+標準 drops all three.
 A preset paints its own background: `render` (`mermaid.ts`) adds `#id{background-color}` to the SVG
 instead of the dark site's grey backdrop, `renderView.ts` puts it inline on the hand-drawn sketch (which
 drops the SVG's `<style>`), and the PNG/SVG exports use it in place of white or the site colour
@@ -539,161 +539,161 @@ HTML and GitLab exports are made from one snapshot (R12). A link may unpack to a
 (`serde.ts`), `?code=`/gist loading refuses HTTP errors and empty files, and the embed takes the
 hash state through `normalizeState`. The per-file list is in `UPSTREAM.md` ("Input hardening").
 
-**Header (2026-10-08 feedback).** The title is "Mermaid Live Editor" in both languages and in `<title>`, with the
-app icon before it. The header's right end carries 初期化, the light/dark toggle and the language toggle;
-`DiagramToolbar` keeps zoom, fit, open, hand-drawn and grid only. The hamburger menu (`MainMenu.svelte`, kept
-as an unused upstream file) and the header 共有 button are gone from the header: `Share.svelte` stays intact for the
-tools pane to mount (the palette's "share" command and `tests/embed.spec.ts` "Share dialog" depend on that mount).
-The mermaid version, editor version (`package.json`), repository link, mermaid docs link and privacy moved to the last page of
-使い方 (`VersionInfo.svelte`, section id `about`). 初期化 (`ResetAllButton.svelte`) asks in a dialog, then replaces the input state
-with `defaultState` (code, config and theme, pan/zoom, selection, undo stack); History keeps its own stores. The code-pane tab
-for the mermaid config JSON uses `StyleCodeIcon` (palette + braces), is labelled "スタイル" and has the tooltip
-「図のスタイル設定（JSON）」 (`Tab.tooltip`, test id unchanged).
+**Editor layout: the inspector (2026-10-12, 案A).** `/edit` is three columns, PC only
+(`src/routes/(app)/edit/+page.svelte`, `editorLayout.svelte.ts`, `editorUi.svelte.ts`): the
+code on the left, the diagram in the middle and the inspector (設定パネル) on the right. It
+replaces the three-tab tools pane, its accordion, the rails with one icon per section, the
+pane swap and the mini toolbar of 0.2.2. The user's rule for the redesign: every existing
+feature keeps its completeness — the logic of the old cards moved, it was not rewritten — and
+only the items listed under "Removed" below went. Where each of the 96 inventoried features
+went was audited item by item at the merge; the result is in the PR that introduced the layout.
 
-**Three panes and one toolbar (0.2.2).** On desktop (640px and wider) the editor is three panes:
-by default the tools on the left (three tabs: 作る, 直す, 出す — see below), the diagram
-in the centre, and the code on the right (code and config tabs, undo/redo, reset config, docs) —
-people start from the left, and most of this fork's users build diagrams with the tools, so the
-code comes last. The ⇄ button in the tools header ("パネルの並びを入れ替える") swaps to mermaid.live's
-code | diagram | tools; the choice is kept per browser (`localStorage` `paneOrder`,
-`src/lib/util/toolsPane.svelte.ts`). The tools take about 32% of a window 1280px or wider (25%
-below), the code about 27% (25%; at 22% the default diagram's `fa-car` token ran past the right edge of a 1280px window and Firefox could not click it). Each divider drags, and the sizes are remembered per browser
-(paneforge `autoSaveId`), separately for each order (`liveEditorToolsLeft`, and `liveEditor` for
-code-left, which keeps the sizes saved before the swap existed), so one order's widths never
-apply to the other; each pane has an `id`/`order`, so the layout with the history column open is
-remembered separately too. Swapping remounts the panes; the Monaco models get a path per editor
-instance (`DesktopEditor.svelte`) and the pan/zoom observer ignores a removed diagram
-(`panZoom.ts`), which the remount would otherwise trip over. Both side panes collapse on their
-own to a slim rail on their own side: the button in the code header folds the code to a rail
-(code, config), the button in the tools header ("ツール") folds the tools to a rail with one icon
-per section, grouped by tab; a rail icon expands its pane and opens that tab and section. Someone who never writes code
-folds the code away and works with the diagram and the tools; someone who only writes code folds
-the tools away. The old "Hide the tools" bar under the editor and its `editorFocus` setting are
-gone — the tools pane's own collapse replaces them.
+- **Header** (`Navbar.svelte`): the app icon and 「Mermaid Live Editor」, 元に戻す / やり直す, then
+  「新規 ▾」 (two items, 形式から作る… and サンプルから作る…), 「共有」 and 「書き出す」, then 使い方,
+  履歴, 初期化 and light/dark. The Mermaid Chart buttons appear only with their feature flag. The
+  mermaid and editor versions, the repository and docs links and privacy are on the last page
+  of 使い方 (`VersionInfo.svelte`). 初期化 (`ResetAllButton.svelte`) asks, then replaces the
+  input state with `defaultState`; History keeps its own stores.
+- **Code column** (`editor/CodePane.svelte`): tabs 「コード」 and 「設定 JSON」; 「設定をリセット」 only
+  on the config tab; a footer line that says whether there is a syntax error, else that F2 renames
+  an ID everywhere. It folds to a thin rail (`editorCodeCollapsed`) and is never swapped to the
+  other side. Monaco is the editor; `MobileEditor.svelte` stays mounted by upstream's
+  `Editor.svelte` for narrow windows but the layout is not designed for phones any more.
+- **Diagram column** (`canvas/CanvasPane.svelte`): the add bar across the top
+  (`InsertBar.svelte`), whose items depend on the diagram type — for flowcharts and swimlanes
+  処理, 分岐, 開始・終了, レーン (グループ), 矢印 and その他 ▾ (the other shapes and the old Add
+  card's three forms); for architecture グループ, サービス, 接続; for the other types one item per
+  action of `addActions.ts` / `chartEdit.ts`, each opening its form in a popover
+  (`AddActionForm.svelte`), past the fifth under その他. The popovers are not modal: focus may leave
+  them for the inspector or the code without being pulled back. Table-shaped diagrams (gantt, kanban,
+  timeline, pie, ER attributes, journey, XY, quadrant, sankey, packet) get 図 / 表 / 並べる over
+  the picture (`ViewModeSwitch.svelte`, the 0.2.2 `TableEditor`). Bottom right: − 100% ＋ 全体
+  and the grid toggle (`ZoomControls.svelte`). A broken code shows the error notice over the
+  diagram (`CodeErrorNotice`), and the add bar says why it does nothing. The right-click menu
+  stays as a shortcut (名前を変更 F2, 色を変える, 形を変える, 次の処理を追加 Enter, ここから矢印を引く,
+  削除 Del); its 色 and 形 focus that row of the inspector (`focusInspector`, `data-insp-focus`).
+- **Inspector** (`inspector/Inspector.svelte`): with nothing selected, 「図全体」
+  (`DiagramSettings.svelte`): the 12 themes as cards, 標準 (mermaid's 8 built-in themes, default
+  使わない), 向き (上→下, 下→上, 左→右, 右→左, 自動 — the old "fit to view"; BT and RL added on 2026-10-12), 配置 (標準 / ELK), 間隔 (disabled under ELK), and under ELK its 並べ方 (`elk.nodePlacementStrategy`) and 矢印をまとめる (`elk.mergeEdges`), 線の色, レーン (色分け / 色なし), 矢印 (すべて元の色に), タイトル, フォント (new: a few
+  font families written to `fontFamily`), 手描き風 (moved from the diagram toolbar), アイコン
+  (探して挿入 and アイコン集, each a dialog), unknown icons with 候補に置換, the AI briefing, and the
+  要素 / 矢印 lists for objects that cannot be clicked. Rows a diagram type does not support are not
+  shown. A selection shows 「図全体 › 図形 / 矢印 / レーン / タスク」 with ✕ and its rows, each one
+  line (a 52px label and the control): 図形 — 名前 (also the inline rename: F2, a double click, the
+  menu and a node just added open it), 形 (all 53 shapes mermaid 12 draws, `flowShapes.ts`: the Add card's five stay brackets, the others are written `id@{ shape: … }`), 色 (塗り / 枠 / 文字, the palette, any colour, the recent
+  colours), 文字 (size, bold, reset), アイコン, レーン, ID (renames everywhere, as F2), つながり (click
+  to select the arrow), ＋次 / ＋分岐 / 矢印 / 削除, and the class members, ER attributes and the
+  other per-type fields of the old Edit card (`ObjectFields.svelte`); 矢印 — ends, ラベル, 線 (実線 /
+  点線 / 太線), 矢じり (先だけ / 両方 / なし: 両方 is new, `A <--> B`, `<-.->`, `<==>`, `x--x`, a class
+  `<|--|>`, an architecture `<-->`, a sequence `<<->>`; offered only where the type can draw it, so
+  not for block diagrams), 色, 向きを反転, 削除; レーン — 名前, 色, the number of shapes and ＋追加,
+  削除 (中身は残す / 中身ごと); a gantt task — 名前, 区分, 開始 (a date or after another task), 日数,
+  状況, マイルストーン / 重要, 削除. While the code is broken the inspector says why and its edits
+  are disabled; the theme and the other settings stay usable. It folds to a rail
+  (`editorInspectorCollapsed`).
+- **新規** (`dialogs/NewDiagramDialog.svelte`): one dialog, two tabs. 形式 — the 21 types as cards
+  with a one-line description, an optional title and a direction where the type has one, and
+  「空の○○を作る」; サンプル — categories on the left, the sample cards (business templates first),
+  the chosen one's preview on the right with 「このサンプルで始める」 and, for the nine business
+  templates, 「レーンや手順を入力してから作る…」 (the template forms of 0.2.2). Both open the
+  diagram in a new tab (`newTab.ts`), so the current one keeps its diagram and nothing asks first.
+- **書き出す** (`dialogs/ExportDialog.svelte`, `exportDiagram.ts`, `EXPORTS.md`): a preview with the
+  backdrop on the left; the formats as cards (PNG 画像, SVG, draw.io, Visio, HTML, Markdown 用 — the
+  GitLab export —, 画像をコピー); 解像度 for PNG and the copy, 背景 (白 / 透明 / テーマの色, default
+  now 透明) for PNG, SVG, the copy and Markdown, ファイルで保存 / タグをコピー for HTML; the file
+  name and extension at the bottom. The file is saved at once under that name: no second
+  "名前を付けて保存" dialog and no browser save picker.
+- **共有** (`dialogs/ShareDialog.svelte` around upstream's `Share.svelte`): the edit link and the
+  view-only link with copy buttons, and the embed code (iframe or web component, size, grid).
 
-The desktop tools pane has **three tabs** (`ToolsTabs.svelte`), named for what the user is doing
-rather than for the old seven cards: **作る** (make) holds Samples — with "新しい図を作る…" and
-"テンプレートから作る…" at its top — and Add; **直す** (fix) starts with the "選択中" panel (see
-"Selection" below), then Edit, Colours, Layout and Icons; **出す** (out) holds Actions (export
-presets, HTML and GitLab export, copy and share links) and "AI・アイコン確認" (`AiTools.svelte`: the
-unknown-icon list and the AI briefing, moved out of the Icons card). Within a tab the sections are
-an **accordion**: one section open at a time in the whole pane (`toolsAccordion` in
-`toolsPane.svelte.ts`, used by `Card.svelte` for the stackable cards that have a test id), the
-closed ones one-line headers, the open one filling the rest of the pane's height and the only thing
-that scrolls — the pane itself never shows a second scrollbar. Samples (作る) is open on a first
-visit, as upstream's card is; a tab remembers its last open section, and showing it again reopens
-that one (or its first). Every section keeps its header test id (`TID.addCard`, `colorsCard`, …),
-and a click on a header opens the section **and shows its tab** (`toggleSection`), so the specs,
-the command palette (`uiBus.openCard`) and the template dialog, which all open a section by
-clicking its header, needed no change. That works because the three panels sit side by side in a
-strip that scrolls sideways with only the active one in view, rather than hiding the others: a
-header in another tab is still in the page, scrolling it into view (as Playwright does before a
-click) moves the strip, and focus moving into another panel shows its tab. The arrow keys move
-between the tabs. The boxed inner scroll areas (icon results and
-browse grids, the edit card's icon results, the New diagram type list, the sample buttons) keep
-their `max-h-*` on phones and drop it from `sm:` up, so on desktop they use the card's height; the
-sample types are a grid that fits the width (truncated names carry a tooltip), with "新しい図を作る…"
-first. The forms are styled from the page (`+page.svelte`, scoped to `.tools-pane`, written against
-the cards' existing markup so the cards' own logic is untouched): controls at 2.25rem (h-9), a 0.5rem
-gap, a little more space above each section title, and, where the pane is 25rem or wider (a third
-of a 1280px window), the label-and-select rows of a section two to a row with each label above its
-select. Checked at 1280×800 and 1920×1080: new diagram → three nodes → connect → colour one →
-PNG needs no page scroll and at most one scroll inside the open card (at 1280×800, to reach
-"作成" in New diagram). On phones the cards stack under the editor and open independently as before.
+Policy from 2026-10-12 (user): what mermaid supports is settable from the UI, per diagram type,
+not only a common subset; a type that cannot express an option hides it. Applied at the merge:
+the arrowheads (両方), the full shape list, BT/RL and the ELK options above. Then ("難しいもの以外は
+mermaid 通りに", same day) the rest, each written as plain mermaid through the util layer with
+unit tests and `tests/inspector.spec.ts` / `tests/addControls.spec.ts` cases:
 
-When the code pane is narrow (under 30rem) the buttons in its header show icons only, so the
-collapse button stays in view at 1024px. Upstream's three floating toolbars over the drawing are
-replaced by one bar across the top of the diagram pane (`DiagramToolbar.svelte`): zoom out, zoom
-in, reset view (the frame icon, "図を画面に収める"), open the diagram alone in a new tab (the
-`open-in-new` icon — the earlier diagonal open-in-full arrows read as "fit to screen" next to
-reset); hand-drawn and grid; then, at the right end, light/dark, the language button, privacy (only
-when the deployment shows it) and the mermaid version as plain text. There is no auto-sync toggle:
-upstream removed it before this fork's base. It fits on one row at 1024px. On phones (under 640px)
-the layout is unchanged — the editor with the tool cards under it, swiped against the diagram —
-except that the same bar sits above the diagram, without the zoom buttons, as before.
-`tests/toolsPane.spec.ts` (order, swap and reload, rails, accordion), `tests/toolsTabs.spec.ts`
-(the tabs, header test ids opening their section and tab, the rail mapping, the accordion),
-`tests/editorPanes.spec.ts`, `tests/fixedLayout.spec.ts`.
+- **Arrows** (`edgeFields` / `setEdgeFields` in `diagramModify.ts`, rows `TID.inspEdgeField` with
+  `data-key`, the shared `inspector/DetailFieldRow.svelte`): flowchart 線 gains 見えない (`~~~`, no
+  head); 先の形 (矢印 / 丸 / × — `-->`, `--o`, `--x`), 長さ (`-->` … `----->`), 動き (なし / あり /
+  速く / ゆっくり — `e1@-->` plus `e1@{ animate: true }` / `animation: fast`; the arrow gets a free
+  id, the statement goes when emptied and when the arrow or its node is deleted) and 曲線 (the
+  arrow's own `curve`); sequence 先の形 (矢印 / × / 開いた矢印 / the four half arrows) and 活性化
+  (`+` / `-`, refused by mermaid's own check when unpaired); class 種類 (all nine relations, the
+  mark kept at the end it was written at) and the two multiplicities; ER cardinality at each end
+  (identifying / non-identifying is the 線 row); architecture 元の辺 / 先の辺; C4 向き (`Rel`,
+  `BiRel`, `Rel_Up` …). Arrow ids (`A e1@--> B`) are now parsed, so such flowcharts are no longer
+  listed as "unsure".
+- **The selection** (`objectOptions` in the new `diagramOptions.ts`, rows `TID.inspField`): a
+  flowchart subgraph's own 向き (`direction`), a participant's 種類 (participant, actor and the
+  `@{ "type": … }` symbols), a mindmap topic's 形, a class's 注釈 (`<<interface>>` …) and 型引数
+  (`class X~T~`), a kanban card's 担当 / チケット / 優先度, a requirement's 種類 / ID / 本文 / リスク /
+  検証 and an element's 種類 / 文書, a block's 幅 (`a:2`); an icon node's 背景 (`form`) and 文字
+  (`pos`) as two Segmented rows (`TID.inspIconForm`, `inspIconPos`).
+- **図全体** (`diagramOptions` / `setDiagramOption`, rows `TID.inspOption-<key>`): flowchart 曲線
+  (`flowchart.curve`); 描き方 (`look`: classic / handDrawn / neo, for the six types that draw it);
+  sequence 番号 (`autonumber`); gantt 土日除く, 今日線, 目盛り (`axisFormat` presets), 間隔
+  (`tickInterval`); pie 値を表示; XY 横向き; git 向き (`gitGraph TB:`); block 列数; mindmap 配置
+  (`layout: tidy-tree` / `cose-bilkent`); sankey 値 / 流れの色 / 揃え; packet 1行ビット / ビット番号;
+  timeline 色分け; 読上名 / 読上説明 (`accTitle` / `accDescr`, for the 16 types whose grammar reads
+  them). ELK also gets 循環 (`cycleBreakingStrategy`) and 書いた順 (`considerModelOrder`). 標準 now
+  lists `dark` and `redux-dark-color` too: the migration that dropped the editor's own use of them
+  ran once, so a stored one is the user's choice.
+- **Add bar**: participant symbols, every message arrow (reply / async / lost / line / both
+  ways), par / critical / break / rect blocks, every class relation with multiplicities, and
+  state choice / fork / join and notes.
 
-**Tools pane after the user feedback of 2026-10-08.** This supersedes the tab contents above.
-The user's most important point was that 直す was too narrow to edit in: at 1280px the pane was
-409px (32%) next to a 345px code pane the user never reads, half-width selects in two columns
-and a gantt table scrolled sideways. Now, while 直す is shown, the tools pane has a width of
-its own — 40% of the window by default (36% under 1280px), remembered per browser apart from the
-other tabs' width (`toolsWidths`, `localStorage` `toolsPaneWidths`; a width is recorded when the
-user drags the divider) — and the code pane folds to its rail (`foldCodeWhileFixing`, on by
-default, the code-off button in the tools header turns it off; `codeFoldedForFix` brings the
-code back on another tab or after a reload, which starts on 作る). Measured at 1280×800: tools
-409 → 492px, diagram 524 → 738px; at 1440×900: 460 → 556px, diagram 590 → 834px; the gantt table
-fits without scrolling at 1440. The forms are one column (each label above a control as wide as
-the pane, a select beside its button takes the rest of the row, button rows wrap), and a
-section's title (図形・レーン, 矢印, 表で編集) stays at the top of the open card while its fields
-scroll under it. Tab contents: **作る** = テンプレート (formerly "サンプル図"/Samples), AI・アイコン確認;
-**直す** = 選択中, then 追加, レイアウト, 編集, 配色, アイコン; **出す** = 操作 (without the size presets —
-A4, PowerPoint, square — which the user did not want; background and scale stay, `preset` is
-fixed at "asis" so `exportPresets.ts` is untouched) and 共有リンク (`ShareLinks.svelte`: edit link,
-view-only link, and the embed dialog, whose trigger keeps `TID.shareButton`; the header's 共有
-button is gone). テンプレート is one picker (`Preset.svelte`): upstream's grid of sample chips and
-the separate "テンプレートから作る…" dialog list are gone; every template (business templates,
-upstream's catalogue, local samples) is a button under its category, with a search box and a
-category choice; a business template with a form has "フォームで作る…", which opens that form
-(`TemplateForms.svelte`, no list of its own any more). "新しい図を作る…" opens the starter in a new
-tab (`target="_blank" rel="noopener"`, the `/edit#pako:` share URL), so the current tab keeps its
-diagram and nothing asks first; the link carries `pan`/`zoom` as null, which `loadState` now
-reads as "fit the view" instead of keeping the view of the browser's previous diagram (a
-link that leaves them out behaves as before). The first-visit guide's step 2 (the diagram) used to be placed
-below the diagram, off-screen; a target with no room on the step's side or the opposite one now
-gets the popover inside it near its top (`GuideTour.svelte`). Tests: `tests/toolsPane.spec.ts`
-("while fixing": width, fold, no control outside the pane and no sideways scroll box in the Add,
-Layout, Edit and Colours cards at 1280 and 1440, the remembered width, the toggle),
-`tests/onboarding.spec.ts` (every step inside 1280×720 and 1440×900), `tests/templates.spec.ts`
-(search, category), `tests/newDiagram.spec.ts` (new tab), `tests/exportOptions.spec.ts` (replaces
-`exportPresets.spec.ts`). The e2e fixture turns the fold off (`foldCodeWhileFixing` option in
-`tests/test.ts`), since most specs read the code next to the 直す cards; `loadSampleDiagram`
-clicks the picker's button by `data-group` (and `data-title`).
+Left out as hard (each needs a new parser or rewriter, or a large new UI): `classDef` and
+`class` assignment management, per-element `themeVariables` beyond the line colour, a
+sequence `box` (participants must be re-declared inside it in order), `create` / `destroy`,
+central connections `()` and the reverse half arrows (a second arrow grammar at the tail),
+image nodes (`img`, and a URL the browser would fetch), node `w` / `h`, C4's per-element
+shapes and styles, state concurrency (`--`) inside composites, `htmlLabels` and wrapping
+widths, gantt `weekday` / `includes` / `inclusiveEndDates`, click / href / callbacks (XSS
+surface, deliberately not offered).
 
-**Selection: click the diagram, then change it (0.2.2).** The diagram itself is now where
-editing starts. A click on a drawn object (node, lane, state, class, entity, participant, service,
-group, topic, kanban card, timeline item, gantt task, requirement, block, C4 element) or an arrow
-selects it — one selection (`selection.svelte.ts`); a dashed outline, drawn as an overlay rather
-than in the SVG so exports never see it, marks it; Escape or a click on the empty canvas clears it.
-Which object a click lands on comes from the ids mermaid 12 gives the drawn elements, per type
-(`diagramPick.ts`, which reuses the Colours card's `pickedObject`/`pickedEdge`): flowchart, state,
-class, ER, requirement, block and C4 nodes by id, architecture `service-`/`group-`, a sequence
-participant's `data-id`, mindmap and timeline nodes by position, kanban cards by their id, gantt
-bars by their task's name; arrows by mermaid's edge id (flowchart), by their two ends (class, ER,
-requirement, block, architecture), by position (state) or by a unique label (sequence messages).
-A PowerPoint-style **mini toolbar** floats just above the selection (`SelectionToolbar.svelte`):
-rename inline, the colour buttons (the Colours card's palette and "any colour",
-`ColorSwatches.svelte`), bold and text size, and for nodes the shape, an icon search,
-"この後に追加" (a new node joined after it, selected with its name open for typing),
-"ここから矢印" (then click the node to connect to) and delete; for arrows the label, reverse, line
-style, colour (flowchart) and delete; and a button that opens the 直す tab. The **"選択中" panel** at
-the top of 直す (`SelectionPanel.svelte`) has the same edits as full controls, plus lane or group
-moves, the text colour, class members and ER attributes, and gantt and pie properties; with nothing
-selected it says how to select, and its ? lists the keys. A double click renames; a **right click**
-opens a small menu (`DiagramContextMenu.svelte`: rename, colour, shape, line style, reverse,
-"この後に追加", "ここから矢印", delete; on the empty canvas "ノードを追加" and "画面に合わせる"). **Keys**
-on a selection, when focus is not in a field, the code editor, a dialog or a menu
-(`selectionKeys.ts`): Enter adds the next node (and opens its name, so Enter, a name, Enter, …
-builds a chain), Tab adds a branch from where the selected node comes from, Delete or Backspace
-deletes, F2 renames, the arrow keys move along the arrows, Escape clears; they are in the help's
-tips too. Nothing is written twice: every edit is one of the existing functions — the Edit card's
-(`diagramModify.ts`, `diagramDetails.ts`, checked with `checkEdit` before it is applied), the
-Colours card's (`colors.ts`, applied straight away as that card does) and the Add card's, which
-`selectionActions.ts` composes into "この後に追加" (flowchart and swimlane, in the same lane;
-architecture, in the same group; state; class and ER with a relation; C4; block; mindmap, as a child
-topic; sequence, a participant with a message), connections (every type with a connect action) and
-"ノードを追加"; `selectionModel.svelte.ts` holds the lists for the last valid code and the edits on
-the selection, shared by the toolbar, the panel, the menu and the keys. What a type has no edit for
-is hidden: gantt tasks, kanban cards and timeline items are selected and renamed, deleted and
-(gantt) given their properties, but get no "この後に追加"; pie slices are drawn without ids to tell
-them apart, so they stay in the Edit card's list; journey, git and the other chart types have no
-selection. The Edit and Colours cards keep their own lists and
-their own pick-by-click, unchanged (another change is adding table editors to the Edit card).
-`tests/selection.spec.ts` (select and the toolbar, inline rename, colour and bold, chained
-"この後に追加", Enter/Tab/Delete/arrows, the menu's delete, colour and "ノードを追加", an arrow's
-reverse and style, "ここから矢印", the panel, a state diagram) and the unit tests of the five
+Removed by user decision: the command palette (Ctrl+K), the language button (the UI is Japanese;
+`en.ts` stays complete for `MERMAID_LOCALE=en`, `I18N.md`), loading from a Gist or a URL in the
+UI (the `?gist=` / `?code=` links still load, `fileLoaders/`) and History's Gist revisions tab,
+the pane swap, 「別タブで図だけ表示」, the PNG width/height in pixels (and the size presets, gone
+since 2026-10-08), the hamburger menu, the 作る / 直す / 出す tabs, the accordion, the mini toolbar
+over the diagram, the file-name field in the header and a diagram-type switcher (the type comes
+from the code). Upstream's `MainMenu.svelte` and `DiagramDocumentationButton.svelte` are no longer
+imported and are kept pristine.
+
+Persisted layout: `editorPaneSizes`, `editorCodeCollapsed`, `editorInspectorCollapsed` (added);
+`toolsPaneWidths`, `paneOrder`, `foldCodeWhileFixing`, `codeFoldedForFix`,
+`paneforge:liveEditor`, `paneforge:liveEditorToolsLeft` and `locale` are read once by
+`migrateEditorLayout` (the code width carries over) and removed. Kept: `exportBackground`,
+`exportScale`, `colorRecent`, the history, `aiIcons`, the guide and editor-chooser keys.
+Tests: `tests/header.spec.ts`, `editorPanes.spec.ts`, `addControls.spec.ts`, `inspector.spec.ts`,
+`editControls.spec.ts`, `colors.spec.ts`, `newDiagram.spec.ts`, `templates.spec.ts`,
+`templateForms.spec.ts`, `exportOptions.spec.ts`, `fileExports.spec.ts`, `embed.spec.ts`, and the
+cross-cutting `allDiagrams`, `monkey`, `contradictions`, `qaFindings`, `qaFindings2` and
+`releaseAudit` specs, rewritten for the new places.
+
+**Selection (0.2.2, placed in the inspector since 2026-10-12).** A click on a drawn object (node,
+lane, state, class, entity, participant, service, group, topic, kanban card, timeline item, gantt
+task, requirement, block, C4 element) or an arrow selects it — one selection
+(`selection.svelte.ts`); a dashed outline, drawn as an overlay rather than in the SVG so exports
+never see it, marks it; Escape, ✕ or a click on the empty canvas clears it. Which object a click
+lands on comes from the ids mermaid 12 gives the drawn elements, per type (`diagramPick.ts`):
+flowchart, state, class, ER, requirement, block and C4 nodes by id, architecture
+`service-`/`group-`, a sequence participant's `data-id`, mindmap and timeline nodes by position,
+kanban cards by their id, gantt bars by their task's name; arrows by mermaid's edge id
+(flowchart), by their two ends (class, ER, requirement, block, architecture), by position (state)
+or by a unique label (sequence messages). **Keys** on a selection, when focus is not in a field,
+the code editor, a dialog or a menu (`selectionKeys.ts`): Enter adds the next node (and opens its
+name, so Enter, a name, Enter, … builds a chain), Tab adds a branch, Delete or Backspace deletes,
+F2 renames, the arrow keys move along the arrows, Escape clears. Nothing is written twice: every
+edit is one of the existing functions (`diagramModify.ts`, `diagramDetails.ts` checked with
+`checkEdit`, `colors.ts`, `diagramEdit.ts`, composed in `selectionActions.ts`);
+`selectionModel.svelte.ts` holds the lists for the last valid code and the edits on the selection,
+shared by the inspector, the menu and the keys. A node just added (add bar, ＋次 / ＋分岐, a lane's ＋追加,
+the menu, Enter / Tab) is brought into view once drawn when it lands outside the canvas: a pan at the same zoom (a
+zoom out only when it is bigger than the canvas), nothing when it is already visible (`revealView.ts`,
+`PanZoomState.reveal`, `selection.revealSession`; `tests/addControls.spec.ts`). Pie slices are drawn without ids to tell them
+apart, so they are chosen from 図全体's 要素 list; journey, git and the other chart types have no
+selection. `tests/selection.spec.ts`, `tests/inspector.spec.ts` and the unit tests of the
 selection files.
 
 **Contradictory operations (0.2.2).** A pass that used the tools out of order and against each
@@ -703,12 +703,12 @@ mid-rename, open one dialog over another, rapid clicks, table and colour abuse) 
 (`historyCommand`, `selectionKeys.ts`); two tool edits in quick succession are two undo steps, not one
 (a change written with `updateDiagram` is recorded at once, `undoStack.svelte.ts`); "ここから矢印" and the
 Add card's Connect refuse an arrow that is already there (the card allows it with another label), and
-turning an arrow round onto its opposite is refused (`reverseDuplicates`); a name typed in the inline
-rename is applied when the user clicks another node, the canvas or the tools (the draft lives in the
-selection model, `commitDraft`), while Escape and ✕ still discard it; an empty name says so; refusals
-from the mini toolbar show over the diagram (`TID.selectionWarning`), not only in the 直す panel; an
+turning an arrow round onto its opposite is refused (`reverseDuplicates`); a name typed in the 名前
+field is applied when the user clicks another node, the canvas or the inspector (the draft lives in
+the selection model, `commitDraft`), while Escape still discards it; an empty name says so; refusals
+show over the diagram (`TID.selectionWarning`); an
 edit computed from code that changed while mermaid checked it is dropped instead of overwriting the
-newer code; Ctrl+K does not open the palette over another dialog; the right-click menu closes when the
+newer code; the right-click menu closes when the
 wheel zooms the diagram under it; renaming a flowchart node defined with text in two statements changes
 both (mermaid draws the last). `tests/contradictions.spec.ts` covers each; `tests/invariants.ts` holds
 the checks run after every step (parses, drawn, no console errors, one dialog, no empty dropdown, no
@@ -795,7 +795,9 @@ search was cleared mid-load; HTML/GitLab exports of a broken diagram failed sile
 standard icon into a non-architecture diagram gave no warning; the AWS logo sample stayed in a
 logos-off build. Firefox is covered only by CI's `@smoke` run.
 
-**Export presets (0.2.2)** (`src/lib/util/exportPresets.ts`). For pasting into PowerPoint, Word, Excel
+**Export presets (0.2.2, removed).** The presets below were dropped from the UI on 2026-10-08 and
+`exportPresets.ts` was deleted with the 書き出す dialog on 2026-10-12; background and scale stay
+(`EXPORTS.md`). For the record: for pasting into PowerPoint, Word, Excel
 or e-mail, the Actions card has a preset (as is, PowerPoint 16:9 = 1920x1080, 4:3 = 1440x1080, A4 landscape
 1123x794, A4 portrait 794x1123, square 1080x1080, all at 1x), a background (white, transparent, the site
 theme colour) and a scale (1x to 3x, default 2x). The diagram is scaled to fit inside the canvas, centred, with
@@ -823,10 +825,10 @@ WCAG AA, with the figures computed rather than eyeballed. The editor follows the
 system; the toggle overrides it per browser. The Mermaid brand mark is removed from the
 navbar, the favicons and `manifest.json`.
 
-**Japanese UI, switchable to English** (`I18N.md`). A dependency-free catalogue, **1045 keys**,
-read through a typed `t(key, params)`. Japanese is the default; a button beside the theme
-toggle switches to English and the choice is remembered per browser. `en` holds upstream's
-original wording, so `MERMAID_LOCALE=en` makes English the default. Sample group keys stay
+**Japanese UI** (`I18N.md`). A dependency-free catalogue, **1085 keys**, read through a typed
+`t(key, params)`. The site renders the build's `MERMAID_LOCALE` (Japanese unless set); the
+language button was removed by user decision on 2026-10-12. `en` holds upstream's original
+wording, kept complete, so `MERMAID_LOCALE=en` builds an English site. Sample group keys stay
 the catalogue's English names (they are keys into `@mermaid-js/examples`); the card shows the common
 ones under a Japanese name (`sampleNames.ts`) and English keeps the catalogue's.
 
@@ -903,11 +905,11 @@ opens at once on the name the node will get (`selectionModel.draftLabel`), the t
 put until the new node is drawn, and a name confirmed before the node exists is applied once it
 does (`pendingAdd`). `tests/selection.spec.ts` types straight after Enter and Tab.
 
-**Save as, .drawio and .vsdx (2026-10-08 feedback)** (`EXPORTS.md`). Every file the 出す card
-saves (PNG, SVG, HTML, the GitLab SVG and the two new formats) lets the user choose the name:
-Chromium and Edge open the system save dialog (`showSaveFilePicker`), other browsers get a small
-「名前を付けて保存」 dialog and the usual download (`saveFile.ts`, `SaveAsDialog.svelte`). The name
-defaults to the diagram's title, else `diagram` (upstream's `mermaid-diagram-<timestamp>` is gone).
+**File names, .drawio and .vsdx (2026-10-08 feedback, changed 2026-10-12)** (`EXPORTS.md`). Every
+file the 書き出す dialog saves (PNG, SVG, HTML, the Markdown SVG and the two formats below) is saved
+under the name typed in the dialog (`saveFile.ts`); the save picker and the 「名前を付けて保存」
+dialog of 2026-10-08 were removed by user decision. The name defaults to the diagram's title, else
+`diagram` (upstream's `mermaid-diagram-<timestamp>` is gone).
 「.drawio で保存」 writes every element of the diagram as its own draw.io cell (2026-10-09 feedback
 「drawioで全ての要素が個別に編集可能なように」): nodes as draw.io shapes with their labels, subgraphs
 and lanes as containers, links as connected edges with their arrowheads and labels, and titles,
@@ -915,9 +917,8 @@ notes, axes and slices as shape, line and text cells, converted from the SVG on 
 (`svgToDrawio.ts`, `svgPath.ts`); the source stays in the root cell's `mermaidData` (checked in the
 draw.io web app for nine diagram types; `drawioExport.ts`). 「.vsdx で保存」 writes a Visio 2013+ package with one page and the
 diagram as a PNG picture, the source in its Shape Data (`vsdxExport.ts`, zipped with `fflate`,
-a new MIT dependency) — a picture in Visio, not editable shapes. The e2e fixture removes the
-picker and confirms the name dialog (`tests/test.ts`, option `saveAs`), so existing download specs
-are unchanged; `tests/fileExports.spec.ts` covers both formats, the dialog and a stubbed picker.
+a new MIT dependency) — a picture in Visio, not editable shapes. `tests/fileExports.spec.ts` covers
+both formats and the names.
 
 ## What is open
 

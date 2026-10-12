@@ -16,7 +16,6 @@
   import UndoIcon from '~icons/material-symbols/settings-backup-restore-rounded';
   import UploadIcon from '~icons/material-symbols/upload-rounded';
   import HistoryIcon from '~icons/mdi/clock-outline';
-  import GitAltIcon from '~icons/mdi/git';
   import OpenInNewIcon from '~icons/material-symbols/open-in-new-rounded';
   import { Button } from '../ui/button';
   import { Separator } from '../ui/separator';
@@ -37,20 +36,8 @@
     { id: 'manual', title: t('history.tabSaved'), icon: BookmarkIcon },
     { id: 'auto', title: t('history.tabTimeline'), icon: HistoryIcon }
   ];
-  const loaderTab: Tab = { id: 'loader', title: t('history.tabRevisions'), icon: GitAltIcon };
-
-  const tabs = $derived(
-    historyState.loaderEntries.length > 0 ? [loaderTab, ...baseTabs] : baseTabs
-  );
-
-  // Surface revisions once when they first appear; the user can switch away after.
-  let revisionsShown = false;
-  $effect(() => {
-    if (historyState.loaderEntries.length > 0 && !revisionsShown) {
-      revisionsShown = true;
-      setMode('loader');
-    }
-  });
+  // Local: no Gist revisions tab; the editor no longer loads a Gist.
+  const tabs = baseTabs;
 
   // Inline rename state for a single entry.
   let editingId: string | null = $state(null);

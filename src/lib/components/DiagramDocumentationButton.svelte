@@ -3,7 +3,6 @@
   import { TID } from '$/constants';
   import { getDiagramDocumentationUrl } from '$/util/diagramDocs';
   import { describeDiagram } from '$/util/diagramTypes';
-  import { t } from '$/i18n';
   import { validatedState } from '$/util/state.svelte';
   import BookIcon from '~icons/material-symbols/book-2-outline-rounded';
 
@@ -21,7 +20,7 @@
   data-testid={TID.diagramDocumentationButton}
   href={doc.url}
   target="_blank"
-  title={t('editor.docsTitle', { type: doc.key.replace('Diagram', '') })}>
+  title="View documentation for {doc.key.replace('Diagram', '')} diagram">
   <BookIcon />
-  {t('editor.docsTab')}
+  Docs
 </Button>

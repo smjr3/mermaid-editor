@@ -1,5 +1,6 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
+import { viewMode } from './helpers/canvas';
 import { expect, t, test } from './test';
 
 const urlFor = (code: string) =>
@@ -16,10 +17,10 @@ const row = (page: Page, index: number) => page.getByTestId(TID.tableRow).nth(in
 const cell = (page: Page, index: number, key: string) =>
   row(page, index).getByTestId(`${TID.tableCell}-${key}`);
 
-/** Opens the Edit card, where the table sits under the per-object forms. */
-const openTable = async (page: Page) => {
-  await page.getByTestId(TID.editCard).click();
-  await expect(page.getByTestId(TID.tableEditor)).toBeVisible();
+/** Shows the table under the diagram (並べる), or in its place (表). */
+const openTable = async (page: Page, mode: 'both' | 'table' = 'both') => {
+  await viewMode(page, mode);
+  await expect(page.getByTestId(TID.canvasTable).getByTestId(TID.tableEditor)).toBeVisible();
 };
 
 /** Pastes text into the table as Excel's clipboard would. */
@@ -46,6 +47,44 @@ const gantt = `gantt
         実装 :impl, after design, 14d`;
 
 test.describe('Table editor', () => {
+  test('図 / 表 / 並べる switch between the diagram, the table and both', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor(gantt));
+    await editPage.checkTextInView('基本設計');
+    const table = page.getByTestId(TID.canvasTable);
+    // The diagram alone at first.
+    await expect(page.getByTestId(`${TID.canvasViewMode}-diagram`)).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await expect(table).toHaveCount(0);
+
+    await viewMode(page, 'both');
+    await expect(table).toHaveAttribute('data-mode', 'both');
+    // Under the diagram, which stays in view.
+    const view = await page.locator('#view').boundingBox();
+    const tableBox = await table.boundingBox();
+    if (!view || !tableBox) throw new Error('boxes missing');
+    expect(tableBox.y).toBeGreaterThanOrEqual(view.y + view.height - 1);
+    await editPage.checkTextInView('基本設計');
+
+    await viewMode(page, 'table');
+    await expect(table).toHaveAttribute('data-mode', 'table');
+    await expect(page.getByTestId(TID.tableRow)).toHaveCount(3);
+    // The diagram is still drawn underneath (the exports read it).
+    await expect(page.locator('#container svg')).toHaveCount(1);
+
+    await viewMode(page, 'diagram');
+    await expect(table).toHaveCount(0);
+
+    // Diagrams that are not a list have no switch.
+    await editPage.start(urlFor('flowchart TD\n  A --> B'));
+    await editPage.checkTextInView('A');
+    await expect(page.getByTestId(TID.canvasViewMode)).toHaveCount(0);
+  });
+
   test('edits gantt tasks inline, adds a row and reorders', async ({ editPage, page }) => {
     await editPage.start(urlFor(gantt));
     await editPage.checkTextInView('基本設計');
@@ -143,7 +182,7 @@ test.describe('Table editor', () => {
   test('appends rows pasted from Excel', async ({ editPage, page }) => {
     await editPage.start(urlFor(gantt));
     await editPage.checkTextInView('実装');
-    await openTable(page);
+    await openTable(page, 'table');
     await paste(
       page,
       '開発\t結合テスト\t\t5\t完了\t実装\r\n運用\t移行: 本番\t2024/06/03\t2\tcrit\t\r\n'

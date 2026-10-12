@@ -1,3 +1,5 @@
+import { TID } from '$/constants';
+import { closeExport, copyExport, saveExport } from './helpers/exportDlg';
 import { expect, t, test } from './test';
 
 test.describe('Check actions', () => {
@@ -9,37 +11,33 @@ test.describe('Check actions', () => {
   // carries the diagram source to an external renderer. This fork empties
   // MERMAID_RENDERER_URL so no such link is produced. Local PNG/SVG export is
   // unaffected and still covered below.
-  test('should not offer a Markdown link that sends the diagram off-site', async ({ editPage }) => {
+  test('should not offer a Markdown link that sends the diagram off-site', async ({
+    editPage,
+    page
+  }) => {
     await expect(editPage.markdownInput).toBeHidden();
+    await expect(page.getByTestId(TID.exportDlgExternal)).toHaveCount(0);
+    await closeExport(page);
     await editPage.typeInEditor('C --> HistoryTest', { bottom: true, newline: true });
+    await editPage.toggleActions();
     await expect(editPage.markdownInput).toBeHidden();
+    await expect(page.getByTestId(TID.exportDlgExternal)).toHaveCount(0);
   });
 
   test('should still export PNG and SVG locally', async ({ page }) => {
-    await expect(page.getByTestId('download-PNG')).toBeVisible();
-    await expect(page.getByTestId('download-SVG')).toBeVisible();
-    const download = page.waitForEvent('download');
-    await page.getByTestId('download-PNG').click();
-    expect((await download).suggestedFilename()).toContain('.png');
+    await expect(page.getByTestId(`${TID.exportDlgFormat}-png`)).toBeVisible();
+    await expect(page.getByTestId(`${TID.exportDlgFormat}-svg`)).toBeVisible();
+    const download = await saveExport(page, 'png');
+    expect(download.suggestedFilename()).toContain('.png');
   });
 
-  test.skip('should load gists from URL', async ({ page }) => {
-    await page
-      .locator('#gist')
-      .fill('https://gist.github.com/sidharthv96/6268a23e673a533dcb198f241fd7012a');
-    await page.getByText(t('actions.loadGist')).click();
-    await expect(page.getByText('Go shopping!!')).toBeVisible();
-  });
-
-  test('should download png and svg', async ({ editPage }) => {
+  test('should download png and svg', async ({ editPage, page }) => {
     const firstPngSize = await editPage.checkAndDownloadPNG(20_000);
     const firstSvgSize = await editPage.downloadSVG(10_000);
 
     // Verify downloaded file is different for different diagrams
-    await editPage.toggleSampleDiagrams();
+    await closeExport(page);
     await editPage.loadSampleDiagram('Entity Relationship');
-    // One tool card is open at a time: the Samples card closed Actions.
-    await editPage.toggleActions();
 
     const secondPngSize = await editPage.checkAndDownloadPNG(20_000);
     const secondSvgSize = await editPage.downloadSVG(10_000);
@@ -49,12 +47,15 @@ test.describe('Check actions', () => {
     expect(firstSvgSize).not.toBe(secondSvgSize);
   });
 
-  // R10: the copy button reports the outcome of the whole copy, not its start.
+  // R10: the button reports the outcome of the whole copy, not its start.
   test('copies the PNG to the clipboard and shows the tick only then', async ({ page }) => {
-    const copy = page.getByRole('button', { name: t('actions.copyImage') });
+    const copy = page.getByTestId(TID.exportDlgSave);
+    await page.getByTestId(`${TID.exportDlgFormat}-copy`).click();
+    await expect(copy).toHaveText(t('exportDlg.copy'));
+    await expect(page.getByTestId(TID.exportDlgFileName)).toHaveCount(0);
     await copy.click();
-    await expect(copy).toHaveAttribute('data-copy-state', 'busy');
-    await expect(copy).toHaveAttribute('data-copy-state', 'done', { timeout: 15_000 });
+    await expect(copy).toHaveAttribute('data-export-state', 'busy');
+    await expect(copy).toHaveAttribute('data-export-state', 'done', { timeout: 15_000 });
     const types = await page.evaluate(async () => {
       const items = await navigator.clipboard.read();
       return items.flatMap((item) => item.types);
@@ -67,9 +68,7 @@ test.describe('Check actions', () => {
       navigator.clipboard.write = () =>
         Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
     });
-    const copy = page.getByRole('button', { name: t('actions.copyImage') });
-    await copy.click();
-    await expect(copy).toHaveAttribute('data-copy-state', 'failed', { timeout: 15_000 });
+    expect(await copyExport(page, 'copy')).toBe('failed');
     await expect(page.getByText(t('notify.copyFailed'))).toBeVisible();
     // Pan/zoom, paused for the capture, is back on afterwards.
     await expect

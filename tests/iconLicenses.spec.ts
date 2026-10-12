@@ -30,7 +30,8 @@ test.describe('Icon licences', () => {
     page
   }) => {
     await editPage.start();
-    await page.getByTestId(TID.iconPacksCard).click();
+    await page.getByTestId(TID.inspIconBrowse).click();
+    await expect(page.getByTestId(TID.inspIconDialog)).toBeVisible();
 
     await page.getByTestId(TID.iconPickerSearch).fill('aws-lambda');
     const logo = page.getByTestId(TID.iconPickerResults).getByRole('button').first();

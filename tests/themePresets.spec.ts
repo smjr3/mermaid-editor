@@ -1,6 +1,7 @@
-import { C, TID } from '$/constants';
+import { TID } from '$/constants';
 import { readFileSync } from 'node:fs';
-import { EditorPage, expect, t, test } from './test';
+import { downloadPNG, downloadSVG } from './helpers/exportDlg';
+import { expect, t, test } from './test';
 import type { Page } from '@playwright/test';
 
 const code = 'flowchart LR\n  A[Start] --> B[End]';
@@ -35,9 +36,8 @@ const styleOf = (page: Page) =>
   });
 
 const pickNeon = async (page: Page) => {
-  await page.getByTestId(TID.colorsCard).click();
-  await page.getByTestId(`${TID.colorsThemePreset}-neon`).click();
-  await expect(page.getByTestId(`${TID.colorsThemePreset}-neon`)).toHaveAttribute(
+  await page.getByTestId(`${TID.inspThemePreset}-neon`).click();
+  await expect(page.getByTestId(`${TID.inspThemePreset}-neon`)).toHaveAttribute(
     'aria-pressed',
     'true'
   );
@@ -71,10 +71,9 @@ test.describe('Theme presets', () => {
       .toBe(rgb(neon.background));
 
     // SVG export: the preset's CSS is inside the file's own <style>.
-    await page.getByTestId(TID.actionsCard).click();
     const [svgDownload] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByTestId('download-SVG').click()
+      downloadSVG(page, 100)
     ]);
     const svg = readFileSync((await svgDownload.path()) ?? '', 'utf8');
     const styles = [...svg.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(([, css]) => css);
@@ -85,8 +84,9 @@ test.describe('Theme presets', () => {
     // PNG export: the dark background fills the image instead of white.
     const [pngDownload] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByTestId('download-PNG').click()
+      downloadPNG(page, 100)
     ]);
+    await page.keyboard.press('Escape');
     const png = readFileSync((await pngDownload.path()) ?? '');
     const corner = await page.evaluate(async (b64) => {
       const image = new Image();
@@ -126,10 +126,7 @@ test.describe('Theme presets', () => {
     await other.close();
 
     // Standard: no variables or CSS left, and the theme follows dark mode again.
-    if (!(await page.getByTestId(`${TID.colorsThemePreset}-standard`).isVisible())) {
-      await page.getByTestId(TID.colorsCard).click();
-    }
-    await page.getByTestId(`${TID.colorsThemePreset}-standard`).click();
+    await page.getByTestId(`${TID.inspThemePreset}-standard`).click();
     await expect.poll(async () => (await config(page)).theme).toBe('redux-color');
     const standard = await config(page);
     expect(standard.themeVariables).toBeUndefined();
@@ -157,36 +154,41 @@ test.describe('Theme presets', () => {
   });
 });
 
-test.describe('Theme presets on a phone', () => {
-  test.use({ viewport: { height: 800, width: 360 } });
-
-  // Not the editPage fixture: on a phone the cards sit under the editor, off screen at first.
-  test('the picker fits without scrolling sideways and works from the keyboard', async ({
-    page
-  }) => {
-    await page.addInitScript((key) => {
-      window.localStorage.setItem(key, 'true');
-    }, C.editorChooserDismissedKey);
-    const editPage = new EditorPage(page);
+test.describe('Theme presets from the keyboard', () => {
+  test('the cards fit the inspector and work from the keyboard', async ({ editPage, page }) => {
     await editPage.start(url);
-    await page.getByText(t('editor.mobileEdit')).first().click();
-    await page.getByTestId(TID.colorsCard).scrollIntoViewIfNeeded();
-    await page.getByTestId(TID.colorsCard).click();
-    const grid = page.getByTestId(TID.colorsThemePreset);
-    await grid.scrollIntoViewIfNeeded();
+    await editPage.checkTextInView('Start');
+    const grid = page.getByTestId(TID.inspThemePreset);
+    const panel = await page.getByTestId(TID.inspPanel).boundingBox();
     const box = await grid.boundingBox();
-    if (!box) throw new Error('picker missing');
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(360);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
-    ).toBe(true);
-    await page.getByTestId(`${TID.colorsThemePreset}-wa`).focus();
+    if (!box || !panel) throw new Error('picker missing');
+    // Three columns inside the inspector, no sideways scrolling.
+    expect(box.x).toBeGreaterThanOrEqual(panel.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(panel.x + panel.width);
+    const columns = await grid
+      .locator('button')
+      .evaluateAll((buttons) => new Set(buttons.map((b) => b.getBoundingClientRect().x)).size);
+    expect(columns).toBe(3);
+    await expect(grid.locator('button')).toHaveCount(12);
+    await expect(page.getByTestId(`${TID.inspThemePreset}-wa`)).toHaveAttribute(
+      'title',
+      new RegExp(t('themePreset.wa'))
+    );
+
+    await page.getByTestId(`${TID.inspThemePreset}-wa`).focus();
     await page.keyboard.press('Enter');
     await expect
       .poll(async () => (await config(page)).themeCSS ?? '')
       .toContain('theme-preset: wa');
-    await expect(page.getByTestId(`${TID.colorsThemePreset}-wa`)).toHaveAttribute(
+    await expect(page.getByTestId(`${TID.inspThemePreset}-wa`)).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    // A built-in theme over a preset drops the preset.
+    await page.getByTestId(TID.inspBuiltinTheme).selectOption('neutral');
+    await expect.poll(async () => (await config(page)).theme).toBe('neutral');
+    expect((await config(page)).themeCSS).toBeUndefined();
+    await expect(page.getByTestId(`${TID.inspThemePreset}-standard`)).toHaveAttribute(
       'aria-pressed',
       'true'
     );

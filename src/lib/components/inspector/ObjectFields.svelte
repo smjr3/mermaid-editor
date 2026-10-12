@@ -1,11 +1,11 @@
 <script lang="ts">
   import FieldRow from '$/components/form/FieldRow.svelte';
+  import DetailFieldRow from '$/components/inspector/DetailFieldRow.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { messages, type MessageKey } from '$/i18n/messages';
-  import type { DetailField, DetailValues } from '$/util/diagramDetails';
-  import { displayName } from '$/util/displayName';
+  import type { MessageKey } from '$/i18n/messages';
+  import type { DetailValues } from '$/util/diagramDetails';
   import { selection } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import AddIcon from '~icons/material-symbols/add-rounded';
@@ -25,16 +25,6 @@
     model.members?.find(({ id }) => id === selectedMember) ?? model.members?.[0]
   );
 
-  const optionText = (label: MessageKey, option: string) => {
-    const key = `${label}.${option}`;
-    return key in messages.en ? t(key as MessageKey) : option;
-  };
-  // A short label where the field's own one would not fit in the row (it stays the tooltip).
-  const labelOf = (field: DetailField) => {
-    const key = `insp.field.${field.key}`;
-    return key in messages.en ? t(key as MessageKey) : t(field.label);
-  };
-
   const applyField = (key: string, value: string) => {
     const current = model.fields?.find((field) => field.key === key)?.value;
     if (current === value) return;
@@ -48,64 +38,11 @@
   };
   const selectClass =
     'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
-  const inputClass =
-    'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground';
 </script>
-
-{#snippet fieldRow(
-  field: DetailField,
-  apply: (key: string, value: string) => void,
-  key: string,
-  testID: string
-)}
-  <div class="contents" title={t(field.label)}>
-    <FieldRow label={labelOf(field)}>
-      {#if field.kind === 'choice'}
-        <select
-          class={selectClass}
-          value={field.value}
-          aria-label={t(field.label)}
-          data-testid={testID}
-          data-key={key}
-          onchange={(event) => apply(field.key, event.currentTarget.value)}>
-          {#each field.options ?? [] as option (option)}
-            <option value={option}>{optionText(field.label, option)}</option>
-          {/each}
-        </select>
-      {:else if field.kind === 'item'}
-        <select
-          class={selectClass}
-          value={field.value}
-          aria-label={t(field.label)}
-          data-testid={testID}
-          data-key={key}
-          onchange={(event) => apply(field.key, event.currentTarget.value)}>
-          <option value="">{t('add.none')}</option>
-          {#each field.choices ?? [] as choice (choice.id)}
-            <option value={choice.id}>{displayName(choice.label, choice.id, field.choices)}</option>
-          {/each}
-        </select>
-      {:else}
-        <input
-          class={inputClass}
-          type={field.kind === 'text' ? 'text' : field.kind}
-          value={field.value}
-          aria-label={t(field.label)}
-          data-testid={testID}
-          data-key={key}
-          onkeydown={(event) => {
-            // Leaving the field applies it (the change event), once.
-            if (event.key === 'Enter') event.currentTarget.blur();
-          }}
-          onchange={(event) => apply(field.key, event.currentTarget.value)} />
-      {/if}
-    </FieldRow>
-  </div>
-{/snippet}
 
 {#if model.fields && model.fields.length > 0}
   {#each model.fields as field (field.key)}
-    {@render fieldRow(field, applyField, field.key, TID.inspField)}
+    <DetailFieldRow {field} apply={applyField} dataKey={field.key} testID={TID.inspField} />
   {/each}
 {/if}
 
@@ -149,7 +86,11 @@
   {#if member}
     {#key member.id}
       {#each member.fields as field (field.key)}
-        {@render fieldRow(field, applyMember, `member-${field.key}`, TID.inspField)}
+        <DetailFieldRow
+          {field}
+          apply={applyMember}
+          dataKey={`member-${field.key}`}
+          testID={TID.inspField} />
       {/each}
     {/key}
   {/if}

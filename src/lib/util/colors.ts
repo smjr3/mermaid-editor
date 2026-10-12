@@ -16,7 +16,11 @@ export const themeChoices = [
   'forest',
   'base',
   'redux-dark',
-  'neo-dark'
+  'neo-dark',
+  // Local: mermaid's dark built-ins. The editor once set these itself for the site's dark
+  // mode; a migration removed those, so a theme found here now is the user's choice.
+  'dark',
+  'redux-dark-color'
 ] as const;
 export type ThemeChoice = 'auto' | (typeof themeChoices)[number];
 

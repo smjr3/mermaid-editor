@@ -41,16 +41,19 @@ import {
   deleteObject,
   editableEdges,
   editableObjects,
+  edgeFields,
   flowNodeDetails,
   moveNodeToLane,
   moveService,
   renameObject,
   reverseEdge,
   serviceDetails,
+  setEdgeFields,
   setEdgeHead,
   setEdgeLabel,
   setEdgeStyle,
   setNodeIcon,
+  setNodeIconOptions,
   setNodeShape,
   setNodeShapeName,
   setServiceIcon,
@@ -61,6 +64,7 @@ import {
   type EditObjects
 } from './diagramModify';
 import { addSpecs, initialValues } from './addActions';
+import { objectOptionKeys, objectOptions, setObjectOption } from './diagramOptions';
 import { diagramIds } from './diagramIds';
 import { diagramObjects, parse } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
@@ -156,11 +160,19 @@ class SelectionModel {
   members = $derived(
     this.kind && this.object ? objectMembers(inputState.code, this.kind, this.object.id) : undefined
   );
-  fields = $derived(
-    this.kind && this.object ? objectFields(inputState.code, this.kind, this.object) : undefined
-  );
+  // Local: the object's properties, then its options mermaid offers for the type (diagramOptions.ts).
+  fields = $derived.by(() => {
+    if (!this.kind || !this.object) return undefined;
+    const own = objectFields(inputState.code, this.kind, this.object);
+    const options = objectOptions(inputState.code, this.kind, this.object);
+    return own || options.length > 0 ? [...(own ?? []), ...options] : undefined;
+  });
   label = $derived(
     this.object ? this.object.label.trim() || this.object.id : (this.edge?.label ?? '')
+  );
+  /** Local: the selected arrow's other properties (head shape, length, kind, …). */
+  edgeFields = $derived(
+    this.kind && this.edge ? edgeFields(inputState.code, this.kind, this.edge) : []
   );
 
   /** Reads the lists for valid code; drops a selection the code no longer has. */
@@ -419,8 +431,19 @@ class SelectionModel {
   setFields = async (values: DetailValues) => {
     const { kind, object } = this;
     if (!kind || !object) return;
+    const [key, value] = Object.entries(values)[0] ?? [];
+    const next =
+      key !== undefined && objectOptionKeys.has(key)
+        ? setObjectOption(inputState.code, kind, object, key, value)
+        : setObjectFields(inputState.code, kind, object, values);
+    await this.apply(next, t('edit.changed', { name: this.label }));
+  };
+  /** Local: an icon node's background and label position. */
+  setIconOptions = async (options: { form?: string; pos?: string }) => {
+    const { object } = this;
+    if (!object || !this.node?.icon) return;
     await this.apply(
-      setObjectFields(inputState.code, kind, object, values),
+      setNodeIconOptions(inputState.code, object.id, options),
       t('edit.changed', { name: this.label })
     );
   };
@@ -511,6 +534,11 @@ class SelectionModel {
     if (kind && edge) {
       await this.apply(setEdgeStyle(inputState.code, kind, edge, style), t('edit.updated'));
     }
+  };
+  setEdgeFields = async (values: DetailValues) => {
+    const { kind, edge } = this;
+    if (kind && edge)
+      await this.apply(setEdgeFields(inputState.code, kind, edge, values), t('edit.updated'));
   };
   setEdgeHead = async (head: EdgeHead) => {
     const { kind, edge } = this;

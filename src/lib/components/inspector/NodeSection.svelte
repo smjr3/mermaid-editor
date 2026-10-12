@@ -11,6 +11,7 @@
   import type { MessageKey } from '$/i18n/messages';
   import { textSizeChoices, type TextSize } from '$/util/colors';
   import type { NodeShape } from '$/util/diagramEdit';
+  import { iconForms, iconPositions } from '$/util/diagramModify';
   import { displayName } from '$/util/displayName';
   import { flowShapeNames, type FlowShapeName } from '$/util/flowShapes';
   import { select, selection, startConnect } from '$/util/selection.svelte';
@@ -234,6 +235,27 @@
                 void model.setIcon(chosen);
               }} />
           </div>
+        </FieldRow>
+      {/if}
+      {#if model.node?.icon}
+        <!-- mermaid's icon shape: a background behind the icon, the label above or below. -->
+        <FieldRow label={t('insp.iconForm')}>
+          <Segmented
+            value={model.node.form ?? 'none'}
+            full
+            ariaLabel={t('insp.iconForm')}
+            testID={TID.inspIconForm}
+            options={iconForms.map((form) => ({ label: t(`insp.iconForm.${form}`), value: form }))}
+            onchange={(form) => void model.setIconOptions({ form })} />
+        </FieldRow>
+        <FieldRow label={t('insp.iconPos')}>
+          <Segmented
+            value={model.node.pos ?? 'b'}
+            full
+            ariaLabel={t('insp.iconPos')}
+            testID={TID.inspIconPos}
+            options={iconPositions.map((pos) => ({ label: t(`insp.iconPos.${pos}`), value: pos }))}
+            onchange={(pos) => void model.setIconOptions({ pos })} />
         </FieldRow>
       {/if}
       <FieldRow label={model.service ? t('insp.group') : t('insp.lane')}>

@@ -3,6 +3,7 @@
   import PanelGroup from '$/components/form/PanelGroup.svelte';
   import Segmented from '$/components/form/Segmented.svelte';
   import ColorRow from '$/components/inspector/ColorRow.svelte';
+  import DetailFieldRow from '$/components/inspector/DetailFieldRow.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
@@ -11,13 +12,19 @@
   import DeleteIcon from '~icons/material-symbols/delete-outline-rounded';
 
   // Local: the inspector for a selected arrow (or message, relation, transition, …):
-  // where it goes, its line, arrowhead and colour, turning it round and deleting it —
+  // where it goes, its line, arrowhead, its other properties (edgeFields: head shape,
+  // length, animation, curve, kind, multiplicities, …) and colour, turning it round and
+  // deleting it —
   // what the diagram type's arrow syntax allows (`model.edges.can`), through the
   // selection model (selectionModel.svelte.ts). Its label (also the inline rename) is
   // the inspector's own row (Inspector.svelte).
   const edge = $derived(model.edge);
   const can = $derived(model.edges?.can);
-  const edgeStyles: EdgeStyle[] = ['solid', 'dotted', 'thick'];
+  const edgeStyles: EdgeStyle[] = ['solid', 'dotted', 'thick', 'invisible'];
+  const applyField = (key: string, value: string) => {
+    if (model.edgeFields.find((field) => field.key === key)?.value === value) return;
+    void model.setEdgeFields({ [key]: value });
+  };
 </script>
 
 {#if edge}
@@ -39,7 +46,7 @@
           onchange={(style) => void model.setEdgeStyle(style as EdgeStyle)} />
       </FieldRow>
     {/if}
-    {#if can?.head}
+    {#if can?.head && edge.style !== 'invisible'}
       <FieldRow label={t('sel.head')}>
         <Segmented
           value={edge.head}
@@ -55,6 +62,10 @@
           onchange={(head) => void model.setEdgeHead(head as EdgeHead)} />
       </FieldRow>
     {/if}
+    <!-- What else mermaid lets this type say about one arrow (edgeFields). -->
+    {#each model.edgeFields as field (field.key)}
+      <DetailFieldRow {field} apply={applyField} dataKey={field.key} testID={TID.inspEdgeField} />
+    {/each}
     {#if model.canColorEdge}
       <FieldRow label={t('sel.color')}>
         <div class="contents" data-insp-focus="color">

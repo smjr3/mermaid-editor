@@ -12,7 +12,7 @@
   import * as Dialog from '$/components/ui/dialog';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import type { MessageKey } from '$/i18n/messages';
+  import { messages, type MessageKey } from '$/i18n/messages';
   import { applyToolEdit, editsBlocked, type ToolEditResult } from '$/util/codeHealth.svelte';
   import {
     colorAll,
@@ -35,8 +35,11 @@
   import { getTitle, setTitle, titleShown } from '$/util/diagramTitle';
   import { displayName } from '$/util/displayName';
   import { env } from '$/util/env';
+  import { diagramOptions, setDiagramOption, type DiagramOption } from '$/util/diagramOptions';
   import {
     directionUnsupportedKey,
+    elkCycles,
+    elkModelOrders,
     elkPlacements,
     getElkOptions,
     getFullDirection,
@@ -78,7 +81,8 @@
   // engine, spacing: layout.ts), colours written in the code (line colour, lanes, every
   // object, every arrow: colors.ts), the title (diagramTitle.ts), the font
   // (diagramFont.ts), the hand-drawn look, the icons (the picker and the pack dialogs,
-  // the unknown names, the AI briefing) and, for diagrams whose parts cannot be clicked,
+  // the unknown names, the AI briefing), the type's own options (diagramOptions.ts) and,
+  // for diagrams whose parts cannot be clicked,
   // a list to select one. Rows the diagram type has no use for are left out, or say why.
   // `blocked`: the code is broken, so the rows that edit the code are disabled; the
   // config rows (theme, engine, spacing, line colour, font, hand-drawn) stay available.
@@ -190,6 +194,25 @@
   const onDirection = (value: string) => {
     if (value === 'fit') void fitToView();
     else void applyDirection(value as FullDirection);
+  };
+
+  // ---- Local: the type's own options (diagramOptions.ts): code ones are checked and
+  // refused while the code is broken, config ones always apply. ----
+  const typeOptions = $derived(diagramOptions(inputState.code, inputState.mermaid));
+  const applyOption = async (option: DiagramOption, value: string) => {
+    if (option.value === value) return;
+    message = '';
+    const change = setDiagramOption(inputState.code, inputState.mermaid, option.key, value);
+    if (!change) {
+      message = t('edit.breaks');
+      return;
+    }
+    if ('config' in change) updateConfig(change.config);
+    else message = refusal(await applyToolEdit(change.code));
+  };
+  const optionLabel = (option: DiagramOption, value: string) => {
+    const key = `${option.label}.${value}`;
+    return key in messages.en ? t(key as MessageKey) : value;
   };
 
   // ---- Title (code) ----
@@ -399,6 +422,44 @@
           {/each}
         </select>
       </FieldRow>
+      <FieldRow label={t('insp.elkCycle')}>
+        <select
+          class={selectClass}
+          value={elk.cycle}
+          aria-label={t('insp.elkCycle')}
+          title={t('insp.elkCycleHint')}
+          data-testid={TID.inspElkCycle}
+          onchange={(event) =>
+            updateConfig(
+              setElkOptions(inputState.mermaid, {
+                cycle: event.currentTarget.value as ElkOptions['cycle']
+              })
+            )}>
+          <option value="">{t('insp.elkPlacement.default')}</option>
+          {#each elkCycles as cycle (cycle)}
+            <option value={cycle}>{t(`insp.elkCycle.${cycle}`)}</option>
+          {/each}
+        </select>
+      </FieldRow>
+      <FieldRow label={t('insp.elkOrder')}>
+        <select
+          class={selectClass}
+          value={elk.modelOrder}
+          aria-label={t('insp.elkOrder')}
+          title={t('insp.elkOrderHint')}
+          data-testid={TID.inspElkOrder}
+          onchange={(event) =>
+            updateConfig(
+              setElkOptions(inputState.mermaid, {
+                modelOrder: event.currentTarget.value as ElkOptions['modelOrder']
+              })
+            )}>
+          <option value="">{t('insp.elkPlacement.default')}</option>
+          {#each elkModelOrders as order (order)}
+            <option value={order}>{t(`insp.elkOrder.${order}`)}</option>
+          {/each}
+        </select>
+      </FieldRow>
       <SwitchRow
         label={t('insp.elkMerge')}
         checked={elk.mergeEdges}
@@ -415,6 +476,53 @@
     </FieldRow>
   {/if}
 </PanelGroup>
+
+<!-- The type's own options (diagramOptions.ts): curve, look, numbering, a gantt's days … -->
+{#if typeOptions.length > 0}
+  <PanelGroup>
+    {#each typeOptions as option (option.key)}
+      <fieldset disabled={blocked && !option.config} class="contents">
+        {#if option.kind === 'switch'}
+          <SwitchRow
+            label={t(option.label)}
+            checked={option.value === 'on'}
+            testID={`${TID.inspOption}-${option.key}`}
+            onchange={(on) => void applyOption(option, on ? 'on' : 'off')} />
+        {:else}
+          <FieldRow label={t(option.label)}>
+            {#if option.kind === 'choice'}
+              <select
+                class={selectClass}
+                value={option.value}
+                aria-label={t(option.label)}
+                title={t(option.label)}
+                data-testid={`${TID.inspOption}-${option.key}`}
+                onchange={(event) => void applyOption(option, event.currentTarget.value)}>
+                {#each option.options ?? [] as value (value)}
+                  <option {value}>{optionLabel(option, value)}</option>
+                {/each}
+              </select>
+            {:else}
+              <input
+                class="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+                type={option.kind}
+                min={option.kind === 'number' ? 1 : undefined}
+                value={option.value}
+                placeholder={t('opt.empty')}
+                aria-label={t(option.label)}
+                title={t(option.label)}
+                data-testid={`${TID.inspOption}-${option.key}`}
+                onkeydown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+                onchange={(event) => void applyOption(option, event.currentTarget.value)} />
+            {/if}
+          </FieldRow>
+        {/if}
+      </fieldset>
+    {/each}
+  </PanelGroup>
+{/if}
 
 <!-- 線の色 (config), then the colours written in the code: lanes, objects, arrows. -->
 <PanelGroup>

@@ -212,20 +212,36 @@ export const elkPlacements = [
   'BRANDES_KOEPF'
 ] as const;
 export type ElkPlacement = (typeof elkPlacements)[number];
+/** Local: how ELK breaks cycles (`elk.cycleBreakingStrategy`). */
+export const elkCycles = [
+  'GREEDY',
+  'DEPTH_FIRST',
+  'INTERACTIVE',
+  'MODEL_ORDER',
+  'GREEDY_MODEL_ORDER'
+] as const;
+/** Local: how far ELK keeps the order nodes and arrows are written in (`elk.considerModelOrder`). */
+export const elkModelOrders = ['NONE', 'NODES_AND_EDGES', 'PREFER_EDGES', 'PREFER_NODES'] as const;
 export interface ElkOptions {
   /** '' leaves mermaid's default. */
   placement: ElkPlacement | '';
   mergeEdges: boolean;
+  cycle: (typeof elkCycles)[number] | '';
+  modelOrder: (typeof elkModelOrders)[number] | '';
 }
 
 /** The ELK options in the config JSON (the `elk` section). */
 export const getElkOptions = (config: string): ElkOptions => {
   const elk = (parse(config)?.elk ?? {}) as {
+    considerModelOrder?: unknown;
+    cycleBreakingStrategy?: unknown;
     mergeEdges?: unknown;
     nodePlacementStrategy?: unknown;
   };
   const placement = elkPlacements.find((value) => value === elk.nodePlacementStrategy) ?? '';
-  return { mergeEdges: elk.mergeEdges === true, placement };
+  const cycle = elkCycles.find((value) => value === elk.cycleBreakingStrategy) ?? '';
+  const modelOrder = elkModelOrders.find((value) => value === elk.considerModelOrder) ?? '';
+  return { cycle, mergeEdges: elk.mergeEdges === true, modelOrder, placement };
 };
 
 /**
@@ -235,12 +251,16 @@ export const getElkOptions = (config: string): ElkOptions => {
 export const setElkOptions = (config: string, next: Partial<ElkOptions>): string => {
   const parsed = parse(config);
   if (!parsed) return config;
-  const { mergeEdges, placement } = { ...getElkOptions(config), ...next };
+  const { cycle, mergeEdges, modelOrder, placement } = { ...getElkOptions(config), ...next };
   const elk = { ...((parsed.elk ?? {}) as Config) };
   delete elk.nodePlacementStrategy;
   delete elk.mergeEdges;
+  delete elk.cycleBreakingStrategy;
+  delete elk.considerModelOrder;
   if (placement) elk.nodePlacementStrategy = placement;
   if (mergeEdges) elk.mergeEdges = true;
+  if (cycle) elk.cycleBreakingStrategy = cycle;
+  if (modelOrder) elk.considerModelOrder = modelOrder;
   if (Object.keys(elk).length > 0) parsed.elk = elk;
   else delete parsed.elk;
   return JSON.stringify(parsed, undefined, 2);

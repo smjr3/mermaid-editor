@@ -168,16 +168,33 @@ describe('all four directions', () => {
 
 describe('ELK options', () => {
   it('reads and writes the node placement and merged arrows, leaving the defaults unwritten', () => {
-    expect(getElkOptions('{}')).toEqual({ mergeEdges: false, placement: '' });
+    expect(getElkOptions('{}')).toEqual({
+      cycle: '',
+      mergeEdges: false,
+      modelOrder: '',
+      placement: ''
+    });
     const set = setElkOptions('{"theme":"base"}', { mergeEdges: true, placement: 'SIMPLE' });
     expect(JSON.parse(set)).toEqual({
       elk: { mergeEdges: true, nodePlacementStrategy: 'SIMPLE' },
       theme: 'base'
     });
-    expect(getElkOptions(set)).toEqual({ mergeEdges: true, placement: 'SIMPLE' });
+    expect(getElkOptions(set)).toMatchObject({ mergeEdges: true, placement: 'SIMPLE' });
     const back = setElkOptions(set, { mergeEdges: false, placement: '' });
     expect(JSON.parse(back)).toEqual({ theme: 'base' });
     expect(getElkOptions('{"elk":{"nodePlacementStrategy":"bogus"}}').placement).toBe('');
     expect(setElkOptions('not json', { mergeEdges: true })).toBe('not json');
+  });
+
+  it('reads and writes how cycles are broken and the model order', () => {
+    const set = setElkOptions('{}', { cycle: 'DEPTH_FIRST', modelOrder: 'NODES_AND_EDGES' });
+    expect(JSON.parse(set)).toEqual({
+      elk: { considerModelOrder: 'NODES_AND_EDGES', cycleBreakingStrategy: 'DEPTH_FIRST' }
+    });
+    expect(getElkOptions(set)).toMatchObject({
+      cycle: 'DEPTH_FIRST',
+      modelOrder: 'NODES_AND_EDGES'
+    });
+    expect(JSON.parse(setElkOptions(set, { cycle: '', modelOrder: '' }))).toEqual({});
   });
 });

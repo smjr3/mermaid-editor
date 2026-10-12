@@ -9,8 +9,7 @@
   import { requestRename, selection, startConnect } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { toolbarPlacement, type Rect } from '$/util/toolbarPlacement';
-  import { showTab } from '$/util/toolsPane.svelte';
-  import { openCard } from '$/util/uiBus';
+  import { focusInspector } from '$/util/editorUi.svelte';
   import { tick, untrack } from 'svelte';
   import AddIcon from '~icons/material-symbols/add-circle-outline-rounded';
   import ConnectIcon from '~icons/material-symbols/arrow-right-alt-rounded';
@@ -88,12 +87,16 @@
   });
 
   const toggle = (which: 'color' | 'icon') => (open = open === which ? undefined : which);
+  // The inspector holds the Edit card with everything this toolbar leaves out: show the
+  // inspector and open that card.
   const more = () => {
-    document.querySelector<HTMLElement>(`[data-testid="${TID.toolsRailExpand}"]`)?.click();
-    showTab('fix');
-    // On a phone (the only place with the 編集/表示 switch) the tools are on its other side;
-    // openCard shows that side and opens the Edit card.
-    if (document.querySelector('#editorMode')) void openCard(TID.editCard);
+    focusInspector('name');
+    void tick().then(() => {
+      const header = document.querySelector<HTMLElement>(`[data-testid="${TID.editCard}"]`);
+      if (!header) return;
+      if (!header.closest('.card')?.classList.contains('isOpen')) header.click();
+      header.scrollIntoView({ block: 'nearest' });
+    });
   };
   const button =
     'flex size-8 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted aria-pressed:bg-muted';

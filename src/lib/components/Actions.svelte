@@ -54,6 +54,9 @@
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
   import WidthIcon from '~icons/material-symbols/width-rounded';
 
+  // Local: the export dialog shows this card open.
+  let { isOpen = false }: { isOpen?: boolean } = $props();
+
   const FONT_AWESOME_URL = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/${FAVersion}/css/all.min.css`;
 
   // Local: settles when the file is saved or the image is on the clipboard (imageExport.ts).
@@ -462,22 +465,6 @@ ${stylesheet}${svgString}`);
     );
   };
 
-  let gistURL = $state('');
-  $effect(() => {
-    const { loader } = validatedState.current;
-    if (loader?.type === 'gist') {
-      gistURL = loader.config.url;
-    }
-  });
-
-  const loadGist = () => {
-    if (!gistURL) {
-      return alert(t('actions.gistRequired'));
-    }
-    window.location.href = `${window.location.pathname}?gist=${gistURL}`;
-    logEvent('loadGist');
-  };
-
   let imageSizeMode: 'auto' | 'width' | 'height' = $state('auto');
 
   $effect(() => {
@@ -541,6 +528,7 @@ ${stylesheet}${svgString}`);
 <Card
   title={t('actions.title')}
   testID={TID.actionsCard}
+  {isOpen}
   isStackable
   icon={{ component: DownloadIcon, class: 'rotate-180' }}>
   <div class="flex min-w-fit flex-col gap-2 p-2">
@@ -640,12 +628,6 @@ ${stylesheet}${svgString}`);
         label={t('actions.copyMarkdown')}
         testID={TID.copyMarkdown} />
     </ExternalLinkWrapper>
-    {#if !env.isOffline}
-      <div class="flex w-full items-center gap-2">
-        <Input type="url" bind:value={gistURL} placeholder={t('actions.gistPlaceholder')} />
-        <Button onclick={loadGist}>{t('actions.loadGist')}</Button>
-      </div>
-    {/if}
     {#if isNetlify}
       <div class="flex w-full items-center justify-center">
         <a class="link text-sm text-gray-500 underline" href="https://netlify.com">

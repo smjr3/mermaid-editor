@@ -6,8 +6,9 @@
   import { Input } from '$/components/ui/input';
   import NewDiagram from '$/components/NewDiagram.svelte';
   import TemplateForms from '$/components/TemplateForms.svelte';
-  import { businessTemplatesName, localExamples, localSamples } from '$/util/localSamples';
-  import { getSampleDiagrams, type SampleExample } from '$/util/mermaid';
+  import { businessTemplatesName } from '$/util/localSamples';
+  import type { SampleExample } from '$/util/mermaid';
+  import { sampleCatalog } from '$/util/sampleCatalog';
   import { sampleNameKeys } from '$/util/sampleNames';
   import { templateForms } from '$/util/templateForms';
   import { templateDialog } from '$/util/templateNotice.svelte';
@@ -24,44 +25,7 @@
   // click loads the template into this tab; a business template that has a form also
   // offers "フォームで作る…", which opens that form (TemplateForms.svelte). "New
   // diagram…" above it opens an empty starter in a new tab.
-  const extras: Record<string, SampleExample[]> = {
-    ZenUML: [
-      {
-        title: 'Order Service',
-        isDefault: true,
-        code: `zenuml
-    title Order Service
-    @Actor Client #FFEBE6
-    @Boundary OrderController #0747A6
-    @EC2 <<BFF>> OrderService #E3FCEF
-    group BusinessService {
-      @Lambda PurchaseService
-      @AzureFunction InvoiceService
-    }
-
-    @Starter(Client)
-    // \`POST /orders\`
-    OrderController.post(payload) {
-      OrderService.create(payload) {
-        order = new Order(payload)
-        if(order != null) {
-          par {
-            PurchaseService.createPO(order)
-            InvoiceService.createInvoice(order)
-          }
-        }
-      }
-    }
-    `
-      }
-    ]
-  };
-
-  const samples = { ...getSampleDiagrams(), ...extras, ...localSamples };
-  // Local: Japanese examples join their group's list, after its own default.
-  for (const [name, list] of Object.entries(localExamples)) {
-    samples[name] = [...(samples[name] ?? []), ...list];
-  }
+  const samples = sampleCatalog();
   // Local: what a template's form may replace without asking.
   const sampleCodes = [
     defaultState.code,

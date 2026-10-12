@@ -68,8 +68,6 @@ test.describe('Save as .drawio and .vsdx', () => {
 });
 
 test.describe('名前を付けて保存 without the browser save dialog', () => {
-  test.use({ saveAs: 'manual' });
-
   test.beforeEach(async ({ editPage, page }) => {
     await editPage.start(url);
     await editPage.checkTextInView('承認');
@@ -112,8 +110,6 @@ test.describe('名前を付けて保存 without the browser save dialog', () => 
 });
 
 test.describe('名前を付けて保存 with the browser save dialog', () => {
-  test.use({ saveAs: 'picker' });
-
   test('writes the file to the handle the save dialog returns', async ({ editPage, page }) => {
     await page.addInitScript(() => {
       const state = window as unknown as {

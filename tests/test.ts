@@ -1,7 +1,9 @@
 import { C, TID } from '$/constants';
 import { createTranslator, resolveLocale } from '$/i18n/translate';
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
-import { verifyFileSizeGreaterThan, type EditorOptions } from './utils';
+import { downloadPNG, downloadSVG, openExport } from './helpers/exportDlg';
+import { loadSample, openNewDialog } from './helpers/newDlg';
+import type { EditorOptions } from './utils';
 
 // The app resolves its locale from import.meta.env, which does not exist in
 // Playwright's Node process, so read the same build-time variable directly and
@@ -50,40 +52,72 @@ export class EditorPage {
     await this.page.keyboard.press('Backspace');
   }
 
+  /** Opens the 書き出す dialog (helpers/exportDlg.ts). */
   async toggleActions() {
-    await this.page.getByTestId(TID.actionsCard).click();
+    await openExport(this.page);
   }
 
+  /** Opens the 新規 dialog on its サンプル tab (helpers/newDlg.ts). */
   async toggleSampleDiagrams() {
-    await this.page.getByTestId(TID.sampleDiagramsCard).click();
+    await openNewDialog(this.page, 'sample');
   }
 
   async checkAndDownloadPNG(expectedSize: number) {
-    const downloadPNGPromise = verifyFileSizeGreaterThan(this.page, 'diagram', 'png', expectedSize);
-    await this.page.getByTestId(TID.downloadPNG).click();
-    return await downloadPNGPromise;
+    return await downloadPNG(this.page, expectedSize);
   }
 
   async downloadSVG(expectedSize: number) {
-    const downloadSVGPromise = verifyFileSizeGreaterThan(this.page, 'diagram', 'svg', expectedSize);
-    await this.page.getByTestId(TID.downloadSVG).click();
-    return await downloadSVGPromise;
+    return await downloadSVG(this.page, expectedSize);
   }
 
   /**
-   * Loads a group's first template from the Templates card (Preset.svelte), opening the
-   * card if the fixture folded it. `diagramName` is the group's catalogue key ('Pie',
-   * 'Swimlane', '業務テンプレート'); `title` picks another of its templates.
+   * Loads a sample through the 新規 dialog's サンプル tab and opens it in this page
+   * (helpers/newDlg.ts). `diagramName` is the group's catalogue key ('Pie', 'Swimlane',
+   * '業務テンプレート'); `title` picks another of its samples.
    */
   async loadSampleDiagram(diagramName: string, title?: string) {
-    const picks = this.page.locator(
-      `[data-testid="${TID.templatePick}"][data-group="${diagramName}"]`
+    await loadSample(this, diagramName, title);
+  }
+
+  /**
+   * Runs `action` with `window.open` (and links that open a new tab) caught, and returns
+   * the absolute URL the page tried to open instead of opening it.
+   */
+  async captureWindowOpen(action: () => Promise<unknown>): Promise<string> {
+    await this.page.evaluate(() => {
+      const target = window as unknown as { __capturedOpen?: string[] };
+      target.__capturedOpen = [];
+      const record = (url: string) => target.__capturedOpen?.push(url);
+      window.open = (url?: string | URL) => {
+        record(String(url ?? ''));
+        return null;
+      };
+      if (!(window as unknown as { __captureLinks?: boolean }).__captureLinks) {
+        (window as unknown as { __captureLinks?: boolean }).__captureLinks = true;
+        document.addEventListener(
+          'click',
+          (event) => {
+            const link = (event.target as Element | null)?.closest?.('a[target="_blank"]');
+            if (!(link instanceof HTMLAnchorElement) || !target.__capturedOpen) return;
+            event.preventDefault();
+            record(link.href);
+          },
+          true
+        );
+      }
+    });
+    await action();
+    const handle = await this.page.waitForFunction(
+      () => (window as unknown as { __capturedOpen?: string[] }).__capturedOpen?.[0]
     );
-    const pick = title ? picks.and(this.page.locator(`[data-title="${title}"]`)) : picks.first();
-    if (!(await this.page.getByTestId(TID.templateSearch).isVisible())) {
-      await this.page.getByTestId(TID.sampleDiagramsCard).click();
-    }
-    await pick.click();
+    const url = (await handle.jsonValue()) as string;
+    return new URL(url, this.page.url()).href;
+  }
+
+  /** Opens `url` in this page with a full load (through about:blank, as `start` does). */
+  async openUrlHere(url: string) {
+    await this.page.goto('about:blank');
+    await this.page.goto(url);
   }
 
   /**
@@ -123,15 +157,7 @@ export class EditorPage {
   }
 
   async setEditorMode(mode: 'Code' | 'Config') {
-    const label = mode === 'Code' ? t('editor.textTab') : t('editor.configTab');
-    await this.page.getByRole('tab').getByText(label).click();
-  }
-
-  async checkDocURL(url: string | RegExp) {
-    await expect(this.page.getByTestId(TID.diagramDocumentationButton)).toHaveAttribute(
-      'href',
-      url
-    );
+    await this.page.getByTestId(`${TID.wsCodeTab}-${mode === 'Code' ? 'code' : 'config'}`).click();
   }
 
   async toggleTheme() {
@@ -153,67 +179,26 @@ export class EditorPage {
   }
 }
 
-/**
- * How a spec meets "名前を付けて保存" (saveFile.ts). Headless Chromium has
- * `showSaveFilePicker`, whose dialog a test cannot answer, so by default it is
- * removed and the editor's own name dialog is confirmed with the suggested
- * name as soon as it opens: a click on a download button still ends in a
- * Playwright download. `manual` removes the picker and leaves the dialog to the
- * test; `picker` leaves `window` alone for a spec that stubs the picker itself.
- */
-export type SaveAsMode = 'auto' | 'manual' | 'picker';
-
 export const test = base.extend<{
   editPage: EditorPage;
-  foldCodeWhileFixing: boolean;
   guideSeen: boolean;
-  saveAs: SaveAsMode;
 }>({
   // The first-visit guide floats over the page, so every spec starts with it already seen;
   // onboarding.spec.ts opts out with `test.use({ guideSeen: false })`.
-  // The code pane folds away while 直す is shown (toolsPane.svelte.ts); most specs read and
-  // type in the code next to the 直す cards, so they start with that turned off;
-  // toolsPane.spec.ts turns it on with `test.use({ foldCodeWhileFixing: true })`.
-  context: async ({ context, foldCodeWhileFixing, guideSeen, saveAs }, use) => {
-    if (saveAs !== 'picker') {
-      await context.addInitScript(
-        ({ auto, confirm, dialog }) => {
-          Object.defineProperty(window, 'showSaveFilePicker', {
-            configurable: true,
-            value: undefined,
-            writable: true
-          });
-          if (!auto) return;
-          new MutationObserver(() => {
-            // A second click before the dialog closes answers nothing (saveAsPrompt).
-            document
-              .querySelector<HTMLButtonElement>(
-                `[data-testid="${dialog}"][data-state="open"] [data-testid="${confirm}"]:not([disabled])`
-              )
-              ?.click();
-          }).observe(document, { attributes: true, childList: true, subtree: true });
-        },
-        { auto: saveAs === 'auto', confirm: TID.saveAsConfirm, dialog: TID.saveAsDialog }
-      );
-    }
+  context: async ({ context, guideSeen }, use) => {
     await context.addInitScript(
-      ({ fold, guideKey, seen }) => {
+      ({ guideKey, seen }) => {
         try {
           if (seen) window.localStorage.setItem(guideKey, 'true');
-          if (!fold && window.localStorage.getItem('foldCodeWhileFixing') === null) {
-            window.localStorage.setItem('foldCodeWhileFixing', 'false');
-          }
         } catch {
           // about:blank and opaque origins have no storage.
         }
       },
-      { fold: foldCodeWhileFixing, guideKey: C.guideDoneKey, seen: guideSeen }
+      { guideKey: C.guideDoneKey, seen: guideSeen }
     );
     await use(context);
   },
-  foldCodeWhileFixing: [false, { option: true }],
   guideSeen: [true, { option: true }],
-  saveAs: ['auto', { option: true }],
   editPage: async ({ page }, use) => {
     // Dismiss the editor chooser modal so it doesn't block interactions
     await page.addInitScript((key) => {
@@ -221,7 +206,6 @@ export const test = base.extend<{
     }, C.editorChooserDismissedKey);
     const editorPage = new EditorPage(page);
     await editorPage.start();
-    await editorPage.toggleSampleDiagrams();
     await use(editorPage);
   }
 });

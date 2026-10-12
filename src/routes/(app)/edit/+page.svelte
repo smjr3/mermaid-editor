@@ -1,523 +1,221 @@
 <script lang="ts">
   import { t } from '$/i18n';
-  import Actions from '$/components/Actions.svelte';
-  import AddControls from '$/components/AddControls.svelte';
-  import AiTools from '$/components/AiTools.svelte';
-  import Card from '$/components/Card/Card.svelte';
-  import CodeErrorNotice from '$/components/CodeErrorNotice.svelte';
-  import DiagramToolbar from '$/components/DiagramToolbar.svelte';
-  import DiagramDocButton from '$/components/DiagramDocumentationButton.svelte';
-  import Editor from '$/components/Editor.svelte';
-  import EditorPaneToggle from '$/components/EditorPaneToggle.svelte';
-  import EditorRail, { type RailTarget } from '$/components/EditorRail.svelte';
-  import EnhancedEditsButton from '$/components/EnhancedEditsButton.svelte';
+  import CanvasPane from '$/components/canvas/CanvasPane.svelte';
+  import ExportDialog from '$/components/dialogs/ExportDialog.svelte';
+  import NewDiagramDialog from '$/components/dialogs/NewDiagramDialog.svelte';
+  import ShareDialog from '$/components/dialogs/ShareDialog.svelte';
+  import CodePane from '$/components/editor/CodePane.svelte';
+  import PaneRail from '$/components/editor/PaneRail.svelte';
   import History from '$/components/History/History.svelte';
-  import IconPacks from '$/components/IconPacks.svelte';
-  import ColorControls from '$/components/ColorControls.svelte';
-  import EditControls from '$/components/EditControls.svelte';
-  import LayoutControls from '$/components/LayoutControls.svelte';
   import { startAutoSave } from '$/components/History/historyState.svelte';
+  import Inspector from '$/components/inspector/Inspector.svelte';
   import McWrapper from '$/components/McWrapper.svelte';
   import MermaidChartIcon from '$/components/MermaidChartIcon.svelte';
   import EditorChooserModal from '$/components/migration/EditorChooserModal.svelte';
   import Navbar from '$/components/Navbar.svelte';
-  import StyleCodeIcon from '$/components/StyleCodeIcon.svelte';
-  import Preset from '$/components/Preset.svelte';
-  import ResetConfigButton from '$/components/ResetConfigButton.svelte';
-  import SelectionLayer from '$/components/SelectionLayer.svelte';
-  import ShareLinks from '$/components/ShareLinks.svelte';
-  import { TID } from '$/constants';
-  import ToolsBar from '$/components/ToolsBar.svelte';
-  import ToolsTabs from '$/components/ToolsTabs.svelte';
-  import UndoRedoButtons from '$/components/UndoRedoButtons.svelte';
   import { Button } from '$/components/ui/button';
-  import { Separator } from '$/components/ui/separator';
   import * as Resizable from '$/components/ui/resizable';
-  import { Switch } from '$/components/ui/switch';
-  import { Toggle } from '$/components/ui/toggle';
-  import View from '$/components/View.svelte';
-  import type { EditorMode, Tab } from '$/types';
-  import { shouldShowEditorChooser } from '$/util/migration/domainMigration';
-  import { PanZoomState } from '$/util/panZoom';
-  import { env } from '$/util/env';
-  import { inputState, validatedState, updateCodeStore, urls } from '$/util/state.svelte';
-  import { codeHistory } from '$/util/undoStack.svelte';
-  import { logEvent, logMermaidChartClick } from '$/util/stats';
+  import { TID } from '$/constants';
+  import { editorUi } from '$/util/editorUi.svelte';
   import {
-    codeFoldedForFix,
-    foldCodeWhileFixing,
-    openSection,
-    paneOrder,
-    rememberToolsSize,
-    toolsAccordion,
-    toolsSizeFor,
-    toolsWidths,
-    widthModeOf,
-    type ToolsWidthMode
-  } from '$/util/toolsPane.svelte';
+    CODE_MIN,
+    editorCodeCollapsed,
+    editorInspectorCollapsed,
+    INSPECTOR_MAX,
+    INSPECTOR_MIN,
+    paneSizesFor,
+    rememberPaneSizes
+  } from '$/util/editorLayout.svelte';
+  import { env } from '$/util/env';
+  import { shouldShowEditorChooser } from '$/util/migration/domainMigration';
+  import { inputState, urls } from '$/util/state.svelte';
+  import { logEvent, logMermaidChartClick } from '$/util/stats';
+  import { codeHistory } from '$/util/undoStack.svelte';
   import { getContactSalesUrl, initHandler } from '$/util/util';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import CodeIcon from '~icons/custom/code';
-  import HistoryIcon from '~icons/material-symbols/history';
+  import InspectorIcon from '~icons/material-symbols/tune-rounded';
 
-  const panZoomState = new PanZoomState();
+  // Local: the editor is three columns (PC only): code | diagram | inspector. The code
+  // pane and the inspector fold to a thin rail each; their widths and whether they are
+  // folded are remembered (editorLayout.svelte.ts). The header's 新規, 共有 and 書き出す
+  // open dialogs (editorUi.svelte.ts); the history is a sheet over the inspector side.
+  let showEditorChooser = $state(false);
+  let isHistoryOpen = $state(false);
 
-  const tabSelectHandler = (tab: Tab) => {
-    const editorMode: EditorMode = tab.id === 'code' ? 'code' : 'config';
-    updateCodeStore({ editorMode });
+  // The widths, in % of the window, from the stored ones or 270px / 300px.
+  const initialSizes = paneSizesFor(globalThis.window?.innerWidth ?? 1280);
+
+  let codePane: Resizable.Pane | undefined = $state();
+  let inspectorPane: Resizable.Pane | undefined = $state();
+  let isCodeCollapsed = $state(untrack(() => editorCodeCollapsed.value));
+  let isInspectorCollapsed = $state(untrack(() => editorInspectorCollapsed.value));
+
+  editorUi.inspectorCollapsed = untrack(() => isInspectorCollapsed);
+  // Only once the stored layout is applied does a pane's size say what the user chose:
+  // paneforge reports the default sizes first.
+  let layoutReady = false;
+  const setCodeCollapsed = (collapsed: boolean) => {
+    isCodeCollapsed = collapsed;
+    if (layoutReady && editorCodeCollapsed.value !== collapsed) {
+      editorCodeCollapsed.value = collapsed;
+    }
+  };
+  const setInspectorCollapsed = (collapsed: boolean) => {
+    isInspectorCollapsed = collapsed;
+    editorUi.inspectorCollapsed = collapsed;
+    if (layoutReady && editorInspectorCollapsed.value !== collapsed) {
+      editorInspectorCollapsed.value = collapsed;
+    }
   };
 
-  const editorTabs: Tab[] = [
-    {
-      icon: CodeIcon,
-      id: 'code',
-      title: t('editor.textTab')
-    },
-    {
-      icon: StyleCodeIcon,
-      id: 'config',
-      title: t('editor.configTab'),
-      tooltip: t('editor.configTabTooltip')
+  // Lays the panes out as stored: after the first render, and again once the
+  // migrations (initHandler) may have seeded the widths from the previous layout.
+  const applyStoredLayout = () => {
+    const sizes = paneSizesFor(window.innerWidth);
+    for (const [pane, size, collapsed] of [
+      [codePane, sizes.code, editorCodeCollapsed.value],
+      [inspectorPane, sizes.inspector, editorInspectorCollapsed.value]
+    ] as const) {
+      if (!pane) continue;
+      if (collapsed) {
+        if (!pane.isCollapsed()) pane.collapse();
+      } else {
+        if (pane.isCollapsed()) pane.expand();
+        if (Math.abs(pane.getSize() - size) > 0.5) pane.resize(size);
+      }
     }
-  ];
+  };
 
-  // Local: start from the window's width so the desktop panes are laid out on the first
-  // render instead of mounting the tools pane a frame later.
-  let width = $state(globalThis.window?.innerWidth ?? 0);
-  let isMobile = $derived(width < 640);
-  let isViewMode = $state(true);
-  let showEditorChooser = $state(false);
+  // The inspector is asked to focus a control (the right-click menu): show it first.
+  $effect(() => {
+    if (!editorUi.focus) return;
+    untrack(() => {
+      if (inspectorPane?.isCollapsed()) inspectorPane.expand();
+    });
+  });
+
+  // A drag that ends remembers the widths the panes were left at.
+  const onDragging = (dragging: boolean) => {
+    if (dragging) return;
+    rememberPaneSizes({ code: codePane?.getSize(), inspector: inspectorPane?.getSize() });
+  };
 
   onMount(async () => {
     showEditorChooser = shouldShowEditorChooser();
+    setTimeout(applyStoredLayout);
     await initHandler();
+    applyStoredLayout();
+    layoutReady = true;
     // Local: the loaded diagram is where undo starts; what the URL replaced is not a step back.
     codeHistory.reset(inputState.code);
     window.addEventListener('appinstalled', () => {
-      logEvent('pwaInstalled', { isMobile });
+      logEvent('pwaInstalled', { isMobile: false });
     });
   });
 
   // Record the Timeline for the whole session, not just while the panel is open.
   onMount(() => startAutoSave());
-
-  let isHistoryOpen = $state(false);
-  let viewHost: HTMLDivElement | undefined = $state();
-
-  // Local: three desktop panes — by default tools (left), diagram (centre), code (right);
-  // the "swap panes" setting (toolsPane.svelte.ts) puts the code on the left as on
-  // mermaid.live. Each side pane collapses to an icon rail (EditorRail) on its own side
-  // whose icons reopen it on that section. A phone keeps upstream's code | diagram.
-  let editorPane: Resizable.Pane | undefined = $state();
-  let toolsPane: Resizable.Pane | undefined = $state();
-  let isEditorCollapsed = $state(false);
-  let isToolsCollapsed = $state(false);
-  const codeLeft = $derived(isMobile || paneOrder.value === 'code-left');
-  const codeSide = $derived(codeLeft ? 'left' : 'right');
-  const toolsSide = $derived(codeLeft ? 'right' : 'left');
-  // The tools get about a third of a wide window; 直す, with the longest forms and the
-  // tables, gets a width of its own (two fifths by default), remembered apart from the
-  // other tabs' (toolsPane.svelte.ts).
-  const widthMode = $derived(widthModeOf(toolsAccordion.tab));
-  const toolsSize = $derived(toolsSizeFor('normal', width));
-  const codeSize = $derived(isMobile ? 50 : width >= 1280 ? 27 : 25);
-  const applyToolsWidth = (pane: Resizable.Pane, mode: ToolsWidthMode) => {
-    const size = pane.getSize();
-    // Collapsed (or not laid out yet): leave it.
-    if (!size) return;
-    // The first run after an update keeps the width paneforge restored for the other tabs.
-    if (mode === 'normal' && toolsWidths.value.normal === undefined) {
-      rememberToolsSize('normal', size);
-      return;
-    }
-    const target = toolsSizeFor(mode, width);
-    if (Math.abs(size - target) > 0.5) pane.resize(target);
-  };
-  $effect(() => {
-    const mode = widthMode;
-    const pane = toolsPane;
-    if (isMobile || !pane) return;
-    // After paneforge has laid the panes out (also after a swap remounts them).
-    const timer = setTimeout(() => applyToolsWidth(pane, mode));
-    return () => clearTimeout(timer);
-  });
-  // A width the user drags the tools pane to is remembered for the tab shown (直す or not).
-  const onToolsDivider = (dragging: boolean) => {
-    if (dragging || !toolsPane) return;
-    rememberToolsSize(widthMode, toolsPane.getSize());
-  };
-  // While 直す is shown the code folds away (unless turned off in the tools header) and
-  // comes back when another tab is shown — also after a reload, which starts on 作る.
-  $effect(() => {
-    const fold = widthMode === 'fix' && foldCodeWhileFixing.value;
-    const pane = editorPane;
-    if (isMobile || !pane) return;
-    const timer = setTimeout(() => {
-      if (fold) {
-        if (!pane.isCollapsed()) {
-          codeFoldedForFix.value = true;
-          pane.collapse();
-        }
-      } else if (codeFoldedForFix.value) {
-        codeFoldedForFix.value = false;
-        if (pane.isCollapsed()) pane.expand();
-      }
-    });
-    return () => clearTimeout(timer);
-  });
-  // The tool cards are an accordion only in the desktop tools pane.
-  $effect.pre(() => {
-    toolsAccordion.enabled = !isMobile;
-  });
-  const railCards: Partial<Record<RailTarget, string>> = {
-    actions: TID.actionsCard,
-    add: TID.addCard,
-    ai: TID.aiCard,
-    colors: TID.colorsCard,
-    edit: TID.editCard,
-    icons: TID.iconPacksCard,
-    layout: TID.layoutCard,
-    samples: TID.sampleDiagramsCard,
-    share: TID.shareCard
-  };
-  const openCodeFromRail = (target: RailTarget) => {
-    editorPane?.expand();
-    if (target === 'code' || target === 'config') {
-      updateCodeStore({ editorMode: target });
-    }
-  };
-  const openToolsFromRail = (target: RailTarget) => {
-    toolsPane?.expand();
-    const card = railCards[target];
-    if (card) openSection(card);
-  };
-  $effect(() => {
-    if (isMobile) {
-      editorPane?.resize(50);
-    }
-  });
 </script>
 
-<div class="flex h-full flex-col overflow-hidden">
-  {#snippet mobileToggle()}
-    <div class="flex items-center gap-2">
-      {t('editor.mobileEdit')}
-      <Switch
-        id="editorMode"
-        class="data-[state=checked]:bg-accent"
-        bind:checked={isViewMode}
-        onclick={() => {
-          logEvent('mobileViewToggle');
-        }} />
-      {t('editor.mobileView')}
-    </div>
-  {/snippet}
+<div class="h-full overflow-x-auto overflow-y-hidden">
+  <div class="flex h-full min-w-[1024px] flex-col overflow-hidden">
+    <Navbar bind:historyOpen={isHistoryOpen}>
+      {#if env.isEnabledMermaidChartLinks}
+        <McWrapper labelPrefix="Opens ">
+          <Button
+            size="sm"
+            href={getContactSalesUrl()}
+            target="_blank"
+            onclick={() => logMermaidChartClick('contactSales')}>
+            <MermaidChartIcon />
+            Contact sales
+          </Button>
+        </McWrapper>
+        <McWrapper>
+          <Button
+            variant="accent"
+            size="sm"
+            href={urls.current.mermaidChart({ medium: 'save_diagram' }).save}
+            target="_blank"
+            onclick={() => logMermaidChartClick('saveDiagram')}>
+            <MermaidChartIcon />
+            Save diagram
+          </Button>
+        </McWrapper>
+      {/if}
+    </Navbar>
 
-  <Navbar mobileToggle={isMobile ? mobileToggle : undefined}>
-    <Toggle
-      bind:pressed={isHistoryOpen}
-      size="sm"
-      title={t('editor.historyToggle')}
-      aria-label={t('editor.historyToggle')}>
-      <HistoryIcon />
-    </Toggle>
-    {#if env.isEnabledMermaidChartLinks}
-      <Separator orientation="vertical" />
-      <McWrapper labelPrefix="Opens ">
-        <Button
-          size="sm"
-          href={getContactSalesUrl()}
-          target="_blank"
-          onclick={() => logMermaidChartClick('contactSales')}>
-          <MermaidChartIcon />
-          Contact sales
-        </Button>
-      </McWrapper>
-      <McWrapper>
-        <Button
-          variant="accent"
-          size="sm"
-          href={urls.current.mermaidChart({ medium: 'save_diagram' }).save}
-          target="_blank"
-          onclick={() => logMermaidChartClick('saveDiagram')}>
-          <MermaidChartIcon />
-          Save diagram
-        </Button>
-      </McWrapper>
-    {/if}
-  </Navbar>
-
-  <div class="relative flex flex-1 flex-col overflow-hidden" bind:clientWidth={width}>
-    <div
-      class={[
-        'flex size-full',
-        isMobile && ['w-[200%] duration-300', isViewMode && '-translate-x-1/2']
-      ]}>
-      {#snippet tools()}
-        <LayoutControls />
-        <AddControls />
-        <EditControls />
-        <ColorControls />
-        <IconPacks />
-        <Preset />
-        <Actions />
-        <ShareLinks />
-        <AiTools />
-      {/snippet}
-      {#snippet codePane(order: number)}
+    <div class="relative flex min-h-0 flex-1 overflow-hidden">
+      {#if isCodeCollapsed}
+        <PaneRail
+          side="left"
+          icon={CodeIcon}
+          testID={TID.wsCodeRail}
+          expandTestID={TID.wsCodeExpand}
+          expandLabel={t('ws.codeExpand')}
+          onexpand={() => codePane?.expand()} />
+      {/if}
+      <Resizable.PaneGroup direction="horizontal" class="min-w-0 flex-1">
         <Resizable.Pane
-          bind:this={editorPane}
+          bind:this={codePane}
           id="pane-code"
-          {order}
-          defaultSize={codeSize}
-          minSize={15}
-          collapsible={!isMobile}
-          collapsedSize={0}
-          onResize={(size) => (isEditorCollapsed = !isMobile && size === 0)}>
-          <div
-            class={[
-              'flex h-full flex-col gap-4 sm:gap-0 sm:bg-card sm:[&_.card]:rounded-none sm:[&_.card]:border-0 sm:[&_.card]:border-b sm:[&_.card]:border-border',
-              isMobile ? 'overflow-y-auto [&>.card:first-child]:shrink-0' : 'code-pane'
-            ]}
-            data-side={codeSide}>
-            <Card
-              onselect={tabSelectHandler}
-              isOpen
-              tabs={editorTabs}
-              activeTabID={validatedState.current.editorMode}
-              isClosable={false}>
-              {#snippet actions()}
-                <UndoRedoButtons />
-                <ResetConfigButton />
-                <DiagramDocButton />
-                {#if !isMobile}
-                  <EditorPaneToggle
-                    collapsed={false}
-                    side={codeSide}
-                    ontoggle={() => editorPane?.collapse()} />
-                {/if}
-              {/snippet}
-              {#if isMobile}
-                <!-- Local: on a phone the tool cards follow the editor in one scrolling
-                     column; the editor keeps a usable height however many cards there are. -->
-                <div class="h-full min-h-[40vh]"><Editor {isMobile} /></div>
-              {:else}
-                <Editor {isMobile} />
-              {/if}
-            </Card>
-
-            {#if isMobile}
-              <CodeErrorNotice testID={TID.toolsErrorNotice} />
-              <div class="group flex flex-wrap justify-between gap-4">
-                {@render tools()}
-              </div>
-            {/if}
-          </div>
-        </Resizable.Pane>
-      {/snippet}
-      {#snippet toolsColumn(order: number)}
-        <Resizable.Pane
-          bind:this={toolsPane}
-          id="pane-tools"
-          {order}
-          defaultSize={toolsSize}
-          minSize={15}
+          order={1}
+          defaultSize={initialSizes.code}
+          minSize={CODE_MIN}
           collapsible
           collapsedSize={0}
-          onResize={(size) => (isToolsCollapsed = size === 0)}>
-          <div
-            class="tools-pane flex h-full flex-col bg-card [&_.card]:rounded-none [&_.card]:border-0 [&_.card]:border-b [&_.card]:border-border"
-            data-side={toolsSide}
-            data-testid={TID.toolsPane}>
-            <ToolsBar side={toolsSide} oncollapse={() => toolsPane?.collapse()} />
-            <!-- Three tabs (作る / 直す / 出す), each an accordion of sections: one open at
-                 a time, taking the rest of the pane and the only thing that scrolls. -->
-            <ToolsTabs />
+          onResize={(size) => setCodeCollapsed(size === 0)}>
+          <div class="h-full" data-testid={TID.wsCodePane}>
+            <CodePane oncollapse={() => codePane?.collapse()} />
           </div>
         </Resizable.Pane>
-      {/snippet}
-      {#if !isMobile && (codeLeft ? isEditorCollapsed : isToolsCollapsed)}
-        <EditorRail
-          kind={codeLeft ? 'code' : 'tools'}
-          side="left"
-          onopen={codeLeft ? openCodeFromRail : openToolsFromRail} />
-      {/if}
-      <!-- Local: on desktop the tools, the diagram and the code are fixed panes split by
-           visible dividers, with flat sections instead of floating cards. On mobile the
-           tools stay under the editor, swiped against the diagram. Each order saves its
-           own sizes, so swapping never applies one order's widths to the other. -->
-      {#key codeLeft}
-        <Resizable.PaneGroup
-          direction="horizontal"
-          autoSaveId={codeLeft ? 'liveEditor' : 'liveEditorToolsLeft'}
-          class="min-w-0 flex-1 gap-4 p-2 pt-0 sm:gap-0 sm:border-t sm:p-0">
-          {#if codeLeft}
-            {@render codePane(1)}
-            <Resizable.Handle withHandle class="hidden sm:flex" />
-          {:else}
-            {@render toolsColumn(1)}
-            <Resizable.Handle withHandle onDraggingChange={onToolsDivider} />
-          {/if}
-          <Resizable.Pane
-            id="pane-view"
-            order={2}
-            minSize={15}
-            class="flex h-full flex-1 flex-col overflow-hidden">
-            <DiagramToolbar {panZoomState} fullScreenHref={urls.current.view} />
-            <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" bind:this={viewHost}>
-              <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
-              <!-- Local: click the diagram to select, then change it (SelectionLayer). -->
-              <SelectionLayer host={viewHost} />
-              <!-- Local: what is wrong with the code and the way back (codeHealth.svelte.ts). -->
-              <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex justify-center">
-                <!-- data-selection-avoid: the mini toolbar keeps clear of it. -->
-                <div class="pointer-events-auto w-full max-w-xl" data-selection-avoid>
-                  <CodeErrorNotice testID={TID.diagramErrorNotice} />
-                </div>
-              </div>
-              {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5 hidden md:block">
-                  <EnhancedEditsButton />
-                </div>{/if}
-            </div>
-          </Resizable.Pane>
-          {#if !codeLeft}
-            <Resizable.Handle withHandle />
-            {@render codePane(4)}
-          {:else if !isMobile}
-            <Resizable.Handle withHandle onDraggingChange={onToolsDivider} />
-            {@render toolsColumn(4)}
-          {/if}
-        </Resizable.PaneGroup>
-      {/key}
-      {#if !isMobile && (codeLeft ? isToolsCollapsed : isEditorCollapsed)}
-        <EditorRail
-          kind={codeLeft ? 'tools' : 'code'}
+        <Resizable.Handle withHandle onDraggingChange={onDragging} />
+        <Resizable.Pane id="pane-view" order={2} minSize={20} class="flex h-full flex-col">
+          <div class="h-full min-h-0" data-testid={TID.wsCanvasPane}>
+            <CanvasPane />
+          </div>
+        </Resizable.Pane>
+        <Resizable.Handle withHandle onDraggingChange={onDragging} />
+        <Resizable.Pane
+          bind:this={inspectorPane}
+          id="pane-inspector"
+          order={3}
+          defaultSize={initialSizes.inspector}
+          minSize={INSPECTOR_MIN}
+          maxSize={INSPECTOR_MAX}
+          collapsible
+          collapsedSize={0}
+          onResize={(size) => setInspectorCollapsed(size === 0)}>
+          <div class="h-full" data-testid={TID.wsInspectorPane}>
+            <Inspector oncollapse={() => inspectorPane?.collapse()} />
+          </div>
+        </Resizable.Pane>
+      </Resizable.PaneGroup>
+      {#if isInspectorCollapsed}
+        <PaneRail
           side="right"
-          onopen={codeLeft ? openToolsFromRail : openCodeFromRail} />
+          icon={InspectorIcon}
+          testID={TID.wsInspectorRail}
+          expandTestID={TID.wsInspectorExpand}
+          expandLabel={t('ws.inspectorExpand')}
+          onexpand={() => inspectorPane?.expand()} />
+      {/if}
+      {#if isHistoryOpen}
+        <!-- The history is a sheet over the inspector side rather than a fourth pane, so
+             the diagram keeps its width. -->
+        <aside
+          class="absolute inset-y-0 right-0 z-30 flex w-96 max-w-[45%] flex-col border-l border-border bg-card shadow-xl [&_.card]:rounded-none [&_.card]:border-0"
+          aria-label={t('editor.historyToggle')}
+          data-testid={TID.historyPanel}>
+          <History />
+        </aside>
       {/if}
     </div>
-    {#if isHistoryOpen && !isMobile}
-      <!-- Local: the history is a sheet over the code pane rather than a fourth pane, so
-           the diagram keeps its width (a pane squeezed it to a sliver at 1280px). -->
-      <aside
-        class={[
-          'absolute inset-y-0 z-30 flex w-96 max-w-[45%] flex-col border-border bg-card shadow-xl sm:border-t [&_.card]:rounded-none [&_.card]:border-0',
-          codeSide === 'right' ? 'right-0 border-l' : 'left-0 border-r'
-        ]}
-        aria-label={t('editor.historyToggle')}
-        data-testid={TID.historyPanel}>
-        <History />
-      </aside>
-    {/if}
   </div>
 </div>
 
+<NewDiagramDialog />
+<ExportDialog />
+<ShareDialog />
 <EditorChooserModal bind:open={showEditorChooser} />
-
-<style>
-  /* Local: a narrow code pane shows the editor header's buttons (tabs, undo/redo,
-     reset, docs) as icons only, so the collapse button at its end stays in view. */
-  .code-pane {
-    container: code-pane / inline-size;
-  }
-  @container code-pane (max-width: 30rem) {
-    .code-pane :global(.card > [role='toolbar'] :is(button, a)) {
-      font-size: 0;
-      gap: 0;
-      padding-inline: 0.5rem;
-    }
-  }
-  @container code-pane (max-width: 20rem) {
-    .code-pane :global(.card > [role='toolbar'] :is(button, a)) {
-      padding-inline: 0.25rem;
-    }
-    .code-pane :global(.card > [role='toolbar'] :is(div, ul)) {
-      gap: 0.125rem;
-    }
-  }
-  /* Local: the tool cards' forms in the desktop tools pane. Written against the cards'
-     existing markup, so the cards themselves (also stacked under the editor on a phone)
-     keep their own classes: controls at one height (h-9), a gap of 0.5rem in a section,
-     a little more space above each section title. */
-  .tools-pane :global(.card .min-w-fit) {
-    min-width: 0;
-  }
-  .tools-pane :global(.card :is(button, a, select).h-8) {
-    height: 2.25rem;
-  }
-  .tools-pane :global(.card .flex-col:has(> span.font-semibold:first-child)),
-  .tools-pane :global(.card .flex.items-center.gap-1) {
-    gap: 0.5rem;
-  }
-  .tools-pane :global(.card .flex-col:has(> span.font-semibold:first-child):not(:first-child)) {
-    margin-top: 0.375rem;
-  }
-  /* One column (user feedback 2026-10-08: 直す was too cramped to edit in): every
-     label-and-control row puts its label above a control as wide as the pane, instead of
-     a fixed-width label beside a squeezed control, or two half-width rows side by side. */
-  .tools-pane
-    :global(
-      .card
-        .flex-col
-        > :is(label, div).items-center:has(
-          > span.shrink-0:first-child + :is(select, input):last-child
-        )
-    ) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.125rem;
-  }
-  .tools-pane
-    :global(
-      .card
-        .flex-col
-        > :is(label, div).items-center:has(
-          > span.shrink-0:first-child + :is(select, input):last-child
-        )
-        > :is(select, input)
-    ) {
-    flex: none;
-    width: 100%;
-  }
-  .tools-pane
-    :global(
-      .card
-        .flex-col
-        > :is(label, div).items-center:has(
-          > span.shrink-0:first-child + :is(select, input):last-child
-        )
-        > span.shrink-0
-    ) {
-    width: auto;
-  }
-  /* A choice on its own line is as wide as the pane; one beside its button takes the
-     rest of the row. No control is ever wider than the pane. */
-  .tools-pane :global(.card .flex-col > select) {
-    width: 100%;
-  }
-  .tools-pane :global(.card :is(select, input)) {
-    min-width: 0;
-    max-width: 100%;
-  }
-  .tools-pane :global(.card .flex.items-center:has(> select + button) > select) {
-    flex: 1 1 0%;
-  }
-  /* Rows of buttons wrap rather than run past the pane's edge. */
-  .tools-pane :global(.card .flex.items-center:has(> button + button)) {
-    flex-wrap: wrap;
-  }
-  /* A section's title (図形・レーン, 矢印, 表で編集, …) stays at the top of the open card
-     while its controls scroll under it, so a long form keeps saying what it edits. */
-  .tools-pane :global(.card .flex-col > span.font-semibold:first-child) {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background-color: var(--color-card);
-    padding-block: 0.25rem;
-  }
-  /* A table scrolls sideways inside its own box, never the pane. */
-  .tools-pane :global(.card [data-testid='table-editor']) {
-    min-width: 0;
-    max-width: 100%;
-  }
-</style>

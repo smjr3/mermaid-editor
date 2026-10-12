@@ -23,7 +23,7 @@
     fullScreenHref,
     panZoomState
   }: {
-    fullScreenHref: string;
+    fullScreenHref?: string;
     panZoomState: PanZoomState;
   } = $props();
 
@@ -69,17 +69,19 @@
     onclick={() => panZoomState.reset()}>
     <ArrowsToCircleIcon />
   </Button>
-  <Button
-    variant="ghost"
-    size="icon"
-    class="size-8"
-    title={t('panzoom.fullScreen')}
-    aria-label={t('panzoom.fullScreen')}
-    data-testid={TID.fullScreenButton}
-    href={fullScreenHref}
-    target="_blank">
-    <ExpandIcon />
-  </Button>
+  {#if fullScreenHref}
+    <Button
+      variant="ghost"
+      size="icon"
+      class="size-8"
+      title={t('panzoom.fullScreen')}
+      aria-label={t('panzoom.fullScreen')}
+      data-testid={TID.fullScreenButton}
+      href={fullScreenHref}
+      target="_blank">
+      <ExpandIcon />
+    </Button>
+  {/if}
   <Separator orientation="vertical" class="mx-1" />
   <Toggle
     bind:pressed={() => inputState.rough, (rough) => updateCodeStore({ rough })}

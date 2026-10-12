@@ -475,6 +475,9 @@ class SelectionModel {
     }
   }
 
+  /** Applies an addition made elsewhere (the add bar, a lane's ＋追加), as `added` does. */
+  insert = (result: Added | undefined) => this.added(result);
+
   addAfter = async () => {
     const { kind, object } = this;
     if (!kind || !object) return;

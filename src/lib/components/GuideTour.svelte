@@ -12,7 +12,11 @@
   const steps = [
     {
       body: t('guide.step1.body'),
-      selectors: [`[data-testid="${TID.toolsPane}"]`, `[data-testid="${TID.toolsRail}"]`, '#view'],
+      selectors: [
+        `[data-testid="${TID.canvasInsertBar}"]`,
+        `[data-testid="${TID.inspPanel}"]`,
+        '#view'
+      ],
       side: 'left' as const,
       title: t('guide.step1.title')
     },

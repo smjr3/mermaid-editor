@@ -1,5 +1,6 @@
 /**
- * Local: the Add card for every other diagram type (AddActions.svelte). Each
+ * Local: the add actions for every other diagram type (the add bar over the diagram,
+ * canvas/SpecInsert.svelte, renders each as a form). Each
  * type lists its actions — add a participant, a message, a state, a task, … —
  * as fields the card renders and a function that writes the mermaid lines.
  * New lines go after the last statement (before trailing style statements),

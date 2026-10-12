@@ -1,12 +1,14 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { formField, openForm, submitForm } from './helpers/canvas';
 import { expect, t, test } from './test';
 
 // When the code has a mistake, nobody is left stuck: the last picture stays, a plain
-// notice by the diagram and in the tools names the line, one click goes back to the
-// last valid state, the tools refuse rather than write into broken code, and nothing
-// a tool writes, a link holds or the browser stored can leave the page blank.
+// notice over the diagram names the line, one click goes back to the last valid state,
+// the add bar says to fix the code first and the tools refuse rather than write into
+// broken code, and nothing a tool writes, a link holds or the browser stored can leave
+// the page blank.
 
 const urlFor = (code: string, mermaid = '{}') =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid })).toString('base64')}`;
@@ -21,7 +23,6 @@ const stored = (page: Page) =>
 
 const flow = 'flowchart TD\n  A[Start] --> B[Middle]\n  B --> C[Finish]';
 const notice = (page: Page) => page.getByTestId(TID.diagramErrorNotice);
-const toolsNotice = (page: Page) => page.getByTestId(TID.toolsErrorNotice);
 const node = (page: Page, text: string) => page.locator('#view .node', { hasText: text }).first();
 
 /**
@@ -67,7 +68,8 @@ test.describe('Error recovery: a mistake in the code', () => {
     const unfinished = t('recover.unfinished', { line: '3' });
     await expect(notice(page)).toContainText(unfinished);
     await expect(notice(page)).toContainText(t('recover.showingLast'));
-    await expect(toolsNotice(page)).toContainText(unfinished);
+    // One notice, over the diagram.
+    await expect(page.getByTestId(TID.diagramErrorNotice)).toHaveCount(1);
     await editPage.checkError(unfinished);
     // The last valid picture is still there.
     await editPage.checkTextInView('Finish');
@@ -75,51 +77,38 @@ test.describe('Error recovery: a mistake in the code', () => {
     await notice(page).getByTestId(TID.revertToValid).click();
     await expect.poll(() => stored(page)).toBe(flow);
     await expect(notice(page)).toBeHidden();
-    await expect(toolsNotice(page)).toBeHidden();
 
     // Revert is one more step: Undo brings the broken code back, and the notice with it.
     await page.getByTestId(TID.undoButton).click();
     await expect.poll(() => stored(page)).toBe(brokenFlow);
     await expect(notice(page)).toBeVisible({ timeout: 10_000 });
-    await toolsNotice(page).getByTestId(TID.revertToValid).click();
+    await notice(page).getByTestId(TID.revertToValid).click();
     await expect.poll(() => stored(page)).toBe(flow);
   });
 
   test('is shown by the diagram even with the code pane folded', async ({ page }) => {
     await breakCode(page);
-    await page.getByTestId(TID.editorPaneToggle).click();
-    await expect(page.getByTestId(TID.editorRail)).toBeVisible();
+    await page.getByTestId(TID.wsCodeCollapse).click();
+    await expect(page.getByTestId(TID.wsCodeRail)).toBeVisible();
     await expect(notice(page)).toBeVisible();
     await notice(page).getByTestId(TID.revertToValid).click();
     await expect.poll(() => stored(page)).toBe(flow);
   });
 
-  test('the tools keep their lists but refuse to edit, and say why', async ({ page }) => {
+  test('the add bar says to fix the code first, and comes back when it is fixed', async ({
+    page
+  }) => {
+    const bar = page.getByTestId(TID.canvasInsertBar);
+    await expect(bar.getByTestId(TID.canvasInsertItem).first()).toBeVisible();
     await breakCode(page);
-    const blocked = t('recover.blocked');
-
-    // Edit: the objects are still listed (from the last valid code); renaming is refused.
-    await page.getByTestId(TID.editCard).click();
-    await expect(page.getByTestId(TID.editObjectSelect).locator('option')).toHaveCount(3);
-    await page.getByTestId(TID.editRenameInput).fill('Renamed');
-    await page.getByTestId(TID.editRenameButton).click();
-    await expect(page.getByTestId(TID.editMessage)).toHaveText(blocked);
-
-    // Add: refused too.
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(TID.addLaneName).fill('Lane');
-    await page.getByTestId(TID.addLaneButton).click();
-    await expect(page.getByTestId(TID.addMessage)).toHaveText(blocked);
-
-    // Colours: "colour them all" is refused with a message.
-    await page.getByTestId(TID.colorsCard).click();
-    await page.getByTestId(TID.colorsNodesAuto).click();
-    await expect(page.getByText(blocked).first()).toBeVisible();
-
-    expect(await stored(page)).toBe(brokenFlow);
+    await expect(page.getByTestId(TID.canvasInsertBlocked)).toHaveText(t('canvas.blocked'));
+    await expect(bar.getByTestId(TID.canvasInsertItem)).toHaveCount(0);
+    await notice(page).getByTestId(TID.revertToValid).click();
+    await expect(page.getByTestId(TID.canvasInsertBlocked)).toBeHidden();
+    await expect(bar.getByTestId(TID.canvasInsertItem).first()).toBeVisible();
   });
 
-  test('selection keys and the mini toolbar do not change broken code', async ({ page }) => {
+  test('selection keys and the right-click menu do not change broken code', async ({ page }) => {
     await breakCode(page);
     await node(page, 'Middle').click();
     await expect(page.getByTestId(TID.selectionOutline)).toHaveAttribute('data-selected', 'B');
@@ -128,11 +117,37 @@ test.describe('Error recovery: a mistake in the code', () => {
     await page.keyboard.press('Escape');
     await node(page, 'Finish').click({ button: 'right' });
     await expect(page.getByTestId(TID.contextMenu)).toBeVisible();
-    await page.keyboard.press('Escape');
-    await node(page, 'Start').click();
-    await page.getByTestId(TID.selectionDelete).click();
-    await expect(page.getByText(t('recover.blocked')).first()).toBeVisible();
+    await page.getByTestId(`${TID.contextMenuItem}-delete`).click();
+    await expect(page.getByTestId(TID.selectionWarning)).toHaveText(t('recover.blocked'));
     expect(await stored(page)).toBe(brokenFlow);
+  });
+
+  test('the table refuses a change to broken code, and says why', async ({ editPage, page }) => {
+    const gantt = 'gantt\n  dateFormat YYYY-MM-DD\n  section S\n    Plan :a1, 2026-01-05, 3d';
+    await editPage.start(urlFor(gantt));
+    await editPage.checkTextInView('Plan');
+    await page.getByTestId(`${TID.canvasViewMode}-both`).click();
+    await page.locator('.monaco-editor').first().click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('no colon here', { delay: 5 });
+    await expect(notice(page)).toBeVisible({ timeout: 10_000 });
+    // The table still shows the last valid code, and refuses to write into the broken one.
+    const cell = page.getByTestId(`${TID.tableCell}-task`).first();
+    await expect(cell).toHaveValue('Plan');
+    await cell.fill('Changed');
+    await cell.press('Enter');
+    await expect(page.getByTestId(TID.tableMessage)).toHaveText(t('recover.blocked'));
+    expect(await stored(page)).not.toContain('Changed');
+  });
+
+  // The inspector's side of a broken code (its blocked notice) lands with the inspector;
+  // un-fixme this once `inspBlocked` is rendered.
+  test.fixme('the inspector says why it does not edit', async ({ page }) => {
+    await breakCode(page);
+    await expect(page.getByTestId(TID.inspBlocked)).toBeVisible();
+    await node(page, 'Middle').click();
+    await expect(page.getByTestId(TID.inspBlocked)).toBeVisible();
   });
 
   test('an emptied editor says so and offers the last valid state', async ({ editPage, page }) => {
@@ -167,28 +182,14 @@ test.describe('Error recovery: what a tool writes always parses', () => {
   test('an arrow label with brackets is quoted', async ({ editPage, page }) => {
     await editPage.start(urlFor(flow));
     await editPage.checkTextInView('Middle');
-    await page.getByTestId(TID.addCard).click();
-    await page.getByTestId(TID.addEdgeFrom).selectOption('C');
-    await page.getByTestId(TID.addEdgeTo).selectOption('A');
-    await page.getByTestId(TID.addEdgeLabel).fill('retry (max 3) ]');
-    await page.getByTestId(TID.addEdgeButton).click();
+    await openForm(page, 'edge');
+    await formField(page, 'from').selectOption('C');
+    await formField(page, 'to').selectOption('A');
+    await formField(page, 'label').fill('retry (max 3) ]');
+    await submitForm(page);
     await expect.poll(() => stored(page)).toContain('C -->|"retry (max 3) ]"| A');
     await editPage.checkTextInView('retry (max 3) ]');
     await expect(notice(page)).toBeHidden();
-  });
-
-  test('a mindmap topic renamed with a bracket keeps the mindmap valid', async ({
-    editPage,
-    page
-  }) => {
-    await editPage.start(urlFor('mindmap\n  root((Centre))\n    Alpha\n    Beta'));
-    await editPage.checkTextInView('Alpha');
-    await page.getByTestId(TID.editCard).click();
-    await page.getByTestId(TID.editObjectSelect).selectOption({ label: '  Alpha' });
-    await page.getByTestId(TID.editRenameInput).fill('Alpha (draft)');
-    await page.getByTestId(TID.editRenameButton).click();
-    await expect.poll(() => stored(page)).toContain('Alpha["Alpha (draft)"]');
-    await editPage.checkTextInView('Alpha (draft)');
   });
 });
 

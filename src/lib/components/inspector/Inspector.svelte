@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AddControls from '$/components/AddControls.svelte';
   import AiTools from '$/components/AiTools.svelte';
   import CodeErrorNotice from '$/components/CodeErrorNotice.svelte';
   import ColorControls from '$/components/ColorControls.svelte';
@@ -40,7 +39,6 @@
   <div
     class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [&_.card]:flex-none [&_.card]:rounded-none [&_.card]:border-0 [&_.card]:border-b [&_.card]:border-border">
     <SelectionPanel />
-    <AddControls />
     <LayoutControls />
     <EditControls />
     <ColorControls />

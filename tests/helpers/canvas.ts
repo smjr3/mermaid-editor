@@ -9,7 +9,8 @@ export const nodeByText = (page: Page, text: string) =>
 
 /** Clicks an object in the diagram and waits for the selection outline. */
 export const selectByText = async (page: Page, text: string): Promise<void> => {
-  await nodeByText(page, text).click();
+  const node = page.locator('#view .node', { hasText: text }).first();
+  await ((await node.count()) > 0 ? node : nodeByText(page, text)).click();
   await expect(page.getByTestId(TID.selectionOutline)).toBeVisible();
 };
 
@@ -23,12 +24,60 @@ export const clearSelectionByClick = async (page: Page): Promise<void> => {
 
 export const insertBar = (page: Page) => page.getByTestId(TID.canvasInsertBar);
 
-/** Presses an add-bar item by its `data-insert` key. */
+const itemSelector = (key: string) =>
+  `[data-testid="${TID.canvasInsertItem}"][data-insert="${key}"]`;
+
+/** The add-bar items on the bar itself, by their `data-insert` keys, in order. */
+export const barItems = (page: Page) =>
+  insertBar(page)
+    .getByTestId(TID.canvasInsertItem)
+    .evaluateAll((items) => items.map((item) => item.getAttribute('data-insert') ?? ''));
+
+/**
+ * Presses an add-bar item by its `data-insert` key: on the bar, or under その他▾ (opened
+ * first) when the bar does not show it. An item with a form opens it in a popover.
+ */
 export const insert = async (page: Page, key: string): Promise<void> => {
-  await insertBar(page)
-    .locator(`[data-testid="${TID.canvasInsertItem}"][data-insert="${key}"]`)
-    .click();
+  const onBar = insertBar(page).locator(itemSelector(key));
+  if ((await onBar.count()) > 0) {
+    await onBar.click();
+    return;
+  }
+  const menu = page.getByTestId(TID.canvasInsertMenu);
+  if (!(await menu.isVisible())) await insertBar(page).getByTestId(TID.canvasInsertMore).click();
+  await menu.locator(itemSelector(key)).click();
 };
+
+/** The open add form (one at a time). */
+export const addForm = (page: Page) => page.getByTestId(TID.canvasAddForm);
+
+/** A field of the open add form by its `data-key`. */
+export const formField = (page: Page, key: string) =>
+  addForm(page).locator(`[data-testid="${TID.canvasAddFormField}"][data-key="${key}"]`);
+
+export const submitForm = (page: Page) =>
+  addForm(page).getByTestId(TID.canvasAddFormSubmit).click();
+
+export const formMessage = (page: Page) => page.getByTestId(TID.canvasAddFormMessage);
+
+export const closeForm = async (page: Page): Promise<void> => {
+  await addForm(page).getByTestId(TID.canvasAddFormClose).click();
+  await expect(addForm(page)).toBeHidden();
+};
+
+/** Opens an item's form: `insert`, then waits for the form it opens. */
+export const openForm = async (page: Page, key: string): Promise<void> => {
+  await insert(page, key);
+  await expect(addForm(page)).toBeVisible();
+};
+
+/** 図 / 表 / 並べる over a table-shaped diagram. */
+export const viewMode = (page: Page, mode: 'diagram' | 'table' | 'both') =>
+  page.getByTestId(`${TID.canvasViewMode}-${mode}`).click();
+
+/** An item of the right-click menu by its key (rename, color, shape, add-after, …). */
+export const menuItem = (page: Page, key: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuItem}-${key}`);
 
 export const zoomIn = (page: Page) => page.getByTestId(TID.zoomInButton).click();
 export const zoomOut = (page: Page) => page.getByTestId(TID.zoomOutButton).click();

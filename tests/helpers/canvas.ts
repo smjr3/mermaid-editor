@@ -7,10 +7,30 @@ import { expect, type Page } from '@playwright/test';
 export const nodeByText = (page: Page, text: string) =>
   page.locator('#container svg').getByText(text, { exact: true }).first();
 
-/** Clicks an object in the diagram and waits for the selection outline. */
+/**
+ * Clicks an object in the diagram and waits for the selection outline. After an edit the
+ * view keeps its pan and zoom, so an object just added to a diagram that grew (or a view
+ * whose panes settled after it was drawn, as on a slow CI machine) can lie outside the
+ * visible part of the view, where a click lands on the column around it. Such an object
+ * is brought into sight with 全体 (fit) first, as a user would.
+ */
 export const selectByText = async (page: Page, text: string): Promise<void> => {
   const node = page.locator('#view .node', { hasText: text }).first();
-  await ((await node.count()) > 0 ? node : nodeByText(page, text)).click();
+  const target = (await node.count()) > 0 ? node : nodeByText(page, text);
+  await expect(target).toBeVisible();
+  const [box, view] = await Promise.all([
+    target.boundingBox(),
+    page.locator('#view').boundingBox()
+  ]);
+  const inside =
+    box &&
+    view &&
+    box.x >= view.x &&
+    box.y >= view.y &&
+    box.x + box.width <= view.x + view.width &&
+    box.y + box.height <= view.y + view.height;
+  if (!inside) await page.getByTestId(TID.resetViewButton).click();
+  await target.click();
   await expect(page.getByTestId(TID.selectionOutline)).toBeVisible();
 };
 

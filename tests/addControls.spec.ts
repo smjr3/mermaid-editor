@@ -264,36 +264,46 @@ test.describe('Add bar: architecture', () => {
 });
 
 test.describe('Add bar: the other types', () => {
-  test('every type shows one button per add action', async ({ editPage, page }) => {
-    const cases: [string, string, string[]][] = [
-      ['sequenceDiagram\n  A->>B: hi', 'hi', ['participant', 'message', 'note', 'block']],
-      ['stateDiagram-v2\n  [*] --> Idle', 'Idle', ['state', 'transition', 'composite']],
-      ['classDiagram\n  class Order', 'Order', ['class', 'relation', 'member']],
-      ['erDiagram\n  A ||--o{ B : has', 'has', ['entity', 'relationship', 'attribute']],
-      ['mindmap\n  root((Centre))', 'Centre', ['topic']],
-      ['gantt\n  dateFormat YYYY-MM-DD\n  Plan :2024-01-01, 3d', 'Plan', ['task', 'section']],
-      ['pie\n  "Dogs" : 3', 'Dogs', ['slice', 'display']],
-      ['kanban\n  todo[Todo]\n    a[Card]', 'Card', ['card', 'column']],
-      ['timeline\n  2024 : Start', 'Start', ['event', 'period']],
-      ['C4Context\n  Person(a, "Alice")', 'Alice', ['element', 'rel', 'boundary']],
-      ['block-beta\n  a["Box"]', 'Box', ['block', 'link']],
-      [
-        'requirementDiagram\n  requirement login {\n    id: 1\n  }',
-        'login',
-        ['requirement', 'element', 'relationship']
-      ],
-      ['journey\n  section Day\n    Wake: 3: Me', 'Wake', ['task', 'section']],
-      ['xychart-beta\n  x-axis [a, b]\n  bar [1, 2]', 'a', ['axes', 'series']],
-      ['quadrantChart\n  Point A: [0.3, 0.6]', 'Point A', ['point', 'axes']],
-      ['sankey-beta\n  A,B,10', 'A', ['flow']],
-      ['gitGraph\n  commit id: "c1"', 'c1', ['commit', 'branch', 'merge', 'checkout']],
-      ['packet-beta\n  0-15: "Port"', 'Port', ['field']]
-    ];
-    for (const [code, text, actions] of cases) {
+  const cases: [string, string, string[]][] = [
+    ['sequenceDiagram\n  A->>B: hi', 'hi', ['participant', 'message', 'note', 'block']],
+    [
+      'stateDiagram-v2\n  [*] --> Idle',
+      'Idle',
+      ['state', 'transition', 'composite', 'pseudo', 'note']
+    ],
+    ['classDiagram\n  class Order', 'Order', ['class', 'relation', 'member']],
+    ['erDiagram\n  A ||--o{ B : has', 'has', ['entity', 'relationship', 'attribute']],
+    ['mindmap\n  root((Centre))', 'Centre', ['topic']],
+    ['gantt\n  dateFormat YYYY-MM-DD\n  Plan :2024-01-01, 3d', 'Plan', ['task', 'section']],
+    ['pie\n  "Dogs" : 3', 'Dogs', ['slice', 'display']],
+    ['kanban\n  todo[Todo]\n    a[Card]', 'Card', ['card', 'column']],
+    ['timeline\n  2024 : Start', 'Start', ['event', 'period']],
+    ['C4Context\n  Person(a, "Alice")', 'Alice', ['element', 'rel', 'boundary']],
+    ['block-beta\n  a["Box"]', 'Box', ['block', 'link']],
+    [
+      'requirementDiagram\n  requirement login {\n    id: 1\n  }',
+      'login',
+      ['requirement', 'element', 'relationship']
+    ],
+    ['journey\n  section Day\n    Wake: 3: Me', 'Wake', ['task', 'section']],
+    ['xychart-beta\n  x-axis [a, b]\n  bar [1, 2]', 'a', ['axes', 'series']],
+    ['quadrantChart\n  Point A: [0.3, 0.6]', 'Point A', ['point', 'axes']],
+    ['sankey-beta\n  A,B,10', 'A', ['flow']],
+    ['gitGraph\n  commit id: "c1"', 'c1', ['commit', 'branch', 'merge', 'checkout']],
+    ['packet-beta\n  0-15: "Port"', 'Port', ['field']]
+  ];
+  // One test per type: rendering all of them in one test outran its time limit in CI.
+  for (const [code, text, actions] of cases) {
+    test(`every type shows one button per add action: ${code.split('\n')[0]}`, async ({
+      editPage,
+      page
+    }) => {
       await editPage.start(urlFor(code));
       await editPage.checkTextInView(text);
       await expect.poll(() => barItems(page)).toEqual(actions);
-    }
+    });
+  }
+  test('every type shows one button per add action: zenuml', async ({ editPage, page }) => {
     // ZenUML draws outside the SVG, so wait for the bar alone.
     await editPage.start(urlFor('zenuml\n  A.call()'));
     await expect.poll(() => barItems(page)).toEqual(['participant', 'message']);

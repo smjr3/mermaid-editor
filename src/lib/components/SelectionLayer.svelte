@@ -1,30 +1,34 @@
 <script lang="ts">
+  import { connectMode, stopConnect } from '$/components/canvas/connectMode.svelte';
   import DiagramContextMenu from '$/components/DiagramContextMenu.svelte';
-  import SelectionToolbar from '$/components/SelectionToolbar.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { containing, pickTarget, type PickElement } from '$/util/diagramPick';
   import {
-    cancelConnect,
     clearSelection,
     requestRename,
     sameSelection,
     select,
     selection,
+    startConnect,
     type Selected
   } from '$/util/selection.svelte';
+  import { canConnect } from '$/util/selectionActions';
   import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { settledState } from '$/util/settledState.svelte';
-  import type { Rect } from '$/util/toolbarPlacement';
   import { untrack } from 'svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
 
   // Local: "click the diagram, then change it". Sits over the diagram in the view
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
-  // marks it, the mini toolbar floats above it, a right click opens a menu, a double
-  // click renames, and the keys of selectionKeys.ts act on it. Drawn as an overlay
-  // so the SVG itself (which PNG and SVG export read) is never touched.
+  // marks it (the inspector beside the diagram shows what it is and changes it), a right
+  // click opens a menu, a double click renames, and the keys of selectionKeys.ts act on
+  // it. While an arrow is being drawn (the add bar's 矢印, "ここから矢印を引く") a banner says
+  // which shape to click next. Drawn as an overlay so the SVG itself (which PNG and SVG
+  // export read) is never touched. Clicks on anything marked `data-selection-ui` (the
+  // menu, the banner, the add bar's popovers, the inspector's fields) are not clicks on
+  // the diagram: they neither select nor clear, and do not apply an open rename.
   let { host }: { host: HTMLElement | undefined } = $props();
 
   // The lists for the last valid code.
@@ -170,30 +174,6 @@
   // something is selected, so panning, zooming and re-rendering keep the outline on it.
   let box = $state<{ x: number; y: number; width: number; height: number } | undefined>();
   let placed: Selected | undefined;
-  // The panels over the diagram the mini toolbar keeps clear of (the notice shown while
-  // the code is broken, marked `data-selection-avoid`); written only when they move.
-  let panels = $state<Rect[]>([]);
-  const followPanels = (hostRect: DOMRect) => {
-    const next = [...(host?.querySelectorAll('[data-selection-avoid]') ?? [])]
-      .map((element) => element.getBoundingClientRect())
-      .filter((rect) => rect.width > 0 && rect.height > 0)
-      .map((rect) => ({
-        height: rect.height,
-        width: rect.width,
-        x: rect.left - hostRect.left,
-        y: rect.top - hostRect.top
-      }));
-    const same =
-      next.length === panels.length &&
-      next.every(
-        (rect, index) =>
-          Math.abs(rect.x - panels[index].x) <= 0.5 &&
-          Math.abs(rect.y - panels[index].y) <= 0.5 &&
-          Math.abs(rect.width - panels[index].width) <= 0.5 &&
-          Math.abs(rect.height - panels[index].height) <= 0.5
-      );
-    if (!same) panels = next;
-  };
   $effect(() => {
     const selected = selection.current;
     // Read so a new render or list re-finds the element.
@@ -204,7 +184,7 @@
       return;
     }
     // Another selection starts unplaced; the same one after a render keeps its place.
-    // A node just added keeps the toolbar (and its open rename field) where it was until
+    // A node just added (its rename already open) keeps the outline where it was until
     // the new node is drawn.
     if (!sameSelection(placed, selected) && !untrack(() => selection.renaming)) box = undefined;
     placed = selected;
@@ -233,7 +213,6 @@
           box = next;
         }
       }
-      if (hostRect) followPanels(hostRect);
       frame = requestAnimationFrame(follow);
     };
     // Not called here: what it reads must not become this effect's dependencies.
@@ -272,6 +251,15 @@
       const picked = pickAt(event.target, event);
       if (picked?.type === 'node' && selection.connectFrom) {
         void model.connectTo(picked.id);
+        return;
+      }
+      // The add bar's 矢印 with nothing selected: this shape is where the arrow starts.
+      if (connectMode.pickingStart && picked?.type === 'node') {
+        const object = model.objects?.items.find(({ id }) => id === picked.id);
+        if (!canConnect(model.kind, object)) return;
+        connectMode.pickingStart = false;
+        select(picked);
+        startConnect();
         return;
       }
       if (picked) select(picked);
@@ -328,10 +316,10 @@
       }
       if (
         event.key === 'Escape' &&
-        selection.connectFrom &&
+        (selection.connectFrom || connectMode.pickingStart) &&
         !isTypingTarget(event.target as Element)
       ) {
-        cancelConnect();
+        stopConnect();
         event.preventDefault();
         return;
       }
@@ -387,12 +375,19 @@
   </div>
 {/if}
 
-{#if selection.connectFrom}
+{#if selection.connectFrom || connectMode.pickingStart}
   <div
-    class="absolute top-2 left-1/2 z-20 -translate-x-1/2 rounded-md border bg-card px-3 py-1 text-sm shadow"
+    class="absolute top-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border bg-card py-1 pr-1 pl-3 text-sm shadow"
     role="status"
-    data-selection-ui>
-    {t('sel.connecting')}
+    data-selection-ui
+    data-testid={TID.canvasConnectBanner}
+    data-step={selection.connectFrom ? 'target' : 'start'}>
+    <span>{t(selection.connectFrom ? 'canvas.connectTarget' : 'canvas.connectStart')}</span>
+    <button
+      type="button"
+      class="rounded-md border px-2 py-0.5 text-xs hover:bg-muted"
+      data-testid={TID.canvasConnectCancel}
+      onclick={stopConnect}>{t('sel.cancel')}</button>
   </div>
 {/if}
 
@@ -404,14 +399,6 @@
     data-testid={TID.selectionWarning}>
     {model.warning}
   </div>
-{/if}
-
-{#if box && selection.current && host && !menu}
-  <SelectionToolbar
-    {box}
-    avoid={panels}
-    hostWidth={host.clientWidth}
-    hostHeight={host.clientHeight} />
 {/if}
 
 {#if menu}

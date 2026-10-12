@@ -1,5 +1,5 @@
 /**
- * Local: the "Add" card's edits (AddControls.svelte) — a new lane, or a new
+ * Local: the add bar's edits (canvas/FlowInsert.svelte, insertActions.ts) — a new lane, or a new
  * node in a lane, optionally joined by an arrow from another node — for
  * flowcharts and swimlane diagrams. Plain mermaid statements go into the code
  * before the trailing style statements, so the numbers of the existing arrows

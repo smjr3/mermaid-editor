@@ -1,11 +1,15 @@
 import { TID } from '$/constants';
 import { businessTemplatesName, localSamples } from '$/util/localSamples';
 import { mkdirSync } from 'node:fs';
+import type { Page } from '@playwright/test';
 import { expect, t, test } from './test';
 
-// The Japanese business templates: each loads from the "Templates" card (one picker
-// with a search box and categories, Preset.svelte) and renders without an error. Set TEMPLATE_SCREENSHOTS to a directory to also
-// save a picture of each rendered template for review.
+const samples = (page: Page) => page.getByTestId(TID.newDlgSample);
+
+// The Japanese business templates: each starts from the 新規 dialog's サンプル tab (one
+// picker with a search box and categories, NewDiagramDialog.svelte) in a new tab and renders
+// without an error. Set TEMPLATE_SCREENSHOTS to a directory to also save a picture of
+// each rendered template for review.
 const templates = localSamples[businessTemplatesName];
 const screenshots = process.env.TEMPLATE_SCREENSHOTS;
 
@@ -31,41 +35,71 @@ test.describe('Business templates', () => {
     expect(templates.map(({ title }) => title).sort()).toEqual([...shown.keys()].sort());
   });
 
-  test('lead the template list, each with its form', async ({ page }) => {
-    const picks = page.getByTestId(TID.templatePick);
+  test('lead the sample list, each tagged as fillable', async ({ page }) => {
+    const picks = samples(page);
     await expect(picks.first()).toHaveAttribute('data-group', businessTemplatesName);
     for (const [index, { title }] of templates.entries()) {
       await expect(picks.nth(index)).toHaveAttribute('data-title', title);
+      // Every business template here has a form.
+      await expect(picks.nth(index).getByText(t('newDlg.formTag'))).toBeVisible();
     }
-    // Every business template here has a form.
-    await expect(page.locator(`[data-testid^="${TID.templateFormsItem}-"]`)).toHaveCount(9);
+    await expect(page.getByText(t('newDlg.formTag'))).toHaveCount(9);
   });
 
   test('one picker: search and category narrow the list', async ({ editPage, page }) => {
-    const picks = page.getByTestId(TID.templatePick);
+    const picks = samples(page);
     const all = await picks.count();
     expect(all).toBeGreaterThan(40);
-    await page.getByTestId(TID.templateSearch).fill('組織');
+    await page.getByTestId(TID.newDlgSearch).fill('組織');
     await expect(picks).toHaveCount(1);
     await expect(picks.first()).toHaveAttribute('data-title', '組織図');
-    await page.getByTestId(TID.templateSearch).fill('zzzzzz');
+    await page.getByTestId(TID.newDlgSearch).fill('zzzzzz');
     await expect(picks).toHaveCount(0);
     await expect(page.getByText(t('preset.noMatch'))).toBeVisible();
-    await page.getByTestId(TID.templateSearch).fill('');
-    await page.getByTestId(TID.templateCategory).selectOption('Pie');
+    await page.getByTestId(TID.newDlgSearch).fill('');
+    await page.locator(`[data-testid="${TID.newDlgCategory}"][data-category="Pie"]`).click();
     await expect(picks.first()).toHaveAttribute('data-group', 'Pie');
     expect(await picks.evaluateAll((list) => list.map((pick) => pick.dataset.group))).toEqual(
       Array.from({ length: await picks.count() }, () => 'Pie')
     );
-    await picks.first().click();
+    // The first sample of the category is chosen, with a rendered preview.
+    await expect(picks.first()).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId(TID.newDlgPreview).locator('svg')).toBeVisible();
+    const url = await editPage.captureWindowOpen(() =>
+      page.getByTestId(TID.newDlgSampleStart).click()
+    );
+    await editPage.openUrlHere(url);
     await editPage.checkTextInView('Dogs');
-    await expect(page.getByTestId(TID.templatePickMessage)).toBeVisible();
-    // upstream's grid of sample chips is gone.
-    await expect(page.getByLabel(t('preset.chooseExample', { sample: 'Pie' }))).toHaveCount(0);
+  });
+
+  test('starts in a new tab and leaves this diagram alone', async ({ context, editPage, page }) => {
+    page.on('dialog', () => {
+      throw new Error('a sample must not ask anything');
+    });
+    const before = await editPage.editor.innerText();
+    expect(before).not.toBe('');
+    await samples(page).filter({ hasText: '組織図' }).click();
+    // The form button is offered for a template that has one.
+    await expect(page.getByTestId(TID.newDlgSampleForm)).toBeVisible();
+    const start = page.getByTestId(TID.newDlgSampleStart);
+    await expect(start).toHaveAttribute('target', '_blank');
+    const [popup] = await Promise.all([context.waitForEvent('page'), start.click()]);
+    await popup.waitForLoadState();
+    await expect(popup.locator('#view')).toContainText('品質保証部', { timeout: 15_000 });
+    expect(await editPage.editor.innerText()).toBe(before);
+    await expect(page.getByTestId(TID.newDlgMessage)).toHaveText(
+      t('newDlg.opened', { name: '組織図' })
+    );
+  });
+
+  test('a sample without a form offers none', async ({ page }) => {
+    await page.locator(`[data-testid="${TID.newDlgCategory}"][data-category="Pie"]`).click();
+    await expect(page.getByTestId(TID.newDlgSampleStart)).toBeVisible();
+    await expect(page.getByTestId(TID.newDlgSampleForm)).toHaveCount(0);
   });
 
   for (const [index, { title }] of templates.entries()) {
-    test(`${title} loads from the card and renders`, async ({ editPage, page }) => {
+    test(`${title} starts from the dialog and renders`, async ({ editPage, page }) => {
       await editPage.loadSampleDiagram(businessTemplatesName, title);
       await editPage.checkTextInView(shown.get(title) ?? title);
       await expect(page.locator('#view svg').first()).toBeVisible();

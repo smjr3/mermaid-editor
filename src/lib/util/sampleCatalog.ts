@@ -2,7 +2,7 @@
  * Local: every sample the editor offers, by group — upstream's catalogue
  * (`@mermaid-js/examples`), ZenUML (which the catalogue lacks), this fork's local
  * samples (business templates, swimlanes, …) and the Japanese examples that join their
- * group's list after its own default (`localSamples.ts`). Extracted from Preset.svelte so
+ * group's list after its own default (`localSamples.ts`). Extracted from the old Preset.svelte so
  * the 新規 dialog and the tests read the same list.
  */
 import { localExamples, localSamples } from './localSamples';

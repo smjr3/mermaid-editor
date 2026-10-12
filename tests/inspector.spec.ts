@@ -5,6 +5,7 @@ import {
   backToRoot,
   closeSelection,
   crumb,
+  field,
   panel,
   pickEdge,
   pickObject,
@@ -300,5 +301,149 @@ test.describe('Inspector', () => {
       );
     await page.getByTestId(`${TID.inspEngine}-dagre`).click();
     await expect(page.getByTestId(TID.inspElkPlacement)).toHaveCount(0);
+  });
+});
+
+// Local: what else mermaid offers per type, as rows of 図全体, of the selection and of
+// an arrow (diagramOptions.ts, edgeFields in diagramModify.ts).
+test.describe('Inspector: mermaid’s other options', () => {
+  const config = (page: Page) =>
+    page.evaluate(
+      () =>
+        (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { mermaid?: string }).mermaid ??
+        ''
+    );
+  const option = (page: Page, key: string) => page.getByTestId(`${TID.inspOption}-${key}`);
+  const edgeField = (page: Page, key: string) =>
+    panel(page).locator(`[data-testid="${TID.inspEdgeField}"][data-key="${key}"]`);
+
+  test('a flowchart arrow: invisible, head shape, length, animation and curve', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('flowchart LR\n  A[Order] --> B[Check]\n  B --> C[Pick]'));
+    await editPage.checkTextInView('Pick');
+    await pickEdge(page, 0);
+    await edgeField(page, 'mark').selectOption('circle');
+    await expect.poll(() => stored(page)).toContain('  A[Order] --o B[Check]');
+    await edgeField(page, 'length').selectOption('3');
+    await expect.poll(() => stored(page)).toContain('  A[Order] ----o B[Check]');
+    await edgeField(page, 'animation').selectOption('fast');
+    await expect.poll(() => stored(page)).toContain('  e1@{ animation: fast }');
+    await edgeField(page, 'curve').selectOption('step');
+    await expect.poll(() => stored(page)).toContain('  e1@{ animation: fast, curve: step }');
+    await editPage.checkTextInView('Pick');
+
+    await pickEdge(page, 1);
+    await page.getByTestId(`${TID.inspEdgeStyle}-invisible`).click();
+    await expect.poll(() => stored(page)).toContain('  B ~~~ C[Pick]');
+    await expect(page.getByTestId(TID.inspEdgeHead)).toHaveCount(0);
+    await expect(edgeField(page, 'animation')).toHaveCount(0);
+    await editPage.checkTextInView('Pick');
+  });
+
+  test('図全体: the curve, the look, the built-in dark theme and the accessible title', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('flowchart LR\n  A[Order] --> B[Check]'));
+    await editPage.checkTextInView('Check');
+    await option(page, 'curve').selectOption('linear');
+    await expect.poll(() => config(page)).toContain('"curve": "linear"');
+    await option(page, 'look').selectOption('neo');
+    await expect.poll(() => config(page)).toContain('"look": "neo"');
+    await page.getByTestId(TID.inspBuiltinTheme).selectOption('dark');
+    await expect.poll(() => config(page)).toContain('"theme": "dark"');
+    // The dark theme is the user's: the next validation leaves it.
+    await editPage.checkTextInView('Check');
+    await expect(page.getByTestId(TID.inspBuiltinTheme)).toHaveValue('dark');
+    const title = option(page, 'accTitle');
+    await title.fill('Order flow');
+    await title.press('Enter');
+    await expect.poll(() => stored(page)).toContain('  accTitle: Order flow');
+    await expect(page.locator('#container svg title').first()).toHaveText('Order flow');
+  });
+
+  test('a sequence diagram: numbering, a participant’s symbol, a message’s end and activation', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor('sequenceDiagram\n  participant A as Shop\n  A->>B: hi\n  B-->>A: back')
+    );
+    await editPage.checkTextInView('Shop');
+    await option(page, 'autonumber').click();
+    await expect.poll(() => stored(page)).toContain('  autonumber');
+    await pickObject(page, 'A');
+    await field(page, 'participantType').selectOption('database');
+    await expect.poll(() => stored(page)).toContain('participant A@{ "type": "database" } as Shop');
+    await pickEdge(page, 0);
+    await edgeField(page, 'mark').selectOption('cross');
+    await expect.poll(() => stored(page)).toContain('  A-xB: hi');
+    await edgeField(page, 'activation').selectOption('activate');
+    await expect.poll(() => stored(page)).toContain('  A-x+B: hi');
+    await editPage.checkTextInView('Shop');
+  });
+
+  test('a class relation’s kind and multiplicity, an ER cardinality', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('classDiagram\n  Animal <|-- Dog'));
+    await editPage.checkTextInView('Dog');
+    await pickEdge(page, 0);
+    await edgeField(page, 'relation').selectOption('composition');
+    await expect.poll(() => stored(page)).toContain('  Animal *-- Dog');
+    const to = edgeField(page, 'cardTo');
+    await to.fill('many');
+    await to.press('Enter');
+    await expect.poll(() => stored(page)).toContain('  Animal *-- "many" Dog');
+
+    await editPage.start(urlFor('erDiagram\n  CUSTOMER ||--o{ ORDER : places'));
+    await editPage.checkTextInView('CUSTOMER');
+    await pickEdge(page, 0);
+    await edgeField(page, 'cardTo').selectOption('many');
+    await expect.poll(() => stored(page)).toContain('  CUSTOMER ||--|{ ORDER : "places"');
+  });
+
+  test('a gantt chart’s weekends and today line, a pie’s values, a subgraph’s direction', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor('gantt\n  dateFormat YYYY-MM-DD\n  section Work\n  Plan :a1, 2024-01-01, 3d')
+    );
+    await editPage.checkTextInView('Plan');
+    await option(page, 'weekends').click();
+    await expect.poll(() => stored(page)).toContain('  excludes weekends');
+    await option(page, 'today').click();
+    await expect.poll(() => stored(page)).toContain('  todayMarker off');
+    await option(page, 'tick').selectOption('1week');
+    await expect.poll(() => stored(page)).toContain('  tickInterval 1week');
+
+    await editPage.start(urlFor('pie\n  "Dogs" : 3\n  "Cats" : 2'));
+    await editPage.checkTextInView('Dogs');
+    await option(page, 'showData').click();
+    await expect.poll(() => stored(page)).toMatch(/^pie showData/);
+
+    await editPage.start(urlFor('flowchart LR\n  subgraph S [Team]\n    a[One] --> b[Two]\n  end'));
+    await editPage.checkTextInView('Two');
+    await pickObject(page, 'S');
+    await field(page, 'laneDirection').selectOption('TB');
+    await expect.poll(() => stored(page)).toContain('  subgraph S [Team]\n    direction TB');
+    await editPage.checkTextInView('Two');
+  });
+
+  test('an icon shape’s backdrop and label position', async ({ editPage, page }) => {
+    await editPage.start(
+      urlFor('flowchart LR\n  A@{ icon: "tabler:user", label: "User" } --> B[Box]')
+    );
+    await editPage.checkTextInView('Box');
+    await pickObject(page, 'A');
+    await page.getByTestId(`${TID.inspIconForm}-circle`).click();
+    await expect.poll(() => stored(page)).toContain('form: "circle"');
+    await page.getByTestId(`${TID.inspIconPos}-t`).click();
+    await expect.poll(() => stored(page)).toContain('pos: "t"');
+    await editPage.checkTextInView('Box');
   });
 });

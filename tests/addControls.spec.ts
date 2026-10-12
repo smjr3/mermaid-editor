@@ -468,6 +468,52 @@ test.describe('Add bar: the other types', () => {
     await editPage.checkTextInView('目的');
   });
 
+  test('adds a database participant, a lost message and a background block', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor('sequenceDiagram\n  participant A as Alice\n  A->>A: hi'));
+    await editPage.checkTextInView('Alice');
+    await openForm(page, 'participant');
+    await formField(page, 'name').fill('台帳');
+    await formField(page, 'kind').selectOption('database');
+    await submitForm(page);
+    await expect
+      .poll(() => stored(page))
+      .toContain('participant p1@{ "type": "database" } as 台帳');
+    await editPage.checkTextInView('台帳');
+    await closeForm(page);
+    await openForm(page, 'message');
+    await formField(page, 'from').selectOption('A');
+    await formField(page, 'to').selectOption('p1');
+    await formField(page, 'kind').selectOption('cross');
+    await formField(page, 'text').fill('lost');
+    await submitForm(page);
+    await expect.poll(() => stored(page)).toContain('A-xp1: lost');
+    await closeForm(page);
+    await openForm(page, 'block');
+    await formField(page, 'kind').selectOption('rect');
+    await submitForm(page);
+    await expect.poll(() => stored(page)).toContain('rect rgb(235, 242, 255)');
+    await editPage.checkTextInView('lost');
+  });
+
+  test('adds a choice to a state diagram and a note beside a state', async ({ editPage, page }) => {
+    await editPage.start(urlFor('stateDiagram-v2\n  [*] --> Idle'));
+    await editPage.checkTextInView('Idle');
+    await openForm(page, 'pseudo');
+    await formField(page, 'from').selectOption('Idle');
+    await submitForm(page);
+    await expect.poll(() => stored(page)).toContain('  state c1 <<choice>>\n  Idle --> c1');
+    await closeForm(page);
+    await openForm(page, 'note');
+    await formField(page, 'at').selectOption('Idle');
+    await formField(page, 'text').fill('待機中');
+    await submitForm(page);
+    await expect.poll(() => stored(page)).toContain('  note right of Idle : 待機中');
+    await editPage.checkTextInView('待機中');
+  });
+
   test('adds a composite state around a state, and a state inside it', async ({
     editPage,
     page

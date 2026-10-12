@@ -5,14 +5,13 @@
   import { TID } from '$/constants';
   import { locale, t } from '$/i18n';
   import { parse } from '$/util/mermaid';
-  import { isReplaceable } from '$/util/newDiagram';
+  import { newTabHref } from '$/util/newTab';
   import { notify } from '$/util/notify';
-  import { inputState, updateCode } from '$/util/state.svelte';
+  import { inputState } from '$/util/state.svelte';
   import {
     addRow,
     defaultValues,
     generate,
-    isTemplateCode,
     labelOf,
     templateForms,
     type Column,
@@ -24,19 +23,18 @@
   } from '$/util/templateForms';
   import { templateDialog, templateNotice } from '$/util/templateNotice.svelte';
   import { thumbnail } from '$/util/templateThumbnails';
-  import { tick, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import TemplateIcon from '~icons/material-symbols/dynamic-form-outline-rounded';
   import BackIcon from '~icons/material-symbols/arrow-back-rounded';
   import AddIcon from '~icons/material-symbols/add-rounded';
   import RemoveIcon from '~icons/material-symbols/close-rounded';
 
-  // Local: a business template's form — opened from the template picker (Preset.svelte)
-  // for a template that has one: fill in its form (templateForms.ts) and get the diagram,
-  // then carry on in the Add card. Asks first unless the code is a sample, a starter or
-  // a template.
-  let { samples }: { samples: string[] } = $props();
+  // Local: a business template's form — opened from the 新規 dialog's サンプル tab
+  // (NewDiagramDialog.svelte) for a template that has one: fill in its form
+  // (templateForms.ts) and the diagram opens in a new tab, so the diagram in this tab
+  // stays as it is and nothing needs asking.
 
-  // The template picker (Preset.svelte) chooses the template; this is only its form.
+  // The sample tab chooses the template; this is only its form.
   let chosen = $state<TemplateForm | undefined>();
   let values = $state<FormValues>({});
   let thumbs = $state<Record<string, string>>({});
@@ -104,23 +102,8 @@
     values[field.key] = rowsOf(field.key).filter((row) => row._id !== id);
   };
 
-  // The Add card's header, as the tools rail opens it: click it unless it is open already.
-  const openAddCard = () => {
-    const header = document.querySelector<HTMLElement>(`[data-testid="${TID.addCard}"]`);
-    if (!header) return;
-    if (!header.closest('.card')?.classList.contains('isOpen')) header.click();
-    header.scrollIntoView({ block: 'nearest' });
-  };
-
   const create = async () => {
     if (!chosen) return;
-    const code = inputState.code;
-    if (
-      !isReplaceable(code, samples) &&
-      !isTemplateCode(code) &&
-      !window.confirm(t('template.confirm'))
-    )
-      return;
     const next = generate(chosen, $state.snapshot(values));
     // Local (error recovery): a template must never write code that does not parse.
     try {
@@ -129,14 +112,9 @@
       notify(t('template.breaks'));
       return;
     }
-    updateCode(next, {
-      resetPanZoom: true,
-      updateDiagram: true
-    });
+    window.open(newTabHref(next), '_blank', 'noopener');
     templateNotice.message = t('template.done', { name: label(chosen.name) });
     close();
-    await tick();
-    openAddCard();
   };
 </script>
 

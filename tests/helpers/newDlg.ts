@@ -31,28 +31,17 @@ export const closeNewDialog = async (page: Page): Promise<void> => {
 /**
  * Starts from a sample: opens the サンプル tab, picks the group's first sample (or the one
  * titled `title`), presses 「このサンプルで始める」 and opens the URL it would open in a new
- * tab in this page instead. Until the new dialog lands, the サンプル tab still shows the
- * templates card, whose pick loads the sample in place; that path is followed then.
+ * tab in this page instead.
  */
 export const loadSample = async (editor: Opener, group: string, title?: string): Promise<void> => {
   const { page } = editor;
   await openNewDialog(page, 'sample');
   const dialog = page.getByTestId(TID.newDlg);
-  await dialog
-    .locator(`${byTid(TID.newDlgSample)}, ${byTid(TID.templatePick)}`)
-    .first()
-    .waitFor();
   const titled = title === undefined ? '' : `[data-title="${title}"]`;
   const card = dialog.locator(`${byTid(TID.newDlgSample)}[data-group="${group}"]${titled}`);
-  if ((await dialog.getByTestId(TID.newDlgSample).count()) > 0) {
-    await card.first().click();
-    const url = await editor.captureWindowOpen(() =>
-      dialog.getByTestId(TID.newDlgSampleStart).click()
-    );
-    await editor.openUrlHere(url);
-    return;
-  }
-  const pick = dialog.locator(`${byTid(TID.templatePick)}[data-group="${group}"]${titled}`);
-  await pick.first().click();
-  await closeNewDialog(page);
+  await card.first().click();
+  const url = await editor.captureWindowOpen(() =>
+    dialog.getByTestId(TID.newDlgSampleStart).click()
+  );
+  await editor.openUrlHere(url);
 };

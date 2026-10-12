@@ -144,7 +144,8 @@ test.describe('New diagram dialog: from a type', () => {
   });
 
   test('every type opens as a starter that renders', async ({ context, editPage, page }) => {
-    test.slow();
+    // 21 starters, each rendered in a second page: about 85 s here, too close to test.slow()'s 90.
+    test.setTimeout(180_000);
     page.on('dialog', () => {
       throw new Error('a new diagram must not ask anything');
     });

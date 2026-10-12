@@ -50,6 +50,21 @@
     // その他 opens on its menu. (Not reset on closing: the form fades out as it was.)
     if (key === 'more' && isOpen) moreForm = undefined;
   };
+  // The forms are not modal: focus may leave them for the inspector or the code (no focus
+  // trap, which pulled a click into the inspector's 名前 field back into the form), and a
+  // popover closed by such a click leaves focus there instead of sending it back to the
+  // bar's button; Escape still does.
+  let closedOutside = false;
+  const keepFocus = {
+    trapFocus: false,
+    onCloseAutoFocus: (event: Event) => {
+      if (closedOutside) event.preventDefault();
+      closedOutside = false;
+    },
+    onInteractOutside: () => {
+      closedOutside = true;
+    }
+  };
   const choose = (entry: InsertEntry) => {
     if (entry.form) {
       moreForm = entry.key;
@@ -82,7 +97,7 @@
         data-insert={entry.key}>
         {@render label(entry)}
       </Popover.Trigger>
-      <Popover.Content align="start" class={content} data-selection-ui>
+      <Popover.Content align="start" class={content} data-selection-ui {...keepFocus}>
         {@render form(entry.key)}
       </Popover.Content>
     </Popover.Root>
@@ -105,7 +120,11 @@
     <Popover.Trigger class={item} title={t('canvas.more')} data-testid={TID.canvasInsertMore}>
       <span>{t('canvas.more')}</span><MoreIcon aria-hidden="true" />
     </Popover.Trigger>
-    <Popover.Content align="start" class={moreForm ? content : 'w-64 p-1'} data-selection-ui>
+    <Popover.Content
+      align="start"
+      class={moreForm ? content : 'w-64 p-1'}
+      data-selection-ui
+      {...keepFocus}>
       {#if moreForm}
         {@render form(moreForm)}
       {:else}

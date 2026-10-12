@@ -359,14 +359,14 @@ it will merge cleanly and only fail on a Windows machine. Re-read
 `docs-dev/THEME.md` has the rationale and the measured contrast figures. At merge
 time:
 
-| Path                               | Local change                                                                                                                                                                                            |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/app.css`                      | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark                                                                                                    |
-| `src/app.html`                     | `theme-color` meta as a `prefers-color-scheme` pair instead of the pink; an inline script that puts an in-memory `localStorage` in place when the browser blocks it (keep it before `%sveltekit.head%`) |
-| `src/lib/components/Navbar.svelte` | Upstream's Mermaid logo removed from the header                                                                                                                                                         |
-| `static/icons/mermaid.svg`         | Deleted — the brand mark, now unused                                                                                                                                                                    |
-| `static/favicon.{svg,png,ico}`     | Brand mark replaced with a generic diagram glyph                                                                                                                                                        |
-| `static/manifest.json`             | `background_color` and `theme_color` moved off the brand pink; icon, `start_url` and `scope` are relative so they follow `MERMAID_BASE_PATH`                                                            |
+| Path                               | Local change                                                                                                                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app.css`                      | `--accent` per mode (upstream uses one pink for both) and a near-black `--accent-foreground` in dark; restates the dialogs' centring outside any layer, which a ZenUML diagram's injected Tailwind 3 reset otherwise overrides (2026-10-12) |
+| `src/app.html`                     | `theme-color` meta as a `prefers-color-scheme` pair instead of the pink; an inline script that puts an in-memory `localStorage` in place when the browser blocks it (keep it before `%sveltekit.head%`)                                     |
+| `src/lib/components/Navbar.svelte` | Upstream's Mermaid logo removed from the header                                                                                                                                                                                             |
+| `static/icons/mermaid.svg`         | Deleted — the brand mark, now unused                                                                                                                                                                                                        |
+| `static/favicon.{svg,png,ico}`     | Brand mark replaced with a generic diagram glyph                                                                                                                                                                                            |
+| `static/manifest.json`             | `background_color` and `theme_color` moved off the brand pink; icon, `start_url` and `scope` are relative so they follow `MERMAID_BASE_PATH`                                                                                                |
 
 The dark `--accent-foreground` is near-black **because** the dark accent is
 bright. Restoring upstream's near-white value there drops accent-button labels to

@@ -117,3 +117,11 @@ body {
 .d {
   @apply border border-red-500;
 }
+
+/* Local: a ZenUML diagram injects an unlayered Tailwind 3 reset (`* { --tw-translate-x: 0 }`)
+   that wins over Tailwind 4's layered utilities, so while one was shown every dialog lost its
+   centring and its buttons went off-screen. The centring is restated outside any layer. */
+[data-dialog-content],
+[data-alert-dialog-content] {
+  translate: -50% -50%;
+}

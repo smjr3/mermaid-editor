@@ -564,7 +564,8 @@ went was audited item by item at the merge; the result is in the PR that introdu
   処理, 分岐, 開始・終了, レーン (グループ), 矢印 and その他 ▾ (the other shapes and the old Add
   card's three forms); for architecture グループ, サービス, 接続; for the other types one item per
   action of `addActions.ts` / `chartEdit.ts`, each opening its form in a popover
-  (`AddActionForm.svelte`), past the fifth under その他. Table-shaped diagrams (gantt, kanban,
+  (`AddActionForm.svelte`), past the fifth under その他. The popovers are not modal: focus may leave
+  them for the inspector or the code without being pulled back. Table-shaped diagrams (gantt, kanban,
   timeline, pie, ER attributes, journey, XY, quadrant, sankey, packet) get 図 / 表 / 並べる over
   the picture (`ViewModeSwitch.svelte`, the 0.2.2 `TableEditor`). Bottom right: − 100% ＋ 全体
   and the grid toggle (`ZoomControls.svelte`). A broken code shows the error notice over the

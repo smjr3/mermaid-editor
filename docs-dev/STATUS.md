@@ -20,7 +20,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **360**.
+  every locally changed path — currently **362**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -688,7 +688,10 @@ F2 renames, the arrow keys move along the arrows, Escape clears. Nothing is writ
 edit is one of the existing functions (`diagramModify.ts`, `diagramDetails.ts` checked with
 `checkEdit`, `colors.ts`, `diagramEdit.ts`, composed in `selectionActions.ts`);
 `selectionModel.svelte.ts` holds the lists for the last valid code and the edits on the selection,
-shared by the inspector, the menu and the keys. Pie slices are drawn without ids to tell them
+shared by the inspector, the menu and the keys. A node just added (add bar, ＋次 / ＋分岐, a lane's ＋追加,
+the menu, Enter / Tab) is brought into view once drawn when it lands outside the canvas: a pan at the same zoom (a
+zoom out only when it is bigger than the canvas), nothing when it is already visible (`revealView.ts`,
+`PanZoomState.reveal`, `selection.revealSession`; `tests/addControls.spec.ts`). Pie slices are drawn without ids to tell them
 apart, so they are chosen from 図全体's 要素 list; journey, git and the other chart types have no
 selection. `tests/selection.spec.ts`, `tests/inspector.spec.ts` and the unit tests of the
 selection files.

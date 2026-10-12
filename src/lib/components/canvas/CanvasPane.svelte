@@ -38,7 +38,7 @@
     <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" bind:this={viewHost}>
       <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
       <!-- Click the diagram to select, then change it (SelectionLayer). -->
-      <SelectionLayer host={viewHost} />
+      <SelectionLayer host={viewHost} {panZoomState} />
       <!-- What is wrong with the code and the way back (codeHealth.svelte.ts): one place,
            over the diagram. -->
       <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex justify-center">

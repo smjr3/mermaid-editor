@@ -16,6 +16,7 @@
   import { canConnect } from '$/util/selectionActions';
   import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
+  import type { PanZoomState } from '$/util/panZoom';
   import { settledState } from '$/util/settledState.svelte';
   import { untrack } from 'svelte';
   import { codeHistory } from '$/util/undoStack.svelte';
@@ -29,7 +30,10 @@
   // export read) is never touched. Clicks on anything marked `data-selection-ui` (the
   // menu, the banner, the add bar's popovers, the inspector's fields) are not clicks on
   // the diagram: they neither select nor clear, and do not apply an open rename.
-  let { host }: { host: HTMLElement | undefined } = $props();
+  // A node just added (selectionModel's `added`) is brought into view once drawn, through
+  // the view's `panZoomState`.
+  let { host, panZoomState }: { host: HTMLElement | undefined; panZoomState?: PanZoomState } =
+    $props();
 
   // The lists for the last valid code.
   $effect(() => {
@@ -217,6 +221,51 @@
     };
     // Not called here: what it reads must not become this effect's dependencies.
     frame = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(frame);
+  });
+
+  // A node just added may be drawn outside the part of the diagram on screen (zoomed in,
+  // panned away): once it is drawn and the redraw has settled (its box unchanged for a
+  // few frames, after the view restored its pan and zoom), the view pans — at the same
+  // zoom unless the node is bigger than the canvas — so it is fully visible. Nothing
+  // moves when it already is; nothing happens for a type whose drawing has no ids to
+  // find it by, nor once the selection has moved on.
+  $effect(() => {
+    const session = selection.revealSession;
+    const view = panZoomState;
+    if (!session || !host || !view) return;
+    const target = untrack(() => selection.current);
+    if (!target) return;
+    const until = performance.now() + 8000;
+    let element: Element | undefined;
+    let last: DOMRect | undefined;
+    let steady = 0;
+    let frame = 0;
+    const tick = () => {
+      if (!sameSelection(selection.current, target) || performance.now() > until) return;
+      if (!element?.isConnected) {
+        element = findElement(target);
+        last = undefined;
+      }
+      const rect = element?.getBoundingClientRect();
+      const canvas = host?.querySelector('#view')?.getBoundingClientRect();
+      if (rect && canvas && (rect.width > 0 || rect.height > 0)) {
+        const same =
+          last &&
+          Math.abs(last.left - rect.left) < 0.5 &&
+          Math.abs(last.top - rect.top) < 0.5 &&
+          Math.abs(last.width - rect.width) < 0.5 &&
+          Math.abs(last.height - rect.height) < 0.5;
+        steady = same ? steady + 1 : 0;
+        last = rect;
+        if (steady >= 2) {
+          view.reveal(rect, canvas);
+          return;
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   });
 

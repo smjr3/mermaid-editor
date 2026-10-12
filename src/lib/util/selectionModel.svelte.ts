@@ -85,6 +85,7 @@ import {
   clearSelection,
   endRename,
   requestRename,
+  requestReveal,
   sameSelection,
   select,
   selection,
@@ -583,6 +584,8 @@ class SelectionModel {
         await this.sync(result.code);
         this.lastAdded = id;
         select({ id, type: 'node' }, { keepRename: true });
+        // It may be drawn outside the part of the diagram on screen.
+        requestReveal();
         // Nothing was selected to open it on (a node added on the empty canvas).
         if (!openedEarly) requestRename();
         ok = true;

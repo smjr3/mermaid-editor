@@ -10,9 +10,11 @@ const instance = {
   getPan: () => ({ x: 0, y: 0 }),
   getZoom: () => 1,
   pan: vi.fn(),
+  panBy: vi.fn(),
   reset: vi.fn(),
   resize: vi.fn(),
   zoom: vi.fn(),
+  zoomAtPointBy: vi.fn(),
   zoomIn: vi.fn(),
   zoomOut: vi.fn()
 };
@@ -46,5 +48,23 @@ describe('PanZoomState', () => {
     expect(settled).toHaveBeenCalledTimes(2);
     state.reset();
     expect(settled).toHaveBeenCalledTimes(3);
+  });
+
+  it('pans an object outside the view into it, and leaves a visible one alone', async () => {
+    const { PanZoomState } = await import('./panZoom');
+    const state = new PanZoomState();
+    state.updateElement(document.createElementNS('http://www.w3.org/2000/svg', 'svg'), {
+      pan: { x: 1, y: 2 },
+      zoom: 1
+    });
+    const settled = vi.fn();
+    state.onPanZoomSettled = settled;
+    const viewport = { height: 400, left: 0, top: 0, width: 600 };
+    expect(state.reveal({ height: 40, left: 10, top: 10, width: 80 }, viewport)).toBe(false);
+    expect(instance.panBy).not.toHaveBeenCalled();
+    expect(state.reveal({ height: 40, left: 700, top: 10, width: 80 }, viewport)).toBe(true);
+    expect(instance.panBy).toHaveBeenCalledWith({ x: -204, y: 0 });
+    expect(instance.zoomAtPointBy).not.toHaveBeenCalled();
+    expect(settled).toHaveBeenCalledTimes(1);
   });
 });

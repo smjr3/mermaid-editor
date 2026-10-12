@@ -8,6 +8,8 @@
  * `connectFrom` is set while "ここから矢印" waits for the node to connect to;
  * `renaming` is true while the inline rename of the selection is open (F2, a double
  * click, a new node); the mini toolbar shows its field while it is set.
+ * `revealSession` counts the requests to bring the selection into view once it is
+ * drawn (a node just added, which may land outside the visible canvas).
  */
 
 export type Selected = { type: 'node'; id: string } | { type: 'edge'; index: number };
@@ -18,7 +20,15 @@ export const selection = $state<{
   renaming: boolean;
   /** Counts the times the rename opened, so the field starts afresh each time. */
   renameSession: number;
-}>({ connectFrom: undefined, current: undefined, renameSession: 0, renaming: false });
+  /** Counts the requests to scroll the selection into view (SelectionLayer). */
+  revealSession: number;
+}>({
+  connectFrom: undefined,
+  current: undefined,
+  renameSession: 0,
+  renaming: false,
+  revealSession: 0
+});
 
 export const sameSelection = (a: Selected | undefined, b: Selected | undefined): boolean =>
   a?.type === b?.type &&
@@ -50,6 +60,11 @@ export const requestRename = (): void => {
   if (!selection.current || selection.renaming) return;
   selection.renaming = true;
   selection.renameSession += 1;
+};
+
+/** Brings the selection into view once it is drawn (a node just added). */
+export const requestReveal = (): void => {
+  selection.revealSession += 1;
 };
 
 /** "ここから矢印": the next node clicked is joined from the selected one. */

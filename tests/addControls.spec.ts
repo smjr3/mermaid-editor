@@ -10,7 +10,8 @@ import {
   insertBar,
   openForm,
   selectByText,
-  submitForm
+  submitForm,
+  zoomIn
 } from './helpers/canvas';
 import { expect, t, test } from './test';
 
@@ -92,6 +93,61 @@ test.describe('Add bar: flowcharts and swimlanes', () => {
       .toContain(
         `subgraph Lane1 ["${t('add.laneDefault')}"]\n    n2(("${t('canvas.defaultProcess')}"))\n  end`
       );
+  });
+
+  test('brings a shape added off-screen into view, keeping the zoom', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor('flowchart LR\n  A[One] --> B[Two] --> C[Three] --> D[Four] --> E[Five]')
+    );
+    await editPage.checkTextInView('Five');
+    const view = page.locator('#view');
+    const inView = async (text: string) => {
+      const [box, area] = await Promise.all([
+        page.locator('#view .node', { hasText: text }).first().boundingBox(),
+        view.boundingBox()
+      ]);
+      return (
+        !!box &&
+        !!area &&
+        box.x >= area.x - 1 &&
+        box.y >= area.y - 1 &&
+        box.x + box.width <= area.x + area.width + 1 &&
+        box.y + box.height <= area.y + area.height + 1
+      );
+    };
+    const pan = () =>
+      page.evaluate(
+        () =>
+          (JSON.parse(localStorage.getItem('codeStore') ?? '{}') as { pan?: unknown }).pan ?? null
+      );
+
+    // Added where it is already visible: the view does not move.
+    await page.getByTestId(TID.zoomOutButton).click();
+    await selectByText(page, 'Two');
+    const still = await pan();
+    await insert(page, 'rect');
+    await expect.poll(() => stored(page)).toContain('B --> n1');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n1');
+    await expect.poll(() => inView(t('canvas.defaultProcess'))).toBe(true);
+    await page.waitForTimeout(800);
+    expect(await pan()).toEqual(still);
+    await page.keyboard.press('Escape');
+
+    // Zoomed in about the centre: the last shape is pushed out of the view.
+    await selectByText(page, 'Five');
+    for (let index = 0; index < 6; index++) await zoomIn(page);
+    await expect.poll(() => inView('Five')).toBe(false);
+    const zoom = await page.getByTestId(TID.canvasZoomLevel).textContent();
+
+    // The new shape lands right of it, further out; the view pans to it (no 全体).
+    await insert(page, 'diamond');
+    await expect.poll(() => stored(page)).toContain('E --> n2');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'n2');
+    await expect.poll(() => inView(t('canvas.defaultDecision'))).toBe(true);
+    await expect(page.getByTestId(TID.canvasZoomLevel)).toHaveText(zoom ?? '');
   });
 
   test('a flowchart calls it a group, and offers the other shapes under その他', async ({

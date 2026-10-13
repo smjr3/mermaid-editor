@@ -1,6 +1,6 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
-import { panel, segment } from './helpers/inspector';
+import { panel, pickEdge, segment } from './helpers/inspector';
 import { expect, t, test } from './test';
 
 const chain =
@@ -42,6 +42,28 @@ test.describe('Layout in the inspector', () => {
       'aria-pressed',
       'true'
     );
+  });
+
+  test('shows the direction and line labels whole in the default width at 1280px', async ({
+    editPage,
+    page
+  }) => {
+    await page.setViewportSize({ height: 720, width: 1280 });
+    await editPage.start(urlFor(chain));
+    await editPage.checkTextInView('Ship');
+    const clipped = (testID: string) =>
+      page
+        .getByTestId(testID)
+        .locator('button')
+        .evaluateAll((buttons) =>
+          buttons
+            .filter((button) => button.scrollWidth > button.clientWidth)
+            .map((button) => button.dataset.testid)
+        );
+    expect(await clipped(TID.inspDirection)).toEqual([]);
+    await pickEdge(page, 0);
+    await expect(page.getByTestId(TID.inspEdgeStyle)).toBeVisible();
+    expect(await clipped(TID.inspEdgeStyle)).toEqual([]);
   });
 
   test('fits the diagram to the view', async ({ editPage, page }) => {

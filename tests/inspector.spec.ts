@@ -82,6 +82,16 @@ test.describe('Inspector', () => {
         panel(page).locator(`[data-testid="${TID.inspField}"][data-key="${key}"]`)
       ).toBeVisible();
     }
+    // A task has no shape or colour: their block is not left as an empty band.
+    const emptyBands = await panel(page)
+      .locator('section')
+      .evaluateAll(
+        (sections) =>
+          sections.filter(
+            (section) => section.children.length === 0 && section.getBoundingClientRect().height > 0
+          ).length
+      );
+    expect(emptyBands).toBe(0);
   });
 
   test('renames in the 名前 field on a double click, and applies it on Enter', async ({

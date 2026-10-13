@@ -48,7 +48,13 @@ and no browser save picker any more (user decision, 2026-10-12: 「ファイル�
   control characters) become spaces, leading and trailing dots go, reserved names (`CON`,
   `NUL`…) get a `_`, and the name is cut at 100 characters. Japanese stays as it is. The
   extension is added unless it was typed; an empty name falls back to the suggestion.
-- The Markdown export's Markdown points at the name the SVG was saved under.
+- The Markdown export's Markdown points at the name the SVG was saved under. The name is
+  written as one relative URL path segment (`fileUrlSegment` in `htmlExport.ts`: everything but
+  letters, digits and `-._~` percent-encoded), so a `#` or `?` in the name does not start a
+  fragment or a query, a typed `%` stays a `%`, and spaces or unbalanced parentheses do not end
+  the Markdown link early; GitLab and GitHub decode it back to the saved name
+  (`report(1)#draft%20.svg` → `report%281%29%23draft%2520.svg`). The file name rules above are
+  unchanged by this (review N05, 2026-10-13).
 
 Upstream named every file `mermaid-diagram-<timestamp>.<ext>`; that is gone.
 

@@ -109,6 +109,11 @@ prints one line naming the step and the command and exits non-zero. Copy the fil
 this repository (or `npm pack` it from the package: `scripts/` is published) and run it
 anywhere Node >= 24 is installed.
 
+`--tarball <file.tgz|directory>` replaces the download with a tarball already on disk (or the
+one `.tgz` in a directory) and cannot be combined with `--version` or `--registry`. CI uses it
+to build the commit under review: `npm pack --pack-destination <dir>` in the checkout, then
+`node scripts/update-from-registry.mjs --tarball <dir> --dir <build>` (job `build-from-head`).
+
 Windows notes: commands go through the shell so that `npm` resolves to `npm.cmd`, paths with
 spaces are quoted, and the temporary directory comes from `os.tmpdir()`. The usual cause of
 `ENOENT` in a hand-written update script is spawning `npm` (a `.cmd` file on Windows) without a

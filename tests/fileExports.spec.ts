@@ -1,7 +1,13 @@
 import { TID } from '$/constants';
 import { strFromU8, unzipSync } from 'fflate';
 import type { Page } from '@playwright/test';
-import { chooseExport, openExport, readDownload, saveExport } from './helpers/exportDlg';
+import {
+  chooseExport,
+  closeExport,
+  openExport,
+  readDownload,
+  saveExport
+} from './helpers/exportDlg';
 import { expect, t, test } from './test';
 
 // The .drawio / .vsdx files of the 書き出す dialog (drawioExport.ts, vsdxExport.ts) and the
@@ -218,4 +224,95 @@ test.describe('.drawio: every element its own draw.io cell', () => {
     expect(file.edges).toBeGreaterThanOrEqual(4);
     expect(file.dashed).toBeGreaterThanOrEqual(1);
   });
+});
+
+// Review N01 (2026-10-13): キャンセル during a .drawio / .vsdx export stops it, so it never
+// finishes against a diagram edited after the dialog closed.
+test.describe('An export cancelled while it is made', () => {
+  for (const format of ['drawio', 'vsdx'] as const) {
+    test(`saves no ${format} after キャンセル, even once the code is edited`, async ({
+      editPage,
+      page
+    }) => {
+      await editPage.start(url);
+      await editPage.checkTextInView('承認');
+      let downloads = 0;
+      page.on('download', () => downloads++);
+      await chooseExport(page, format);
+      const save = page.getByTestId(TID.exportDlgSave);
+      await save.click();
+      await expect(save).toHaveAttribute('data-export-state', 'busy');
+      await page.getByTestId(TID.exportDlgCancel).click();
+      await expect(page.getByTestId(TID.exportDlg)).toBeHidden();
+      await editPage.typeInEditor('B --> C["差戻し"]', { newline: true });
+      await editPage.checkTextInView('差戻し');
+      await page.waitForTimeout(2500);
+      expect(downloads).toBe(0);
+      // Pan/zoom is back on, and the dialog is ready for the next export.
+      await expect(page.locator('#container .svg-pan-zoom_viewport')).toHaveCount(1);
+      await openExport(page);
+      await expect(page.getByTestId(TID.exportDlgSave)).toHaveAttribute(
+        'data-export-state',
+        'idle'
+      );
+    });
+  }
+});
+
+// Review N02 (2026-10-13): the SVG file is the whole diagram, whatever the view's pan/zoom.
+test.describe('The SVG file after zooming the view', () => {
+  const savedSvg = async (page: Page, name: string) => {
+    const download = await saveExport(page, 'svg', { name });
+    const text = (await readDownload(download)).toString('utf8');
+    return page.evaluate((xml) => {
+      const svg = new DOMParser().parseFromString(xml, 'image/svg+xml').documentElement;
+      return {
+        transform: svg.querySelector('.svg-pan-zoom_viewport')?.getAttribute('transform') ?? null,
+        viewBox: svg.getAttribute('viewBox'),
+        width: svg.getAttribute('width')
+      };
+    }, text);
+  };
+
+  const stateUrl = (state: Record<string, unknown>) =>
+    `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid: '{}', ...state })).toString('base64')}`;
+
+  for (const rough of [false, true]) {
+    test(`holds the same picture whatever the zoom and pan (hand-drawn ${rough})`, async ({
+      editPage,
+      page
+    }) => {
+      // The picture with pan/zoom off: the view keeps mermaid's own viewBox.
+      await editPage.start(stateUrl({ panZoom: false, rough }));
+      await editPage.checkTextInView('承認');
+      const still = await savedSvg(page, 'still');
+      await closeExport(page);
+
+      await editPage.start(stateUrl({ panZoom: true, rough }));
+      await editPage.checkTextInView('承認');
+      const before = await savedSvg(page, 'before');
+      await closeExport(page);
+      for (let index = 0; index < 3; index++) await page.getByTestId(TID.zoomInButton).click();
+      const box = await page.locator('#container').boundingBox();
+      if (box) {
+        const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x - 120, y + 60, { steps: 5 });
+        await page.mouse.up();
+      }
+      const viewport = page.locator('#container .svg-pan-zoom_viewport');
+      const zoomed = await viewport.getAttribute('transform');
+      expect(zoomed).toMatch(/^matrix\(/);
+      const after = await savedSvg(page, 'after');
+
+      expect(still.transform).toBeNull();
+      expect(still.viewBox).toMatch(/^[\d.-]+ [\d.-]+ [\d.]+ [\d.]+$/);
+      expect(before).toEqual(still);
+      expect(after).toEqual(still);
+      // The view keeps its zoom and pan.
+      await closeExport(page);
+      await expect(viewport).toHaveAttribute('transform', zoomed ?? '');
+    });
+  }
 });

@@ -12,6 +12,7 @@ import {
   toStandaloneHtml,
   toXmlSvg
 } from './htmlExport';
+import { fileNameFromInput, safeFileBase } from './saveFile';
 import { deserializeState } from './serde';
 
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><text>図</text></svg>';
@@ -137,6 +138,81 @@ describe('gitlabMarkdown', () => {
     expect(markdown).not.toContain('```mermaid');
     // A fence longer than any backtick run in the code, so the code cannot close it.
     expect(markdown).toMatch(/````text\n[\s\S]*```\n````/);
+  });
+});
+
+// N05: the image link names the saved file as one URL path segment, whatever the user typed.
+describe('the image link for any file name the dialog allows', () => {
+  // The image destination of `![alt](destination)` as CommonMark reads it: up to the first
+  // space or unbalanced `)` (the output never uses the `<...>` form).
+  const imageDestination = (markdown: string): string => {
+    const start = markdown.indexOf('](') + 2;
+    let depth = 0;
+    let end = start;
+    for (; end < markdown.length; end++) {
+      const char = markdown[end];
+      if (char === '\\') {
+        end++;
+        continue;
+      }
+      if (/\s/.test(char)) break;
+      if (char === '(') depth++;
+      if (char === ')') {
+        if (depth === 0) break;
+        depth--;
+      }
+    }
+    return markdown.slice(start, end);
+  };
+  const labels = { edit: 'Edit', source: 'Source' };
+  const page = 'https://gitlab.example/group/project/-/blob/main/doc/page.md';
+  const folder = '/group/project/-/blob/main/doc/';
+  const typed = [
+    'report(1)#draft%20',
+    'closing) only',
+    '((opening only',
+    '100% done',
+    'my diagram',
+    '業務フロー 第2版',
+    "a]b[c it's!*~",
+    'q?x=1&y=2'
+  ];
+
+  it.each(typed)('links %j to the file it saves', (input) => {
+    const name = fileNameFromInput(input, 'svg') ?? '';
+    expect(name).not.toBe('');
+    const markdown = gitlabMarkdown({ alt: 'd', code: 'x', editUrl: 'e', fileName: name, labels });
+    const destination = imageDestination(markdown);
+    // The whole destination is read as the link: nothing of the name is left after it.
+    expect(markdown.startsWith(`![d](${destination})\n`)).toBe(true);
+    // Only unreserved characters and escapes: no fragment, query, sub-path or space.
+    expect(destination).toMatch(/^(?:[\w.~-]|%[\dA-F]{2})+$/);
+    // Resolved next to the page (GitLab and GitHub resolve it relative to the .md file),
+    // it is one path segment that decodes to exactly the saved name.
+    const resolved = new URL(destination, page);
+    expect(resolved.hash).toBe('');
+    expect(resolved.search).toBe('');
+    expect(resolved.pathname.startsWith(folder)).toBe(true);
+    const segment = resolved.pathname.slice(folder.length);
+    expect(segment).not.toContain('/');
+    expect(decodeURIComponent(segment)).toBe(name);
+  });
+
+  it('writes the review example as one escaped segment', () => {
+    const markdown = gitlabMarkdown({
+      alt: 'd',
+      code: 'x',
+      editUrl: 'e',
+      fileName: 'report(1)#draft%20.svg',
+      labels
+    });
+    expect(markdown).toContain('![d](report%281%29%23draft%2520.svg)\n');
+  });
+
+  it('keeps the Windows file name rules: what Windows refuses never reaches the link', () => {
+    expect(fileNameFromInput('a/b\\c:d*e?f"g<h>i|j', 'svg')).toBe('a b c d e f g h i j.svg');
+    expect(fileNameFromInput('con', 'svg')).toBe('con_.svg');
+    expect(safeFileBase(' report(1)#draft%20. ')).toBe('report(1)#draft%20');
   });
 });
 

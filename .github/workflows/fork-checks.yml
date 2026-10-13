@@ -102,3 +102,62 @@ jobs:
             process.exit(1);
           }
           console.log(`all present in ${docs}`);
+
+  build-from-head:
+    # The same round trip for the commit under review: `npm pack` of this checkout,
+    # extracted into a separate directory and built there by npm from the package.json
+    # inside the tarball (scripts/update-from-registry.mjs --tarball) — what a consumer of
+    # the next release would install, on Windows and Linux. build-from-package above keeps
+    # proving the script against an already published version; this job builds the PR's
+    # own artefact, never the registry's copy of the same version number.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+
+      - name: Pack this commit
+        run: |
+          node -e "require('node:fs').mkdirSync(process.argv[1], { recursive: true })" "${{ runner.temp }}/head-pack"
+          npm pack --pack-destination "${{ runner.temp }}/head-pack"
+
+      - name: Extract, install and build the tarball
+        run: node scripts/update-from-registry.mjs --tarball "${{ runner.temp }}/head-pack" --dir "${{ runner.temp }}/head-build"
+
+      - name: Assert the build is this commit's package
+        shell: node {0}
+        run: |
+          const { existsSync, readFileSync } = require('node:fs');
+          const { join } = require('node:path');
+          const dir = join(process.env.RUNNER_TEMP, 'head-build');
+          const failures = [];
+          const read = (root, file) => readFileSync(join(root, file));
+          // The package.json npm installed from is the tarball's, i.e. this commit's.
+          const built = JSON.parse(read(dir, 'package.json'));
+          const head = JSON.parse(read('.', 'package.json'));
+          for (const key of ['name', 'version', 'dependencies', 'devDependencies', 'scripts']) {
+            if (JSON.stringify(built[key]) !== JSON.stringify(head[key])) {
+              failures.push(`package.json "${key}" differs from the checkout`);
+            }
+          }
+          // Sources of this commit, byte for byte, not a published copy.
+          for (const file of ['src/lib/util/exportDiagram.ts', 'scripts/update-from-registry.mjs']) {
+            if (!read(dir, file).equals(read('.', file))) failures.push(`${file} differs`);
+          }
+          if (existsSync(join(dir, 'pnpm-lock.yaml'))) failures.push('pnpm-lock.yaml was packed');
+          for (const name of ['index.html', 'edit.html', 'view.html', '_app']) {
+            if (!existsSync(join(dir, 'docs', name))) failures.push(`docs/${name} is missing`);
+          }
+          if (failures.length > 0) {
+            console.error(failures.join('\n'));
+            process.exit(1);
+          }
+          console.log(`${built.name} ${built.version} built from this commit in ${dir}`);

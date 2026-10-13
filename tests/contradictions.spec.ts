@@ -156,6 +156,105 @@ test.describe('Contradictory and out-of-order operations', () => {
     await assertInvariants(page, errors, { label: 'menu + wheel' });
   });
 
+  test('the code switched to another diagram type under a selection: the inspector follows it', async ({
+    page
+  }) => {
+    await node(page, 'B').click();
+    await expect(page.getByTestId(TID.inspName)).toHaveValue('Middle');
+    // Pasted over the whole code, as someone replacing the diagram would.
+    const paste = async (code: string) => {
+      await page.locator('.monaco-editor').first().click();
+      await page.keyboard.press('Control+a');
+      await page.evaluate((text) => navigator.clipboard.writeText(text), code);
+      await page.keyboard.press('Control+v');
+      // Monaco may keep the indentation it pasted at and write CRLF: compare the text.
+      const text = async () =>
+        (await readCode(page)).replaceAll('\r\n', '\n').replaceAll(/[ \t]+$/gm, '');
+      await expect.poll(text).toBe(code);
+    };
+    // A sequence diagram that also has a B: the inspector shows that participant.
+    await paste(
+      'sequenceDiagram\n  participant A as Client\n  participant B as Server\n  A->>B: hello'
+    );
+    await expect(page.getByTestId(TID.inspName)).toHaveValue('Server');
+    await assertInvariants(page, errors, { label: 'flowchart → sequence' });
+    // One without it: the selection goes, rather than pointing at nothing.
+    await paste('pie title Pets\n  "Dogs" : 3\n  "Cats" : 2');
+    await expect(page.getByTestId(TID.inspClose)).toBeHidden();
+    await expect(outline(page)).toBeHidden();
+    await assertInvariants(page, errors, { label: 'sequence → pie' });
+    // Back to a flowchart: nothing is selected until clicked, and clicking still works.
+    await paste(flow);
+    await expect(page.locator('#view')).toContainText('Middle', { timeout: 15_000 });
+    // The type's own theme is filled in after the first drawing, which draws it again: a
+    // click during that second drawing lands on the picture being replaced.
+    await expect(async () => {
+      await node(page, 'C').click();
+      await expect(outline(page)).toHaveAttribute('data-selected', 'C', { timeout: 1000 });
+    }).toPass();
+    await expect(page.getByTestId(TID.inspName)).toHaveValue('End');
+    await assertInvariants(page, errors, { label: 'pie → flowchart' });
+  });
+
+  test('folding the inspector in the middle of a rename applies the name; unfolding shows it', async ({
+    page
+  }) => {
+    const before = await readCode(page);
+    await node(page, 'A').click();
+    await page.keyboard.press('F2');
+    await page.keyboard.insertText('Half typed');
+    await page.getByTestId(TID.inspCollapse).click();
+    await expect.poll(() => readCode(page)).toContain('A["Half typed"]');
+    await page.getByTestId(TID.wsInspectorExpand).click();
+    await expect(page.getByTestId(TID.inspName)).toHaveValue('Half typed');
+    await expect(outline(page)).toHaveAttribute('data-selected', 'A');
+    await assertInvariants(page, errors, { before, label: 'fold mid-rename' });
+  });
+
+  test('keys typed in an add-bar form do not act on the selection behind it', async ({ page }) => {
+    const before = await readCode(page);
+    await node(page, 'B').click();
+    await openForm(page, 'laneForm');
+    await formField(page, 'name').click();
+    await page.keyboard.type('abc');
+    for (const key of ['Delete', 'Backspace', 'F2', 'Enter', 'ArrowDown', 'Tab']) {
+      await page.keyboard.press(key);
+    }
+    // Enter submitted the form (a group named ab); the node behind was neither deleted,
+    // renamed nor given a next node.
+    await expect.poll(() => readCode(page)).toContain('ab');
+    const code = await readCode(page);
+    expect(code).toContain('B[Middle]');
+    expect(code.split('\n').filter((line) => line.includes('-->'))).toHaveLength(2);
+    await assertInvariants(page, errors, { before, label: 'keys in a form' });
+  });
+
+  test('a burst of inspector edits undoes back to the start and redoes to the end', async ({
+    page
+  }) => {
+    const start = await readCode(page);
+    await node(page, 'A').click();
+    for (const colour of ['blue', 'red', 'green']) {
+      await page.getByTestId(`${TID.inspColor}-${colour}`).click();
+    }
+    await page.getByTestId(TID.inspTextBold).click();
+    await page.keyboard.press('Enter');
+    await page.keyboard.insertText('Next');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => readCode(page)).toContain('Next');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => readCode(page)).toMatch(/新しい図形|New/);
+    await page.keyboard.press('Escape');
+    const end = await assertInvariants(page, errors, { label: 'burst' });
+    const undo = page.getByTestId(TID.undoButton);
+    while (await undo.isEnabled()) await undo.click();
+    await expect.poll(() => readCode(page)).toBe(start);
+    const redo = page.getByTestId(TID.redoButton);
+    while (await redo.isEnabled()) await redo.click();
+    await expect.poll(() => readCode(page)).toBe(end);
+    await assertInvariants(page, errors, { label: 'undo all, redo all' });
+  });
+
   test('turning an arrow round when the opposite arrow exists is refused, not doubled', async ({
     editPage,
     page

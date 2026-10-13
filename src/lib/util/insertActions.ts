@@ -9,7 +9,7 @@
  */
 import { headerIndex, isContent } from './codeText';
 import { addLane, addNode, splitLines, type NodeShape } from './diagramEdit';
-import { flowNodeDetails, type EditObject } from './diagramModify';
+import { flowNodeDetails, type EditKind, type EditObject } from './diagramModify';
 import type { Added } from './selectionActions';
 
 /** The shapes the add bar offers: three on the bar, the other two under その他. */
@@ -42,6 +42,30 @@ export const insertShape = (
         ? addNode(code, { label, lane: place.lane, shape })
         : addNode(code, { label, shape });
   return { ...added, name: label };
+};
+
+const escapeRegExp = (text: string) => text.replaceAll(/[$()*+.?[\\\]^{|}]/g, String.raw`\$&`);
+
+/**
+ * Whether the object is a decision — a flowchart diamond (`{…}`, `@{ shape: diamond }` and
+ * mermaid's other names for it) or a state diagram's `<<choice>>` — so that ＋分岐 adds
+ * one more way out of it instead of a node beside it (selectionActions' `branchSource`).
+ */
+export const isDecision = (
+  code: string,
+  kind: EditKind | undefined,
+  object: EditObject | undefined
+): boolean => {
+  if (!object || object.group) return false;
+  if (kind === 'flowchart') return flowNodeDetails(code, object.id).shapeName === 'diam';
+  if (kind === 'state') {
+    const choice = new RegExp(
+      String.raw`^\s*state\s+${escapeRegExp(object.id)}\s*<<choice>>\s*$`,
+      'm'
+    );
+    return choice.test(code);
+  }
+  return false;
 };
 
 /** A new, empty lane (a `subgraph`: a lane in a swimlane diagram, a group in a flowchart). */

@@ -52,7 +52,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'edit',
       items: [
         'Click a shape, an arrow or a lane in the picture to select it: the top of the settings panel shows "Whole diagram › Shape" (or Arrow, Lane, Task) and the panel switches to its settings; ✕, Escape or a click on the empty canvas clears. Double-click to rename; right-click for Rename, Change colour, Change shape, Add next, Draw an arrow from here and Delete.',
-        'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text (size, bold, reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it, and + Next, + Branch, Arrow and Delete.',
+        'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text (size, bold, reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it, and + Next, + Branch (beside the shape; on a decision, one more way out of it), Arrow and Delete.',
         'An arrow: from and to, label, line (solid, dotted, thick, invisible), arrowhead (at the end, both ends, none), colour, reverse and delete — and what mermaid allows for its type: a flowchart arrow’s head shape (arrow, circle, cross), length, animation and curve; a message’s end and activation; a class relation’s kind and multiplicities; an ER relationship’s cardinality at each end; an architecture edge’s sides; a C4 relation’s direction.',
         'A lane: name, colour, how many shapes it holds with a button to add one, its own direction (flowchart subgraphs), and delete (keeping or with what is inside). Architecture services: change the icon, or move the service to another group. An icon shape takes a backdrop (square, circle, rounded) and its label above or below; a participant its symbol, a mindmap topic its shape, a class its annotation and type parameter, a kanban card its assignee, ticket and priority, a requirement its kind, id, text, risk and verification, a block its width.',
         'A change that would break the diagram is not made; the panel says so instead.',
@@ -117,7 +117,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         'In the code, F2 on a name renames that ID everywhere in the diagram (the line under the code says so too).',
-        'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it, Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears.',
+        'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it (one more way out of a decision), Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears.',
         'Fold the settings panel away if you only write code, or the code pane if you only work on the picture; this browser remembers what is folded and how wide each column is.',
         'The sun / moon button at the right of the header switches the app to dark mode (the diagram looks the same). Reset in the header returns everything to the starting diagram (History is kept). If the config (JSON) breaks, "Reset config" on the Config JSON tab puts it back.',
         'When the code has a mistake, the line under the code and a notice over the picture say which line, and the picture stays as it last was. "Revert to the last valid state" puts that code back (Undo brings your change back again); the add bar and the panel wait until the code is fixed, though theme and other settings still work.',
@@ -170,11 +170,11 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'edit',
       items: [
         '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの上に「図全体 › 図形」（矢印・レーン・タスク）と出て、その設定に変わります。✕ か Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更、右クリックで「名前を変更・色を変える・形を変える・次の処理を追加・ここから矢印を引く・削除」のメニューが出ます。',
-        '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字（大きさ・太字・元に戻す）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧、「＋次」「＋分岐」「矢印」「削除」。',
+        '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字（大きさ・太字・元に戻す）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧、「＋次」「＋分岐」（横に分岐。分岐の図形では、そこから出る道をもう1本）「矢印」「削除」。',
         '矢印：つなぐ元と先、ラベル、線（実線・点線・太線・見えない）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。図の種類で Mermaid が書けるものも変えられます：フローチャートの矢印の先の形（矢印・丸・×）・長さ・動き・曲線、シーケンスのメッセージの先の形と活性化、クラス図の関係の種類と多重度、ER 図の両端の数、アーキテクチャの接続の辺、C4 の関係の向き。',
         'レーン：名前、色、入っている図形の数と追加、そのレーンだけの向き（フローチャートのサブグラフ）、削除（中身は残す・中身ごと）。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。アイコンの図形は背景（四角・丸・角丸）と文字の位置（上・下）、シーケンスの参加者は種類、マインドマップの話題は形、クラスは注釈と型引数、カンバンのカードは担当・チケット・優先度、要件図の要件は種類・ID・本文・リスク・検証方法、ブロック図のブロックは幅を変えられます。',
         '図が壊れる変更は行われず、パネルにその旨が表示されます。',
-        'クリックで選べない図（ガント・カンバン・円グラフなど）は、設定パネルの一覧から要素を選びます。クラスの属性・メソッド、ER 図の属性、ガントのタスク（区分・開始日・前のタスク・日数・状況・印）、円グラフの値なども変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。',
+        'クリックで選べない図（ガント・カンバン・円グラフなど）は、設定パネルの一覧から要素を選びます。クラスの「メンバー」（属性・メソッド）、ER 図の属性、ガントのタスク（区分・開始日・前のタスク・日数・状況・印）、円グラフの値なども変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。',
         'ガントのタスク・カンバンのカード・タイムラインの期間・円グラフの項目・ER 図のエンティティの属性など表の形の図は、図の上の「図 ／ 表 ／ 並べる」で表として編集できます。セルを書き換えて離れるか Enter で反映、行の追加・削除・上下の移動、カードの別の列への移動ができ、Excel でコピーした行を貼り付けると行として追加されます。'
       ],
       title: '変更と削除'
@@ -183,7 +183,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'layout',
       items: [
         '設定パネルの「図全体」の「向き」：上→下・下→上・左→右・右→左・自動（大きく表示できる向きを自動で選びます）。',
-        '「配置」：標準 か ELK（大きな図を詰めて配置）。ELK のときは「並べ方」「循環」「書いた順」「矢印をまとめる」も選べます。',
+        '「配置」：標準 か ELK（大きな図を詰めて配置）。ELK のときは「並べ方」「循環」「書いた順」「束ねる」（矢印をまとめる）も選べます。',
         '「間隔」：詰める・標準・広く（ELK のときは効きません）。',
         '「タイトル」：フローチャート・スイムレーン・シーケンス・状態・クラス・ER・ガント・円グラフ・タイムライン・C4 の図の上に表示されます。マインドマップ・カンバン・アーキテクチャ・ブロック図には表示されません。図の種類で使えない項目はパネルに出ません。「図全体」には種類ごとの Mermaid の設定も並びます：フローチャートの「曲線」と「描き方」（クラシック・手描き・ネオ）、シーケンスの「番号」、ガントの「土日除く」「今日線」「目盛り」「間隔」、円グラフの「値を表示」、XY チャートの「横向き」、Git グラフの「向き」、ブロック図の「列数」、マインドマップの「配置」、サンキー・パケット・タイムラインの設定、読み上げ用の「読上名」「読上説明」（accTitle / accDescr）。'
       ],
@@ -235,7 +235,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         'コード欄で名前の上にカーソルを置いて F2 を押すと、図の中のその ID をまとめて変えられます（コード欄の下にも案内が出ています）。',
-        '図形を選択中のキー操作（入力中でないとき）：Enter で次の図形を追加（名前を入れて Enter）、Tab で横に分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。',
+        '図形を選択中のキー操作（入力中でないとき）：Enter で次の図形を追加（名前を入れて Enter）、Tab で横に分岐を追加（分岐の図形ならそこから出る道を追加）、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。',
         'コードだけ書くときは設定パネルを、図だけ触るときはコード欄をたたむと図を広く使えます。たたんだ状態と各列の幅はこのブラウザに記憶されます。',
         'ヘッダー右端の太陽／月のボタンでアプリのダークモードを切り替えます（図の見た目は変わりません）。ヘッダーの「初期化」で図と設定を最初の状態に戻せます（履歴は残ります）。設定（JSON）が壊れたときは「設定 JSON」タブの「設定をリセット」で戻せます。',
         'コードに誤りがあると、コード欄の下と図の上のお知らせに何行目かが出て、図は直前の正しい状態のまま残ります。「直前の正しい状態に戻す」でそのコードに戻せます（「元に戻す」で変更前に戻ることもできます）。コードが直るまで追加バーと設定パネルは図を変更しません（テーマなどの設定は変えられます）。',

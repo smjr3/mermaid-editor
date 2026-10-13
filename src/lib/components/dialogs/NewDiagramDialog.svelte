@@ -12,7 +12,7 @@
   import { starter, starterKinds, type StarterId } from '$/util/newDiagram';
   import { sampleThumb, starterThumb, thumbSvg } from '$/util/newThumbs';
   import { sampleCatalog } from '$/util/sampleCatalog';
-  import { sampleNameKeys } from '$/util/sampleNames';
+  import { sampleNameKeys, sampleTitle } from '$/util/sampleNames';
   import { labelOf, templateForms } from '$/util/templateForms';
   import { templateDialog, templateNotice } from '$/util/templateNotice.svelte';
   import { thumbnail } from '$/util/templateThumbnails';
@@ -106,6 +106,9 @@
       ? templateForms.find((template) => template.sample === sampleTitle)
       : undefined;
 
+  // The card's name for a sample (Japanese where the page is); the title stays its key.
+  const titleOf = (title: string) => sampleTitle(title, locale);
+
   const ALL = '';
   let category = $state(ALL);
   let query = $state('');
@@ -119,8 +122,8 @@
       .flatMap((group) => {
         const name = `${group} ${shownName(group)}`;
         return samples[group]
-          .filter(({ title: sampleTitle }) => {
-            const text = normalize(`${name} ${sampleTitle}`);
+          .filter(({ title: catalogueTitle }) => {
+            const text = normalize(`${name} ${catalogueTitle} ${titleOf(catalogueTitle)}`);
             return words.every((word) => text.includes(word));
           })
           .map((example) => ({ example, form: formOf(group, example.title), group }));
@@ -341,7 +344,8 @@
                 <!-- eslint-disable-next-line svelte/no-at-html-tags -- a fixed drawing from newThumbs.ts -->
                 {@html thumbSvg(sampleThumb(group, form?.id), 72)}
               </span>
-              <span class="text-sm leading-tight font-medium break-words">{example.title}</span>
+              <span class="text-sm leading-tight font-medium break-words"
+                >{titleOf(example.title)}</span>
               {#if form}
                 <span class="self-start rounded bg-accent/10 px-1.5 text-[11px] text-accent"
                   >{t('newDlg.formTag')}</span>
@@ -365,7 +369,7 @@
               {/if}
             </div>
             <div>
-              <h3 class="text-base font-semibold break-words">{example.title}</h3>
+              <h3 class="text-base font-semibold break-words">{titleOf(example.title)}</h3>
               <p class="text-sm text-muted-foreground">
                 {form
                   ? labelOf(form.description, locale)
@@ -380,7 +384,7 @@
               data-testid={TID.newDlgSampleStart}
               onclick={() => {
                 logEvent('loadSampleDiagram', { diagramType: group, exampleTitle: example.title });
-                opened(example.title);
+                opened(titleOf(example.title));
               }}>
               <OpenIcon />
               {t('newDlg.sampleStart')}

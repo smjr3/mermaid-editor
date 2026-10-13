@@ -82,6 +82,16 @@ test.describe('Inspector', () => {
         panel(page).locator(`[data-testid="${TID.inspField}"][data-key="${key}"]`)
       ).toBeVisible();
     }
+    // A task has no shape or colour: their block is not left as an empty band.
+    const emptyBands = await panel(page)
+      .locator('section')
+      .evaluateAll(
+        (sections) =>
+          sections.filter(
+            (section) => section.children.length === 0 && section.getBoundingClientRect().height > 0
+          ).length
+      );
+    expect(emptyBands).toBe(0);
   });
 
   test('renames in the 名前 field on a double click, and applies it on Enter', async ({
@@ -137,6 +147,97 @@ test.describe('Inspector', () => {
     await expect.poll(() => stored(page)).toContain('"出荷"');
     expect(await stored(page)).toMatch(/C --> n\d/);
     await editPage.checkTextInView('出荷');
+  });
+
+  test('＋分岐 on a decision adds one more way out of it, in its lane', async ({
+    editPage,
+    page
+  }) => {
+    const decision = `swimlane-beta LR
+  subgraph Sales
+    A[Order] --> B{In stock?}
+    B -->|yes| C[Ship]
+  end`;
+    await editPage.start(urlFor(decision));
+    await editPage.checkTextInView('Ship');
+    await pickObject(page, 'B');
+    await page.getByTestId(TID.inspAddBranch).click();
+    const name = page.getByTestId(TID.inspName);
+    await expect(name).toBeFocused();
+    await page.keyboard.type('取り寄せ');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => stored(page)).toContain('"取り寄せ"');
+    const code = await stored(page);
+    // From the decision itself (not from A, where it comes from), inside Sales.
+    expect(code).toMatch(/\n\s*B --> n\d(?:\n|$)/);
+    expect(code).not.toMatch(/A --> n\d/);
+    expect(code).toMatch(/subgraph Sales[\s\S]*n\d\["取り寄せ"\][\s\S]*end/);
+    await editPage.checkTextInView('取り寄せ');
+
+    // Not a decision: the branch is still beside it, from where it comes from.
+    await pickObject(page, 'C');
+    await page.getByTestId(TID.inspAddBranch).click();
+    await expect(name).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => stored(page)).toMatch(/B --> n\d[\s\S]*B --> n\d/);
+  });
+
+  test('row labels show whole, and a member’s name is told from the class’s', async ({
+    editPage,
+    page
+  }) => {
+    await page.setViewportSize({ height: 900, width: 1440 });
+    await editPage.start(
+      urlFor('classDiagram\n  class Animal {\n    +String name\n    +eat() void\n  }\n  class Dog')
+    );
+    await editPage.checkTextInView('Dog');
+    const cutLabels = () =>
+      panel(page)
+        .locator('[data-field-label]')
+        .evaluateAll((labels) =>
+          labels
+            .filter((label) => label.scrollWidth > label.clientWidth + 1)
+            .map((label) => label.textContent)
+        );
+    expect(await cutLabels()).toEqual([]);
+    await pickObject(page, 'Animal');
+    await expect(field(page, 'member-name')).toHaveValue('name');
+    const labels = await panel(page).locator('[data-field-label]').allTextContents();
+    expect(labels).toContain(t('sel.name'));
+    expect(labels).toContain(t('insp.members.class'));
+    expect(labels).toContain(t('insp.member.class.name'));
+    expect(labels.filter((label) => label === t('sel.name'))).toHaveLength(1);
+    expect(await cutLabels()).toEqual([]);
+    // All the rows' controls start at the same x.
+    const starts = await panel(page)
+      .locator('[data-field-label] + div')
+      .evaluateAll((controls) => [
+        ...new Set(
+          controls
+            .map((control) => control.getBoundingClientRect())
+            .filter((box) => box.width > 0)
+            .map((box) => Math.round(box.x))
+        )
+      ]);
+    expect(starts).toHaveLength(1);
+  });
+
+  test('a name Mermaid cannot hold as typed is applied and the change is said', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(urlFor(flow));
+    await editPage.checkTextInView('Pick');
+    await pickObject(page, 'C');
+    await renameTo(page, TID.inspName, 'Pick;Pack');
+    await expect.poll(() => stored(page)).toMatch(/C\["?Pick,Pack"?\]/);
+    await expect(page.getByTestId(TID.selectionWarning)).toHaveText(
+      t('edit.adjusted', { changes: '; → ,' })
+    );
+    // A name that fits as typed says nothing.
+    await renameTo(page, TID.inspName, 'Pack');
+    await expect.poll(() => stored(page)).toMatch(/C\["?Pack"?\]/);
+    await expect(page.getByTestId(TID.selectionWarning)).toBeHidden({ timeout: 6000 });
   });
 
   test('＋追加 in a lane adds a node inside it', async ({ editPage, page }) => {
@@ -432,6 +533,30 @@ test.describe('Inspector: mermaid’s other options', () => {
     await field(page, 'laneDirection').selectOption('TB');
     await expect.poll(() => stored(page)).toContain('  subgraph S [Team]\n    direction TB');
     await editPage.checkTextInView('Two');
+  });
+
+  test('a gantt task’s 区分 moves it to another section and keeps it selected', async ({
+    editPage,
+    page
+  }) => {
+    await editPage.start(
+      urlFor(
+        'gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n    Spec :a1, 2024-01-01, 3d\n  section Build\n    Code :4d'
+      )
+    );
+    await editPage.checkTextInView('Code');
+    await pickObject(page, 'L3');
+    const section = field(page, 'section');
+    await expect(section).toHaveValue('L2');
+    await section.selectOption('L4');
+    await expect
+      .poll(() => stored(page))
+      .toBe(
+        'gantt\n  dateFormat YYYY-MM-DD\n  section Plan\n  section Build\n    Code : 2024-01-01, 4d\n    Spec : a1, 2024-01-01, 3d'
+      );
+    // The selection followed the task to its new line.
+    await expect(page.getByTestId(TID.inspName)).toHaveValue('Spec');
+    await expect(field(page, 'section')).toHaveValue('L3');
   });
 
   test('an icon shape’s backdrop and label position', async ({ editPage, page }) => {

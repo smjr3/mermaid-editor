@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$/i18n';
+  import { messages, type MessageKey } from '$/i18n/messages';
   import CopyButton from '$/components/CopyButton.svelte';
   import FieldRow from '$/components/form/FieldRow.svelte';
   import Segmented from '$/components/form/Segmented.svelte';
@@ -24,6 +25,12 @@
   // mount time and then owns its values.
   // svelte-ignore state_referenced_locally
   const initialConfig = sanitizedConfig;
+  // Local (QA 2026-10-13): the theme and look by the names the inspector uses (モノクロ,
+  // 手描き), not mermaid's ids; an id without a name shows as it is.
+  const humanLabel = (prefix: string, id: string) => {
+    const key = `${prefix}.${id}`;
+    return key in messages.en ? t(key as MessageKey) : id;
+  };
   const initialTheme = (initialConfig.theme as string | undefined) ?? 'default';
   let theme = $state(initialTheme);
   let look = $state((initialConfig.look as string | undefined) ?? 'classic');
@@ -97,7 +104,7 @@
       aria-label={t('share.theme')}
       data-testid={TID.shareDlgTheme}>
       {#each MERMAID_THEMES as themeName (themeName)}
-        <option value={themeName}>{themeName}</option>
+        <option value={themeName}>{humanLabel('colors.theme', themeName)}</option>
       {/each}
     </select>
     <select
@@ -107,7 +114,7 @@
       title={t('share.look')}
       data-testid={TID.shareDlgLook}>
       {#each MERMAID_LOOKS as lookName (lookName)}
-        <option value={lookName}>{lookName}</option>
+        <option value={lookName}>{humanLabel('opt.look', lookName)}</option>
       {/each}
     </select>
   </FieldRow>

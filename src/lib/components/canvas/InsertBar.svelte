@@ -36,8 +36,9 @@
   });
 </script>
 
+<!-- Wraps onto a second line rather than cutting off その他 ▾ in a narrow diagram column. -->
 <div
-  class="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden"
+  class="flex min-w-0 flex-1 flex-wrap items-center gap-0.5 overflow-hidden"
   role="toolbar"
   aria-label={t('canvas.insertBar')}
   data-testid={TID.canvasInsertBar}>

@@ -1,4 +1,4 @@
-import type { MessageKey } from '$/i18n/messages';
+import type { Locale, MessageKey } from '$/i18n/messages';
 
 /**
  * Local: the names the Templates card shows for its categories. The group names are
@@ -42,3 +42,101 @@ export const sampleNameKeys: Record<string, MessageKey> = {
   'Wardley Maps': 'preset.name.wardley',
   XY: 'preset.name.xy'
 };
+
+/**
+ * Local (QA 2026-10-13): the Japanese names of the samples whose title in the catalogue
+ * is English, by that title. The title stays the sample's key (`data-title`, the search,
+ * the analytics); only what the card shows changes. Titles already in Japanese (the
+ * business templates, the local examples) need none.
+ */
+export const sampleTitlesJa: Record<string, string> = {
+  'Actor Collaboration': 'アクターの連携',
+  Annotations: '注釈',
+  'Approval Workflow': '承認ワークフロー',
+  'Basic Class Inheritance': '基本のクラス継承',
+  'Basic ER Schema': '基本の ER スキーマ',
+  'Basic Flowchart': '基本のフローチャート',
+  'Basic Git Flow': '基本の Git フロー',
+  'Basic Mindmap': '基本のマインドマップ',
+  'Basic Pie Chart': '基本の円グラフ',
+  'Basic Sequence': '基本のシーケンス図',
+  'Basic State Diagram': '基本の状態遷移図',
+  'Basic System Architecture': '基本のシステム構成',
+  'Basic Use Cases': '基本のユースケース',
+  'Block Arrows and Nested Blocks': 'ブロック矢印と入れ子のブロック',
+  'CI/CD Pipeline with Subgraphs': 'CI/CD パイプライン（サブグラフ）',
+  'Calculator Grammar': '電卓の文法',
+  'Choice and Concurrency': '分岐と並行',
+  'Cloud (AWS logos)': 'クラウド（AWS ロゴ）',
+  'Cloud (generic)': 'クラウド（汎用）',
+  'Coffee Sales with Data Labels': 'コーヒーの売上（データラベル）',
+  'Cross-System Flow with Data': 'システム間の流れ（データつき）',
+  'Custom Evolution Stages': '独自の進化段階',
+  'Disk Usage with Styling': 'ディスク使用量（装飾つき）',
+  'E-Bike Braking System': '電動自転車のブレーキ',
+  'E-commerce Domain Model': 'EC サイトのドメインモデル',
+  'Eisenhower Matrix with Styled Points': 'アイゼンハワー・マトリクス（点の装飾）',
+  'Email Address': 'メールアドレス',
+  'Energy Flow (UK)': 'エネルギーの流れ（英国）',
+  'Expanded Node Shapes': 'いろいろな図形',
+  'Expression Grammar': '式の文法',
+  'File-Type Icons via Config Maps': '設定によるファイル種別アイコン',
+  'Food Delivery with Parallel Actions': 'フードデリバリー（並行処理）',
+  'Framework Comparison with Polygon Grid': 'フレームワーク比較（多角形グリッド）',
+  'GPT Tokeniser Architecture': 'GPT トークナイザーの構成',
+  'Highlighted Commits': '強調したコミット',
+  'Identifiers with Predicates': '述語つきの識別子',
+  'Incident Response': 'インシデント対応',
+  'Internet Banking Container Diagram': 'ネットバンキング（コンテナ図）',
+  'Internet Banking System Context': 'ネットバンキング（システムコンテキスト）',
+  'Ishikawa Diagram': '特性要因図',
+  'JSON Grammar': 'JSON の文法',
+  'Job Application Funnel': '応募から採用までのファネル',
+  'Late Food Delivery Root Causes': '料理の配達遅れの原因',
+  'Load Balancing with Junctions': 'ロードバランサー（分岐点）',
+  'Mermaid Sprint Board': 'スプリントボード',
+  'Monthly Budget Flow': '毎月の家計の流れ',
+  'Monthly Household Budget': '毎月の家計',
+  'My Working Day': '私の仕事の1日',
+  'Office Network': '社内ネットワーク',
+  'Online Checkout Flow': 'オンライン決済の流れ',
+  'Online Grocery Shopping': 'ネットスーパーでの買い物',
+  'Online Payment Flow': 'オンライン支払いの流れ',
+  'Order Fulfilment': '注文の出荷',
+  'Order Lifecycle with Composite States': '注文のライフサイクル（複合状態）',
+  'Order Service': '注文サービス',
+  'Personal Task Board': '個人のタスクボード',
+  'Phone Number': '電話番号',
+  'Pipeline Components': 'パイプラインの構成要素',
+  'Product Launch Plan': '製品発売の計画',
+  'Product Positioning': '製品のポジショニング',
+  'Product Roadmap with Sections': '製品ロードマップ（区切りつき）',
+  'Product Strategy with Domain Transitions': '製品戦略（領域の移り変わり）',
+  'Product Sweet Spot': '製品のスイートスポット',
+  'Project File Structure': 'プロジェクトのファイル構成',
+  'Project Timeline': 'プロジェクトの年表',
+  'Release and Hotfix Workflow': 'リリースとホットフィックス',
+  'Sales Revenue': '売上高',
+  'Semantic Version': 'セマンティックバージョン',
+  'Shared Drive with Quoted Names': '共有ドライブ（引用符つきの名前）',
+  'Shopping Cart Story': 'ショッピングカートのストーリー',
+  'Sign-ups vs Churn': '登録数と解約数',
+  'Streaming Service with Keys and Comments': '動画配信サービス（キーとコメント）',
+  'Student Grades': '生徒の成績',
+  'System Boundaries': 'システム境界',
+  'TCP Packet': 'TCP パケット',
+  'Tea Shop Value Chain': '紅茶店のバリューチェーン',
+  'Team Skill Overlap with Sizes and Styles': 'チームのスキルの重なり（大きさと装飾）',
+  'Three-Tier Web Architecture': '3 層の Web 構成',
+  'Trip Planning with Shapes and Icons': '旅行の計画（形とアイコン）',
+  'UDP Packet with Relative Bits': 'UDP パケット（相対ビット）',
+  'Unicode Icons in Filenames': 'ファイル名の Unicode アイコン',
+  'Web App with Frontend and Backend Groups': 'Web アプリ（フロントエンドとバックエンド）',
+  'Web System': 'Web システム',
+  'Website Redesign with Dependencies': 'Web サイト刷新（依存関係）',
+  'Workday Breakdown with Values': '1日の仕事の内訳（値つき）'
+};
+
+/** The name a sample's card shows: in Japanese where the page is, else the catalogue's title. */
+export const sampleTitle = (title: string, locale: Locale): string =>
+  locale === 'ja' ? (sampleTitlesJa[title] ?? title) : title;

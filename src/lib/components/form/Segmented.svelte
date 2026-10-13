@@ -1,6 +1,8 @@
 <script lang="ts">
   // Local: a one-line segmented choice. Each item carries `data-testid="${testID}-${value}"`
-  // and `aria-pressed`, so tests pick an option by its value, never by its text.
+  // and `aria-pressed`, so tests pick an option by its value, never by its text. `dense`
+  // sizes the items by their text with less padding, for rows whose labels would not fit
+  // in equal widths (向き's five, 線's 見えない) in the inspector's default width.
   interface Option {
     disabled?: boolean;
     label: string;
@@ -10,6 +12,7 @@
 
   let {
     ariaLabel,
+    dense = false,
     full = false,
     onchange,
     options,
@@ -17,6 +20,7 @@
     value = $bindable()
   }: {
     ariaLabel: string;
+    dense?: boolean;
     full?: boolean;
     onchange?: (value: string) => void;
     options: Option[];
@@ -43,8 +47,9 @@
     <button
       type="button"
       class={[
-        'min-w-0 truncate rounded-sm px-2 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50',
-        full && 'flex-1',
+        'min-w-0 truncate rounded-sm text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50',
+        dense ? 'px-1' : 'px-2',
+        full && (dense ? 'flex-auto' : 'flex-1'),
         option.value === value
           ? 'bg-muted font-semibold text-foreground'
           : 'text-muted-foreground hover:text-foreground'

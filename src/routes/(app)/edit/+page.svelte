@@ -173,7 +173,7 @@
         <Resizable.Handle withHandle onDraggingChange={onDragging} />
         <Resizable.Pane id="pane-view" order={2} minSize={20} class="flex h-full flex-col">
           <div class="h-full min-h-0" data-testid={TID.wsCanvasPane}>
-            <CanvasPane />
+            <CanvasPane sheetOpen={isHistoryOpen} />
           </div>
         </Resizable.Pane>
         <Resizable.Handle withHandle onDraggingChange={onDragging} />

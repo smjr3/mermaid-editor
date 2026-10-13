@@ -150,6 +150,22 @@ test.describe('Add bar: flowcharts and swimlanes', () => {
     await expect(page.getByTestId(TID.canvasZoomLevel)).toHaveText(zoom ?? '');
   });
 
+  test('a narrow diagram column wraps the bar instead of cutting off その他', async ({
+    editPage,
+    page
+  }) => {
+    await page.setViewportSize({ height: 768, width: 1024 });
+    await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[Middle]'));
+    await editPage.checkTextInView('Middle');
+    const bar = await insertBar(page).boundingBox();
+    const more = await insertBar(page).getByTestId(TID.canvasInsertMore).boundingBox();
+    if (!bar || !more) throw new Error('no add bar');
+    expect(more.x + more.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
+    expect(more.y + more.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
+    await insertBar(page).getByTestId(TID.canvasInsertMore).click();
+    await expect(page.getByTestId(TID.canvasInsertMenu)).toBeVisible();
+  });
+
   test('a flowchart calls it a group, and offers the other shapes under その他', async ({
     editPage,
     page

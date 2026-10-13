@@ -9,7 +9,7 @@
  */
 import type { MessageKey } from '$/i18n/messages';
 import { chartFields, chartKind, setChartFields } from './chartEdit';
-import { ganttSafe, headerIndex, indentOf, oneLine } from './codeText';
+import { ganttSafe, headerIndex, indentOf, isContent, oneLine } from './codeText';
 import { splitLines } from './diagramEdit';
 import type { EditObject } from './diagramModify';
 import type { DiagramObject } from './mermaid';
@@ -553,6 +553,72 @@ export const ensureTaskId = (lines: string[], line: number, depth = 0): string |
   return id;
 };
 
+/** The chart's sections, by the line of their `section` statement. */
+export const ganttSections = (lines: string[]) => {
+  const header = headerIndex(lines);
+  return lines.flatMap((line, index) => {
+    const match = index > header ? ganttSection.exec(line) : null;
+    return match ? [{ index, name: match[2] }] : [];
+  });
+};
+
+/** Gives the first task a start when it has none (mermaid cannot draw one without), from `start`. */
+export const keepFirstStart = (lines: string[], start: string) => {
+  const first = ganttTasks(lines)[0];
+  if (first && !first.start && start) lines[first.line] = renderGanttTask({ ...first, start });
+};
+
+export const firstStart = (lines: string[]) => ganttTasks(lines)[0]?.start ?? '';
+
+/**
+ * The code with the task on `line` moved to the end of a section (`L<line>`), or before
+ * every section (''), and the line it is on now; undefined when there is no such task or
+ * section. (Moved here from the table editor, so the inspector's 区分 row shares it.)
+ */
+export const moveGanttTask = (
+  code: string,
+  line: number,
+  section: string
+): { code: string; line: number } | undefined => {
+  const { eol, lines } = splitLines(code);
+  const task = parseGanttTask(lines[line] ?? '', line);
+  if (!task) return undefined;
+  const start = firstStart(lines);
+  // A task that started straight after this one starts where this one started.
+  const next = ganttTasks(lines).find((other) => other.line > line);
+  if (next && !next.start && task.start)
+    lines[next.line] = renderGanttTask({ ...next, start: task.start });
+  const sections = ganttSections(lines);
+  let at: number;
+  if (section) {
+    const index = Number(section.slice(1));
+    if (!sections.some((s) => s.index === index)) return undefined;
+    at = sections.find((s) => s.index > index)?.index ?? lines.length;
+    while (at > index + 1 && !isContent(lines[at - 1])) at--;
+  } else {
+    at = sections[0]?.index ?? lines.length;
+  }
+  const indent = ganttTasks(lines).find((other) => other.line < at && other.line !== line)?.indent;
+  const text = renderGanttTask({ ...task, indent: indent ?? task.indent });
+  lines.splice(at, 0, text);
+  lines.splice(at <= line ? line + 1 : line, 1);
+  keepFirstStart(lines, start);
+  return { code: lines.join(eol), line: at <= line ? at : at - 1 };
+};
+
+/** The task's 区分 (section) as the inspector shows it: a choice of the chart's sections. */
+const sectionField = (lines: string[], task: GanttTask): DetailField => {
+  const sections = ganttSections(lines);
+  const own = sections.findLast(({ index }) => index < task.line);
+  return {
+    choices: sections.map(({ index, name }) => ({ id: `L${index}`, label: name })),
+    key: 'section',
+    kind: 'item',
+    label: 'add.gantt.section',
+    value: own ? `L${own.index}` : ''
+  };
+};
+
 export const ganttStatuses = ['none', 'done', 'active'] as const;
 const yesNo = ['no', 'yes'] as const;
 
@@ -695,7 +761,10 @@ export const objectFields = (
   const line = object.line ?? -1;
   if (kind === 'gantt' && !object.group) {
     const task = parseGanttTask(lines[line] ?? '', line);
-    return task ? taskFields(code, lines, task) : undefined;
+    // 区分 only where the chart has sections to choose from.
+    if (!task) return undefined;
+    const fields = taskFields(code, lines, task);
+    return ganttSections(lines).length > 0 ? [sectionField(lines, task), ...fields] : fields;
   }
   if (kind === 'pie') {
     const match = pieSlice.exec(lines[line] ?? '');
@@ -716,7 +785,16 @@ export const setObjectFields = (
   const chart = chartKind(code);
   if (chart && chart === kind) return setChartFields(code, chart, object, values);
   if (object.line === undefined || object.group) return undefined;
-  if (kind === 'gantt') return setGanttTask(code, object.line, values);
+  if (kind === 'gantt') {
+    // 区分 moves the task (after its other changes, which keep its line).
+    const line = object.line;
+    const { section, ...rest } = values;
+    const next = Object.keys(rest).length > 0 ? setGanttTask(code, line, rest) : code;
+    if (section === undefined || next === undefined) return next;
+    const own = ganttSections(splitLines(next).lines).findLast(({ index }) => index < line);
+    if ((own ? `L${own.index}` : '') === section) return next === code ? undefined : next;
+    return moveGanttTask(next, line, section)?.code;
+  }
   if (kind === 'pie') return setPieSlice(code, object.line, values);
   return undefined;
 };

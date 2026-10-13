@@ -172,6 +172,15 @@ test.describe('Theme presets from the keyboard', () => {
       .evaluateAll((buttons) => new Set(buttons.map((b) => b.getBoundingClientRect().x)).size);
     expect(columns).toBe(3);
     await expect(grid.locator('button')).toHaveCount(12);
+    // Every name is shown whole (on two lines if need be), never cut off.
+    const cut = await grid
+      .locator('button > span:last-child')
+      .evaluateAll((names) =>
+        names
+          .filter((name) => name.scrollWidth > name.clientWidth + 1 || !name.textContent?.trim())
+          .map((name) => name.textContent)
+      );
+    expect(cut).toEqual([]);
     await expect(page.getByTestId(`${TID.inspThemePreset}-wa`)).toHaveAttribute(
       'title',
       new RegExp(t('themePreset.wa'))

@@ -4,8 +4,8 @@
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import type { MessageKey } from '$/i18n/messages';
-  import type { DetailValues } from '$/util/diagramDetails';
+  import { messages, type MessageKey } from '$/i18n/messages';
+  import type { DetailField, DetailValues } from '$/util/diagramDetails';
   import { selection } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import AddIcon from '~icons/material-symbols/add-rounded';
@@ -36,6 +36,13 @@
     if (current === value) return;
     void model.setMember(member, { [key]: value });
   };
+  // Short labels that fit the row and tell a member's name from the object's own 名前
+  // (QA 2026-10-13); the field's full label stays the tooltip.
+  const shortOf = (key: string) => (key in messages.en ? t(key as MessageKey) : undefined);
+  const memberLabel = (field: DetailField) =>
+    shortOf(
+      `insp.member.${model.kind}.${field.label === 'add.class.returns' ? 'returns' : field.key}`
+    );
   const selectClass =
     'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
 </script>
@@ -47,7 +54,8 @@
 {/if}
 
 {#if model.members && model.kind}
-  {@const membersLabel = t(`edit.members.${model.kind}` as MessageKey)}
+  {@const membersLabel =
+    shortOf(`insp.members.${model.kind}`) ?? t(`edit.members.${model.kind}` as MessageKey)}
   <FieldRow label={membersLabel}>
     {#if model.members.length === 0}
       <span class="truncate text-xs text-muted-foreground" title={t('edit.membersNone')}
@@ -88,6 +96,7 @@
       {#each member.fields as field (field.key)}
         <DetailFieldRow
           {field}
+          short={memberLabel(field)}
           apply={applyMember}
           dataKey={`member-${field.key}`}
           testID={TID.inspField} />

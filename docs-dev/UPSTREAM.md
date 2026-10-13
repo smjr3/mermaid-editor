@@ -328,6 +328,14 @@ listed as Added): the tool cards (`AddControls`, `AddActions`, `ArchitectureAdd`
 | `src/lib/util/util.ts`, `src/lib/util/fileLoaders/loader.ts`                        | `fetchText`/`fetchJSON` reject a non-2xx answer naming the status; an empty `?code=` file is refused instead of replacing the diagram with the default; `initHandler` reports a failed URL load and keeps the current diagram                                                   |
 | `src/lib/util/embed.ts`                                                             | The hash state goes through `normalizeState` (a state that is not one is a link error; a pan, zoom, rough or grid of the wrong type is dropped), and `?zoom=` must be positive                                                                                                  |
 
+Review of 2026-10-13 (N01, N02, N05), same rule on a conflict:
+
+| Path                                                           | Local change                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/View.svelte`, `src/lib/util/renderView.ts` | `View` records what each placed picture was drawn from (code, config, hand-drawn) and its viewBox before pan/zoom (`markDrawn` / `getDrawnFrom`)                                                                                                                                                                                              |
+| `src/lib/util/exportDiagram.ts`, `dialogs/ExportDialog.svelte` | `.drawio` / `.vsdx` take the dialog's one state snapshot and stop with `ExportStaleError` when the view shows another; every save takes an `AbortSignal` that キャンセル aborts; the SVG file is `unzoomedCopy` of the view (no pan/zoom transform, the viewBox restored). Tests `exportDiagram.capture.test.ts`, `tests/fileExports.spec.ts` |
+| `src/lib/util/htmlExport.ts`                                   | The Markdown image link is the file name as one percent-encoded path segment (`fileUrlSegment`)                                                                                                                                                                                                                                               |
+
 On a conflict, take upstream's version and re-apply these guards; the tests named in each commit (`sanitize.test.ts`, `historyState.test.ts`, …) fail if one is lost.
 
 ### Cross-platform guards
@@ -336,14 +344,14 @@ The build may run on Windows, so the build and publish path uses only
 package-manager invocations and Node scripts — never a shell builtin or a
 Unix-only command. Details in `docs-dev/CROSS-PLATFORM.md`; at merge time:
 
-| Path                               | Local change                                                                                                         |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `.gitattributes`                   | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF                  |
-| `scripts/prepare-pages.js`         | Added. Replaces `mv docs public` in CI                                                                               |
-| `scripts/update-from-registry.mjs` | Added. Downloads the package from a registry, extracts it in pure Node, installs and builds; proven on Windows by CI |
-| `vite.embed.config.js`             | Adds `publicDir: false`                                                                                              |
-| `package.json`                     | `build:pages` and `dev:force` point at local scripts; `postinstall` guards with `node -e` inline                     |
-| `.gitignore`                       | Ignores `/public`                                                                                                    |
+| Path                               | Local change                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.gitattributes`                   | Added. `* text=auto eol=lf`, so a Windows checkout matches Linux and Prettier does not fail on CRLF                                                          |
+| `scripts/prepare-pages.js`         | Added. Replaces `mv docs public` in CI                                                                                                                       |
+| `scripts/update-from-registry.mjs` | Added. Downloads the package from a registry (or takes a local tarball, `--tarball`), extracts it in pure Node, installs and builds; proven on Windows by CI |
+| `vite.embed.config.js`             | Adds `publicDir: false`                                                                                                                                      |
+| `package.json`                     | `build:pages` and `dev:force` point at local scripts; `postinstall` guards with `node -e` inline                                                             |
+| `.gitignore`                       | Ignores `/public`                                                                                                                                            |
 
 `publicDir: false` is load-bearing, not tidying. That config has no SvelteKit
 plugin, so Vite defaults `publicDir` to `public` while its `outDir` is `static`.
@@ -721,6 +729,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/embed.test.ts`                          |
 | Modified | `src/lib/util/embed.ts`                               |
 | Modified | `src/lib/util/env.ts`                                 |
+| Added    | `src/lib/util/exportDiagram.capture.test.ts`          |
 | Added    | `src/lib/util/exportDiagram.test.ts`                  |
 | Added    | `src/lib/util/exportDiagram.ts`                       |
 | Added    | `src/lib/util/fakeIndexedDB.ts`                       |

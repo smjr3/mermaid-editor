@@ -6,9 +6,15 @@
  *
  * - PNG, the image copy and the Visio picture are drawn from the diagram on screen with
  *   pan/zoom paused (`createPanZoomPause`), so the file is the whole diagram, not the
- *   zoomed view. The SVG and the .drawio come from the same view.
+ *   zoomed view. The .drawio comes from the same view; the SVG is a copy of the view
+ *   without the pan/zoom transform (`unzoomedCopy`, as the preview), pan/zoom untouched.
+ * - .drawio and .vsdx hold the source next to the picture, so both come from the state
+ *   the dialog passed when the export started: the source, the config and the hand-drawn
+ *   setting from it, and the picture only if the view still shows exactly it
+ *   (`getDrawnFrom`); otherwise the export stops with `ExportStaleError` and saves nothing.
  * - HTML and Markdown render the diagram afresh from one snapshot of the state
  *   (`takeExportSnapshot`), so edits made while it renders do not end up in part of it.
+ * - Every save takes an `AbortSignal`: an export cancelled in the dialog saves nothing.
  * - Files are saved under the name typed in the dialog (`anchorDownload`); there is no
  *   second "名前を付けて保存" step (user decision, 2026-10-12).
  *
@@ -32,6 +38,7 @@ import {
 } from './htmlExport';
 import { canvasToBlob, copyImageBlob, createPanZoomPause, loadImage } from './imageExport';
 import { render } from './mermaid';
+import { getDrawnFrom } from './renderView';
 import { anchorDownload, defaultFileBase, fileNameFromInput, withExtension } from './saveFile';
 import { inputState, updateCodeStore, validatedState } from './state.svelte';
 import { logEvent } from './stats';
@@ -172,11 +179,13 @@ const FONT_AWESOME_URL = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/${
 export const themeColour = (): string =>
   window.getComputedStyle(document.body).getPropertyValue('--background');
 
-const diagramFill = (): string | undefined => presetBackground(untrack(() => inputState.mermaid));
+/** A theme preset's own background, of the config `mermaid` (default: the current one). */
+const diagramFill = (mermaid = untrack(() => inputState.mermaid)): string | undefined =>
+  presetBackground(mermaid);
 
-/** The backdrop for `background`, for the diagram as it is now. */
-export const currentBackdrop = (background: ExportBackground): null | string =>
-  exportBackdrop(background, themeColour(), diagramFill());
+/** The backdrop for `background`, for the diagram as it is now (or with the config `mermaid`). */
+export const currentBackdrop = (background: ExportBackground, mermaid?: string): null | string =>
+  exportBackdrop(background, themeColour(), diagramFill(mermaid));
 
 const viewSvg = (): HTMLElement | null => document.querySelector<HTMLElement>('#container svg');
 
@@ -257,24 +266,84 @@ const pausePanZoom = createPanZoomPause(
 );
 
 /**
+ * The export was stopped because the diagram on screen no longer shows the state it
+ * started from (the code, the config or the hand-drawn setting changed meanwhile, or the
+ * new code has not been drawn). Nothing was saved; the dialog says so.
+ */
+export class ExportStaleError extends Error {
+  constructor() {
+    super('The diagram changed while it was being exported');
+    this.name = 'ExportStaleError';
+  }
+}
+
+/** What a capture must show: the code, the config and the hand-drawn setting of a state. */
+export type CaptureSource = Pick<State, 'code' | 'mermaid' | 'rough'>;
+
+/** Whether `svg` is a picture the view drew from exactly `source`. */
+export const showsSource = (svg: Element, source: CaptureSource): boolean => {
+  const drawn = getDrawnFrom(svg);
+  return (
+    !!drawn &&
+    drawn.code === source.code &&
+    drawn.mermaid === source.mermaid &&
+    drawn.rough === !!source.rough
+  );
+};
+
+/** Waits `ms`; rejects with the signal's reason as soon as it is aborted. */
+const delay = (ms: number, signal?: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason as Error);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+
+interface Capture {
+  /** Stops the export (the dialog's キャンセル); nothing is saved after it. */
+  signal?: AbortSignal;
+  /** The state the picture must show; the capture stops with `ExportStaleError` if not. */
+  source?: CaptureSource;
+}
+
+/**
  * Runs `work` on the diagram on screen with pan/zoom paused. With pan/zoom on, the view's
  * SVG has no viewBox (svg-pan-zoom takes it), so the view is re-rendered without it first.
+ * `work` reads the picture before its first `await`, right after the check against
+ * `source`, so what it reads is the state that was checked.
  */
-const withDiagram = <T>(work: (svg: HTMLElement) => Promise<T>): Promise<T> =>
+const withDiagram = <T>(
+  work: (svg: HTMLElement) => Promise<T>,
+  { signal, source }: Capture = {}
+): Promise<T> =>
   pausePanZoom(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await delay(1000, signal);
     await waitForRender();
+    signal?.throwIfAborted();
     const svg = viewSvg();
     if (!svg) throw new Error('svg not found');
+    if (source && !showsSource(svg, source)) throw new ExportStaleError();
     return work(svg);
   });
 
 /** The diagram drawn on a canvas `scale` times its size, on `background`; a PNG blob. */
 const renderPngBlob = (
   background: ExportBackground,
-  scale: number
+  scale: number,
+  capture: Capture = {}
 ): Promise<{ blob: Blob; size: { height: number; width: number } }> =>
   withDiagram(async (svg) => {
+    const { source } = capture;
     const size = getContentSize(svg);
     const layout = computeExportLayout(size, scale);
     const canvas = document.createElement('canvas');
@@ -284,21 +353,21 @@ const renderPngBlob = (
     if (!context) throw new Error('context not found');
 
     // Transparent: nothing is filled, so the PNG keeps its alpha channel.
-    const fill = currentBackdrop(background);
+    const fill = currentBackdrop(background, source?.mermaid);
     if (fill) {
       context.fillStyle = fill;
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
     const text = serializeSvg(svg, {
-      fill: diagramFill() ? fill : null,
+      fill: diagramFill(source?.mermaid) ? fill : null,
       height: layout.draw.height,
-      rough: isRough(),
+      rough: source ? !!source.rough : isRough(),
       width: layout.draw.width
     });
     const image = await loadImage(`data:image/svg+xml;base64,${toBase64(text)}`);
     context.drawImage(image, layout.draw.x, layout.draw.y, layout.draw.width, layout.draw.height);
     return { blob: await canvasToBlob(canvas), size };
-  });
+  }, capture);
 
 export interface ImageOptions {
   background: ExportBackground;
@@ -306,15 +375,24 @@ export interface ImageOptions {
 }
 
 /** Saves the PNG under `name` (with its extension). */
-export const savePng = async (name: string, { background, scale }: ImageOptions): Promise<void> => {
-  const { blob } = await renderPngBlob(background, scale);
+export const savePng = async (
+  name: string,
+  { background, scale }: ImageOptions,
+  signal?: AbortSignal
+): Promise<void> => {
+  const { blob } = await renderPngBlob(background, scale, { signal });
+  signal?.throwIfAborted();
   anchorDownload(blob, name);
   logEvent('download', { type: 'png' });
 };
 
 /** Puts the PNG on the clipboard; settles once the browser has (or has refused). */
-export const copyPng = async ({ background, scale }: ImageOptions): Promise<void> => {
-  const { blob } = await renderPngBlob(background, scale);
+export const copyPng = async (
+  { background, scale }: ImageOptions,
+  signal?: AbortSignal
+): Promise<void> => {
+  const { blob } = await renderPngBlob(background, scale, { signal });
+  signal?.throwIfAborted();
   await copyImageBlob(blob);
   logEvent('copyClipboard');
 };
@@ -323,22 +401,70 @@ export const copyPng = async ({ background, scale }: ImageOptions): Promise<void
 export const canCopyImage = (): boolean =>
   typeof window !== 'undefined' && Object.prototype.hasOwnProperty.call(window, 'ClipboardItem');
 
-/** Saves the SVG of the diagram on screen. */
+const viewBoxOf = (svg: Element): number[] =>
+  (svg.getAttribute('viewBox') ?? '').split(/[\s,]+/).map(Number);
+
+/**
+ * A copy of the diagram on screen without what pan/zoom does to it: svg-pan-zoom moves
+ * the drawing with a transform on its viewport group and takes the svg's viewBox away, so
+ * the copy loses the transform and gets the viewBox back: the one the picture had when the
+ * view placed it (`getDrawnFrom`), else one measured from the drawing (in the drawing's
+ * own coordinates). Either way the zoom and the pan do not change it. Sized at that
+ * viewBox. The view itself, and its pan/zoom, are not touched.
+ */
+export const unzoomedCopy = (live: SVGSVGElement): SVGSVGElement => {
+  const copy = live.cloneNode(true) as SVGSVGElement;
+  const viewport = live.querySelector<SVGGraphicsElement>(':scope > .svg-pan-zoom_viewport');
+  if (viewport && !live.getAttribute('viewBox')) {
+    const placed = getDrawnFrom(live)?.viewBox;
+    if (placed) {
+      copy.setAttribute('viewBox', placed);
+    } else {
+      try {
+        const box = viewport.getBBox();
+        const pad = 8;
+        copy.setAttribute(
+          'viewBox',
+          `${box.x - pad} ${box.y - pad} ${box.width + 2 * pad} ${box.height + 2 * pad}`
+        );
+      } catch {
+        // Not laid out (hidden); the copy keeps the view's size.
+      }
+    }
+    const copiedViewport = copy.querySelector(':scope > .svg-pan-zoom_viewport');
+    copiedViewport?.removeAttribute('transform');
+    copiedViewport?.removeAttribute('style');
+  }
+  // Its natural size from the viewBox (without one it keeps the view's size).
+  const [, , width, height] = viewBoxOf(copy);
+  if (width > 0 && height > 0) {
+    copy.setAttribute('width', String(width));
+    copy.setAttribute('height', String(height));
+  }
+  return copy;
+};
+
+/** Saves the SVG of the diagram on screen: the whole diagram, whatever the pan and zoom. */
 export const saveSvg = async (
   name: string,
-  { background }: Pick<ImageOptions, 'background'>
+  { background }: Pick<ImageOptions, 'background'>,
+  signal?: AbortSignal
 ): Promise<void> => {
-  const svg = viewSvg();
+  signal?.throwIfAborted();
+  const svg = viewSvg() as unknown as null | SVGSVGElement;
   if (!svg) throw new Error('svg not found');
-  const text = serializeSvg(svg, { fill: currentBackdrop(background), rough: isRough() });
+  const text = serializeSvg(unzoomedCopy(svg), {
+    fill: currentBackdrop(background),
+    rough: isRough()
+  });
   anchorDownload(new Blob([text], { type: FORMAT_FILES.svg.mime }), name);
   logEvent('download', { type: 'svg' });
 };
 
-/** The config as an object for the .drawio's Mermaid data, if it is one. */
-const diagramConfig = (): Record<string, unknown> | undefined => {
+/** The config `mermaid` as an object for the .drawio's Mermaid data, if it is one. */
+const diagramConfig = (mermaid: string): Record<string, unknown> | undefined => {
   try {
-    const config: unknown = JSON.parse(untrack(() => inputState.mermaid));
+    const config: unknown = JSON.parse(mermaid);
     return config && typeof config === 'object' && !Array.isArray(config)
       ? (config as Record<string, unknown>)
       : undefined;
@@ -350,28 +476,45 @@ const diagramConfig = (): Record<string, unknown> | undefined => {
 const stem = (name: string, extension: string) =>
   name.replace(new RegExp(`\\.${extension}$`, 'i'), '');
 
-/** Saves a .drawio with every element as its own draw.io cell (docs-dev/EXPORTS.md). */
+/** The part of `state` a capture must show, copied so later edits cannot reach it. */
+const captureSource = ({ code, mermaid, rough }: State): CaptureSource => ({
+  code,
+  mermaid,
+  rough: !!rough
+});
+
+/**
+ * Saves a .drawio with every element as its own draw.io cell (docs-dev/EXPORTS.md). The
+ * cells, the source and the config all come from `state` (a plain copy of the input state
+ * when the export started); rejects with `ExportStaleError` if the view no longer shows it.
+ */
 export const saveDrawio = async (
   name: string,
-  { background }: Pick<ImageOptions, 'background'>
+  { background }: Pick<ImageOptions, 'background'>,
+  state: State,
+  signal?: AbortSignal
 ): Promise<void> => {
-  const code = untrack(() => inputState.code);
-  const blob = await withDiagram((svg) => {
-    // Every element as its own draw.io cell, read from the diagram on screen.
-    const page = svgToDrawio(svg as unknown as SVGSVGElement);
-    const content = getContentSize(svg);
-    const fill = parseColour(currentBackdrop(background) ?? undefined);
-    const xml = buildDrawio({
-      background: fill.colour === 'none' ? undefined : fill.colour,
-      cells: page.cells,
-      code,
-      config: diagramConfig(),
-      height: page.height || content.height,
-      name: stem(name, 'drawio'),
-      width: page.width || content.width
-    });
-    return Promise.resolve(new Blob([xml], { type: FORMAT_FILES.drawio.mime }));
-  });
+  const source = captureSource(state);
+  const blob = await withDiagram(
+    (svg) => {
+      // Every element as its own draw.io cell, read from the diagram on screen.
+      const page = svgToDrawio(svg as unknown as SVGSVGElement);
+      const content = getContentSize(svg);
+      const fill = parseColour(currentBackdrop(background, source.mermaid) ?? undefined);
+      const xml = buildDrawio({
+        background: fill.colour === 'none' ? undefined : fill.colour,
+        cells: page.cells,
+        code: source.code,
+        config: diagramConfig(source.mermaid),
+        height: page.height || content.height,
+        name: stem(name, 'drawio'),
+        width: page.width || content.width
+      });
+      return Promise.resolve(new Blob([xml], { type: FORMAT_FILES.drawio.mime }));
+    },
+    { signal, source }
+  );
+  signal?.throwIfAborted();
   anchorDownload(blob, name);
   logEvent('download', { type: 'drawio' });
 };
@@ -379,20 +522,27 @@ export const saveDrawio = async (
 // The diagram as a PNG at twice its size, for the Visio picture.
 const VSDX_PNG_SCALE = 2;
 
-/** Saves a Visio package with the diagram as one PNG picture. */
+/**
+ * Saves a Visio package with the diagram as one PNG picture. The picture and the source
+ * in its Shape Data both come from `state`; rejects with `ExportStaleError` if the view no
+ * longer shows it.
+ */
 export const saveVsdx = async (
   name: string,
-  { background }: Pick<ImageOptions, 'background'>
+  { background }: Pick<ImageOptions, 'background'>,
+  state: State,
+  signal?: AbortSignal
 ): Promise<void> => {
-  const code = untrack(() => inputState.code);
-  const { blob, size } = await renderPngBlob(background, VSDX_PNG_SCALE);
+  const source = captureSource(state);
+  const { blob, size } = await renderPngBlob(background, VSDX_PNG_SCALE, { signal, source });
   const file = buildVsdx({
-    code,
+    code: source.code,
     height: size.height,
     png: new Uint8Array(await blob.arrayBuffer()),
     title: stem(name, 'vsdx'),
     width: size.width
   });
+  signal?.throwIfAborted();
   anchorDownload(
     new Blob([file as Uint8Array<ArrayBuffer>], { type: FORMAT_FILES.vsdx.mime }),
     name
@@ -424,19 +574,22 @@ const snapshot = (state: State): ExportSnapshot =>
   });
 
 /** Saves a standalone HTML page (offline, with the source). Rejects for a broken diagram. */
-export const saveHtml = async (name: string, state: State): Promise<void> => {
+export const saveHtml = async (name: string, state: State, signal?: AbortSignal): Promise<void> => {
   const html = await buildStandaloneHtml(snapshot(state), {
     background: themeColour(),
     render: renderSvg
   });
+  signal?.throwIfAborted();
   anchorDownload(new Blob([html], { type: FORMAT_FILES.html.mime }), name);
   logEvent('download', { type: 'html' });
 };
 
 /** Copies one self-contained <img> tag. Rejects for a broken diagram. */
-export const copyHtmlTag = async (state: State): Promise<void> => {
+export const copyHtmlTag = async (state: State, signal?: AbortSignal): Promise<void> => {
   const { code, config, title } = snapshot(state);
-  await navigator.clipboard.writeText(toImgTag(await renderSvg(config, code), title));
+  const tag = toImgTag(await renderSvg(config, code), title);
+  signal?.throwIfAborted();
+  await navigator.clipboard.writeText(tag);
 };
 
 /**
@@ -450,21 +603,24 @@ export const saveMarkdown = async (
   {
     background,
     editBase,
-    labels
+    labels,
+    signal
   }: {
     background: ExportBackground;
     /** The editor's absolute URL, without the hash. */
     editBase: string;
     labels: { edit: string; source: string };
+    signal?: AbortSignal;
   }
 ): Promise<{ copied: boolean }> => {
   const { markdown, svg } = await buildGitLabExport(snapshot(state), {
-    background: currentBackdrop(background),
+    background: currentBackdrop(background, state.mermaid),
     editBase,
     fileName: name,
     labels,
     render: renderSvg
   });
+  signal?.throwIfAborted();
   anchorDownload(new Blob([svg], { type: FORMAT_FILES.md.mime }), name);
   logEvent('download', { type: 'md' });
   try {
@@ -479,36 +635,15 @@ export const saveMarkdown = async (
 // Preview
 
 /**
- * A copy of the diagram on screen for the dialog's preview, as the files will show it:
- * without the pan/zoom transform, framed by its own drawing (svg-pan-zoom takes the
- * viewBox away, so it is measured back from the drawing). Undefined when there is none.
+ * A copy of the diagram on screen for the dialog's preview, as the SVG file shows it
+ * (`unzoomedCopy`), shrunk to the preview by CSS (aspect kept). Undefined when there is none.
  */
 export const previewSvg = (): SVGSVGElement | undefined => {
   const live = viewSvg() as unknown as SVGSVGElement | null;
   if (!live) return undefined;
-  const copy = live.cloneNode(true) as SVGSVGElement;
-  const viewport = live.querySelector<SVGGraphicsElement>(':scope > .svg-pan-zoom_viewport');
-  if (viewport && !live.getAttribute('viewBox')) {
-    try {
-      const box = viewport.getBBox();
-      const pad = 8;
-      copy.setAttribute(
-        'viewBox',
-        `${box.x - pad} ${box.y - pad} ${box.width + 2 * pad} ${box.height + 2 * pad}`
-      );
-    } catch {
-      // Not laid out (hidden); the copy keeps the view's size.
-    }
-    const copiedViewport = copy.querySelector(':scope > .svg-pan-zoom_viewport');
-    copiedViewport?.removeAttribute('transform');
-    copiedViewport?.removeAttribute('style');
-  }
-  // Its natural size from the viewBox, shrunk to the preview by CSS (aspect kept).
-  const [, , width, height] = (copy.getAttribute('viewBox') ?? '').split(/[\s,]+/).map(Number);
-  if (width > 0 && height > 0) {
-    copy.setAttribute('width', String(width));
-    copy.setAttribute('height', String(height));
-  } else {
+  const copy = unzoomedCopy(live);
+  const [, , width, height] = viewBoxOf(copy);
+  if (!(width > 0 && height > 0)) {
     copy.removeAttribute('width');
     copy.removeAttribute('height');
   }

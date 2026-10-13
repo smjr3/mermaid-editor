@@ -27,14 +27,44 @@ the dialog replaced the 出す card on 2026-10-12 (the inspector redesign).
   キャンセル / 保存 (コピー for the two copies, which have no file name). The button shows the
   outcome (`data-export-state`: busy, done, failed). Failures of PNG, SVG, `.drawio`, `.vsdx`
   and the copy are notified; for HTML and Markdown, which render the diagram afresh, a diagram
-  that does not render is reported in the dialog and nothing is saved.
+  that does not render is reported in the dialog and nothing is saved. キャンセル stops an export
+  that is still running (see "One state per file" below).
 
 The PNG width and height in pixels and the size presets are gone (user decisions, 2026-10-08 and
 2026-10-12). `.drawio` and `.vsdx` show no background choice; they use the remembered one, as
 the export card did, so with the default the draw.io page and the Visio picture are transparent.
 
 All exports draw from the diagram on screen with pan/zoom paused (`createPanZoomPause`), except
-HTML and Markdown, which render it afresh from one snapshot of the state (`takeExportSnapshot`).
+HTML and Markdown, which render it afresh from one snapshot of the state (`takeExportSnapshot`),
+and SVG, which is a copy of the view without the pan/zoom transform (below).
+
+**One state per file (review N01, 2026-10-13).** The dialog takes one snapshot of the input
+state when 保存 is pressed and every export uses it: the file name, and for `.drawio` and
+`.vsdx` the Mermaid source, the config and the hand-drawn setting. The picture of those two
+comes from the view, so before reading it the export checks that the view's picture was drawn
+from exactly that code, config and hand-drawn setting (`View.svelte` records what each placed
+picture shows, `markDrawn` / `getDrawnFrom` in `renderView.ts`) and then reads it at once. If
+the picture is of another state — the code or the config was edited while the export waited
+for the view, or the latest code has not been drawn (a syntax error) — the export stops,
+nothing is saved and the dialog says 「書き出し中に図が変わったため、保存を中止しました…」
+(`ExportStaleError`, `exportDlg.stale`). The current input is never put back to the snapshot.
+キャンセル, Escape or closing the dialog while an export is running aborts it (an
+`AbortSignal` every save function takes): whatever it was waiting for, it saves and copies
+nothing afterwards, and pan/zoom comes back as before. Tests: `exportDiagram.capture.test.ts`
+(an edit of code and config during the wait; the `.drawio`'s cells, `mermaidData` code and
+config and the `.vsdx`'s PNG and Shape Data must all name one state), `tests/fileExports.spec.ts`
+("An export cancelled while it is made").
+
+**The SVG file is the whole diagram (review N02, 2026-10-13).** With pan/zoom on, svg-pan-zoom
+takes the svg's viewBox away and moves the drawing with a `transform` on its
+`.svg-pan-zoom_viewport` group; the SVG export used to serialise that as it was, so the file
+kept the zoom and the pan of the moment. `saveSvg` now saves `unzoomedCopy` of the view, as the
+preview does: the transform and its style removed, the viewBox the picture had when the view
+placed it (recorded by `markDrawn` before pan/zoom applied; measured from the drawing only
+when there is no record), and `width`/`height` set to that viewBox. The live view and its
+pan/zoom are untouched, and the file is the same with pan/zoom off, before and after zooming
+and panning, hand-drawn or not (`exportDiagram.capture.test.ts`, `tests/fileExports.spec.ts`
+"The SVG file after zooming the view").
 
 ## File names (`src/lib/util/saveFile.ts`)
 

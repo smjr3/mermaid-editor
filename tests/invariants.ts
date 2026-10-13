@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 
 // What must hold after every user action, whatever order the actions came in:
 // the code parses and the diagram is drawn, nothing logged an error, at most one
-// dialog is open, focus is not lost in a removed element, the tools pane has no
+// dialog is open, focus is not lost in a removed element, the inspector and the add bar's forms have no
 // empty dropdown, the tools left nothing dangling in the code, and the undo button
 // steps back to exactly the code before the action (and redo forward again).
 // Shared by tests/contradictions.spec.ts and tests/monkey.spec.ts.
@@ -142,7 +142,11 @@ export const assertInvariants = async (
     ).length;
     const active = document.activeElement;
     const focusOk = !active || active.isConnected;
-    const emptySelects = [...document.querySelectorAll('.tools-pane select')]
+    const emptySelects = [
+      ...document.querySelectorAll(
+        '[data-testid="insp-panel"] select, [data-testid="canvas-add-form"] select'
+      )
+    ]
       .filter(visible)
       .filter((select) => (select as HTMLSelectElement).options.length === 0)
       .map((select) => (select as HTMLElement).dataset.testid ?? select.id ?? 'select');

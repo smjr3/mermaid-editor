@@ -704,6 +704,63 @@ describe('mindmap, kanban and timeline', () => {
     }
   );
 
+  // QA 2026-10-13: a name starting with `%%` turned the line into a comment (and `:::` /
+  // `::icon(` into a decoration, `title` / `section` into that statement), so the topic,
+  // card, period or task vanished while the code still parsed. Checked with what mermaid
+  // itself reads, since its lexers, not ours, decide what a line is.
+  const drawnNames = async (code: string, kind: string): Promise<string[]> => {
+    await mermaid.parse(code);
+    const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as Record<
+      string,
+      () => unknown
+    >;
+    if (kind === 'gantt' || kind === 'timeline') {
+      return (db.getTasks() as { task: string }[]).map(({ task }) => task.trim());
+    }
+    if (kind === 'kanban') {
+      return (db.getData() as { nodes: { label: string }[] }).nodes.map(({ label }) => label);
+    }
+    const names: string[] = [];
+    const walk = (node: { children?: unknown[]; descr: string }) => {
+      names.push(node.descr);
+      for (const child of node.children ?? []) walk(child as { descr: string });
+    };
+    walk(db.getMindmap() as { descr: string });
+    return names;
+  };
+  it.each(['%% note', ':::warn', '::icon(fa fa-book)', 'title x', 'section x'])(
+    'renames to %j without the item vanishing',
+    async (name) => {
+      const gantt =
+        'gantt\n  dateFormat YYYY-MM-DD\n  section S\n  One :a1, 2026-01-01, 3d\n  Two :after a1, 2d';
+      for (const [code, kind, line] of [
+        [mindmap, 'mindmap', 'L3'],
+        [mindmap, 'mindmap', 'L5'],
+        [kanban, 'kanban', 'L2'],
+        [timeline, 'timeline', 'L2'],
+        [timeline, 'timeline', 'L3'],
+        [gantt, 'gantt', 'L4']
+      ] as const) {
+        const before = await drawnNames(code, kind);
+        const renamed = renameObject(code, kind, await object(code, line), name) ?? '';
+        await expect(typeOf(renamed), `${kind} ${line}`).resolves.toBe(kind);
+        const after = await drawnNames(renamed, kind);
+        expect(after, `${kind} ${line} ${renamed}`).toHaveLength(before.length);
+        // Kept as typed, in 「」 where the line would read otherwise, with the signs the
+        // line cannot hold made full-width (`%%`, a timeline's colons) or dropped (a
+        // gantt task's colons).
+        const expected = kind === 'gantt' ? name.replaceAll(':', ' ').trim() : name;
+        const shown = after.map((text) =>
+          text
+            .replaceAll(/[「」]/g, '')
+            .replaceAll('：', ':')
+            .replaceAll('％', '%')
+        );
+        expect(shown, `${kind} ${line} ${renamed}`).toContain(expected);
+      }
+    }
+  );
+
   it("keeps a kanban card's @{ … } metadata when renaming and shows only its text", async () => {
     const meta = [
       "kanban\n  todo[To do]\n    t1[Write blog]@{ priority: 'Low', assigned: 'x' }\n    t2[Test]",

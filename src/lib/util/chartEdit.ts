@@ -19,7 +19,7 @@
 import { t } from '$/i18n';
 import type { MessageKey } from '$/i18n/messages';
 import type { Action, AddSpec, Values } from './addActions';
-import { headerIndex, indentOf, isContent, oneLine } from './codeText';
+import { headerIndex, indentOf, isContent, lineStartSafe, oneLine } from './codeText';
 import type { DetailField, DetailValues } from './diagramDetails';
 import { splitLines } from './diagramEdit';
 import type { EditObject } from './diagramModify';
@@ -231,7 +231,7 @@ const journeyParts = (lines: Lines) => {
 };
 
 const renderJourneyTask = (indent: string, name: string, score: string, actors: string) =>
-  `${indent}${name}: ${score}${actors ? `: ${actors}` : ''}`;
+  `${indent}${lineStartSafe(name)}: ${score}${actors ? `: ${actors}` : ''}`;
 
 /** The line after the last line of the section starting at `index`. */
 const sectionEnd = (lines: Lines, index: number) => {

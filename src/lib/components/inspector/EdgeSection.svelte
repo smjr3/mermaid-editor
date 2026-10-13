@@ -37,6 +37,7 @@
       <FieldRow label={t('insp.edgeStyle')}>
         <Segmented
           value={edge.style}
+          dense
           full
           ariaLabel={t('sel.edgeStyle')}
           testID={TID.inspEdgeStyle}

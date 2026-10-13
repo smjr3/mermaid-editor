@@ -28,7 +28,7 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col overflow-hidden">
-  <div class="flex h-10 shrink-0 items-center gap-2 border-b bg-card px-2">
+  <div class="flex min-h-10 shrink-0 items-center gap-2 border-b bg-card px-2 py-0.5">
     <InsertBar />
     {#if table}
       <ViewModeSwitch bind:value={mode} />

@@ -1,7 +1,7 @@
 import { TID } from '$/constants';
 import type { Locator, Page } from '@playwright/test';
 import { assertInvariants, readCode, urlFor, watchErrors } from './invariants';
-import { test } from './test';
+import { expect, test } from './test';
 
 // A monkey test: random UI actions with a fixed seed, the shared invariants
 // (tests/invariants.ts) after each one. CI runs a short pass; run it longer
@@ -61,6 +61,13 @@ const keys = [
   'Control+y'
 ];
 const quick = { timeout: 1500 };
+// Other diagrams pasted over the code mid-session (the selection may point into them).
+const otherDiagrams = [
+  start,
+  'sequenceDiagram\n  participant A as Client\n  participant B as Server\n  A->>B: hello\n  B-->>A: ok',
+  'classDiagram\n  class A {\n    +String name\n  }\n  class B\n  A <|-- B',
+  'swimlane-beta TD\n  subgraph s1[Desk]\n    A[Ask]\n  end\n  subgraph s2[Boss]\n    B{OK?}\n  end\n  A --> B'
+];
 
 // Controls that leave the page, open the file picker or a modal dialog, or replace the
 // whole state in ways that say nothing about the tools (share, pack import, folding).
@@ -111,8 +118,9 @@ const monkeyActions: Action[] = [
       const nodes = await usable(page.locator('#view g.node, #view g.cluster .cluster-label'));
       if (nodes.length === 0) return 'no nodes';
       const node = pick(nodes);
+      const text = (await node.textContent(quick))?.trim().slice(0, 20) ?? '';
       await node.click(quick);
-      return (await node.textContent())?.trim().slice(0, 20) ?? '';
+      return text;
     }
   },
   {
@@ -160,7 +168,7 @@ const monkeyActions: Action[] = [
       );
       if (buttons.length === 0) return 'no add bar';
       const button = pick(buttons);
-      const label = (await button.getAttribute('data-testid')) ?? '';
+      const label = (await button.getAttribute('data-testid', quick)) ?? '';
       await button.click(quick);
       return label;
     }
@@ -180,8 +188,11 @@ const monkeyActions: Action[] = [
         .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
       if (values.length === 0) return 'empty select';
       const value = pick(values);
+      // Read before choosing: the choice may redraw the inspector without this select, and
+      // reading a removed element waits for ever.
+      const id = (await select.getAttribute('data-testid', quick)) ?? '';
       await select.selectOption(value, quick);
-      return `${(await select.getAttribute('data-testid')) ?? ''}=${value}`;
+      return `${id}=${value}`;
     }
   },
   {
@@ -217,7 +228,9 @@ const monkeyActions: Action[] = [
       if (buttons.length === 0) return 'no buttons';
       const button = pick(buttons);
       const label =
-        (await button.getAttribute('data-testid')) ?? (await button.textContent()) ?? '';
+        (await button.getAttribute('data-testid', quick)) ??
+        (await button.textContent(quick)) ??
+        '';
       await button.click(quick);
       return label.trim().slice(0, 30);
     }
@@ -233,6 +246,56 @@ const monkeyActions: Action[] = [
     }
   },
   {
+    name: 'paste another diagram',
+    run: async (page, pick) => {
+      const code = pick(otherDiagrams);
+      const expand = page.getByTestId(TID.wsCodeExpand);
+      if (await expand.isVisible()) await expand.click(quick);
+      await page.locator('.monaco-editor').first().click(quick);
+      await page.keyboard.press('Control+a');
+      await page.evaluate((text) => navigator.clipboard.writeText(text), code);
+      await page.keyboard.press('Control+v');
+      await page.keyboard.press('Escape');
+      return code.split('\n')[0];
+    }
+  },
+  {
+    name: 'fold or unfold a pane',
+    run: async (page, pick) => {
+      const id = pick([
+        TID.wsCodeCollapse,
+        TID.wsCodeExpand,
+        TID.inspCollapse,
+        TID.wsInspectorExpand
+      ]);
+      const button = page.getByTestId(id);
+      if (!(await button.isVisible())) return `${id} hidden`;
+      await button.click(quick);
+      return id;
+    }
+  },
+  {
+    name: 'open and close a dialog',
+    run: async (page, pick) => {
+      const id = pick([TID.wsExportButton, TID.wsShareButton, TID.helpButton]);
+      await page.getByTestId(id).click(quick);
+      await expect(page.getByRole('dialog')).toBeVisible(quick);
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toBeHidden(quick);
+      return id;
+    }
+  },
+  {
+    name: 'toggle light and dark',
+    run: async (page, pick) => {
+      const times = pick([1, 2, 3]);
+      for (let index = 0; index < times; index++) {
+        await page.getByTestId(TID.themeToggleButton).click(quick);
+      }
+      return String(times);
+    }
+  },
+  {
     name: 'right-click menu',
     run: async (page, pick) => {
       const nodes = await usable(page.locator('#view g.node'));
@@ -241,7 +304,7 @@ const monkeyActions: Action[] = [
       const items = await usable(page.locator(`[data-testid="${TID.contextMenu}"] button`));
       if (items.length === 0) return 'empty menu';
       const item = pick(items);
-      const label = (await item.getAttribute('data-testid')) ?? '';
+      const label = (await item.getAttribute('data-testid', quick)) ?? '';
       await item.click(quick);
       return label;
     }
@@ -282,7 +345,7 @@ for (const seed of seeds) {
         before = await assertInvariants(page, errors, {
           baseline: true,
           before,
-          checkUndo: !/undo|redo|Control\+[yz]/.test(`${action.name} ${detail}`),
+          checkUndo: !/undo|redo|Control\+[yz]|paste/.test(`${action.name} ${detail}`),
           undoSteps: renaming ? 2 : 1,
           label: `seed ${seed}, step ${step}: ${action.name} ${detail}`
         });

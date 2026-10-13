@@ -59,6 +59,28 @@ test.describe('Code pane and inspector', () => {
     await expect(page.getByTestId(TID.inspPanel)).toBeVisible();
   });
 
+  test('the page itself never scrolls: a dialog does not shift the header up', async ({
+    editPage,
+    page
+  }) => {
+    // mermaid's hidden tooltip once sat below the page, and the focus a dialog moves let
+    // the whole editor scroll by its height, cutting off the header until a reload.
+    await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
+    await editPage.checkTextInView('Start');
+    await page.getByTestId(TID.wsNewMenu).click();
+    await page.getByTestId(TID.wsNewFromType).click();
+    await expect(page.getByTestId(TID.newDlg)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.newDlg)).toBeHidden();
+    const scroll = await page.evaluate(() => ({
+      header: document.querySelector('[data-testid="header-bar"]')?.getBoundingClientRect().top,
+      height: document.documentElement.scrollHeight,
+      top: document.documentElement.scrollTop,
+      view: window.innerHeight
+    }));
+    expect(scroll).toEqual({ header: 0, height: scroll.view, top: 0, view: scroll.view });
+  });
+
   test('remember what is folded across a reload', async ({ editPage, page }) => {
     await editPage.start(urlFor('flowchart TD\n  A[Start] --> B[End]'));
     await editPage.checkTextInView('Start');

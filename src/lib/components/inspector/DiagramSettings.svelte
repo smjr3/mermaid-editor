@@ -362,6 +362,7 @@
       <FieldRow label={t('layout.direction')}>
         <Segmented
           bind:value={directionValue}
+          dense
           full
           ariaLabel={t('layout.direction')}
           testID={TID.inspDirection}

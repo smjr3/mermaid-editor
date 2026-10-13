@@ -397,6 +397,20 @@ describe('mindmap', () => {
     if ('error' in leaf) throw new Error();
     expect(leaf.code).toBe(`${code}\n      B1`);
   });
+  // QA 2026-10-13: a plain topic line starting with `%%` is a comment, one starting with
+  // `::` decorates the topic above; the new topic vanished.
+  it.each(['%% idea', ':::warn', '::icon(x'])('adds a topic named %j as a topic', async (name) => {
+    const result = await run(code, 'topic', { name, parent: '4' });
+    if ('error' in result) throw new Error();
+    const topic = `「${name.replaceAll('(', '')}」`;
+    expect(added(code, result.code)).toEqual([`      ${topic}`]);
+    // As mermaid reads it: a fifth topic, under B.
+    const db = (await mermaid.mermaidAPI.getDiagramFromText(result.code)).db as {
+      getMindmap: () => { children: { children: { descr: string }[]; descr: string }[] };
+    };
+    const b = db.getMindmap().children.find(({ descr }) => descr === 'B');
+    expect(b?.children.map(({ descr }) => descr)).toEqual([topic]);
+  });
   it('offers the first topic only on an empty mindmap, and topics under a parent after that', async () => {
     const actions = (text: string) =>
       specFor(text)
@@ -588,6 +602,21 @@ describe('timeline', () => {
     const period = await run(code, 'period', { name: '2023', text: 'E' });
     if ('error' in period) throw new Error();
     expect(added(code, period.code)).toEqual(['    2023 : E']);
+  });
+  // QA 2026-10-13: such a period line was read as a comment or a title, and vanished.
+  it.each([
+    ['%% plan', '％％ plan'],
+    ['title x', '「title x」'],
+    ['section x', '「section x」']
+  ])('adds a period named %j as a period', async (name, written) => {
+    const period = await run(code, 'period', { name, text: 'E' });
+    if ('error' in period) throw new Error();
+    expect(added(code, period.code)).toEqual([`    ${written} : E`]);
+    // As mermaid reads it, not only as the period list does.
+    const db = (await mermaid.mermaidAPI.getDiagramFromText(period.code)).db as {
+      getTasks: () => { task: string }[];
+    };
+    expect(db.getTasks().map(({ task }) => task.trim())).toEqual(['2021', '2022', written]);
   });
 });
 

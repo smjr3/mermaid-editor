@@ -42,7 +42,7 @@ import {
   renameChartObject,
   type ChartKind
 } from './chartEdit';
-import { requirementName } from './codeText';
+import { lineStartSafe, requirementName } from './codeText';
 import { freshId, headerLine, laneEnd, splitLines, type NodeShape } from './diagramEdit';
 import { canonicalShape, type FlowShapeName } from './flowShapes';
 import { memoByCode } from './memo';
@@ -1495,7 +1495,9 @@ const renameLine = (lines: string[], line: number, label: string) => {
   // Local (error recovery): a name with brackets or quotes used to lose them, which
   // left "(" or "]" as an empty line and broke the diagram. Such a name is quoted
   // instead, in the node's own brackets — or in `[…]`, under an id, for a plain line.
-  if (/[()[\]{}"]/.test(raw)) {
+  // So is one starting with `%%` (a comment) or `::` (an icon or class line), which made
+  // the topic vanish.
+  if (/[()[\]{}"]/.test(raw) || /^(?:%%|::)/.test(raw)) {
     const text = `"${raw.replaceAll('"', '#quot;')}"`;
     if (match) {
       lines[line] = `${match[1]}${match[2]}${match[3]}${text}${match[5]}${meta}`;
@@ -1552,7 +1554,7 @@ const timelineText = (text: string) => oneLine(text).replaceAll(':', '：');
 const renameTimeline = (lines: string[], object: EditObject, label: string) => {
   const line = object.line ?? -1;
   const parts = timelineParts(lines[line] ?? '');
-  if (object.part === undefined) parts.period = timelineText(label);
+  if (object.part === undefined) parts.period = lineStartSafe(timelineText(label));
   else parts.events[object.part] = timelineText(label);
   lines[line] = renderTimeline(parts);
   return lines;

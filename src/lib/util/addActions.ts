@@ -25,7 +25,15 @@ import {
   type Visibility
 } from './diagramDetails';
 import { chartAddSpecs } from './chartEdit';
-import { headerIndex, indentOf, isContent, oneLine, requirementName } from './codeText';
+import {
+  headerIndex,
+  indentOf,
+  isContent,
+  lineStartSafe,
+  oneLine,
+  requirementName,
+  topicSafe
+} from './codeText';
 import { freshId, splitLines } from './diagramEdit';
 import { memoByCode } from './memo';
 import { decodeEntities, diagramFromText, diagramObjects, type DiagramObject } from './mermaid';
@@ -835,7 +843,7 @@ const mindmap: AddSpec = {
         const { lines } = splitLines(code);
         const parent = Number(values.parent);
         if (!values.parent || !lines[parent]) return { error: 'add.chooseParent' };
-        const name = noBrackets(values.name) || 'New topic';
+        const name = topicSafe(noBrackets(values.name)) || 'New topic';
         return { code: addChild(code, parent, name), name };
       },
       button: 'add.mind.topicButton',
@@ -850,7 +858,7 @@ const mindmap: AddSpec = {
     {
       apply: (code, values) => {
         if (nodeLines(splitLines(code).lines).length > 0) return { error: 'add.mind.hasRoot' };
-        const name = noBrackets(values.name) || 'New topic';
+        const name = topicSafe(noBrackets(values.name)) || 'New topic';
         return { code: insert(code, [`  ${name}`]), name };
       },
       button: 'add.mind.rootButton',
@@ -1109,7 +1117,7 @@ const timeline: AddSpec = {
     },
     {
       apply: (code, values) => {
-        const period = timelineText(values.name) || 'Period';
+        const period = lineStartSafe(timelineText(values.name)) || 'Period';
         const event = timelineText(values.text);
         return { code: insert(code, [`    ${period} : ${event}`]), name: period };
       },

@@ -284,3 +284,149 @@ describe('objectOptions', () => {
     expect(await set(wide, 'block', 'a', 'blockWidth', '')).toBe(code);
   });
 });
+
+// Local (N06): what the inspector reads and writes follows mermaid's grammar, checked
+// against mermaid's own parse (the sequence DB) rather than only the diagram type.
+describe('diagram options follow the grammar', () => {
+  const sequenceDb = async (code: string) => {
+    const db = (await mermaid.mermaidAPI.getDiagramFromText(code)).db as unknown as {
+      LINETYPE: { AUTONUMBER: number };
+      getActor: (id: string) => { type: string } | undefined;
+      getActorKeys: () => string[];
+      getMessages: () => { message: unknown; type: number }[];
+    };
+    return {
+      ...db,
+      getActor: (id: string) => db.getActor(id),
+      getActorKeys: () => db.getActorKeys(),
+      // What the renderer numbers by: the last `autonumber` statement's visibility.
+      showSequenceNumbers: () =>
+        (
+          db.getMessages().findLast(({ type }) => type === db.LINETYPE.AUTONUMBER)?.message as
+            { visible?: boolean } | undefined
+        )?.visible === true
+    };
+  };
+  const find = async (code: string, id: string): Promise<EditObject> => {
+    const found = (await editableObjects(code))?.items.find((item) => item.id === id);
+    if (!found) throw new Error(`no object ${id}`);
+    return found;
+  };
+  const participantType = async (code: string, id: string) =>
+    objectOptions(code, 'sequence', await find(code, id))[0]?.value;
+  const setType = async (code: string, id: string, value: string) => {
+    const next = setObjectOption(code, 'sequence', await find(code, id), 'participantType', value);
+    if (next === undefined) throw new Error(`refused participantType=${value}`);
+    return next;
+  };
+  const declarations = (code: string, id: string) =>
+    code
+      .split('\n')
+      .filter((line) =>
+        new RegExp(String.raw`^\s*(?:create\s+)?(?:participant|actor)\s+${id}\b`).test(line)
+      );
+
+  it.each([
+    ['a message', 'A->>B: literal {'],
+    ['a note', 'Note over A: {'],
+    ['a quoted message', 'A->>B: "{"'],
+    ['an alias', 'participant A as Shop {'],
+    ['a box label', 'box Aqua Group {\n  participant C\nend'],
+    ['the title', 'title Plan {']
+  ])('reads autonumber after a brace in %s, and turns it off', async (_, before) => {
+    const start = `sequenceDiagram\n  ${before}\n  autonumber\n  B->>A: done`;
+    expect((await sequenceDb(start)).showSequenceNumbers()).toBe(true);
+    expect(values(start).autonumber).toBe('on');
+    const off = code(start, 'autonumber', 'off');
+    expect(off).toBe(`sequenceDiagram\n  ${before}\n  B->>A: done`);
+    expect((await sequenceDb(off)).showSequenceNumbers()).toBe(false);
+    expect(values(off).autonumber).toBe('off');
+    // Turning it on again adds one line, leaving the messages alone.
+    const on = code(off, 'autonumber', 'on');
+    expect((await sequenceDb(on)).showSequenceNumbers()).toBe(true);
+    expect(on.replace(/\n {2}autonumber(?=\n)/, '')).toBe(off);
+  });
+
+  it('still skips what is inside a block the grammar opens with braces', async () => {
+    const start =
+      'classDiagram\n  class A {\n    +accTitle: x\n  }\n  A --> B : uses {\n  accTitle: Shop';
+    await expect(mermaid.parse(start)).resolves.toBeTruthy();
+    expect(values(start).accTitle).toBe('Shop');
+    const entities = 'erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  accTitle: Orders';
+    await expect(mermaid.parse(entities)).resolves.toBeTruthy();
+    expect(values(entities).accTitle).toBe('Orders');
+    const described = 'sequenceDiagram\n  accDescr {\n    autonumber {\n  }\n  A->>B: hi';
+    expect((await sequenceDb(described)).showSequenceNumbers()).toBe(false);
+    expect(values(described).autonumber).toBe('off');
+  });
+
+  it.each([
+    ['with a space before the metadata', 'participant A @{"type":"database"} as Database'],
+    ['with spaces inside it', 'participant A  @{ "type": "database" } as Database'],
+    ['without a space', 'participant A@{ "type": "database" } as Database'],
+    ['with YAML keys', 'participant A @{ type: database } as Database'],
+    ['created', 'create participant A @{ "type": "database" } as Database'],
+    ['declared as an actor', 'actor A @{ "type": "database" }']
+  ])('reads and rewrites a participant declared %s in place', async (_, declared) => {
+    const created = declared.startsWith('create');
+    const start = created
+      ? `sequenceDiagram\n  participant B\n  B->>B: first\n  ${declared}\n  B->>A: hi\n  A->>B: ok`
+      : `sequenceDiagram\n  ${declared}\n  A->>B: hi\n  B->>A: ok`;
+    expect((await sequenceDb(start)).getActor('A')?.type).toBe('database');
+    expect(await participantType(start, 'A')).toBe('database');
+
+    for (const value of ['actor', 'queue', 'participant', 'boundary']) {
+      const next = await setType(start, 'A', value);
+      expect(declarations(next, 'A')).toHaveLength(1);
+      const db = await sequenceDb(next);
+      expect(db.getActor('A')?.type).toBe(value);
+      expect(await participantType(next, 'A')).toBe(value);
+      // Everything but the declaration line is unchanged, in order.
+      const others = (text: string) =>
+        text
+          .split('\n')
+          .filter((line) => !/^\s*(?:create\s+)?(?:participant|actor)\s+A\b/.test(line));
+      expect(others(next)).toEqual(others(start));
+      expect(db.getActorKeys()).toEqual((await sequenceDb(start)).getActorKeys());
+    }
+    // The alias and the space before the metadata stay as written.
+    const queue = await setType(start, 'A', 'queue');
+    if (declared.includes(' as Database')) expect(queue).toContain(' as Database');
+    if (declared.includes('A @{')) expect(queue).toContain('A @{');
+    if (declared.includes('A@{')) expect(queue).toContain('A@{');
+    // Relabelling (the label row) also rewrites the declaration rather than adding one.
+    const relabelled = renameObject(start, 'sequence', await find(start, 'A'), 'Store') ?? '';
+    expect(declarations(relabelled, 'A')).toHaveLength(1);
+    expect(declarations(relabelled, 'A')[0]).toMatch(/ as Store$/);
+    expect((await sequenceDb(relabelled)).getActor('A')?.type).toBe('database');
+  });
+
+  it('keeps the other metadata entries when the type changes', async () => {
+    const start =
+      'sequenceDiagram\n  participant A @{ "alias": "Store", "type": "database" }\n  A->>B: hi';
+    expect((await sequenceDb(start)).getActor('A')?.type).toBe('database');
+    const actor = await setType(start, 'A', 'actor');
+    expect(actor).toContain('  actor A @{ "alias": "Store" }');
+    const queue = await setType(actor, 'A', 'queue');
+    expect(queue).toContain('  participant A @{ "type": "queue", "alias": "Store" }');
+    expect((await sequenceDb(queue)).getActor('A')?.type).toBe('queue');
+    expect(declarations(queue, 'A')).toHaveLength(1);
+  });
+
+  it('reads and rewrites metadata that runs over several lines', async () => {
+    // mermaid reads these lines as a YAML block, so they are written without indentation.
+    const start =
+      'sequenceDiagram\n  participant A@{\ntype: database\nalias: Store\n}\n  A->>B: hi';
+    expect((await sequenceDb(start)).getActor('A')?.type).toBe('database');
+    expect(await participantType(start, 'A')).toBe('database');
+    const queue = await setType(start, 'A', 'queue');
+    expect((await sequenceDb(queue)).getActor('A')?.type).toBe('queue');
+    expect(queue).toContain('alias: Store');
+    const plain = await setType(queue, 'A', 'participant');
+    expect((await sequenceDb(plain)).getActor('A')?.type).toBe('participant');
+    const again = await setType(plain, 'A', 'entity');
+    expect((await sequenceDb(again)).getActor('A')?.type).toBe('entity');
+    expect(declarations(again, 'A')).toHaveLength(1);
+    expect(again).toContain('A->>B: hi');
+  });
+});

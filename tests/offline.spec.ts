@@ -56,6 +56,38 @@ test.describe('Offline build', () => {
     expect([...external]).toEqual([]);
   });
 
+  // N03: a ?code= URL on this site that redirects to another origin is refused before
+  // the browser follows the redirect — the other origin is never asked.
+  for (const status of [301, 302, 307, 308]) {
+    test(`does not follow a ${status} redirect from a ?code= URL on this site`, async ({
+      editPage,
+      page
+    }) => {
+      const external = new Set<string>();
+      page.on('request', (request) => {
+        const host = new URL(request.url()).host;
+        if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) external.add(request.url());
+      });
+      // By path: the page's own URL (`?code=/redirect-probe.mmd`) ends the same way.
+      await page.route(
+        (target) => target.pathname === '/redirect-probe.mmd',
+        (route) =>
+          route.fulfill({
+            headers: { location: 'https://outside.example/diagram.mmd' },
+            status
+          })
+      );
+      await page.route('https://outside.example/**', (route) =>
+        route.fulfill({ body: 'flowchart TD\n  Outside', status: 200 })
+      );
+      await editPage.start('/edit?code=/redirect-probe.mmd');
+      await expect(editPage.view.locator('svg').first()).toBeVisible({ timeout: 15_000 });
+      await page.waitForTimeout(1000);
+      await editPage.checkTextNotInView('Outside');
+      expect([...external]).toEqual([]);
+    });
+  }
+
   // R04: an imported icon that points outside itself (an <image>, a url() paint) is
   // drawn without the browser fetching anything, in the diagram and in the picker.
   test('draws an imported icon with external references without requesting them', async ({
@@ -72,6 +104,7 @@ test.describe('Offline build', () => {
   <image xlink:href="https://tracker.example.com/pixel2.png" width="24" height="24"/>
   <rect width="24" height="24" fill="#123456" style="stroke:url(https://tracker.example.com/paint.svg#p)"/>
   <circle r="4" cx="12" cy="12" fill="url(https://tracker.example.com/fill.svg#f)"/>
+  <circle r="3" cx="6" cy="6" stroke="#654321" style="fill:u\\72l(https://tracker.example.com/escaped.svg#e)" filter="U\\52L('https://tracker.example.com/f.svg#f')"/>
 </svg>`;
     const architecture = `architecture-beta\n  service fw(corp:tracker)[Firewall]`;
     await editPage.start(
@@ -91,6 +124,8 @@ test.describe('Offline build', () => {
 
     const icon = editPage.view.locator('rect[fill="#123456"]');
     await expect(icon.first()).toBeAttached({ timeout: 15_000 });
+    // N04: the circle written with CSS escapes is drawn, without its external paint.
+    await expect(editPage.view.locator('circle[stroke="#654321"]').first()).toBeAttached();
     await expect(page.locator('#view image')).toHaveCount(0);
     expect(await page.locator('#view').innerHTML()).not.toContain('tracker.example.com');
 

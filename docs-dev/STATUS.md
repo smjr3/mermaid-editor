@@ -3,7 +3,7 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-10-12**, including the 0.2.0 to 0.2.5 work (the upstream merge of `a70ed76`,
+Accurate as of **2026-10-13**, including the 0.2.0 to 0.2.6 work (the upstream merge of `a70ed76`,
 mermaid 12.1.0, and the editor, layout and icon features below) and the redesign of `/edit` into
 three columns with an inspector ("Editor layout: the inspector" below).
 

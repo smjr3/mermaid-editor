@@ -7,6 +7,11 @@
  *
  *   node scripts/update-from-registry.mjs [--version <x.y.z|latest>] [--registry <url>]
  *                                         [--dir <path>] [--no-build] [--keep-lock]
+ *   node scripts/update-from-registry.mjs --tarball <file.tgz|directory> [--dir <path>] ...
+ *
+ * `--tarball` skips the download and uses a tarball already on disk — `npm pack` of a
+ * checkout, as CI does to build the commit under review (job `build-from-head` in
+ * .github/workflows/fork-checks.yml) — or the one `.tgz` in a directory.
  *
  * Credentials for a registry that needs them come from the user's own .npmrc; this script
  * never reads or passes a token.
@@ -19,6 +24,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -42,8 +48,10 @@ export function parseArgs(argv) {
     dir: join('.', 'mermaid-editor-build'),
     keepLock: false,
     registry: undefined,
+    tarball: undefined,
     version: 'latest'
   };
+  let versionGiven = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const eq = arg.startsWith('--') ? arg.indexOf('=') : -1;
@@ -60,6 +68,10 @@ export function parseArgs(argv) {
     switch (flag) {
       case '--version':
         options.version = value();
+        versionGiven = true;
+        break;
+      case '--tarball':
+        options.tarball = value();
         break;
       case '--registry':
         options.registry = value();
@@ -80,8 +92,25 @@ export function parseArgs(argv) {
   if (!/^[\w.\-+^~<>=*]+$/.test(options.version)) {
     throw new StepError('arguments', `invalid --version "${options.version}"`);
   }
+  if (options.tarball !== undefined) {
+    if (versionGiven || options.registry !== undefined) {
+      throw new StepError('arguments', '--tarball cannot be combined with --version or --registry');
+    }
+    options.tarball = resolve(options.tarball);
+  }
   options.dir = resolve(options.dir);
   return options;
+}
+
+/** The tarball to extract: `path` itself, or the only `.tgz` in the directory `path`. */
+export function findTarball(path, step = 'download') {
+  if (!existsSync(path)) throw new StepError(step, `${path} does not exist`);
+  if (!statSync(path).isDirectory()) return path;
+  const tarballs = readdirSync(path).filter((name) => name.endsWith('.tgz'));
+  if (tarballs.length !== 1) {
+    throw new StepError(step, `expected one .tgz in ${path}, found ${tarballs.length}`);
+  }
+  return join(path, tarballs[0]);
 }
 
 /** Names from REQUIRED_OUTPUTS that are missing under `<dir>/docs`. */
@@ -167,13 +196,16 @@ export function main(argv) {
   const scratch = mkdtempSync(join(tmpdir(), 'mermaid-editor-pack-'));
   const started = Date.now();
   try {
-    // 1. download
-    const packArgs = ['pack', spec, '--pack-destination', scratch];
-    if (options.registry) packArgs.push('--registry', options.registry);
-    run('download', 'npm', packArgs, scratch);
-    const tarballs = readdirSync(scratch).filter((name) => name.endsWith('.tgz'));
-    if (tarballs.length !== 1) {
-      throw new StepError('download', `expected one .tgz in ${scratch}, found ${tarballs.length}`);
+    // 1. download (or the local tarball)
+    let tarball;
+    if (options.tarball) {
+      tarball = findTarball(options.tarball, 'tarball');
+      console.log(`\n> [tarball] ${tarball} (no download)`);
+    } else {
+      const packArgs = ['pack', spec, '--pack-destination', scratch];
+      if (options.registry) packArgs.push('--registry', options.registry);
+      run('download', 'npm', packArgs, scratch);
+      tarball = findTarball(scratch);
     }
 
     // 2. extract
@@ -181,12 +213,12 @@ export function main(argv) {
     mkdirSync(dir, { recursive: true });
     rmSync(join(dir, 'docs'), { force: true, recursive: true });
     if (!options.keepLock) rmSync(lock, { force: true });
-    console.log(`\n> [extract] ${tarballs[0]} -> ${dir}`);
+    console.log(`\n> [extract] ${tarball} -> ${dir}`);
     let files;
     try {
-      files = extractTarball(readFileSync(join(scratch, tarballs[0])), dir);
+      files = extractTarball(readFileSync(tarball), dir);
     } catch (error) {
-      throw new StepError('extract', `${tarballs[0]}: ${error.message}`);
+      throw new StepError('extract', `${tarball}: ${error.message}`);
     }
     const version = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version;
 
@@ -203,8 +235,12 @@ export function main(argv) {
 
     const seconds = Math.round((Date.now() - started) / 1000);
     console.log(`\nDone in ${seconds}s.`);
-    console.log(`  package:   ${PACKAGE} ${version} (requested ${options.version})`);
-    console.log(`  registry:  ${options.registry ?? '(npm configured registry)'}`);
+    if (options.tarball) {
+      console.log(`  package:   ${PACKAGE} ${version} (from ${tarball})`);
+    } else {
+      console.log(`  package:   ${PACKAGE} ${version} (requested ${options.version})`);
+      console.log(`  registry:  ${options.registry ?? '(npm configured registry)'}`);
+    }
     console.log(`  directory: ${dir} (${files} files extracted)`);
     console.log(
       options.build

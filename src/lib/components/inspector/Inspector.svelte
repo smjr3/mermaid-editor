@@ -8,6 +8,7 @@
   import DiagramSettings from '$/components/inspector/DiagramSettings.svelte';
   import EdgeSection from '$/components/inspector/EdgeSection.svelte';
   import LaneSection from '$/components/inspector/LaneSection.svelte';
+  import { labelColumn } from '$/components/form/FieldRow.svelte';
   import NameField from '$/components/inspector/NameField.svelte';
   import NodeSection from '$/components/inspector/NodeSection.svelte';
   import { Button } from '$/components/ui/button';
@@ -143,7 +144,7 @@
     </Button>
   </div>
 
-  <div class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+  <div class="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto" use:labelColumn>
     {#if blocked}
       <div
         role="status"

@@ -26,12 +26,13 @@ import {
   attributeKeys,
   deleteEntityAttribute,
   entityAttributes,
-  ganttSection,
+  firstStart,
+  ganttSections,
   ganttTasks,
+  keepFirstStart,
+  moveGanttTask,
   objectFields,
-  parseGanttTask,
   pieSlice,
-  renderGanttTask,
   setEntityAttribute,
   setObjectFields
 } from './diagramDetails';
@@ -112,14 +113,6 @@ const statusKeys: Record<string, MessageKey> = {
   done: 'add.gantt.status.done',
   milestone: 'table.status.milestone',
   none: 'add.gantt.status.none'
-};
-
-const ganttSections = (lines: string[]) => {
-  const header = headerIndex(lines);
-  return lines.flatMap((line, index) => {
-    const match = index > header ? ganttSection.exec(line) : null;
-    return match ? [{ index, name: match[2] }] : [];
-  });
 };
 
 const ganttTable = (code: string, lines: string[]): Omit<TableModel, 'kind'> => {
@@ -203,49 +196,13 @@ const statusValues = (status: string): Values => {
   };
 };
 
-/** Gives the first task a start when it has none (mermaid cannot draw one without), from `start`. */
-const keepFirstStart = (lines: string[], start: string) => {
-  const first = ganttTasks(lines)[0];
-  if (first && !first.start && start) lines[first.line] = renderGanttTask({ ...first, start });
-};
-
-const firstStart = (lines: string[]) => ganttTasks(lines)[0]?.start ?? '';
-
-/** The code with the task on `line` moved to the end of a section (`L<line>`), or before every section. */
-const moveTask = (code: string, line: number, section: string): string | undefined => {
-  const { eol, lines } = splitLines(code);
-  const task = parseGanttTask(lines[line] ?? '', line);
-  if (!task) return undefined;
-  const start = firstStart(lines);
-  // A task that started straight after this one starts where this one started.
-  const next = ganttTasks(lines).find((other) => other.line > line);
-  if (next && !next.start && task.start)
-    lines[next.line] = renderGanttTask({ ...next, start: task.start });
-  const sections = ganttSections(lines);
-  let at: number;
-  if (section) {
-    const index = Number(section.slice(1));
-    if (!sections.some((s) => s.index === index)) return undefined;
-    at = sections.find((s) => s.index > index)?.index ?? lines.length;
-    while (at > index + 1 && !isContent(lines[at - 1])) at--;
-  } else {
-    at = sections[0]?.index ?? lines.length;
-  }
-  const indent = ganttTasks(lines).find((other) => other.line < at && other.line !== line)?.indent;
-  const text = renderGanttTask({ ...task, indent: indent ?? task.indent });
-  lines.splice(at, 0, text);
-  lines.splice(at <= line ? line + 1 : line, 1);
-  keepFirstStart(lines, start);
-  return lines.join(eol);
-};
-
 const ganttCell = (code: string, row: TableRow, key: string, value: string) => {
   const object = lineObject(row.line, row.cells.task);
   switch (key) {
     case 'task':
       return renameObject(code, 'gantt', object, value);
     case 'section':
-      return moveTask(code, row.line, value);
+      return moveGanttTask(code, row.line, value)?.code;
     case 'status':
       return setObjectFields(code, 'gantt', object, statusValues(value));
     case 'start':

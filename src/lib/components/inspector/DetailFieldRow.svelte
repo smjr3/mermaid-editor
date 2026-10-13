@@ -13,11 +13,14 @@
     apply,
     dataKey,
     field,
+    short,
     testID
   }: {
     apply: (key: string, value: string) => void;
     dataKey: string;
     field: DetailField;
+    /** A label the caller picked (a member's 「メンバー名」), over the field's own. */
+    short?: string;
     testID: string;
   } = $props();
 
@@ -27,6 +30,7 @@
   };
   // A short label where the field's own one would not fit in the row (it stays the tooltip).
   const labelOf = (detail: DetailField) => {
+    if (short) return short;
     const key = `insp.field.${detail.key}`;
     return key in messages.en ? t(key as MessageKey) : t(detail.label);
   };

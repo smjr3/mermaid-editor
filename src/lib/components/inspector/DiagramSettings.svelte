@@ -308,26 +308,25 @@
         data-testid={`${TID.inspThemePreset}-${entry.id}`}
         title={`${t(entry.name)}: ${t(entry.description)}`}
         class={[
-          'flex min-w-0 flex-col gap-1 rounded-md border px-1.5 py-1 text-left transition-colors outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring',
+          'flex min-w-0 flex-col gap-0.5 rounded-md border px-1.5 py-1 text-left transition-colors outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring',
           active
             ? 'border-sky-600 bg-sky-50 ring-1 ring-sky-600 dark:border-sky-400 dark:bg-sky-950/40 dark:ring-sky-400'
             : 'border-border'
         ]}
         onclick={() => applyPreset(entry.id)}>
-        <span class="flex items-center gap-0.5">
-          <span class="min-w-0 flex-1 truncate text-[11px] leading-tight font-semibold"
-            >{t(entry.name)}</span>
-          {#if active}
-            <CheckIcon class="size-3 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-          {/if}
-        </span>
-        <span class="flex gap-0.5" aria-hidden="true">
+        <!-- The swatches and the check share a row, so the name below has the card's
+             whole width and wraps rather than being cut (QA 2026-10-13). -->
+        <span class="flex items-center gap-0.5" aria-hidden="true">
           {#each entry.swatches as color, index (index)}
             <span
               class="size-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/30"
               style:background-color={color}></span>
           {/each}
+          {#if active}
+            <CheckIcon class="ml-auto size-3 shrink-0 text-sky-600 dark:text-sky-400" />
+          {/if}
         </span>
+        <span class="text-[11px] leading-tight font-semibold break-words">{t(entry.name)}</span>
       </button>
     {/each}
   </div>

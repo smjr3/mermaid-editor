@@ -69,8 +69,13 @@ test.describe('Error recovery: a mistake in the code', () => {
     const unfinished = t('recover.unfinished', { line: '3' });
     await expect(notice(page)).toContainText(unfinished);
     await expect(notice(page)).toContainText(t('recover.showingLast'));
-    // One notice, over the diagram.
+    // One notice, in a band above the diagram: it pushes the picture down rather than
+    // covering its shapes.
     await expect(page.getByTestId(TID.diagramErrorNotice)).toHaveCount(1);
+    const band = await notice(page).boundingBox();
+    const view = await page.locator('#view').boundingBox();
+    if (!band || !view) throw new Error('notice or view missing');
+    expect(view.y).toBeGreaterThanOrEqual(band.y + band.height);
     // The code pane's footer says it in the same words.
     await expect(page.getByTestId(TID.wsCodeFooter)).toContainText(unfinished);
     // The last valid picture is still there.

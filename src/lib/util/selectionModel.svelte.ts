@@ -27,6 +27,7 @@ import {
 } from './colors';
 import {
   deleteMember,
+  moveGanttTask,
   objectFields,
   objectMembers,
   setMember,
@@ -66,6 +67,7 @@ import {
 import { addSpecs, initialValues } from './addActions';
 import { objectOptionKeys, objectOptions, setObjectOption } from './diagramOptions';
 import { diagramIds } from './diagramIds';
+import { adjustedMessage } from './displayName';
 import { diagramObjects, parse } from './mermaid';
 import { checkedRename, findOccurrences, isValidIdentifier } from './mermaidRename';
 import {
@@ -306,14 +308,36 @@ class SelectionModel {
         this.warn('sel.emptyName');
         return;
       }
-      await this.apply(
-        renameObject(inputState.code, kind, object, text),
-        t('edit.renamed', { name: text })
-      );
+      const next = renameObject(inputState.code, kind, object, text);
+      if (next !== undefined && (await this.apply(next, t('edit.renamed', { name: text })))) {
+        const objects = (await editableObjects(next))?.items ?? [];
+        const renamed =
+          objects.find(({ id }) => id === object.id) ??
+          objects.find(({ line }) => line !== undefined && line === object.line);
+        if (renamed) this.adjusted(text, renamed.label);
+      }
     } else if (edge) {
-      await this.apply(setEdgeLabel(inputState.code, kind, edge, text), t('edit.updated'));
+      const next = setEdgeLabel(inputState.code, kind, edge, text);
+      if (next !== undefined && (await this.apply(next, t('edit.updated')))) {
+        const label = (await editableEdges(next))?.items[edge.index]?.label;
+        if (label !== undefined) this.adjusted(text, label);
+      }
     }
   };
+
+  /**
+   * Local (QA 2026-10-13): says so, once and without stopping anything, when the name
+   * just applied shows otherwise than typed because Mermaid's syntax could not hold it
+   * (`;` → `,`, `|` → `/`, a tag removed, 「」 around a keyword, …).
+   */
+  private adjusted(typed: string, shown: string) {
+    const notice = adjustedMessage(typed, shown);
+    if (!notice) return;
+    this.message = `${this.message} ${notice}`.trim();
+    this.warning = notice;
+    clearTimeout(this.warningTimer);
+    this.warningTimer = setTimeout(() => (this.warning = ''), 4000);
+  }
 
   remove = async (keepContents = false) => {
     const { kind, object, edge } = this;
@@ -433,6 +457,15 @@ class SelectionModel {
     const { kind, object } = this;
     if (!kind || !object) return;
     const [key, value] = Object.entries(values)[0] ?? [];
+    // Local (QA 2026-10-13): a gantt task's 区分 moves its line; the selection follows it.
+    if (kind === 'gantt' && key === 'section' && object.line !== undefined) {
+      const moved = moveGanttTask(inputState.code, object.line, value);
+      if (moved && (await this.apply(moved.code, t('edit.changed', { name: this.label })))) {
+        await this.sync(moved.code);
+        select({ id: `L${moved.line}`, type: 'node' });
+      }
+      return;
+    }
     const next =
       key !== undefined && objectOptionKeys.has(key)
         ? setObjectOption(inputState.code, kind, object, key, value)
@@ -607,7 +640,7 @@ class SelectionModel {
     if (!kind || !object) return;
     await this.added(addAfter(inputState.code, kind, object, t('sel.newNode')));
   };
-  /** A branch: another node from where the selected one comes from. */
+  /** A branch: another node from where the selected one comes from, or one more way out of a decision. */
   addBranch = async () => {
     const { kind, object } = this;
     if (!kind || !object) return;

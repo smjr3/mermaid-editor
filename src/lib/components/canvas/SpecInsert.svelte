@@ -12,6 +12,7 @@
     type Values
   } from '$/util/addActions';
   import { codeHealth } from '$/util/codeHealth.svelte';
+  import { adjustedMessage } from '$/util/displayName';
   import type { DiagramObject } from '$/util/mermaid';
   import { settledState } from '$/util/settledState.svelte';
   import { inputState, updateCode } from '$/util/state.svelte';
@@ -90,6 +91,13 @@
     message = result.done
       ? t(result.done)
       : t('add.done', { name: friendlyName(action, now, result.name) });
+    // Local (QA 2026-10-13): a typed name Mermaid's syntax could not hold as it was
+    // (`;` → `,`, a tag, a keyword put in 「」, …) is said to have changed.
+    const typed = action.fields.some(({ key, kind }) => key === 'name' && kind === 'text')
+      ? (now.name ?? '').trim()
+      : '';
+    const adjusted = typed && result.name ? adjustedMessage(typed, result.name) : '';
+    if (adjusted) message = `${message} ${adjusted}`;
     // Clear what was typed; keep the choices, then apply what should follow.
     const cleared = Object.fromEntries(
       action.fields.map((field) => [

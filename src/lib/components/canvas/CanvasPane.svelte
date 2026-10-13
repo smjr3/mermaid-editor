@@ -16,9 +16,12 @@
   // Local: the diagram column of /edit. On top, the add bar (what it offers follows the
   // diagram's type) and, for the diagrams that are a list at heart, 図 / 表 / 並べる; below,
   // the diagram with the selection layer over it (click to select, keys, right-click
-  // menu), the code-error notice and the zoom controls; the table editor under the diagram
+  // menu), the zoom controls; above it the code-error notice; the table editor under the diagram
   // or in its place. It owns the pan/zoom state; `#view` and `#container svg` stay as
   // they are (exports and the embed read them).
+  // `sheetOpen`: the History sheet floats over the right of the editor; the zoom
+  // controls step left of it while it is open.
+  let { sheetOpen = false }: { sheetOpen?: boolean } = $props();
   const panZoomState = new PanZoomState();
   let viewHost: HTMLDivElement | undefined = $state();
 
@@ -35,18 +38,19 @@
     {/if}
   </div>
   <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+    <!-- What is wrong with the code and the way back (codeHealth.svelte.ts): a band above
+         the diagram that pushes it down rather than covering its shapes (QA 2026-10-13).
+         Not drawn while there is nothing to say. -->
+    <div
+      class="flex shrink-0 justify-center border-b border-border bg-card px-2 py-1.5 [&:not(:has(*))]:hidden [&>*]:w-full [&>*]:max-w-xl"
+      data-selection-ui>
+      <CodeErrorNotice testID={TID.diagramErrorNotice} />
+    </div>
     <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" bind:this={viewHost}>
       <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
       <!-- Click the diagram to select, then change it (SelectionLayer). -->
       <SelectionLayer host={viewHost} {panZoomState} />
-      <!-- What is wrong with the code and the way back (codeHealth.svelte.ts): one place,
-           over the diagram. -->
-      <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex justify-center">
-        <div class="pointer-events-auto w-full max-w-xl" data-selection-ui>
-          <CodeErrorNotice testID={TID.diagramErrorNotice} />
-        </div>
-      </div>
-      <ZoomControls {panZoomState} />
+      <ZoomControls {panZoomState} {sheetOpen} />
       {#if env.isEnabledAiFeatures}<div class="absolute top-0 left-5">
           <EnhancedEditsButton />
         </div>{/if}

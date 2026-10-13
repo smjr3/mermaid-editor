@@ -120,6 +120,15 @@ test.describe('History', () => {
     expect(sheet.x + sheet.width).toBeCloseTo(inspector.x + inspector.width, 0);
     // The diagram keeps its width: the sheet floats rather than pushing a column aside.
     await expect(page.getByTestId(TID.wsCanvasPane)).toBeVisible();
+    // The zoom controls step left of the sheet instead of being covered by it.
+    const zoom = page.getByTestId(TID.resetViewButton);
+    await expect(async () => {
+      const controls = await zoom.locator('xpath=..').boundingBox();
+      if (!controls) throw new Error('no zoom controls');
+      expect(controls.x + controls.width).toBeLessThanOrEqual(sheet.x);
+      expect(controls.x).toBeGreaterThan(0);
+    }).toPass();
+    await zoom.click();
     // 保存済み and タイムライン only: there is no Gist revisions tab any more.
     const tabs = page.getByTestId(TID.historyPanel).getByRole('tab');
     await expect(tabs).toHaveCount(2);
@@ -127,6 +136,13 @@ test.describe('History', () => {
 
     await toggleHistory(page);
     await expect(page.getByTestId(TID.historyPanel)).toBeHidden();
+    // Back at the corner once it is closed.
+    await expect(async () => {
+      const canvas = await page.getByTestId(TID.wsCanvasPane).boundingBox();
+      const controls = await zoom.locator('xpath=..').boundingBox();
+      if (!canvas || !controls) throw new Error('no canvas');
+      expect(canvas.x + canvas.width - (controls.x + controls.width)).toBeLessThan(16);
+    }).toPass();
   });
 
   test('keeps the active tab highlighted when switching modes', async ({ page }) => {

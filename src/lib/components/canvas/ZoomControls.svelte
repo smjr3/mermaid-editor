@@ -11,7 +11,31 @@
   // 全体 (fit the diagram to the view) | the background grid. They replace the bar that
   // ran across the top of the diagram (zoom, fit, "open in a new tab", hand-drawn, grid);
   // the hand-drawn look moved to the inspector, and the new-tab view was dropped.
-  let { panZoomState }: { panZoomState: PanZoomState } = $props();
+  // Local (QA 2026-10-13): while the History sheet is open (`sheetOpen`) it floats over the
+  // right of the editor and would cover them, so they step left of it.
+  let { panZoomState, sheetOpen = false }: { panZoomState: PanZoomState; sheetOpen?: boolean } =
+    $props();
+
+  let toolbar: HTMLDivElement | undefined = $state();
+  let shift = $state(0);
+  $effect(() => {
+    const host = toolbar?.offsetParent;
+    if (!sheetOpen || !(host instanceof HTMLElement)) {
+      shift = 0;
+      return;
+    }
+    const sheet = document.querySelector(`[data-testid="${TID.historyPanel}"]`);
+    const measure = () => {
+      shift = sheet
+        ? Math.max(0, host.getBoundingClientRect().right - sheet.getBoundingClientRect().left)
+        : 0;
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    if (sheet) observer.observe(sheet);
+    return () => observer.disconnect();
+  });
 
   if (inputState.grid === undefined) {
     // Handle cases where old states were saved without grid option
@@ -27,7 +51,9 @@
 </script>
 
 <div
-  class="absolute right-2 bottom-2 z-20 flex items-center gap-0.5 rounded-lg border bg-card p-0.5 shadow-sm"
+  bind:this={toolbar}
+  style:right={`${8 + shift}px`}
+  class="absolute bottom-2 z-20 flex items-center gap-0.5 rounded-lg border bg-card p-0.5 shadow-sm"
   role="toolbar"
   aria-label={t('toolbar.label')}
   data-selection-ui>

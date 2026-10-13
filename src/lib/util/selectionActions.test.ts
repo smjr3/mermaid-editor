@@ -1,3 +1,4 @@
+import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
 import {
   checkEdit,
@@ -155,6 +156,28 @@ describe('moving along the arrows', () => {
       { id: 'L3', label: 'Child', line: 3 }
     ];
     expect(branchSource(code, 'mindmap', topics, [], topics[2]).id).toBe('L2');
+  });
+
+  it('branches out of a decision itself, so ＋分岐 adds one more way out of it', async () => {
+    const lanes = `swimlane-beta LR
+  subgraph L1 [Lane]
+    A[Ask] --> B{OK?}
+    B -->|yes| C[Done]
+  end`;
+    const objects = await objectsOf(lanes);
+    const items = (await editableEdges(lanes))?.items ?? [];
+    const decision = await object(lanes, 'B');
+    const source = branchSource(lanes, 'flowchart', objects, items, decision);
+    expect(source.id).toBe('B');
+    // Not a decision: beside it, from where it comes from (as before).
+    expect(branchSource(lanes, 'flowchart', objects, items, await object(lanes, 'C')).id).toBe('B');
+    // The new node: joined from the decision with a plain arrow, in the decision's lane.
+    const added = addAfter(lanes, 'flowchart', source, 'No');
+    expect(added?.code).toContain('  B --> n1');
+    expect(added?.code).toMatch(/subgraph L1 \[Lane\][\s\S]*n1\["No"\][\s\S]*end/);
+    expect((await mermaid.parse(added?.code ?? '')).diagramType).toBe(
+      (await mermaid.parse(lanes)).diagramType
+    );
   });
 });
 

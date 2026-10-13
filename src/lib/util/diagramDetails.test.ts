@@ -7,6 +7,7 @@ import {
   deleteEntityAttribute,
   entityAttributes,
   fromGanttDate,
+  moveGanttTask,
   objectFields,
   parseMember,
   setClassMember,
@@ -178,6 +179,7 @@ describe('gantt task fields', () => {
       crit: 'no',
       days: '3',
       milestone: 'no',
+      section: 'L2',
       start: '2024-01-01',
       status: 'none'
     });
@@ -189,6 +191,44 @@ describe('gantt task fields', () => {
       { id: 'L3', label: 'Spec' },
       { id: 'L4', label: 'Review' }
     ]);
+  });
+
+  it('offers the 区分 row only where the chart has sections', () => {
+    const section = objectFields(code, 'gantt', task(3))?.find((f) => f.key === 'section');
+    expect(section).toMatchObject({ choices: [{ id: 'L2', label: 'Plan' }], kind: 'item' });
+    const plain = 'gantt\n  dateFormat YYYY-MM-DD\n  Spec : a1, 2024-01-01, 3d';
+    expect(objectFields(plain, 'gantt', task(2))?.some((f) => f.key === 'section')).toBe(false);
+  });
+
+  it('moves a task to another section with 区分, and says where it went', async () => {
+    const two = `gantt
+  dateFormat YYYY-MM-DD
+  section Plan
+    Spec : a1, 2024-01-01, 3d
+    Review : 2d
+  section Build
+    Code : 4d`;
+    const moved = moveGanttTask(two, 3, 'L5');
+    // Review started straight after Spec: it now starts where Spec did.
+    expect(moved).toEqual({
+      code: `gantt
+  dateFormat YYYY-MM-DD
+  section Plan
+    Review : 2024-01-01, 2d
+  section Build
+    Code : 4d
+    Spec : a1, 2024-01-01, 3d`,
+      line: 6
+    });
+    expect(moveGanttTask(two, 6, 'L2')?.line).toBe(5);
+    // Before every section; as the first task it gets the chart's first start.
+    expect(moveGanttTask(two, 6, '')?.code.split('\n')[2]).toBe('    Code : 2024-01-01, 4d');
+    expect(moveGanttTask(two, 6, 'L9')).toBeUndefined();
+    expect(moveGanttTask(two, 2, 'L5')).toBeUndefined();
+    // Through the inspector's fields: the same move; the same section changes nothing.
+    expect(setObjectFields(two, 'gantt', task(3), { section: 'L5' })).toBe(moved?.code);
+    expect(setObjectFields(two, 'gantt', task(3), { section: 'L2' })).toBeUndefined();
+    await expect(typeOf(moved?.code ?? '')).resolves.toBe('gantt');
   });
 
   it('changes only what was changed, keeping other tags', async () => {

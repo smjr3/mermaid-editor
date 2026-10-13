@@ -125,3 +125,11 @@ body {
 [data-alert-dialog-content] {
   translate: -50% -50%;
 }
+
+/* Local: mermaid appends an invisible `.mermaidTooltip` to <body> with no position until it
+   is shown, so it sat 6px below the page and a dialog's focus scrolled the whole editor up
+   by that much, cutting off the header. Placed at the top, it adds no height. */
+.mermaidTooltip {
+  top: 0;
+  left: 0;
+}

@@ -7,6 +7,7 @@
  * checks the result with mermaid before applying it.
  */
 import { addSpecs, initialValues, type Values } from './addActions';
+import { isDecision } from './insertActions';
 import { addArchEdge, addArchService, addEdge, addNode, splitLines } from './diagramEdit';
 import {
   flowNodeDetails,
@@ -189,6 +190,8 @@ export const neighbour = (
 /**
  * Where a branch beside the selected object comes from: the object its first
  * incoming arrow starts at (a mindmap topic's parent), else the object itself.
+ * A decision (a diamond, a state `<<choice>>`) is where branches start, so a branch
+ * of one is one more way out of it, in its lane (QA 2026-10-13).
  */
 export const branchSource = (
   code: string,
@@ -197,6 +200,7 @@ export const branchSource = (
   edges: EditEdge[],
   object: EditObject
 ): EditObject => {
+  if (isDecision(code, kind, object)) return object;
   if (kind === 'mindmap' && object.line !== undefined) {
     const { lines } = splitLines(code);
     const depth = (line: number) => /^(\s*)/.exec(lines[line] ?? '')?.[1].length ?? 0;

@@ -1,6 +1,6 @@
 import mermaid from 'mermaid';
 import { describe, expect, it } from 'vitest';
-import { headerOnly, insertLane, insertPlace, insertShape } from './insertActions';
+import { headerOnly, insertLane, insertPlace, insertShape, isDecision } from './insertActions';
 
 const lanes = `swimlane-beta LR
   subgraph Customer
@@ -81,6 +81,25 @@ describe('insertLane', () => {
       label: '配送'
     });
     expect(node.code).toContain('  subgraph Lane1 ["配送"]\n    n1["梱包"]\n  end');
+  });
+});
+
+describe('isDecision', () => {
+  it('knows a flowchart diamond under any of its names, and a state choice', () => {
+    const code = `flowchart TD
+  A[Start] --> B{OK?}
+  C@{ shape: decision, label: "Again?" }
+  D@{ shape: rect }`;
+    expect(isDecision(code, 'flowchart', { id: 'B', label: 'OK?' })).toBe(true);
+    expect(isDecision(code, 'flowchart', { id: 'C', label: 'Again?' })).toBe(true);
+    expect(isDecision(code, 'flowchart', { id: 'A', label: 'Start' })).toBe(false);
+    expect(isDecision(code, 'flowchart', { id: 'D', label: 'D' })).toBe(false);
+    expect(isDecision(code, 'flowchart', { group: true, id: 'B', label: 'OK?' })).toBe(false);
+    expect(isDecision(code, 'flowchart', undefined)).toBe(false);
+    const states = 'stateDiagram-v2\n  state check <<choice>>\n  [*] --> check\n  check --> s1';
+    expect(isDecision(states, 'state', { id: 'check', label: 'check' })).toBe(true);
+    expect(isDecision(states, 'state', { id: 's1', label: 's1' })).toBe(false);
+    expect(isDecision(states, 'class', { id: 'check', label: 'check' })).toBe(false);
   });
 });
 

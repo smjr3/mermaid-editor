@@ -699,6 +699,28 @@ Tests: `tests/header.spec.ts`, `editorPanes.spec.ts`, `addControls.spec.ts`, `in
 cross-cutting `allDiagrams`, `monkey`, `contradictions`, `qaFindings`, `qaFindings2` and
 `releaseAudit` specs, rewritten for the new places.
 
+**Inspector polish (QA 2026-10-13, user decisions on the findings list).** The theme cards put
+the swatches (and the check) on the first line and the name on its own line, wrapping, so no
+name is cut at the default widths. Row labels show whole: the label column of the inspector
+grows from 52px to fit its longest label, up to 84px (`labelColumn` in `form/FieldRow.svelte`,
+measured on the inspector body; rows elsewhere keep 52px), and the long ones got shorter
+words — ELK's 矢印をまとめる is 束ねる, a class's members are メンバー / メンバー名 / 型 / 戻り値 and an
+ER attribute's name 属性名 (`insp.member.*`), so the class's own 名前 and its member's name no
+longer share a label. The code-error notice is a band above the diagram that pushes it down
+(`CanvasPane`), not a box over its shapes. While History is open its sheet still floats over
+the inspector side; the zoom controls step left of it (`ZoomControls`' `sheetOpen`). ＋分岐 (and
+Tab) on a decision — a diamond under any of its names or a state `<<choice>>` (`isDecision`
+in `insertActions.ts`) — adds one more way out of it, in its lane; on any other node it is
+still a node beside it, from where it comes from (`branchSource`). A name the edit had to
+change to fit mermaid (`;` → `,`, `|` → `/`, a tag, `#`, `[ ]`, 「」 around a keyword, `％％`) is
+applied and said once over the diagram (or in the add form): 「使えない文字を置き換えました: ; →
+,」 (`nameChanges` / `adjustedMessage` in `displayName.ts`, comparing what was typed with what
+the object lists then show). Every sample card has a Japanese name (`sampleTitlesJa` in
+`sampleNames.ts`; the English title stays the key, `data-title` and the search). The share
+dialog lists the themes and looks by name. A gantt task's 区分 row (offered when the chart has
+sections) moves it to another section with the table editor's logic, now `moveGanttTask` in
+`diagramDetails.ts`, and the selection follows the task.
+
 **Selection (0.2.2, placed in the inspector since 2026-10-12).** A click on a drawn object (node,
 lane, state, class, entity, participant, service, group, topic, kanban card, timeline item, gantt
 task, requirement, block, C4 element) or an arrow selects it — one selection

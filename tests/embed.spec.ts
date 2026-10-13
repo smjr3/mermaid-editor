@@ -160,7 +160,15 @@ editorTest.describe('Share dialog', () => {
     await expect(snippet).toHaveValue(/width="640px" height="300"/);
     await page.getByTestId(TID.shareDlgGrid).click();
     await expect(snippet).toHaveValue(/grid=0/);
-    await page.getByTestId(TID.shareDlgTheme).selectOption('forest');
+    // The theme and the look are listed by their names, the ids go into the snippet.
+    const themeSelect = page.getByTestId(TID.shareDlgTheme);
+    await expect(themeSelect.locator('option[value="redux-color"]')).toHaveText(
+      t('colors.theme.redux-color')
+    );
+    await expect(page.getByTestId(TID.shareDlgLook).locator('option[value="classic"]')).toHaveText(
+      t('opt.look.classic')
+    );
+    await themeSelect.selectOption('forest');
     await expect(snippet).toHaveValue(/theme=forest/);
     await page.getByTestId(`${TID.shareDlgChrome}-dark`).click();
     await expect(snippet).toHaveValue(/mode=dark/);

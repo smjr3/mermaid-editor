@@ -43,11 +43,23 @@ export const nameChanges = (typed: string, shown: string): NameChange[] => {
   // A tag that went is one change, whatever letters of it the diff could pair up.
   const after = shownText(shown);
   const tags: NameChange[] = [];
-  const rest = shownText(typed).replaceAll(/<\/?[a-z][^<>]*>/gi, (tag) => {
-    if (after.includes(tag)) return tag;
-    if (!tags.some(({ from }) => from === tag)) tags.push({ from: tag, to: '' });
-    return '';
-  });
+  let rest = shownText(typed);
+  // Taking a tag out can join the halves of another (`<scr<script>ipt>`), so go on until
+  // none is left. Only for the comparison: nothing here is written anywhere.
+  for (let found = true; found;) {
+    found = false;
+    let kept = '';
+    let last = 0;
+    for (const match of rest.matchAll(/<\/?[a-z][^<>]*>/gi)) {
+      const tag = match[0];
+      if (after.includes(tag)) continue;
+      if (!tags.some(({ from }) => from === tag)) tags.push({ from: tag, to: '' });
+      kept += rest.slice(last, match.index);
+      last = match.index + tag.length;
+      found = true;
+    }
+    rest = kept + rest.slice(last);
+  }
   return [...tags, ...signChanges(shownText(rest), after)];
 };
 

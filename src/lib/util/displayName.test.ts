@@ -25,6 +25,11 @@ describe('displayName', () => {
 });
 
 describe('nameChanges', () => {
+  it('removes nested or overlapping tags completely', () => {
+    const changes = nameChanges('<scr<script>ipt>x', 'x');
+    expect(changes).toEqual([{ from: '<script>', to: '' }]);
+    expect(changes.some(({ to }) => to.includes('<'))).toBe(false);
+  });
   it('lists each change of a sign once', () => {
     expect(nameChanges('a;b;c', 'a,b,c')).toEqual([{ from: ';', to: ',' }]);
     expect(nameChanges('yes|no', 'yes/no')).toEqual([{ from: '|', to: '/' }]);

@@ -549,6 +549,24 @@ and spaces in the name keep pointing at the saved file (N05). Details in `EXPORT
 new `build-from-head` job packs the commit under review and builds that tarball with npm on
 Windows and Linux (N07, "Testing" below).
 
+**Source review of 2026-10-13: N03, N04, N06.** Each was reproduced by a failing test first.
+N03: with `MERMAID_OFFLINE` only the first URL was checked, so a same-origin `?code=` file or icon
+pack that answered 302 to another origin had the browser follow it. All app requests now go
+through `fetchAllowed` (`offline.ts`), which fetches offline with `redirect: 'manual'` and refuses
+any redirect before it is followed — same-site ones too, since a browser hides where a redirect
+points (`FEATURE-FLAGS.md` → "Redirects"; real HTTP servers in `util.test.ts` and
+`customIcons.test.ts`, 301/302/303/307/308, zero requests at the other origin; `tests/offline.spec.ts`).
+N04: an icon's `style="fill:u\72l(https://…)"` (a CSS escape of `url(`) passed the external-reference
+filter. Styles and presentation attributes are now read with a CSS tokenizer and an allow-list of
+value functions, local `#id` references only (`ICONS.md`; stored packs are re-sanitised on load).
+N06: the inspector counted every `{` as a block, so a brace in a sequence message hid a later
+`autonumber`, and it did not read `participant A @{…} as X` (space before the metadata), so
+changing its symbol added a second declaration. Block depth now follows each type's grammar
+(`braceDelta` in `diagramOptions.ts`: messages, labels, quoted strings, ER cardinalities and
+`accDescr { … }` are text), and a declaration is found with the spacing, YAML-style keys and
+multi-line metadata mermaid accepts and rewritten in place, keeping its other entries and alias;
+the label row (`renameParticipant`) had the same gap. Tests compare with mermaid's sequence DB.
+
 **Editor layout: the inspector (2026-10-12, 案A).** `/edit` is three columns, PC only
 (`src/routes/(app)/edit/+page.svelte`, `editorLayout.svelte.ts`, `editorUi.svelte.ts`): the
 code on the left, the diagram in the middle and the inspector (設定パネル) on the right. It

@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import type { AsyncIconLoader } from 'mermaid';
-import { assertFetchAllowed } from './offline';
+import { fetchAllowed } from './offline';
 
 /**
  * Icon packs that do not ship in the bundle: ones a deployment hosts itself
@@ -44,7 +44,260 @@ export const toPrefix = (value: string): string | undefined => {
 const linkAttributes = ['href', 'xlink:href'];
 const localUrl = /^\s*['"]?#/;
 const externalUrl = /url\(\s*(?!['"]?\s*#)[^)]*\)/i;
-const externalDeclaration = (declaration: string) => externalUrl.test(declaration);
+
+// Local (N04): the style attribute and the presentation attributes are CSS, and CSS
+// lets a name be spelt with escapes (`u\72l(` is `url(`), in any case, with comments
+// in between — so they are read with a CSS tokenizer (below, after CSS Syntax 3)
+// rather than matched as text. A value is kept only when every function in it is
+// one that computes a value (colours, maths, transforms, filters, shapes, gradients,
+// `var()`) and every `url()`/`src()` names a local `#id`. Anything else — an
+// external url, `image-set()`, an unknown function, a malformed url or string — drops
+// the declaration (or the attribute).
+type CssToken = { end?: number } & (
+  | { type: 'bad' | 'close' | 'colon' | 'open' | 'other' | 'semicolon' | 'space' }
+  | { type: 'function'; name: string }
+  | { type: 'string' | 'url' | 'word'; value: string }
+);
+
+const isHex = (char: string | undefined) => char !== undefined && /^[\da-f]$/i.test(char);
+const isSpace = (char: string | undefined) => char !== undefined && /^[\t\n\f\r ]$/.test(char);
+const isNameChar = (char: string | undefined) =>
+  char !== undefined && (/^[\w-]$/.test(char) || (char.codePointAt(0) ?? 0) >= 0x80);
+
+const tokenizeCss = (text: string): CssToken[] => {
+  const tokens: CssToken[] = [];
+  let index = 0;
+  // Each token records where it ends in the text, so callers can cut the text at one.
+  const push = (token: CssToken) => {
+    tokens.push({ ...token, end: index });
+  };
+  // A backslash starts an escape unless a newline follows it (end of text: U+FFFD).
+  const startsEscape = (at: number) => text[at] === '\\' && !/^[\n\f\r]$/.test(text[at + 1] ?? '');
+  // The code point an escape at `index` (a backslash) stands for; moves past it.
+  const readEscape = (): string => {
+    index += 1;
+    if (index >= text.length) return '�';
+    if (isHex(text[index])) {
+      let hex = '';
+      while (hex.length < 6 && isHex(text[index])) hex += text[index++];
+      if (text[index] === '\r' && text[index + 1] === '\n') index += 2;
+      else if (isSpace(text[index])) index += 1;
+      const code = Number.parseInt(hex, 16);
+      return code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)
+        ? '�'
+        : String.fromCodePoint(code);
+    }
+    const char = String.fromCodePoint(text.codePointAt(index) ?? 0xfffd);
+    index += char.length;
+    return char;
+  };
+  const readName = (): string => {
+    let name = '';
+    while (index < text.length) {
+      if (startsEscape(index)) name += readEscape();
+      else if (isNameChar(text[index])) name += text[index++];
+      else break;
+    }
+    return name;
+  };
+  const skipSpace = () => {
+    while (isSpace(text[index])) index += 1;
+  };
+  while (index < text.length) {
+    const char = text[index];
+    if (char === '/' && text[index + 1] === '*') {
+      const end = text.indexOf('*/', index + 2);
+      index = end === -1 ? text.length : end + 2;
+      push({ type: 'space' });
+    } else if (isSpace(char)) {
+      skipSpace();
+      push({ type: 'space' });
+    } else if (char === '"' || char === "'") {
+      index += 1;
+      let value = '';
+      let bad = true;
+      while (index < text.length) {
+        const next = text[index];
+        if (next === char) {
+          index += 1;
+          bad = false;
+          break;
+        }
+        if (/^[\n\f\r]$/.test(next)) break;
+        if (next === '\\') {
+          if (/^[\n\f\r]$/.test(text[index + 1] ?? '')) index += 2;
+          else value += readEscape();
+        } else {
+          value += next;
+          index += 1;
+        }
+      }
+      push(bad ? { type: 'bad' } : { type: 'string', value });
+    } else if (startsEscape(index) || isNameChar(char)) {
+      const name = readName();
+      if (text[index] !== '(') {
+        push({ type: 'word', value: name });
+        continue;
+      }
+      index += 1;
+      const lower = name.toLowerCase();
+      const start = index;
+      skipSpace();
+      if (lower === 'url' && text[index] !== '"' && text[index] !== "'") {
+        // An unquoted url(…): its contents, escapes resolved, up to the `)`.
+        let value = '';
+        let bad = false;
+        while (index < text.length && text[index] !== ')') {
+          if (isSpace(text[index])) {
+            skipSpace();
+            if (index < text.length && text[index] !== ')') bad = true;
+          } else if (/^["'(]$/.test(text[index])) {
+            bad = true;
+            index += 1;
+          } else if (text[index] === '\\') {
+            if (startsEscape(index)) value += readEscape();
+            else {
+              bad = true;
+              index += 1;
+            }
+          } else value += text[index++];
+        }
+        if (index >= text.length) bad = true;
+        index += 1;
+        push(bad ? { type: 'bad' } : { type: 'url', value });
+      } else {
+        index = start;
+        push({ name: lower, type: 'function' });
+      }
+    } else {
+      index += 1;
+      if (char === '(' || char === '[' || char === '{') push({ type: 'open' });
+      else if (char === ')' || char === ']' || char === '}') push({ type: 'close' });
+      else if (char === ';') push({ type: 'semicolon' });
+      else if (char === ':') push({ type: 'colon' });
+      else if (char === '\\') push({ type: 'bad' });
+      else push({ type: 'other' });
+    }
+  }
+  return tokens;
+};
+
+const valueFunctions = new Set(
+  [
+    // colours
+    'rgb rgba hsl hsla hwb lab lch oklab oklch color color-mix light-dark device-cmyk',
+    // maths and custom properties (their own values are checked where they are set)
+    'calc min max clamp round mod rem abs sign sin cos tan asin acos atan atan2 pow sqrt hypot log exp var env',
+    // transforms
+    'matrix matrix3d translate translatex translatey translatez translate3d scale scalex scaley scalez scale3d',
+    'rotate rotatex rotatey rotatez rotate3d skew skewx skewy perspective',
+    // filters, easing, basic shapes, gradients
+    'blur brightness contrast drop-shadow grayscale hue-rotate invert opacity saturate sepia',
+    'cubic-bezier steps linear inset circle ellipse polygon path rect xywh',
+    'linear-gradient radial-gradient conic-gradient repeating-linear-gradient repeating-radial-gradient repeating-conic-gradient',
+    // references, allowed only to `#id` (checked below)
+    'url src'
+  ]
+    .join(' ')
+    .split(' ')
+);
+const referenceFunctions = new Set(['src', 'url']);
+const isLocalReference = (value: string) => value.trim().startsWith('#');
+
+/** Whether a CSS value (or a run of tokens of one) refers only to what is inside the icon. */
+const safeCssTokens = (tokens: CssToken[]): boolean =>
+  tokens.every((token, at) => {
+    if (token.type === 'bad') return false;
+    if (token.type === 'url') return isLocalReference(token.value);
+    if (token.type !== 'function') return true;
+    if (!valueFunctions.has(token.name)) return false;
+    if (!referenceFunctions.has(token.name)) return true;
+    // url("…")/src("…"): exactly one string naming a local id.
+    const args = [];
+    for (const next of tokens.slice(at + 1)) {
+      if (next.type === 'close') break;
+      if (next.type !== 'space') args.push(next);
+    }
+    const [only] = args;
+    return args.length === 1 && only.type === 'string' && isLocalReference(only.value);
+  });
+
+const safeCssValue = (value: string): boolean => safeCssTokens(tokenizeCss(value));
+
+// The attributes SVG reads as CSS (its presentation attributes, plus the transform
+// lists), checked like a declaration in a style attribute.
+const cssAttributes = new Set(
+  [
+    'alignment-baseline baseline-shift clip clip-path clip-rule color color-interpolation',
+    'color-interpolation-filters color-rendering cursor direction display dominant-baseline fill',
+    'fill-opacity fill-rule filter flood-color flood-opacity font font-family font-size',
+    'font-size-adjust font-stretch font-style font-variant font-weight glyph-orientation-horizontal',
+    'glyph-orientation-vertical image-rendering letter-spacing lighting-color marker marker-end',
+    'marker-mid marker-start mask mask-type opacity overflow paint-order pointer-events',
+    'shape-rendering stop-color stop-opacity stroke stroke-dasharray stroke-dashoffset',
+    'stroke-linecap stroke-linejoin stroke-miterlimit stroke-opacity stroke-width text-anchor',
+    'text-decoration text-overflow text-rendering transform transform-origin unicode-bidi',
+    'vector-effect visibility white-space word-spacing writing-mode',
+    'gradienttransform patterntransform'
+  ]
+    .join(' ')
+    .split(' ')
+);
+
+// For attributes that are not CSS: the functions that would name another file.
+const fetchingFunctions = new Set([
+  '-webkit-image-set',
+  'cross-fade',
+  'element',
+  'image',
+  'image-set',
+  'src',
+  'url'
+]);
+const refersOutside = (value: string): boolean =>
+  !safeCssTokens(
+    tokenizeCss(value).filter(
+      (token) =>
+        token.type !== 'bad' && (token.type !== 'function' || fetchingFunctions.has(token.name))
+    )
+  );
+
+// Properties that bind behaviour rather than draw (old IE/Gecko), dropped whatever their value.
+const forbiddenProperties = new Set(['-moz-binding', 'behavior']);
+
+/** The declarations of a style attribute that refer only to what is inside the icon. */
+const safeStyle = (style: string): string => {
+  // Cut at the top-level `;` tokens, so a `;` inside a string or a function stays put;
+  // each declaration keeps its original text.
+  const declarations: { text: string; tokens: CssToken[] }[] = [];
+  let current: CssToken[] = [];
+  let depth = 0;
+  let start = 0;
+  for (const token of tokenizeCss(style)) {
+    if (token.type === 'open' || token.type === 'function') depth += 1;
+    else if (token.type === 'close') depth = Math.max(0, depth - 1);
+    if (token.type === 'semicolon' && depth === 0) {
+      const end = token.end ?? style.length;
+      declarations.push({ text: style.slice(start, end - 1), tokens: current });
+      start = end;
+      current = [];
+    } else current.push(token);
+  }
+  declarations.push({ text: style.slice(start), tokens: current });
+  const kept: string[] = [];
+  for (const { text, tokens } of declarations) {
+    const colon = tokens.findIndex((token) => token.type === 'colon');
+    if (colon === -1) continue;
+    // The property: one name (escapes resolved), with nothing but spaces around it.
+    const names = tokens.slice(0, colon).filter((token) => token.type !== 'space');
+    const [property] = names;
+    if (names.length !== 1 || property.type !== 'word') continue;
+    const name = property.value.toLowerCase();
+    if (!/^(--|-?[a-z])[\w-]*$/.test(name) || forbiddenProperties.has(name)) continue;
+    if (safeCssTokens(tokens.slice(colon + 1))) kept.push(text);
+  }
+  return kept.join(';');
+};
 
 const dropExternalReferences = (root: Element): void => {
   for (const element of root.querySelectorAll('*')) {
@@ -65,14 +318,16 @@ const dropExternalReferences = (root: Element): void => {
       continue;
     }
     for (const { name: attribute, value } of [...element.attributes]) {
-      if (attribute === 'style') {
-        const kept = value.split(';').filter((part) => !externalDeclaration(part));
-        if (kept.length === 0 || kept.every((part) => !part.trim())) {
-          element.removeAttribute('style');
-        } else {
-          element.setAttribute('style', kept.join(';'));
-        }
-      } else if (externalUrl.test(value)) {
+      const lower = attribute.toLowerCase();
+      if (lower === 'style') {
+        const kept = safeStyle(value);
+        if (kept.trim()) element.setAttribute('style', kept);
+        else element.removeAttribute('style');
+      } else if (cssAttributes.has(lower)) {
+        if (!safeCssValue(value)) element.removeAttribute(attribute);
+      } else if (externalUrl.test(value) || refersOutside(value)) {
+        // Not CSS, so never fetched by the browser; dropped anyway when it names a
+        // url() or an image function outside the icon, escapes resolved.
         element.removeAttribute(attribute);
       }
     }
@@ -246,9 +501,9 @@ export const remoteIconPacks = (value: string | undefined): AsyncIconLoader[] =>
   parseIconPackEnv(value).map(({ name, url }) => ({
     loader: async () => {
       const target = new URL(url, document.baseURI);
-      // Local (R04): MERMAID_OFFLINE refuses a pack on another site; this site's own stay.
-      assertFetchAllowed(target.href);
-      const response = await fetch(target);
+      // Local (R04, N03): MERMAID_OFFLINE refuses a pack on another site, and a
+      // redirect before it is followed; this site's own packs stay.
+      const response = await fetchAllowed(target);
       if (!response.ok) {
         throw new Error(`Icon pack ${name}: HTTP ${response.status}`);
       }

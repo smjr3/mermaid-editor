@@ -202,7 +202,18 @@ An icon is drawn without a click, so nothing in it may point outside it: after D
 or `<feImage>` whose `href`/`xlink:href` is not a `data:` URL is removed, so is a `<use>` of another
 file (DOMPurify already drops `<use>`), and any attribute or `style` declaration with a `url(…)` that is
 not a local `#id` (fill, stroke, filter, mask, clip-path, markers) is dropped. Links (`<a href>`)
-stay, since they only go anywhere on a click. `tests/offline.spec.ts` imports an SVG that points at
+stay, since they only go anywhere on a click.
+
+The `style` attribute and SVG's presentation attributes are CSS, where a name may be spelt with
+escapes (`u\72l(` is `url(`), in any case and with comments between its parts, so they are not
+matched as text: `customIcons.ts` reads them with a small CSS tokenizer (CSS Syntax 3: escapes,
+strings, comments, `url(` tokens) and keeps a declaration only when every function in its value is
+on an allow-list of value functions (colours, `calc()` and the other maths, `var()`, transforms,
+filter functions, basic shapes, gradients) and every `url()`/`src()` names a local `#id`. Anything
+else — an external or malformed `url`, `image-set()`, an unknown function — drops that declaration
+or attribute; the rest of the style stays. A custom property is checked where it is set, so
+`var()` cannot bring an external `url()` in. Colours, transforms and local references survive
+unchanged (`customIcons.test.ts`, "external references written with CSS escapes"). `tests/offline.spec.ts` imports an SVG that points at
 another site and checks the diagram and the picker request nothing. `scripts/svg-to-iconify.js` and
 `scripts/fetch-icon-packs.js` only extract markup; the sanitising happens in the app.
 

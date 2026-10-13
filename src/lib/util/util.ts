@@ -6,7 +6,7 @@ import { initLoading } from './loading.svelte';
 import { isOnMermaidAI } from './migration/domainMigration';
 import { applyMigrations } from './migrations.svelte';
 import { notify } from './notify';
-import { assertFetchAllowed } from './offline';
+import { assertFetchAllowed, fetchAllowed } from './offline';
 import { initURLSubscription, loadState, updateCodeStore, verifyState } from './state.svelte';
 import { getAnalyticsSafeUrl, initAnalytics, plausible } from './stats';
 
@@ -100,12 +100,11 @@ export const errorDebug = (limit = 1000) => {
 };
 
 export const formatJSON = (data: unknown): string => JSON.stringify(data, undefined, 2);
-// Local: MERMAID_OFFLINE's fetch rule (offline.ts).
+// Local: MERMAID_OFFLINE's fetch rule and the fetch that applies it, redirects included (offline.ts).
 export { assertFetchAllowed };
 // Local: an HTTP error is refused rather than read — a 404 page is not a diagram.
 const fetchOk = async (url: string): Promise<Response> => {
-  assertFetchAllowed(url);
-  const res = await fetch(url);
+  const res = await fetchAllowed(url);
   if (!res.ok) {
     throw new Error(
       `Loading ${url} failed: HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`

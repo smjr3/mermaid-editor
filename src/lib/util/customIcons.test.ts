@@ -1,4 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// vitest's jsdom environment exposes its JSDOM instance, used to move the page's origin.
+declare const jsdom: { reconfigure: (options: { url: string }) => void };
 
 const offline = vi.hoisted(() => ({ isOffline: false }));
 vi.mock('./env', async (original) => {
@@ -271,6 +276,70 @@ describe('remoteIconPacks', () => {
   });
 });
 
+// Local (N03): a pack URL on this site that redirects elsewhere must not reach the
+// other origin when offline — the redirect is refused before it is followed.
+describe('remoteIconPacks (MERMAID_OFFLINE) and redirects', () => {
+  const servers: Server[] = [];
+  let site = '';
+  let outside = '';
+  let outsideHits = 0;
+  const originalUrl = location.href;
+  const pack = JSON.stringify({ icons: { sql: { body: '<path d="M0 0"/>' } }, prefix: 'x' });
+
+  const listen = (handler: Parameters<typeof createServer>[1]) =>
+    new Promise<string>((resolve) => {
+      const server = createServer(handler);
+      servers.push(server);
+      server.listen(0, '127.0.0.1', () => {
+        resolve(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
+      });
+    });
+
+  beforeAll(async () => {
+    outside = await listen((_request, response) => {
+      outsideHits += 1;
+      response.setHeader('content-type', 'application/json');
+      response.end(pack);
+    });
+    site = await listen((request, response) => {
+      const status = /^\/(\d{3})\//.exec(request.url ?? '')?.[1];
+      if (status) {
+        response.writeHead(Number(status), { location: `${outside}/aws.json` });
+        response.end();
+        return;
+      }
+      response.setHeader('content-type', 'application/json');
+      response.end(pack);
+    });
+    jsdom.reconfigure({ url: `${site}/edit` });
+    offline.isOffline = true;
+  });
+
+  afterAll(async () => {
+    offline.isOffline = false;
+    jsdom.reconfigure({ url: originalUrl });
+    await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
+  });
+
+  beforeEach(() => {
+    outsideHits = 0;
+  });
+
+  it('loads a pack this site serves directly', async () => {
+    const [loader] = remoteIconPacks('azure=./icon-packs/azure.json');
+    await expect(loader.loader()).resolves.toMatchObject({ prefix: 'azure' });
+  });
+
+  it.each([301, 302, 303, 307, 308])(
+    'refuses a %i redirect to another origin without requesting it',
+    async (status) => {
+      const [loader] = remoteIconPacks(`aws=./${status}/aws.json`);
+      await expect(loader.loader()).rejects.toThrow(/redirect/);
+      expect(outsideHits).toBe(0);
+    }
+  );
+});
+
 describe('vendorIconPacks', () => {
   it('loads the packs fetched at build time, sanitised, named after their files', async () => {
     const packs = vendorIconPacks(
@@ -358,5 +427,95 @@ describe('external references in icons', () => {
     });
     expect(pack.icons.logo.body).not.toContain('tracker.example.com');
     expect(pack.icons.logo.body).toContain('<rect');
+  });
+});
+
+// Local (N04): CSS lets a function name be written with escapes, in any case and with
+// comments, so `u\72l(` is `url(`. The style and presentation attributes are read as
+// CSS: only local `#id` references and known value functions survive.
+describe('external references written with CSS escapes', () => {
+  const svg = (body: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${body}</svg>`;
+  const outside = /outside\.example/i;
+
+  it.each([
+    String.raw`fill:u\72l(https://outside.example/probe.svg#paint)`,
+    String.raw`fill:u\000072l(https://outside.example/probe.svg#paint)`,
+    String.raw`fill:u\72 l(https://outside.example/probe.svg#paint)`,
+    String.raw`fill:\75\72\6c(https://outside.example/probe.svg#paint)`,
+    String.raw`fill:\u\r\l(https://outside.example/probe.svg#paint)`,
+    'fill:URL(https://outside.example/probe.svg#paint)',
+    'fill:Url( &quot;https://outside.example/probe.svg#paint&quot; )',
+    'fill:url(/**/https://outside.example/probe.svg#paint)',
+    'fill:u/**/rl(https://outside.example/probe.svg#paint)',
+    String.raw`filter:u\72l('https://outside.example/f.svg#f')`,
+    String.raw`mask:u\72l(https://outside.example/m.svg#m)`,
+    String.raw`clip-path:u\72l(https://outside.example/c.svg#c)`,
+    String.raw`stroke:u\72l(https://outside.example/s.svg#s)`,
+    String.raw`marker-end:u\72l(https://outside.example/k.svg#k)`,
+    String.raw`cursor:u\72l(https://outside.example/c.cur),auto`,
+    'mask-image:image-set(&quot;https://outside.example/i.png&quot; 1x)',
+    String.raw`--paint:u\72l(https://outside.example/v.svg#v);fill:var(--paint)`,
+    String.raw`f\69ll:u\72l(https://outside.example/probe.svg#paint)`
+  ])('drops %s from a style attribute, keeping the rest', (declaration) => {
+    const { body } = svgToIcon(
+      svg(`<path d="M0 0h1" style="${declaration};stroke-width:2;opacity:.5"/>`)
+    );
+    expect(body).not.toMatch(outside);
+    expect(body).toContain('stroke-width:2');
+    expect(body).toContain('opacity:.5');
+    expect(body).toContain('d="M0 0h1"');
+  });
+
+  it.each([
+    ['fill', String.raw`u\72l(https://outside.example/probe.svg#paint)`],
+    ['stroke', String.raw`\55 RL(https://outside.example/probe.svg#paint)`],
+    ['filter', String.raw`u\72l( 'https://outside.example/f.svg#f' )`],
+    ['mask', String.raw`u\72l(https://outside.example/m.svg#m)`],
+    ['clip-path', String.raw`u\72l(https://outside.example/c.svg#c)`],
+    ['marker-start', String.raw`u\72l(https://outside.example/k.svg#k)`]
+  ])('drops a %s attribute that is an escaped external url()', (attribute, value) => {
+    const { body } = svgToIcon(svg(`<path d="M0 0h1" ${attribute}="${value}" stroke-width="2"/>`));
+    expect(body).not.toMatch(outside);
+    expect(body).toContain('stroke-width="2"');
+  });
+
+  it('keeps local references, colours and transforms', () => {
+    const { body } = svgToIcon(
+      svg(
+        `<defs><linearGradient id="g"><stop offset="0" stop-color="#fff"/></linearGradient>` +
+          `<clipPath id="c"><rect width="4" height="4"/></clipPath><mask id="m"/><filter id="f"/>` +
+          `<marker id="k"/></defs>` +
+          `<rect width="4" height="4" fill="url(#g)" clip-path="url('#c')" transform="matrix(1 0 0 1 2 3) rotate(45)"/>` +
+          `<path d="M0 0h4" style="fill:URL( #g );stroke:rgb(10 20 30 / 50%);mask:u\\72l(#m);filter:url(&quot;#f&quot;) drop-shadow(1px 1px 2px #000);marker-end:url(#k);transform:translate(1px,2px) scale(1.5)"/>` +
+          `<circle r="2" fill="hsl(120deg 50% 50%)" stroke="currentColor" style="fill-opacity:calc(1 - .5);stroke:var(--accent, #123)"/>`
+      )
+    );
+    expect(body).toContain('fill="url(#g)"');
+    expect(body).toContain(`clip-path="url('#c')"`);
+    expect(body).toContain('transform="matrix(1 0 0 1 2 3) rotate(45)"');
+    expect(body).toContain('fill:URL( #g )');
+    expect(body).toContain('stroke:rgb(10 20 30 / 50%)');
+    expect(body).toContain(String.raw`mask:u\72l(#m)`);
+    expect(body).toContain('drop-shadow(1px 1px 2px #000)');
+    expect(body).toContain('marker-end:url(#k)');
+    expect(body).toContain('transform:translate(1px,2px) scale(1.5)');
+    expect(body).toContain('fill="hsl(120deg 50% 50%)"');
+    expect(body).toContain('stroke="currentColor"');
+    expect(body).toContain('fill-opacity:calc(1 - .5)');
+    expect(body).toContain('stroke:var(--accent, #123)');
+  });
+
+  it('applies to stored packs as well as SVG files', () => {
+    const pack = sanitizeIconSet({
+      icons: {
+        probe: {
+          body: String.raw`<path d="M0 0h1" style="fill:u\72l(https://outside.example/probe.svg#paint)" fill="u\72l(https://outside.example/p.svg#p)"/>`
+        }
+      },
+      prefix: 'corp'
+    });
+    expect(pack.icons.probe.body).not.toMatch(outside);
+    expect(pack.icons.probe.body).toContain('d="M0 0h1"');
   });
 });

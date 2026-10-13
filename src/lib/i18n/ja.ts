@@ -728,6 +728,8 @@ export const ja = {
   'exportDlg.scale2': '高画質',
   'exportDlg.scale3': '最高画質',
   'exportDlg.scaleHint': '元の大きさの {scale} 倍',
+  'exportDlg.stale':
+    '書き出し中に図が変わったため、保存を中止しました。図が表示されてからもう一度お試しください',
   'exportDlg.title': '書き出す',
   'external.notShared': '図は共有されません',
   'external.opensIn': '図の送信先:',

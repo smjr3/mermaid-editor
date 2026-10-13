@@ -98,6 +98,18 @@ export const svgFile = (svg: string, background: null | string): string => {
 const escapeMarkdownText = (value: string): string => value.replaceAll(/[[\]\\]/g, '\\$&');
 
 /**
+ * A file name as one relative URL path segment that Markdown reads whole: every
+ * character but the unreserved ones percent-encoded, so `#` and `?` do not start a
+ * fragment or a query, `%` stays literal, and no space or parenthesis can end or
+ * unbalance the link. GitLab and GitHub decode it back to the saved name.
+ */
+export const fileUrlSegment = (fileName: string): string =>
+  encodeURIComponent(fileName).replaceAll(
+    /[!'()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+
+/**
  * Markdown for a GitLab (or GitHub) page: the exported SVG, which shows the
  * diagram with every icon wherever GitLab's own mermaid cannot, a link back to
  * the editor, and the source in a collapsed plain-text block (not a mermaid
@@ -118,7 +130,7 @@ export const gitlabMarkdown = ({
 }): string => {
   const longestRun = Math.max(0, ...(code.match(/`+/g) ?? []).map((run) => run.length));
   const fence = '`'.repeat(Math.max(4, longestRun + 1));
-  return `![${escapeMarkdownText(alt)}](${encodeURI(fileName)})
+  return `![${escapeMarkdownText(alt)}](${fileUrlSegment(fileName)})
 
 [${escapeMarkdownText(labels.edit)}](${editUrl})
 

@@ -1356,7 +1356,7 @@ const deleteArch = (lines: string[], object: EditObject, keepContents: boolean) 
 
 const participant = (id: string) =>
   new RegExp(
-    `^(\\s*(?:create\\s+)?(?:participant|actor)\\s+${escape(id)}(?:@\\{[^}]*\\})?)(?:\\s+as\\s+.*)?\\s*$`
+    `^(\\s*(?:create\\s+)?(?:participant|actor)\\s+${escape(id)}(?:\\s*@\\{[^}]*\\})?)(?:\\s+as\\s+.*)?\\s*$`
   );
 
 const renameParticipant = (lines: string[], object: EditObject, label: string) => {

@@ -11,6 +11,34 @@ export interface PlacedDiagram {
   stale?: boolean;
 }
 
+/** Local: the state a placed picture was drawn from. */
+export interface DrawnFrom {
+  code: string;
+  mermaid: string;
+  rough: boolean;
+}
+
+/** Local: a placed picture's state, and its viewBox before svg-pan-zoom took it away. */
+export interface Drawn extends DrawnFrom {
+  viewBox?: string;
+}
+
+// Local: the exports that capture the picture on screen (.drawio, .vsdx; exportDiagram.ts)
+// check that it is still the state they started from before they read it; the SVG file and
+// the preview restore the viewBox.
+const drawnFrom = new WeakMap<Element, Drawn>();
+
+/**
+ * Local: records what the placed picture `svg` shows (View.svelte, once it is placed and
+ * before pan/zoom is applied to it, so its own viewBox is still there).
+ */
+export const markDrawn = (svg: Element, { code, mermaid, rough }: DrawnFrom): void => {
+  drawnFrom.set(svg, { code, mermaid, rough, viewBox: svg.getAttribute('viewBox') ?? undefined });
+};
+
+/** Local: what `svg` was drawn from, if it is a picture the view placed. */
+export const getDrawnFrom = (svg: Element): Drawn | undefined => drawnFrom.get(svg);
+
 /**
  * Renders the diagram and places the resulting SVG into the container,
  * applying the hand-drawn transform and sizing fixups. Shared by the

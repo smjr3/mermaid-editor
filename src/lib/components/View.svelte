@@ -5,7 +5,7 @@
   import { ICON_PACKS_CHANGED } from '$/util/customIconStore';
   import { PanZoomState } from '$/util/panZoom';
   import { createRenderScheduler } from '$/util/renderScheduler';
-  import { renderAndPlaceDiagram } from '$/util/renderView';
+  import { markDrawn, renderAndPlaceDiagram } from '$/util/renderView';
   import { inputState, updateCodeStore, validatedState } from '$/util/state.svelte';
   import { saveStatistics } from '$/util/stats';
   import FontAwesome, { mayContainFontAwesome } from '$lib/components/FontAwesome.svelte';
@@ -113,6 +113,8 @@
         }
         renderCount += 1;
         diagramType = detectedDiagramType;
+        // Local: what the picture shows, for the exports that capture it (exportDiagram.ts).
+        if (graphDiv) markDrawn(graphDiv, { code, mermaid: state.mermaid, rough: state.rough });
         if (graphDiv && state.panZoom) {
           handlePanZoom(state, graphDiv);
         }

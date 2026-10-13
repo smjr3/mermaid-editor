@@ -6,7 +6,14 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { gzipSync } from 'node:zlib';
-import { extractTarball, missingOutputs, parseArgs, readTar } from './update-from-registry.mjs';
+import {
+  extractTarball,
+  findTarball,
+  main,
+  missingOutputs,
+  parseArgs,
+  readTar
+} from './update-from-registry.mjs';
 
 function tarEntry(path, content, type = '0') {
   const body = Buffer.from(content);
@@ -91,6 +98,52 @@ test('extractTarball strips package/ and writes nested files', () =>
     );
     assert.equal(extractTarball(tgz, dir), 2);
     assert.equal(readFileSync(join(dir, 'src', 'a.txt'), 'utf8'), 'A');
+  }));
+
+test('parseArgs takes a local tarball, alone', () => {
+  const o = parseArgs(['--tarball', 'pack/x.tgz', '--dir', 'out']);
+  assert.equal(o.tarball, resolve('pack/x.tgz'));
+  assert.equal(o.dir, resolve('out'));
+  assert.equal(parseArgs([]).tarball, undefined);
+  assert.throws(
+    () => parseArgs(['--tarball', 'x.tgz', '--version', '0.2.1']),
+    /cannot be combined/
+  );
+  assert.throws(
+    () => parseArgs(['--tarball=x.tgz', '--registry=https://h/']),
+    /cannot be combined/
+  );
+  assert.throws(() => parseArgs(['--tarball']), /--tarball needs a value/);
+});
+
+test('findTarball takes a file, or the only .tgz in a directory', () =>
+  withTempDir((dir) => {
+    assert.throws(
+      () => findTarball(join(dir, 'none.tgz'), 'tarball'),
+      /step "tarball".*does not exist/
+    );
+    assert.throws(() => findTarball(dir), /expected one \.tgz .* found 0/);
+    writeFileSync(join(dir, 'a.tgz'), '');
+    writeFileSync(join(dir, 'notes.txt'), '');
+    assert.equal(findTarball(dir), join(dir, 'a.tgz'));
+    assert.equal(findTarball(join(dir, 'a.tgz')), join(dir, 'a.tgz'));
+    writeFileSync(join(dir, 'b.tgz'), '');
+    assert.throws(() => findTarball(dir), /found 2/);
+  }));
+
+test('main extracts a local tarball without downloading it', () =>
+  withTempDir((dir) => {
+    const pack = join(dir, 'pack');
+    mkdirSync(pack);
+    const files = tar(
+      tarEntry('package/package.json', '{"name":"@smjr3/mermaid-editor","version":"9.9.9"}'),
+      tarEntry('package/src/a.txt', 'A')
+    );
+    writeFileSync(join(pack, 'pkg.tgz'), gzipSync(files));
+    const out = join(dir, 'out');
+    main(['--tarball', pack, '--dir', out, '--no-build']);
+    assert.equal(JSON.parse(readFileSync(join(out, 'package.json'), 'utf8')).version, '9.9.9');
+    assert.equal(readFileSync(join(out, 'src', 'a.txt'), 'utf8'), 'A');
   }));
 
 test('extractTarball refuses path traversal', () =>

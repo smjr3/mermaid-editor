@@ -23,6 +23,7 @@
     EXPORT_FORMATS,
     EXPORT_SCALES,
     exportFileName,
+    ExportStaleError,
     formatExtension,
     formatUsesBackground,
     formatUsesScale,
@@ -200,41 +201,62 @@
     }, 1500);
   };
 
-  const exportNow = async (chosen: ExportFormat, name: string) => {
+  // The export in progress. キャンセル, Escape or closing the dialog stops it: whatever it
+  // was waiting for, it saves nothing afterwards (exportDiagram.ts checks the signal).
+  let running: AbortController | undefined;
+  const stopRunning = () => {
+    running?.abort();
+    running = undefined;
+    if (status === 'busy') status = 'idle';
+  };
+  $effect(() => {
+    if (!open) untrack(stopRunning);
+  });
+  const cancel = () => {
+    stopRunning();
+    closeDialog();
+  };
+
+  const exportNow = async (
+    chosen: ExportFormat,
+    name: string,
+    state: State,
+    signal: AbortSignal
+  ) => {
     const options = { background, scale };
-    const state = untrack(() => $state.snapshot(inputState) as State);
     switch (chosen) {
       case 'copy': {
-        await copyPng(options);
+        await copyPng(options, signal);
         break;
       }
       case 'drawio': {
-        await saveDrawio(name, options);
+        await saveDrawio(name, options, state, signal);
         break;
       }
       case 'html': {
-        await (htmlMode === 'tag' ? copyHtmlTag(state) : saveHtml(name, state));
+        await (htmlMode === 'tag' ? copyHtmlTag(state, signal) : saveHtml(name, state, signal));
         break;
       }
       case 'md': {
         const { copied } = await saveMarkdown(name, state, {
           background,
           editBase: `${window.location.origin}${resolve('/edit', {})}`,
-          labels: { edit: t('actions.gitlabEdit'), source: t('actions.gitlabSource') }
+          labels: { edit: t('actions.gitlabEdit'), source: t('actions.gitlabSource') },
+          signal
         });
         message = t(copied ? 'actions.gitlabDone' : 'actions.gitlabCopyFailed', { file: name });
         break;
       }
       case 'png': {
-        await savePng(name, options);
+        await savePng(name, options, signal);
         break;
       }
       case 'svg': {
-        await saveSvg(name, options);
+        await saveSvg(name, options, signal);
         break;
       }
       case 'vsdx': {
-        await saveVsdx(name, options);
+        await saveVsdx(name, options, state, signal);
         break;
       }
     }
@@ -243,26 +265,35 @@
   const run = async () => {
     if (status === 'busy') return;
     const chosen = format;
-    const name = extension
-      ? exportFileName(
-          fileBase,
-          untrack(() => inputState.code),
-          extension
-        )
-      : '';
+    // One snapshot of the state for the whole export: the name, the source and the
+    // picture of the file all come from it (N01, review 2026-10-13).
+    const state = untrack(() => $state.snapshot(inputState) as State);
+    const name = extension ? exportFileName(fileBase, state.code, extension) : '';
+    const controller = new AbortController();
+    running = controller;
     clearTimeout(resetTimer);
     message = '';
     status = 'busy';
     try {
-      await exportNow(chosen, name);
+      await exportNow(chosen, name, state, controller.signal);
+      if (controller.signal.aborted) return;
       showFor('done');
     } catch (error) {
+      // Cancelled: nothing was saved, and there is nothing to report.
+      if (controller.signal.aborted) return;
+      if (error instanceof ExportStaleError) {
+        showFor('failed');
+        notify(t('exportDlg.stale'));
+        return;
+      }
       console.error(`${chosen} export failed`, error);
       showFor('failed');
       const failure = FAILURES[chosen];
       // HTML and Markdown render the diagram afresh: a syntax error is reported here.
       if (failure) notify(t(failure));
       else message = t('actions.exportFailed');
+    } finally {
+      if (running === controller) running = undefined;
     }
   };
 
@@ -461,7 +492,7 @@
               variant="outline"
               size="sm"
               data-testid={TID.exportDlgCancel}
-              onclick={closeDialog}>
+              onclick={cancel}>
               {t('exportDlg.cancel')}
             </Button>
             <Button

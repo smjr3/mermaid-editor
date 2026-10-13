@@ -20,7 +20,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **362**.
+  every locally changed path — currently **363**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -539,6 +539,34 @@ HTML and GitLab exports are made from one snapshot (R12). A link may unpack to a
 (`serde.ts`), `?code=`/gist loading refuses HTTP errors and empty files, and the embed takes the
 hash state through `normalizeState`. The per-file list is in `UPSTREAM.md` ("Input hardening").
 
+**Review of 2026-10-13: N01, N02, N05, N07.** `.drawio` and `.vsdx` are made from the one state
+snapshot the dialog takes at 保存 (source, config, hand-drawn), and the picture is read only if
+the view still shows exactly that state; otherwise the export stops with a notice and saves
+nothing, and キャンセル aborts a running export (N01). The SVG file no longer carries the view's
+pan/zoom transform: it is the whole diagram at the viewBox it was placed with (N02). The
+Markdown export links the SVG as one percent-encoded path segment, so `#`, `%`, parentheses
+and spaces in the name keep pointing at the saved file (N05). Details in `EXPORTS.md`. CI's
+new `build-from-head` job packs the commit under review and builds that tarball with npm on
+Windows and Linux (N07, "Testing" below).
+
+**Source review of 2026-10-13: N03, N04, N06.** Each was reproduced by a failing test first.
+N03: with `MERMAID_OFFLINE` only the first URL was checked, so a same-origin `?code=` file or icon
+pack that answered 302 to another origin had the browser follow it. All app requests now go
+through `fetchAllowed` (`offline.ts`), which fetches offline with `redirect: 'manual'` and refuses
+any redirect before it is followed — same-site ones too, since a browser hides where a redirect
+points (`FEATURE-FLAGS.md` → "Redirects"; real HTTP servers in `util.test.ts` and
+`customIcons.test.ts`, 301/302/303/307/308, zero requests at the other origin; `tests/offline.spec.ts`).
+N04: an icon's `style="fill:u\72l(https://…)"` (a CSS escape of `url(`) passed the external-reference
+filter. Styles and presentation attributes are now read with a CSS tokenizer and an allow-list of
+value functions, local `#id` references only (`ICONS.md`; stored packs are re-sanitised on load).
+N06: the inspector counted every `{` as a block, so a brace in a sequence message hid a later
+`autonumber`, and it did not read `participant A @{…} as X` (space before the metadata), so
+changing its symbol added a second declaration. Block depth now follows each type's grammar
+(`braceDelta` in `diagramOptions.ts`: messages, labels, quoted strings, ER cardinalities and
+`accDescr { … }` are text), and a declaration is found with the spacing, YAML-style keys and
+multi-line metadata mermaid accepts and rewritten in place, keeping its other entries and alias;
+the label row (`renameParticipant`) had the same gap. Tests compare with mermaid's sequence DB.
+
 **Editor layout: the inspector (2026-10-12, 案A).** `/edit` is three columns, PC only
 (`src/routes/(app)/edit/+page.svelte`, `editorLayout.svelte.ts`, `editorUi.svelte.ts`): the
 code on the left, the diagram in the middle and the inspector (設定パネル) on the right. It
@@ -1002,7 +1030,11 @@ request, and a dependency audit of **both** install paths — `pnpm audit --prod
 `npm audit --omit=dev` against the packed tarball, since npm ignores `pnpm.overrides` —
 on pull requests, weekly (so a new advisory against an unchanged lockfile still surfaces)
 and on demand. With no dependency bot installed, that weekly run is what notices new
-advisories.
+advisories. Two jobs rebuild the static site from an npm tarball on `windows-latest` and
+`ubuntu-latest`: `build-from-package` from the published 0.2.1 (that
+`scripts/update-from-registry.mjs` still updates a released version), and `build-from-head`
+from `npm pack` of the commit under review (`--tarball`), installed with the package.json
+inside that tarball in a separate directory, then checked to be this commit's package.
 
 The e2e suite runs **Chromium** for everything and **Firefox** for seven `@smoke`-tagged
 journeys — load, edit/render, persistence, embed, and the swimlane sample. `README.md` states

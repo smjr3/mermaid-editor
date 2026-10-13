@@ -188,4 +188,7 @@ active entry point:
 executed on a Windows runner: job `build-from-package` in `fork-checks.yml` runs it on
 `windows-latest`. It exercises `npm.cmd` resolution, quoting and the tarball's `npm install`
 (including `postinstall`), so a green run also settles part of the `postinstall` question
-above for the published package, though not the pnpm path.
+above for the published package, though not the pnpm path. Since 2026-10-13 (review N07) job
+`build-from-head` does the same for the commit under review: `npm pack` of the checkout, then
+the script with `--tarball`, on `windows-latest` and `ubuntu-latest`, so a pull request's own
+dependencies, packaged files and build are proven on Windows, not only the 0.2.1 release.

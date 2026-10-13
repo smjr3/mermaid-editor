@@ -110,14 +110,85 @@ const parseConfig = (config: string): Config | undefined => {
 const section = (config: Config, name: string): Config =>
   config[name] && typeof config[name] === 'object' ? (config[name] as Config) : {};
 
-/** The top-level line (outside any `{ }` or `block:` … `end`) the test matches, or -1. */
+// Local (N06): which `{` and `}` open and close a block depends on the diagram's
+// grammar — a brace in a message, a label or a quoted string is text.
+// The types whose grammar has `{ … }` blocks (class, state, entity, requirement and
+// C4 boundary bodies; a flowchart's `@{ … }` over several lines).
+const braceTypes = new Set([
+  'block',
+  'c4',
+  'class',
+  'er',
+  'flowchart',
+  'mindmap',
+  'requirement',
+  'state',
+  'swimlane'
+]);
+// Where a `:` starts free text (a relation's or a state's label, a field's value).
+const colonLabelTypes = new Set(['class', 'er', 'requirement', 'state']);
+// Where `[…]`, `(…)` and `|…|` hold a label.
+const bracketLabelTypes = new Set(['block', 'er', 'flowchart', 'mindmap', 'swimlane']);
+// An entity relationship's cardinality, which is drawn with braces (`||--o{`).
+const erCardinality = /(?:\|o|\|\||\}o|\}\|)(?:--|\.\.)(?:o\||\|\||o\{|\|\{)/g;
+
+/** The line up to its first `:` that is not inside a `@{ … }`. */
+const beforeLabel = (line: string) => {
+  let inData = false;
+  for (let index = 0; index < line.length; index++) {
+    if (line.startsWith('@{', index)) inData = true;
+    else if (line[index] === '}') inData = false;
+    else if (line[index] === ':' && !inData) return line.slice(0, index);
+  }
+  return line;
+};
+
+/**
+ * How a line changes the block depth: +1 for each block it opens, -1 for each it closes.
+ * `depth` is the depth before the line.
+ */
+const braceDelta = (line: string, type: string | undefined, depth: number): number => {
+  // Titles and accessible texts are free text to the end of the line.
+  if (/^\s*(?:title|accTitle|accDescr)\s*:|^\s*title\s/.test(line)) return 0;
+  const text = line.replaceAll(/"[^"]*"/g, '""');
+  if (type !== undefined && braceTypes.has(type)) {
+    let structure = type === 'er' ? text.replaceAll(erCardinality, '--') : text;
+    if (bracketLabelTypes.has(type)) {
+      structure = structure.replaceAll(/\[[^\]]*\]|\([^)]*\)|\|[^|]*\|/g, '');
+    }
+    if (colonLabelTypes.has(type)) structure = beforeLabel(structure);
+    return (structure.match(/\{/g)?.length ?? 0) - (structure.match(/\}/g)?.length ?? 0);
+  }
+  // The others (sequence, gantt, pie, …) have no brace blocks; only an object's
+  // `@{ … }` metadata may run over several lines, and it cannot contain a `}`.
+  if (depth > 0) return text.includes('}') ? -1 : 0;
+  const head = beforeLabel(text);
+  const open = head.lastIndexOf('@{');
+  return open !== -1 && !head.slice(open).includes('}') ? 1 : 0;
+};
+
+/**
+ * The top-level line (outside any block the diagram's grammar opens with `{ }`, an
+ * `accDescr { … }` text, or `block:` … `end`) the test matches, or -1.
+ */
 const topLine = (lines: string[], test: (line: string) => boolean, blocks = false) => {
+  const type = types.find(([, pattern]) => pattern.test(lines[headerIndex(lines)] ?? ''))?.[0];
   let depth = 0;
+  let inDescription = false;
   for (let index = headerIndex(lines) + 1; index < lines.length; index++) {
     const line = lines[index];
+    if (inDescription) {
+      if (line.includes('}')) inDescription = false;
+      continue;
+    }
     if (!isContent(line)) continue;
     if (depth === 0 && test(line)) return index;
-    depth += (line.match(/\{/g)?.length ?? 0) - (line.match(/\}/g)?.length ?? 0);
+    const description = /^\s*accDescr\s*\{(.*)$/.exec(line);
+    if (description) {
+      inDescription = !description[1].includes('}');
+      continue;
+    }
+    depth = Math.max(0, depth + braceDelta(line, type, depth));
     if (blocks) {
       if (/^\s*block:/.test(line)) depth++;
       else if (/^\s*end\s*$/.test(line)) depth--;
@@ -550,12 +621,36 @@ const subgraphDirection = (lines: string[], id: string) => {
   return undefined;
 };
 
-/** A sequence participant's declaration: keyword, id, `@{ … }` and ` as Label`. */
+/**
+ * A sequence participant's declaration: keyword, id, the space before `@{ … }`, the
+ * `@{ … }` (mermaid's lexer: any spaces between the id and `@{`, no `}` inside, which
+ * may run over several lines) and ` as Label`.
+ */
 const declaration = (id: string) =>
   new RegExp(
-    String.raw`^(\s*)((?:create\s+)?)(participant|actor)\s+${escapeId(id)}(@\{[^}]*\})?((?:\s+as\s+.*)?)\s*$`,
+    String.raw`^(\s*)((?:create\s+)?)(participant|actor)\s+${escapeId(id)}(?:(\s*)(@\{[^}]*\}))?((?:\s+as\s+.*)?)\s*$`,
     'u'
   );
+// The first line of any declaration of the id, whatever follows it.
+const declarationStart = (id: string) =>
+  new RegExp(
+    String.raw`^\s*(?:create\s+)?(?:participant|actor)\s+${escapeId(id)}(?=\s|@\{|$)`,
+    'u'
+  );
+
+/** The participant's declaration: its lines (`@{ … }` may span several) and their parts. */
+const findDeclaration = (lines: string[], id: string) => {
+  for (let start = 0; start < lines.length; start++) {
+    if (!declarationStart(id).test(lines[start])) continue;
+    let end = start;
+    if (/@\{[^}]*$/.test(lines[start])) {
+      while (end < lines.length - 1 && !lines[end].includes('}')) end++;
+    }
+    const match = declaration(id).exec(lines.slice(start, end + 1).join('\n'));
+    return { end, match, start };
+  }
+  return undefined;
+};
 export const participantTypes = [
   'participant',
   'actor',
@@ -566,14 +661,25 @@ export const participantTypes = [
   'collections',
   'queue'
 ] as const;
-const typeInData = (data: string) => /"type"\s*:\s*"([a-z]+)"/.exec(data)?.[1];
-const dataWithout = (data: string, key: string) => {
-  const rest = data
-    .slice(2, -1)
-    .split(',')
-    .map((part) => part.trim())
-    .filter((part) => part && !new RegExp(String.raw`^"?${key}"?\s*:`).test(part));
-  return rest.length > 0 ? `@{ ${rest.join(', ')} }` : '';
+// The `type` entry of a participant's `@{ … }`, which mermaid reads as YAML: the key
+// and the value quoted or not.
+const typeEntry = /(?<=[{,\s])(["']?)type\1\s*:\s*(["']?)([A-Za-z]+)\2/;
+const typeInData = (data: string) => typeEntry.exec(data)?.[3].toLowerCase();
+/** The `@{ … }` with its `type` set to `value`, or dropped (`undefined`); '' when nothing is left. */
+const dataWithType = (data: string, value: string | undefined): string => {
+  if (!data || /^@\{\s*\}$/.test(data)) return value ? `@{ "type": "${value}" }` : '';
+  if (typeEntry.test(data)) {
+    if (value) return data.replace(typeEntry, `"type": "${value}"`);
+    const rest = data
+      .replace(new RegExp(String.raw`${typeEntry.source}\s*,?`), '')
+      .replace(/,(\s*)\}$/, '$1}');
+    return /^@\{\s*\}$/.test(rest) ? '' : rest;
+  }
+  if (!value) return data;
+  // Over several lines mermaid reads the entries as a YAML block: one more line.
+  const block = /^@\{[^\S\n]*\n([^\S\n]*)/.exec(data);
+  if (block) return data.replace(/^@\{[^\S\n]*\n/, `@{\n${block[1]}type: ${value}\n`);
+  return data.replace(/^@\{\s*/, (open) => `${open}"type": "${value}", `);
 };
 
 /** A mindmap topic's shape, by the brackets around its text. */
@@ -665,9 +771,9 @@ export const objectOptions = (code: string, kind: string, object: EditObject): D
       : [];
   }
   if (kind === 'sequence' && object.line === undefined && !object.group) {
-    const line = lines.find((text) => declaration(object.id).test(text));
-    const match = line ? declaration(object.id).exec(line) : null;
-    const type = match ? (typeInData(match[4] ?? '') ?? match[3]) : 'participant';
+    const match = findDeclaration(lines, object.id)?.match;
+    const found = match ? (typeInData(match[5] ?? '') ?? match[3]) : 'participant';
+    const type = (participantTypes as readonly string[]).includes(found) ? found : 'participant';
     return [objectChoice('participantType', 'opt.participantType', participantTypes, type)];
   }
   if (kind === 'mindmap' && object.line !== undefined) {
@@ -808,21 +914,22 @@ export const setObjectOption = (
   if (key === 'participantType' && kind === 'sequence') {
     if (!(participantTypes as readonly string[]).includes(value)) return undefined;
     const keyword = value === 'actor' ? 'actor' : 'participant';
-    const at = lines.findIndex((line) => declaration(object.id).test(line));
-    if (at !== -1) {
-      const [, indent, create, , data = '', alias] = declaration(object.id).exec(lines[at]) ?? [];
-      const rest = dataWithout(data, 'type');
-      const typed =
-        value === 'participant' || value === 'actor'
-          ? rest
-          : rest
-            ? rest.replace(/^@\{ /, `@{ "type": "${value}", `)
-            : `@{ "type": "${value}" }`;
-      lines[at] = `${indent}${create}${keyword} ${object.id}${typed}${alias}`;
+    const found = findDeclaration(lines, object.id);
+    if (found) {
+      // Rewritten in place, keeping the space before `@{`, its other entries and the alias.
+      // A declaration this cannot read is left alone rather than declared a second time.
+      if (!found.match) return undefined;
+      const [, indent, create, , space = '', data = '', alias] = found.match;
+      const typed = dataWithType(
+        data,
+        value === 'participant' || value === 'actor' ? undefined : value
+      );
+      const text = `${indent}${create}${keyword} ${object.id}${typed ? `${space}${typed}` : ''}${alias}`;
+      lines.splice(found.start, found.end - found.start + 1, ...text.split('\n'));
       return done();
     }
     // Declared where the undeclared ones before it are declared too, so the order stays.
-    const declared = (id: string) => lines.some((line) => declaration(id).test(line));
+    const declared = (id: string) => lines.some((line) => declarationStart(id).test(line));
     const before = (object.after ?? []).filter((id) => !declared(id));
     let last = lines.findLastIndex((line) => /^\s*(?:participant|actor)\s+/.test(line));
     if (last === -1) last = headerIndex(lines);

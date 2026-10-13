@@ -726,6 +726,8 @@ export const en = {
   'exportDlg.scale2': 'High',
   'exportDlg.scale3': 'Highest',
   'exportDlg.scaleHint': '{scale}x the diagram size',
+  'exportDlg.stale':
+    'The diagram changed while it was being exported, so nothing was saved. Try again once it is drawn',
   'exportDlg.title': 'Export',
   'external.notShared': 'Your diagram is not shared',
   'external.opensIn': 'Opens your diagram in',

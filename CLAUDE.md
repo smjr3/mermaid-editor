@@ -14,6 +14,7 @@ Uses pnpm (install via `corepack enable pnpm`). Node >= 24.16 required.
 - Single unit test: `pnpm vitest run src/lib/util/serde.test.ts` (or `-t "test name"`)
 - `pnpm test:e2e` — Playwright tests in `tests/`; auto-starts the dev server on port 3000 (reuses one already running). `pnpm test:e2e:ui` / `:debug` for interactive runs
 - `pnpm test` — unit + e2e
+- Script tests (not picked up by vitest): `node --test scripts/*.node-test.mjs`
 
 Gotchas:
 
@@ -67,7 +68,8 @@ States loaded from URLs pass through `sanitizeConfig` (state.svelte.ts), which d
 
 ## Fork conventions
 
-- This is a fork of mermaid-live-editor. Keep the upstream delta small: prefer a feature flag or wrapper over deleting/rewriting upstream code (see `docs-dev/UPSTREAM.md`).
+- This is a fork of mermaid-live-editor. Keep the upstream delta small: prefer a feature flag or wrapper over deleting/rewriting upstream code (see `docs-dev/UPSTREAM.md`; upstream merges go through `scripts/update-upstream.sh`).
+- The repo is also published as the npm package `@smjr3/mermaid-editor` (source, not a built bundle; consumers build it themselves — `docs-dev/PACKAGING.md`). The published set is the `files` whitelist in `package.json`: a new top-level file or directory needed for the build must be added there.
 - Promotional, AI and external-service surfaces are off by default via `MERMAID_IS_ENABLED_*` / emptied renderer URLs in `.env` (`docs-dev/FEATURE-FLAGS.md`). Don't introduce paths that send diagram source to third parties.
 - UI strings go through `t()` from `src/lib/i18n` (default locale `ja`); e2e tests must not depend on translated text (`docs-dev/I18N.md`).
 

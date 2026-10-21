@@ -118,6 +118,8 @@ test.describe('Colours in the inspector', () => {
       .poll(() => edge.evaluate((path) => getComputedStyle(path).stroke))
       .toBe(rgb('#d64545'));
 
+    // The click on the header's theme button closed the popover: open it again.
+    await openLook(page);
     await page.getByTestId(`${TID.inspLineColor}-none`).click();
     await expect.poll(async () => (await config(page)).themeVariables).toBeUndefined();
   });

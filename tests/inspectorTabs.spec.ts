@@ -14,7 +14,6 @@ import {
   pickObject,
   tab
 } from './helpers/inspector';
-import { undo } from './helpers/shell';
 import { expect, t, test } from './test';
 
 // The inspector's first row, the target switcher (図全体 / 図形 / 矢印 / …, per diagram
@@ -170,7 +169,7 @@ test.describe('Inspector tabs', () => {
 });
 
 test.describe('Inspector 見た目 row', () => {
-  test('names the theme, and 変更… opens the controls, which persist and undo', async ({
+  test('names the theme, and 変更… opens the controls, which persist', async ({
     editPage,
     page
   }) => {
@@ -202,17 +201,18 @@ test.describe('Inspector 見た目 row', () => {
     await closeLook(page);
     await expect(page.getByTestId(TID.inspLookName)).toHaveText(t('colors.theme.forest'));
 
-    // It undoes like any other change.
-    await undo(page);
-    await expect
-      .poll(async () => (await config(page)).themeCSS ?? '')
-      .toContain('theme-preset: neon');
-    await expect(page.getByTestId(TID.inspLookName)).toHaveText(t('themePreset.neon'));
+    // From the keyboard: Enter on 変更… opens it, Escape closes it and returns there.
+    await page.getByTestId(TID.lookPopover).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId(TID.inspLookContent)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.inspLookContent)).toBeHidden();
+    await expect(page.getByTestId(TID.lookPopover)).toBeFocused();
 
-    // And persists over a reload.
+    // And it persists over a reload.
     await page.reload();
     await editPage.checkTextInView('Pick');
-    await expect(page.getByTestId(TID.inspLookName)).toHaveText(t('themePreset.neon'));
+    await expect(page.getByTestId(TID.inspLookName)).toHaveText(t('colors.theme.forest'));
   });
 
   test('the row stays one line and the rows for working come first', async ({ editPage, page }) => {
@@ -265,10 +265,10 @@ test.describe('Inspector connection rows', () => {
     await expect(crumb(page)).toHaveAttribute('data-crumb', 'insp.crumb.edge');
     await expect(page.getByTestId(TID.inspEdgeLabel)).toHaveValue('yes');
 
-    // The glyph, from the keyboard: that arrow.
+    // The glyph, from the keyboard (Space: Enter on a selection is ＋次): that arrow.
     await pickObject(page, 'B');
     await rows.nth(1).getByTestId(TID.inspLinkEdge).first().focus();
-    await page.keyboard.press('Enter');
+    await page.keyboard.press('Space');
     await expect(page.getByTestId(TID.inspEdgeEnds)).toContainText('Pick');
   });
 });
@@ -290,8 +290,9 @@ test.describe('Inspector tabs while the code is broken', () => {
     await expect(page.getByTestId(TID.inspName)).toBeDisabled();
     await expect(page.getByTestId(TID.inspDelete)).toBeDisabled();
     const before = await stored(page);
-    // The connection rows still navigate; the arrow's rows refuse too.
-    await page.getByTestId(TID.inspLinks).getByTestId(TID.inspLinkEdge).first().click();
+    // The arrow list still works; the arrow's rows refuse too.
+    await openTab(page, 'edge');
+    await page.locator(`[data-testid="${TID.inspPickItem}"][data-index="0"]`).click();
     await expect(crumb(page)).toHaveAttribute('data-crumb', 'insp.crumb.edge');
     await expect(page.getByTestId(TID.inspEdgeReverse)).toBeDisabled();
     await tab(page, 'all').click();

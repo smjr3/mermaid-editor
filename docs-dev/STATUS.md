@@ -3,9 +3,11 @@
 An index and a handover note. Read this first; each section points at the document that
 carries the detail and the reasoning.
 
-Accurate as of **2026-10-13**, including the 0.2.0 to 0.2.6 work (the upstream merge of `a70ed76`,
-mermaid 12.1.0, and the editor, layout and icon features below) and the redesign of `/edit` into
-three columns with an inspector ("Editor layout: the inspector" below).
+Accurate as of **2026-10-21**, including the 0.2.0 to 0.2.6 work (the upstream merge of `a70ed76`,
+mermaid 12.1.0, and the editor, layout and icon features below), the redesign of `/edit` into
+three columns with an inspector ("Editor layout: the inspector" below) and the multi-selection,
+selection bar, context menu and command registry of 2026-10-21 ("Multi-selection, the selection
+bar and the command registry" below).
 
 ## What this is
 
@@ -597,24 +599,37 @@ went was audited item by item at the merge; the result is in the PR that introdu
   timeline, pie, ER attributes, journey, XY, quadrant, sankey, packet) get 図 / 表 / 並べる over
   the picture (`ViewModeSwitch.svelte`, the 0.2.2 `TableEditor`). Bottom right: − 100% ＋ 全体
   and the grid toggle (`ZoomControls.svelte`). A broken code shows the error notice over the
-  diagram (`CodeErrorNotice`), and the add bar says why it does nothing. The right-click menu
-  stays as a shortcut (名前を変更 F2, 色を変える, 形を変える, 次の処理を追加 Enter, ここから矢印を引く,
-  削除 Del); its 色 and 形 focus that row of the inspector (`focusInspector`, `data-insp-focus`).
-- **Inspector** (`inspector/Inspector.svelte`): with nothing selected, 「図全体」
-  (`DiagramSettings.svelte`): the 12 themes as cards, 標準 (mermaid's 8 built-in themes, default
-  使わない), 向き (上→下, 下→上, 左→右, 右→左, 自動 — the old "fit to view"; BT and RL added on 2026-10-12), 配置 (標準 / ELK), 間隔 (disabled under ELK), and under ELK its 並べ方 (`elk.nodePlacementStrategy`) and 矢印をまとめる (`elk.mergeEdges`), 線の色, レーン (色分け / 色なし), 矢印 (すべて元の色に), タイトル, フォント (new: a few
+  diagram (`CodeErrorNotice`), and the add bar says why it does nothing. While something is
+  selected the add bar gives way to the selection bar (`SelectionBar.svelte`, since 2026-10-21:
+  the registry's commands on one row, 追加 ▾ for the type's add entries, その他 ▾ for what does
+  not fit). The right-click menu (`DiagramContextMenu.svelte`) is built from the same registry
+  and completes every action in place (submenus for the values; see "Multi-selection, the
+  selection bar and the command registry" below).
+- **Inspector** (`inspector/Inspector.svelte`): its first row is the target switcher, the tabs
+  「図全体 │ 図形 │ 矢印 │ グループ」 (per diagram type, the add bar's words: 参加者 · メッセージ
+  for a sequence diagram, タスク · 区分 for a gantt, …; `inspectorTabs.ts`, `TID.inspTab`). The tab
+  of the selection is active; 図全体 clears it; a tab whose kind is not selected lists its items
+  (`TargetPicker.svelte`: a click selects one, Ctrl/⌘+click adds it and keeps the list open,
+  「すべて選ぶ」 takes them all) — this list replaced the 要素 / 矢印 selects at the bottom of 図全体
+  and the breadcrumb and ✕ of the first layout. With nothing selected, 「図全体」
+  (`DiagramSettings.svelte`): first the row 「見た目 │ ●●●●● テーマ名 変更…」 (`LookRow.svelte`) whose
+  popover holds what used to be the top of the panel — the 12 themes as cards, 標準 (mermaid's
+  built-in themes, default 使わない), フォント, 手描き風 and 線の色 (all config, so usable while the
+  code is broken) — then 向き (上→下, 下→上, 左→右, 右→左, 自動 — the old "fit to view"; BT and RL added on 2026-10-12), 配置 (標準 / ELK), 間隔 (disabled under ELK), and under ELK its 並べ方 (`elk.nodePlacementStrategy`) and 矢印をまとめる (`elk.mergeEdges`), 線の色, レーン (色分け / 色なし), 矢印 (すべて元の色に), タイトル, フォント (new: a few
   font families written to `fontFamily`), 手描き風 (moved from the diagram toolbar), アイコン
   (探して挿入 and アイコン集, each a dialog), unknown icons with 候補に置換, the AI briefing, and the
   要素 / 矢印 lists for objects that cannot be clicked. Rows a diagram type does not support are not
-  shown. A selection shows 「図全体 › 図形 / 矢印 / レーン / タスク」 with ✕ and its rows, each one
+  shown. A selection shows its rows under its tab, each one
   line (a 52px label and the control): 図形 — 名前 (also the inline rename: F2, a double click, the
   menu and a node just added open it), 形 (all 53 shapes mermaid 12 draws, `flowShapes.ts`: the Add card's five stay brackets, the others are written `id@{ shape: … }`), 色 (塗り / 枠 / 文字, the palette, any colour, the recent
-  colours), 文字 (size, bold, reset), アイコン, レーン, ID (renames everywhere, as F2), つながり (click
-  to select the arrow), ＋次 / ＋分岐 / 矢印 / 削除, and the class members, ER attributes and the
+  colours), 文字の大きさ (size, bold, reset), アイコン, レーン, ID (renames everywhere, as F2), つながり
+  (one row per arrow: its glyph or label selects the arrow, the neighbour's name selects that
+  node), 同じものを選ぶ, ＋次 / ＋分岐 / ここから矢印 / 削除, and the class members, ER attributes and the
   other per-type fields of the old Edit card (`ObjectFields.svelte`); 矢印 — ends, ラベル, 線 (実線 /
   点線 / 太線), 矢じり (先だけ / 両方 / なし: 両方 is new, `A <--> B`, `<-.->`, `<==>`, `x--x`, a class
   `<|--|>`, an architecture `<-->`, a sequence `<<->>`; offered only where the type can draw it, so
-  not for block diagrams), 色, 向きを反転, 削除; レーン — 名前, 色, the number of shapes and ＋追加,
+  not for block diagrams), 色, 同じものを選ぶ, 向きを反転, 削除; several items — the multi view
+  (`MultiSection.svelte`, below); レーン — 名前, 色, the number of shapes and ＋追加,
   削除 (中身は残す / 中身ごと); a gantt task — 名前, 区分, 開始 (a date or after another task), 日数,
   状況, マイルストーン / 重要, 削除. While the code is broken the inspector says why and its edits
   are disabled; the theme and the other settings stay usable. It folds to a rail
@@ -745,6 +760,54 @@ zoom out only when it is bigger than the canvas), nothing when it is already vis
 apart, so they are chosen from 図全体's 要素 list; journey, git and the other chart types have no
 selection. `tests/selection.spec.ts`, `tests/inspector.spec.ts` and the unit tests of the
 selection files.
+
+**Multi-selection, the selection bar and the command registry (2026-10-21).** The selection
+holds several items (`selection.svelte.ts`: `items` in the order chosen, `current` is the last
+one, so every single-selection reader keeps working): Ctrl/⌘+click on the picture adds an item or
+takes it out (`toggleSelect`; the owner's rule: Ctrl, not Shift), Ctrl/⌘+drag draws a rubber band
+and selects every object and arrow wholly inside it (a plain drag still pans), Ctrl/⌘+A selects
+everything (`selectionKeys.ts`, when not typing), and 「同じものを選ぶ」 replaces the selection with
+the items like the primary one — same shape, same colour, same lane (or a lane's members), every
+arrow, everything downstream of a node (`selectMany`; `sameAs` in `selectionCommands.ts`). Every
+selected item gets the dashed outline (`SelectionLayer.svelte`). `selectionModel.svelte.ts` lists
+them (`targets`, `selectedObjects`, `selectedEdges`), tells whether they agree on a value
+(`commonValue`, `MIXED` → 「まちまち」) and writes one change over all of them in one undo step
+(`applyToAll`: each rewrite sees the code the one before returned, mermaid checks the result
+once, `updateCode` once; `removeAll` deletes arrows first, from the highest index down). When the
+code moved on since the lists were read (an edit before the next sync), `applyToAll` reads them
+again and names its targets again by id or index, so a stale arrow property is never written
+back. As every edit, it refuses while the code is broken (`TID.selectionWarning`).
+
+The **command registry** (`selectionCommands.ts`) is the single source of what can be done to a
+selection and what it is called: one entry per command (＋次, ＋分岐, ここから矢印, 名前を変更 /
+ラベルを変更, 塗り, 枠 / 線の色, 文字, 形, 文字の大きさ, 太字, 線の種類, 矢じり, 長さ, 向きを反転,
+レーン / グループ, 左へ, 右へ, 削除, 同じものを選ぶ) with `appliesTo(model)`, `choices`, `current`
+and `run`, every run going through the model's edits and so through the existing rewriters and
+`checkEdit`. A label may depend on the selection (`labelKey` / `commandLabel`). The colour
+commands accept any hex (a fill as `stroke` or `fill/stroke`) and list the colour that is set as
+one more choice 「ほかの色」, so the bar and the menu mark a colour outside the palette. The three
+entry points read it: the **selection bar** (`canvas/SelectionBar.svelte`, in the add bar's place
+while something is selected: the count and ✕, then the commands in a fixed order with 色 / 線 /
+文字 as popovers of rows, 形 and 同じものを選ぶ as menus; the bar measures its buttons and moves
+what does not fit under その他 ▾; 追加 ▾ keeps the type's add entries; `tests/selectionBar.spec.ts`),
+the **context menu** (`DiagramContextMenu.svelte`: one row per action with its key, a submenu per
+choice with the current value checked, the colours as rows of swatch dots, 削除 last in red;
+everything completes in place, keyboard included; `tests/contextMenu.spec.ts`) and the
+**inspector** (the single-item rows above; the multi view `MultiSection.svelte` with the count,
+one row per value that can be set on all the items — 「まちまち」 where they differ —, 同じものを選ぶ
+and 削除; `inspectorMulti.ts`, `tests/inspectorMulti.spec.ts`, `tests/inspectorTabs.spec.ts`,
+`tests/multiSelect.spec.ts`).
+
+**Reorder (左へ / 右へ, `reorder.ts`)** moves a flowchart node one place among the nodes drawn
+beside it by exchanging two whole lines of the code (`linkStyle` numbers follow their arrows), so
+the diagram's meaning is unchanged and every comment and style keeps its text. The header comment
+of `reorder.ts` explains why dagre's layout follows the code order and which nodes count as
+siblings. Offered only where `canMove` says the swap exists (`moveAvailability.svelte.ts` caches
+the async answer for the registry's synchronous `appliesTo`). A swimlane is refused by design:
+its layout orders a lane's nodes by id and arrows, not by the code, so a swap would change
+nothing. State and class diagrams are refused because their statements span lines. **No invisible
+objects are ever written**: an `~~~` link or a hidden node to force a position would change what
+the Mermaid text says to a reader, which the owner forbids; reorder works by line order alone.
 
 **Contradictory operations (0.2.2).** A pass that used the tools out of order and against each
 other (connect what is connected, undo from the keyboard after deleting with it, click away
@@ -974,6 +1037,18 @@ both formats and the names.
 
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue
 tracker — that is where this project tracks findings, and the owner chose to keep it that way.
+
+**Reorder under ELK and in swimlanes.** `reorder.ts` accepts `flowchart-elk` headers, and its
+unit tests cover the line swaps, but whether ELK's layout follows the code order for every shape
+of diagram was not verified in a browser (ELK has its own crossing reduction; `considerModelOrder`
+is one of the 図全体 options). Swimlanes refuse 左へ / 右へ on purpose (see the reorder paragraph):
+offering it there would need a rewriter that changes ids or arrows, which changes the text's
+meaning. Nodes of one rank with different predecessors are not siblings and cannot be moved past
+each other; the registry simply does not offer the move.
+
+**Context-menu and bar labels in `en`.** The three entry points share the registry's keys, so the
+English words are consistent too, but the English UI (`MERMAID_LOCALE=en`) was not walked through
+by a reader; the Japanese one was.
 
 **The `dompurify` override.** `monaco-editor` 0.57.0 (the latest) pins `dompurify@3.4.15`
 exactly, which a low advisory (GHSA-p98j-92pf-mc4p) covers. Monaco's copy is overridden to the

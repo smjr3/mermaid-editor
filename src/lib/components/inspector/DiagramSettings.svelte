@@ -6,7 +6,7 @@
   import SwitchRow from '$/components/form/SwitchRow.svelte';
   import IconPacks from '$/components/IconPacks.svelte';
   import IconPicker from '$/components/IconPicker.svelte';
-  import ColorRow from '$/components/inspector/ColorRow.svelte';
+  import LookRow from '$/components/inspector/LookRow.svelte';
   import UnknownIcons from '$/components/UnknownIcons.svelte';
   import { Button } from '$/components/ui/button';
   import * as Dialog from '$/components/ui/dialog';
@@ -17,23 +17,14 @@
   import {
     colorAll,
     colorAllGroups,
-    getLineColor,
-    getTheme,
     listGroups,
     parsePresets,
     setEdgeColor,
-    setLineColor,
-    setTheme,
     swatches,
-    themeChoices,
-    type Swatch,
-    type ThemeChoice
+    type Swatch
   } from '$/util/colors';
-  import { fontChoices, getDiagramFont, setDiagramFont, type FontChoice } from '$/util/diagramFont';
-  import { headerLine } from '$/util/diagramEdit';
   import { editKind } from '$/util/diagramModify';
   import { getTitle, setTitle, titleShown } from '$/util/diagramTitle';
-  import { displayName } from '$/util/displayName';
   import { env } from '$/util/env';
   import { diagramOptions, setDiagramOption, type DiagramOption } from '$/util/diagramOptions';
   import {
@@ -62,61 +53,22 @@
     type DiagramEdge,
     type DiagramObjects
   } from '$/util/mermaid';
-  import { select, selection } from '$/util/selection.svelte';
-  import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { settledState } from '$/util/settledState.svelte';
-  import { inputState, updateCodeStore, updateConfig } from '$/util/state.svelte';
+  import { inputState, updateConfig } from '$/util/state.svelte';
   import { parseConfigObject } from '$/util/stateGuard';
-  import {
-    applyThemePreset,
-    presetOf,
-    themePresets,
-    type ThemePresetId
-  } from '$/util/themePresets';
   import type { MermaidConfig } from 'mermaid';
-  import CheckIcon from '~icons/material-symbols/check-rounded';
 
   // Local: the inspector's 図全体 — what applies to the whole diagram, each a one-line
-  // row: the theme (12 named ones, mermaid's built-in themes), the layout (direction,
-  // engine, spacing: layout.ts), colours written in the code (line colour, lanes, every
-  // object, every arrow: colors.ts), the title (diagramTitle.ts), the font
-  // (diagramFont.ts), the hand-drawn look, the icons (the picker and the pack dialogs,
-  // the unknown names, the AI briefing), the type's own options (diagramOptions.ts) and,
-  // for diagrams whose parts cannot be clicked,
-  // a list to select one. Rows the diagram type has no use for are left out, or say why.
+  // row: 見た目 (the theme, the built-in theme, the font, the hand-drawn look and the line
+  // colour, behind 変更…: LookRow.svelte), the layout (direction, engine, spacing:
+  // layout.ts), the type's own options (diagramOptions.ts), colours written in the code
+  // (lanes, every object, every arrow: colors.ts), the title (diagramTitle.ts) and the
+  // icons (the picker and the pack dialogs, the unknown names, the AI briefing). The
+  // parts themselves are picked from the tabs over the panel (Inspector.svelte). Rows the
+  // diagram type has no use for are left out, or say why.
   // `blocked`: the code is broken, so the rows that edit the code are disabled; the
-  // config rows (theme, engine, spacing, line colour, font, hand-drawn) stay available.
+  // config rows (見た目, engine, spacing) stay available.
   let { blocked = false }: { blocked?: boolean } = $props();
-
-  // ---- Theme (config) ----
-  const preset = $derived(presetOf(inputState.mermaid));
-  const theme = $derived(getTheme(inputState.mermaid));
-  const isCustomTheme = $derived(
-    preset === 'standard' &&
-      theme !== 'auto' &&
-      !(themeChoices as readonly string[]).includes(theme)
-  );
-  const builtin = $derived(
-    preset === 'standard' && (themeChoices as readonly string[]).includes(theme) ? theme : 'auto'
-  );
-  const font = $derived(getDiagramFont(inputState.mermaid));
-  // A named theme replaces the theme, its variables and CSS as a whole; a font chosen
-  // here is kept over the preset's own (diagramFont.ts).
-  const applyPreset = (id: ThemePresetId) => {
-    const next = applyThemePreset(inputState.mermaid, id);
-    updateConfig(font === 'default' || font === 'custom' ? next : setDiagramFont(next, font));
-  };
-  // A built-in theme over a named one drops the named one's variables and CSS first.
-  const applyTheme = (next: ThemeChoice) =>
-    updateConfig(
-      setTheme(
-        preset === 'standard'
-          ? inputState.mermaid
-          : applyThemePreset(inputState.mermaid, 'standard'),
-        next
-      )
-    );
-  const lineColor = $derived(getLineColor(inputState.mermaid));
 
   // ---- Layout (code and config) ----
   const direction = $derived(getFullDirection(inputState.code));
@@ -260,19 +212,7 @@
       edges.reduce((code, { index }) => setEdgeColor(code, index, undefined), inputState.code)
     );
 
-  // ---- The parts, for diagrams that cannot be clicked (selectionModel's lists) ----
   const kind = $derived(editKind(inputState.code));
-  const objectsKey = $derived(
-    kind === 'flowchart' && /^\s*swimlane-beta\b/.test(headerLine(inputState.code))
-      ? 'edit.objects.swimlane'
-      : (`edit.objects.${kind}` as MessageKey)
-  );
-  const items = $derived(model.objects?.items ?? []);
-  const edgeItems = $derived(model.edges?.items ?? []);
-  const selectedId = $derived(selection.current?.type === 'node' ? selection.current.id : '');
-  const selectedEdge = $derived(
-    selection.current?.type === 'edge' ? String(selection.current.index) : ''
-  );
 
   // ---- Icons ----
   let iconsOpen = $state(false);
@@ -291,71 +231,10 @@
   const muted = 'min-w-0 truncate text-xs text-muted-foreground';
 </script>
 
-<!-- テーマ: the named themes, then mermaid's built-in ones. Config only: always available. -->
+<!-- 見た目 (config, always available), then 向き・配置・間隔: the direction is in the code,
+     the engine and spacing in the config. -->
 <PanelGroup>
-  <div
-    class="grid grid-cols-3 gap-1"
-    role="group"
-    aria-label={t('colors.presets')}
-    title={t('colors.presetsHint')}
-    data-testid={TID.inspThemePreset}>
-    {#each themePresets as entry (entry.id)}
-      {@const active = preset === entry.id}
-      <button
-        type="button"
-        aria-pressed={active}
-        data-active={active}
-        data-testid={`${TID.inspThemePreset}-${entry.id}`}
-        title={`${t(entry.name)}: ${t(entry.description)}`}
-        class={[
-          'flex min-w-0 flex-col gap-0.5 rounded-md border px-1.5 py-1 text-left transition-colors outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring',
-          active
-            ? 'border-sky-600 bg-sky-50 ring-1 ring-sky-600 dark:border-sky-400 dark:bg-sky-950/40 dark:ring-sky-400'
-            : 'border-border'
-        ]}
-        onclick={() => applyPreset(entry.id)}>
-        <!-- The swatches and the check share a row, so the name below has the card's
-             whole width and wraps rather than being cut (QA 2026-10-13). -->
-        <span class="flex items-center gap-0.5" aria-hidden="true">
-          {#each entry.swatches as color, index (index)}
-            <span
-              class="size-2.5 shrink-0 rounded-full border border-black/20 dark:border-white/30"
-              style:background-color={color}></span>
-          {/each}
-          {#if active}
-            <CheckIcon class="ml-auto size-3 shrink-0 text-sky-600 dark:text-sky-400" />
-          {/if}
-        </span>
-        <span class="text-[11px] leading-tight font-semibold break-words">{t(entry.name)}</span>
-      </button>
-    {/each}
-  </div>
-  <FieldRow label={t('insp.builtin')}>
-    <select
-      class={selectClass}
-      value={isCustomTheme ? theme : builtin}
-      aria-label={t('colors.builtinThemes')}
-      title={isCustomTheme ? t('colors.themeCustom', { theme }) : t('insp.builtinHint')}
-      data-testid={TID.inspBuiltinTheme}
-      onchange={(event) => applyTheme(event.currentTarget.value as ThemeChoice)}>
-      <option value="auto">{t('insp.builtinNone')}</option>
-      {#if isCustomTheme}
-        <option value={theme} disabled>{theme}</option>
-      {/if}
-      {#each themeChoices as id (id)}
-        <option value={id}>{t(`colors.theme.${id}`)}</option>
-      {/each}
-    </select>
-  </FieldRow>
-  {#if isCustomTheme}
-    <p class={muted} title={t('colors.themeCustom', { theme })}>
-      {t('colors.themeCustom', { theme })}
-    </p>
-  {/if}
-</PanelGroup>
-
-<!-- 向き・配置・間隔: the direction is in the code, the engine and spacing in the config. -->
-<PanelGroup>
+  <LookRow />
   {#if direction}
     <fieldset disabled={blocked || busy} class="contents">
       <FieldRow label={t('layout.direction')}>
@@ -524,17 +403,8 @@
   </PanelGroup>
 {/if}
 
-<!-- 線の色 (config), then the colours written in the code: lanes, objects, arrows. -->
+<!-- The colours written in the code: lanes, objects, arrows (the line colour is in 見た目). -->
 <PanelGroup>
-  <FieldRow label={t('colors.line')}>
-    <ColorRow
-      mode="line"
-      current={lineColor}
-      label={t('colors.line')}
-      noneLabel={t('colors.lineDefault')}
-      testID={TID.inspLineColor}
-      onpick={(color) => updateConfig(setLineColor(inputState.mermaid, color))} />
-  </FieldRow>
   <fieldset disabled={blocked} class="contents">
     {#if showLanes}
       <FieldRow label={t('insp.lanes')}>
@@ -595,7 +465,7 @@
   </fieldset>
 </PanelGroup>
 
-<!-- タイトル (code), フォント (config), 手描き風 (the editor's state). -->
+<!-- タイトル (code). -->
 <PanelGroup>
   <FieldRow label={t('layout.diagramTitle')}>
     {#if showsTitle}
@@ -628,27 +498,6 @@
       <span class={muted} title={t('layout.titleUnsupported')}>{t('layout.titleUnsupported')}</span>
     {/if}
   </FieldRow>
-  <FieldRow label={t('insp.font')}>
-    <select
-      class={selectClass}
-      value={font}
-      aria-label={t('insp.font')}
-      data-testid={TID.inspFont}
-      onchange={(event) =>
-        updateConfig(setDiagramFont(inputState.mermaid, event.currentTarget.value as FontChoice))}>
-      {#if font === 'custom'}
-        <option value="custom" disabled>{t('insp.font.custom')}</option>
-      {/if}
-      {#each fontChoices as choice (choice)}
-        <option value={choice}>{t(`insp.font.${choice}`)}</option>
-      {/each}
-    </select>
-  </FieldRow>
-  <SwitchRow
-    label={t('toolbar.handDrawn')}
-    checked={!!inputState.rough}
-    testID={TID.roughToggle}
-    onchange={(rough) => updateCodeStore({ rough })} />
 </PanelGroup>
 
 <!-- アイコン: the picker and the packs (dialogs), unknown names, the AI briefing. -->
@@ -681,63 +530,14 @@
   <AiIconPrompt />
 </PanelGroup>
 
-<!-- 要素: the parts in a list, for diagrams whose parts cannot be clicked. -->
-<PanelGroup>
-  {#if !kind}
+<!-- The parts are picked from the tabs over the panel; a type the panel cannot edit says so. -->
+{#if !kind}
+  <PanelGroup>
     <FieldRow label={t('insp.elements')}>
       <span class={muted} title={t('edit.unsupported')}>{t('edit.unsupported')}</span>
     </FieldRow>
-  {:else if items.length === 0}
-    <FieldRow label={t('insp.elements')}>
-      <span class={muted}>{t('edit.objectsNone')}</span>
-    </FieldRow>
-  {:else}
-    <FieldRow label={t('insp.elements')}>
-      <select
-        class={selectClass}
-        value={selectedId}
-        aria-label={t(objectsKey)}
-        title={t('edit.objectsHint')}
-        data-testid={TID.inspObjectSelect}
-        onchange={(event) => {
-          const id = event.currentTarget.value;
-          if (id) select({ id, type: 'node' });
-        }}>
-        <option value="" disabled>{t(objectsKey)}</option>
-        {#each items as object (object.id)}
-          <option value={object.id}
-            >{object.line === undefined
-              ? displayName(object.label, object.id, items)
-              : object.label.replaceAll(' ', ' ')}</option>
-        {/each}
-      </select>
-    </FieldRow>
-  {/if}
-  {#if model.edges && kind}
-    <FieldRow label={t('insp.edges')}>
-      {#if edgeItems.length === 0}
-        <span class={muted} title={t(model.edges.unsure ? 'edit.edgesUnsure' : 'edit.edgesNone')}
-          >{t(model.edges.unsure ? 'edit.edgesUnsure' : 'edit.edgesNone')}</span>
-      {:else}
-        <select
-          class={selectClass}
-          value={selectedEdge}
-          aria-label={t('edit.edges')}
-          title={t('edit.edgesHint')}
-          data-testid={TID.inspEdgeSelect}
-          onchange={(event) => {
-            const index = event.currentTarget.value;
-            if (index !== '') select({ index: Number(index), type: 'edge' });
-          }}>
-          <option value="" disabled>{t('edit.edges')}</option>
-          {#each edgeItems as item (item.index)}
-            <option value={String(item.index)}>{item.title}</option>
-          {/each}
-        </select>
-      {/if}
-    </FieldRow>
-  {/if}
-</PanelGroup>
+  </PanelGroup>
+{/if}
 
 {#if message}
   <p role="status" class="px-3 py-1 text-xs text-muted-foreground" data-testid={TID.inspMessage}>

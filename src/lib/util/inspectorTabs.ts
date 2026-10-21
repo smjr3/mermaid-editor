@@ -14,7 +14,7 @@ import type { Selected } from './selection.svelte';
  * 矢印); the one exception is a gantt's 区分, which is only there with a section. The
  * words are the add bar's (InsertBar.svelte): 図形・矢印・レーン, 参加者・メッセージ, ….
  */
-export type InspectorTabId = 'all' | 'object' | 'element' | 'group' | 'edge';
+export type InspectorTabId = 'all' | 'selection' | 'object' | 'element' | 'group' | 'edge';
 
 export interface InspectorTab {
   id: InspectorTabId;
@@ -116,12 +116,15 @@ export const tabOfSelection = (
   return object ? tabOfObject(code, object) : 'object';
 };
 
-/** The objects a tab lists (the arrows are the edge list's, not an object). */
+/**
+ * The objects a tab lists (the arrows are the edge list's, not an object; 「選択」, the
+ * tab of a mixed multi-selection, lists nothing — inspectorMulti.ts).
+ */
 export const objectsOfTab = (
   code: string,
   tab: InspectorTabId,
   objects: EditObject[]
 ): EditObject[] =>
-  tab === 'all' || tab === 'edge'
+  tab === 'all' || tab === 'edge' || tab === 'selection'
     ? []
     : objects.filter((object) => tabOfObject(code, object) === tab);

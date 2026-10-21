@@ -3,22 +3,45 @@
   import { t } from '$/i18n';
   import { displayName } from '$/util/displayName';
   import { objectsOfTab, type InspectorTab } from '$/util/inspectorTabs';
-  import { select, selection } from '$/util/selection.svelte';
+  import { isSelected, select, selectMany, type Selected } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
 
   // Local: the list a tab of the inspector opens when nothing of its kind is selected
   // (Inspector.svelte): the objects of that kind (図形, レーン, タスク, トピック, …) or the
   // arrows, from the selection model's lists (the last valid code's, so it works while
-  // the code is broken too). A click selects the item, and the panel shows its rows. It
+  // the code is broken too). A click selects the item, and the panel shows its rows;
+  // Ctrl/⌘+click adds it to (or takes it out of) the selection and keeps the list open
+  // (the selected items are pressed); 「すべて選ぶ」 at the end selects the whole list. It
   // replaces the 要素 / 矢印 selects that sat at the bottom of 図全体.
   // `onpick`: the item is chosen (also when it was the selection already): the list closes.
-  let { onpick, tab }: { onpick?: () => void; tab: InspectorTab } = $props();
+  // `ontoggle`: a Ctrl/⌘+click (the inspector keeps the list open around it).
+  let {
+    onpick,
+    ontoggle,
+    tab
+  }: { onpick?: () => void; ontoggle?: (next: Selected) => void; tab: InspectorTab } = $props();
 
   const items = $derived(model.objects?.items ?? []);
   const objects = $derived(objectsOfTab(model.code, tab.id, items));
   const edges = $derived(model.edges?.items ?? []);
-  const selectedId = $derived(selection.current?.type === 'node' ? selection.current.id : '');
-  const selectedEdge = $derived(selection.current?.type === 'edge' ? selection.current.index : -1);
+  // Everything the list shows, for 「すべて選ぶ」.
+  const listed = $derived.by((): Selected[] =>
+    tab.id === 'edge'
+      ? edges.map((edge) => ({ index: edge.index, type: 'edge' }))
+      : objects.map((object) => ({ id: object.id, type: 'node' }))
+  );
+  const pick = (event: MouseEvent, next: Selected) => {
+    if ((event.ctrlKey || event.metaKey) && ontoggle) {
+      ontoggle(next);
+      return;
+    }
+    select(next);
+    onpick?.();
+  };
+  const pickAll = () => {
+    selectMany(listed);
+    onpick?.();
+  };
   const labelOf = (object: (typeof items)[number]) =>
     object.line === undefined
       ? displayName(object.label, object.id, items)
@@ -42,14 +65,11 @@
             <button
               type="button"
               class={item}
-              aria-pressed={edge.index === selectedEdge}
+              aria-pressed={isSelected({ index: edge.index, type: 'edge' })}
               title={edge.title}
               data-index={edge.index}
               data-testid={TID.inspPickItem}
-              onclick={() => {
-                select({ index: edge.index, type: 'edge' });
-                onpick?.();
-              }}>
+              onclick={(event) => pick(event, { index: edge.index, type: 'edge' })}>
               <span class="truncate">{edge.title}</span>
             </button>
           </li>
@@ -65,18 +85,25 @@
           <button
             type="button"
             class={item}
-            aria-pressed={object.id === selectedId}
+            aria-pressed={isSelected({ id: object.id, type: 'node' })}
             title={object.id}
             data-id={object.id}
             data-testid={TID.inspPickItem}
-            onclick={() => {
-              select({ id: object.id, type: 'node' });
-              onpick?.();
-            }}>
+            onclick={(event) => pick(event, { id: object.id, type: 'node' })}>
             <span class="truncate whitespace-pre">{labelOf(object)}</span>
           </button>
         </li>
       {/each}
     </ul>
+  {/if}
+  {#if listed.length > 1}
+    <div class="mt-1 flex justify-end border-t border-border pt-1">
+      <button
+        type="button"
+        class="h-6 rounded-md border border-input bg-background px-1.5 text-xs whitespace-nowrap hover:bg-muted"
+        title={t('insp.pickAll')}
+        data-testid={TID.inspPickAll}
+        onclick={pickAll}>{t('insp.pickAll')}</button>
+    </div>
   {/if}
 </div>

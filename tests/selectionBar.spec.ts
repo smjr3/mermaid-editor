@@ -315,8 +315,19 @@ test.describe('Selection bar', () => {
     await expect(outlines(page)).toHaveCount(1);
   });
 
-  test('a narrow window keeps one row and puts the rest under その他 ▾', async ({ page }) => {
+  test('a narrow window keeps one row and puts the rest under その他 ▾', async ({
+    editPage,
+    page
+  }) => {
     await page.setViewportSize({ height: 700, width: 900 });
+    // A link that carries no view keeps the stored one (the fixture's first visit, at the wide
+    // size), which can leave Right off-screen in the small window; a null view asks for a fit.
+    await editPage.start(
+      `/edit#base64:${Buffer.from(
+        JSON.stringify({ code: flow, mermaid: '{}', pan: null, zoom: null })
+      ).toString('base64')}`
+    );
+    await editPage.checkTextInView('Right');
     await node(page, 'Right').click();
     await expect(moreButton(page)).toBeVisible();
     const onBar = await barCmds(page);

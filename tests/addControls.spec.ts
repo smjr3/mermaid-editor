@@ -264,16 +264,32 @@ test.describe('Add bar: flowcharts and swimlanes', () => {
     await node('End').click();
     await expect(banner).toHaveAttribute('data-step', 'target');
     await expect(banner).toContainText(t('canvas.connectTarget'));
+    // The start is selected, but the bar keeps the add buttons with 矢印 pressed until the
+    // arrow is drawn: the second click must not find the bar changed under it.
+    await expect(outline(page)).toHaveAttribute('data-selected', 'C');
+    await expect(insertBar(page)).toHaveAttribute('data-mode', 'add');
+    await expect(insertBar(page).locator('[data-insert="connect"]')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     await node('Start').click();
     await expect.poll(() => stored(page)).toContain('C --> A');
     await expect(banner).toBeHidden();
     await expect(outline(page)).toHaveAttribute('data-selected', 'A');
+    await expect(insertBar(page)).toHaveAttribute('data-mode', 'selection');
 
-    // With a shape selected, 矢印 starts from it.
+    // With a shape selected, 矢印 (under 追加 ▾) starts from it, and the bar shows the same
+    // pressed 矢印 until やめる; then the selection's commands are back.
     await insert(page, 'connect');
     await expect(banner).toHaveAttribute('data-step', 'target');
+    await expect(insertBar(page)).toHaveAttribute('data-mode', 'add');
+    await expect(insertBar(page).locator('[data-insert="connect"]')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     await page.getByTestId(TID.canvasConnectCancel).click();
     await expect(banner).toBeHidden();
+    await expect(insertBar(page)).toHaveAttribute('data-mode', 'selection');
     await insert(page, 'connect');
     await page.keyboard.press('Escape');
     await expect(banner).toBeHidden();

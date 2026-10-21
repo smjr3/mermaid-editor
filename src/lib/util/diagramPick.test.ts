@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EditEdge, EditKind, EditObject } from './diagramModify';
-import { containing, pickTarget, type PickElement } from './diagramPick';
+import { boxBetween, containing, pickTarget, within, type PickElement } from './diagramPick';
 
 const el = (fields: Partial<PickElement>): PickElement => ({
   cls: '',
@@ -252,5 +252,36 @@ describe('lanes, groups, messages and relationships', () => {
     expect(containing(boxes, 15, 15)).toEqual([1, 0]);
     expect(containing(boxes, 50, 50)).toEqual([0]);
     expect(containing(boxes, 500, 5)).toEqual([]);
+  });
+});
+
+describe('boxBetween', () => {
+  it('normalises the corners of a drag in any direction', () => {
+    expect(boxBetween({ x: 10, y: 20 }, { x: 40, y: 60 })).toEqual({
+      height: 40,
+      left: 10,
+      top: 20,
+      width: 30
+    });
+    expect(boxBetween({ x: 40, y: 60 }, { x: 10, y: 20 })).toEqual({
+      height: 40,
+      left: 10,
+      top: 20,
+      width: 30
+    });
+  });
+});
+
+describe('within', () => {
+  const band = { height: 100, left: 0, top: 0, width: 100 };
+  it('is true for a box wholly inside the band', () => {
+    expect(within({ height: 10, left: 10, top: 10, width: 10 }, band)).toBe(true);
+    expect(within({ height: 100, left: 0, top: 0, width: 100 }, band)).toBe(true);
+  });
+  it('is false for a box that crosses the edge, lies outside, or is empty', () => {
+    expect(within({ height: 10, left: 95, top: 10, width: 10 }, band)).toBe(false);
+    expect(within({ height: 10, left: 10, top: -5, width: 10 }, band)).toBe(false);
+    expect(within({ height: 10, left: 200, top: 200, width: 10 }, band)).toBe(false);
+    expect(within({ height: 0, left: 10, top: 10, width: 0 }, band)).toBe(false);
   });
 });

@@ -8,6 +8,7 @@
  * - F2: rename it (an arrow: its label)
  * - Escape: clear the selection (or stop "ここから矢印")
  * - arrow keys: move along the arrows (→ ↓ to the next node, ← ↑ to the previous)
+ * - Ctrl/⌘+A: select everything selectable (`selectAllCommand`, with or without a selection)
  */
 import type { Selected } from './selection.svelte';
 
@@ -68,6 +69,16 @@ export const historyCommand = (event: KeyInput, typing: boolean): 'undo' | 'redo
   if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
   if (key === 'y' && !event.shiftKey) return 'redo';
   return undefined;
+};
+
+/**
+ * Ctrl/⌘+A outside a field and the code editor (which keep their own): select every
+ * object and arrow of the diagram. Works with nothing selected too.
+ */
+export const selectAllCommand = (event: KeyInput, typing: boolean): boolean => {
+  if (typing || event.isComposing || event.altKey || event.shiftKey) return false;
+  if (!event.ctrlKey && !event.metaKey) return false;
+  return event.key.toLowerCase() === 'a';
 };
 
 interface TargetLike {

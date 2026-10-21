@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { historyCommand, isTypingTarget, keyCommand } from './selectionKeys';
+import { historyCommand, isTypingTarget, keyCommand, selectAllCommand } from './selectionKeys';
 
 const node = { id: 'A', type: 'node' } as const;
 const edge = { index: 0, type: 'edge' } as const;
@@ -80,5 +80,18 @@ describe('historyCommand', () => {
     expect(historyCommand({ key: 'z' }, false)).toBeUndefined();
     expect(historyCommand({ altKey: true, ctrlKey: true, key: 'z' }, false)).toBeUndefined();
     expect(historyCommand({ ctrlKey: true, key: 'c' }, false)).toBeUndefined();
+  });
+});
+
+describe('selectAllCommand', () => {
+  it('is Ctrl/⌘+A outside the fields, with or without a selection', () => {
+    expect(selectAllCommand({ ctrlKey: true, key: 'a' }, false)).toBe(true);
+    expect(selectAllCommand({ key: 'A', metaKey: true }, false)).toBe(true);
+    expect(selectAllCommand({ ctrlKey: true, key: 'a' }, true)).toBe(false);
+    expect(selectAllCommand({ key: 'a' }, false)).toBe(false);
+    expect(selectAllCommand({ ctrlKey: true, key: 'a', shiftKey: true }, false)).toBe(false);
+    expect(selectAllCommand({ altKey: true, ctrlKey: true, key: 'a' }, false)).toBe(false);
+    expect(selectAllCommand({ ctrlKey: true, isComposing: true, key: 'a' }, false)).toBe(false);
+    expect(selectAllCommand({ ctrlKey: true, key: 'z' }, false)).toBe(false);
   });
 });

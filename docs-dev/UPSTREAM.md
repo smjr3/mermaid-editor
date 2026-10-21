@@ -513,7 +513,7 @@ conflict by keeping upstream's version.
 
 ## Current local file layer
 
-The following list is accurate as of **2026-10-05**. It is a snapshot, not a
+The following list is accurate as of **2026-10-21**. It is a snapshot, not a
 permanent allowlist.
 
 Re-derive it against the **current vendor base** — the `vendorBaseCommit` recorded in
@@ -646,10 +646,13 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/canvas/FlowInsert.svelte`         |
 | Added    | `src/lib/components/canvas/InsertBar.svelte`          |
 | Added    | `src/lib/components/canvas/InsertItems.svelte`        |
+| Added    | `src/lib/components/canvas/SelectionBar.svelte`       |
 | Added    | `src/lib/components/canvas/SpecInsert.svelte`         |
 | Added    | `src/lib/components/canvas/ViewModeSwitch.svelte`     |
 | Added    | `src/lib/components/canvas/ZoomControls.svelte`       |
 | Added    | `src/lib/components/canvas/connectMode.svelte.ts`     |
+| Added    | `src/lib/components/canvas/panMode.svelte.test.ts`    |
+| Added    | `src/lib/components/canvas/panMode.svelte.ts`         |
 | Added    | `src/lib/components/dialogs/ExportDialog.svelte`      |
 | Added    | `src/lib/components/dialogs/NewDiagramDialog.svelte`  |
 | Added    | `src/lib/components/dialogs/ShareDialog.svelte`       |
@@ -666,9 +669,13 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/inspector/Inspector.svelte`       |
 | Added    | `src/lib/components/inspector/Inspector.test.ts`      |
 | Added    | `src/lib/components/inspector/LaneSection.svelte`     |
+| Added    | `src/lib/components/inspector/LookRow.svelte`         |
+| Added    | `src/lib/components/inspector/MultiSection.svelte`    |
 | Added    | `src/lib/components/inspector/NameField.svelte`       |
 | Added    | `src/lib/components/inspector/NodeSection.svelte`     |
 | Added    | `src/lib/components/inspector/ObjectFields.svelte`    |
+| Added    | `src/lib/components/inspector/SelectSameRow.svelte`   |
+| Added    | `src/lib/components/inspector/TargetPicker.svelte`    |
 | Modified | `src/lib/constants.ts`                                |
 | Added    | `src/lib/i18n/en.ts`                                  |
 | Added    | `src/lib/i18n/i18n.test.ts`                           |
@@ -756,6 +763,10 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/imageExport.ts`                         |
 | Added    | `src/lib/util/insertActions.test.ts`                  |
 | Added    | `src/lib/util/insertActions.ts`                       |
+| Added    | `src/lib/util/inspectorMulti.test.ts`                 |
+| Added    | `src/lib/util/inspectorMulti.ts`                      |
+| Added    | `src/lib/util/inspectorTabs.test.ts`                  |
+| Added    | `src/lib/util/inspectorTabs.ts`                       |
 | Added    | `src/lib/util/layout.test.ts`                         |
 | Added    | `src/lib/util/layout.ts`                              |
 | Added    | `src/lib/util/localSamples.test.ts`                   |
@@ -770,6 +781,7 @@ modifications as if they were local customizations.
 | Modified | `src/lib/util/migrations.svelte.ts`                   |
 | Modified | `src/lib/util/migrations.test.ts`                     |
 | Added    | `src/lib/util/monacoInsert.ts`                        |
+| Added    | `src/lib/util/moveAvailability.svelte.ts`             |
 | Added    | `src/lib/util/newDiagram.test.ts`                     |
 | Added    | `src/lib/util/newDiagram.ts`                          |
 | Added    | `src/lib/util/newTab.ts`                              |
@@ -784,6 +796,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/renderScheduler.ts`                     |
 | Added    | `src/lib/util/renderView.test.ts`                     |
 | Modified | `src/lib/util/renderView.ts`                          |
+| Added    | `src/lib/util/reorder.test.ts`                        |
+| Added    | `src/lib/util/reorder.ts`                             |
 | Added    | `src/lib/util/revealView.test.ts`                     |
 | Added    | `src/lib/util/revealView.ts`                          |
 | Added    | `src/lib/util/sampleCatalog.test.ts`                  |
@@ -798,8 +812,11 @@ modifications as if they were local customizations.
 | Added    | `src/lib/util/selection.test.ts`                      |
 | Added    | `src/lib/util/selectionActions.test.ts`               |
 | Added    | `src/lib/util/selectionActions.ts`                    |
+| Added    | `src/lib/util/selectionCommands.test.ts`              |
+| Added    | `src/lib/util/selectionCommands.ts`                   |
 | Added    | `src/lib/util/selectionKeys.test.ts`                  |
 | Added    | `src/lib/util/selectionKeys.ts`                       |
+| Added    | `src/lib/util/selectionModel.multi.test.ts`           |
 | Added    | `src/lib/util/selectionModel.svelte.ts`               |
 | Added    | `src/lib/util/serde.compat.test.ts`                   |
 | Modified | `src/lib/util/serde.test.ts`                          |
@@ -850,6 +867,7 @@ modifications as if they were local customizations.
 | Added    | `tests/colors.spec.ts`                                |
 | Modified | `tests/configMigration.spec.ts`                       |
 | Added    | `tests/configReset.spec.ts`                           |
+| Added    | `tests/contextMenu.spec.ts`                           |
 | Added    | `tests/contradictions.spec.ts`                        |
 | Modified | `tests/diagramUpdate.spec.ts`                         |
 | Deleted  | `tests/docMap.spec.ts`                                |
@@ -876,11 +894,14 @@ modifications as if they were local customizations.
 | Added    | `tests/iconLicenses.spec.ts`                          |
 | Added    | `tests/iconPacks.spec.ts`                             |
 | Added    | `tests/inspector.spec.ts`                             |
+| Added    | `tests/inspectorMulti.spec.ts`                        |
+| Added    | `tests/inspectorTabs.spec.ts`                         |
 | Added    | `tests/invariants.ts`                                 |
 | Added    | `tests/layout.spec.ts`                                |
 | Modified | `tests/loadSite.spec.ts`                              |
 | Modified | `tests/managedTheme.spec.ts`                          |
 | Added    | `tests/monkey.spec.ts`                                |
+| Added    | `tests/multiSelect.spec.ts`                           |
 | Added    | `tests/newDiagram.spec.ts`                            |
 | Added    | `tests/offline.spec.ts`                               |
 | Added    | `tests/onboarding.spec.ts`                            |
@@ -890,6 +911,7 @@ modifications as if they were local customizations.
 | Added    | `tests/releaseAudit.spec.ts`                          |
 | Added    | `tests/renameSymbol.spec.ts`                          |
 | Added    | `tests/selection.spec.ts`                             |
+| Added    | `tests/selectionBar.spec.ts`                          |
 | Added    | `tests/swimlane.spec.ts`                              |
 | Added    | `tests/tableEditor.spec.ts`                           |
 | Added    | `tests/templateForms.spec.ts`                         |

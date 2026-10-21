@@ -1,14 +1,17 @@
 <script lang="ts">
+  import { panMode, togglePanMode } from '$/components/canvas/panMode.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import type { PanZoomState } from '$/util/panZoom';
   import { defaultState, inputState, updateCodeStore } from '$/util/state.svelte';
   import GridIcon from '~icons/material-symbols/grid-4x4-rounded';
+  import HandIcon from '~icons/material-symbols/pan-tool-outline-rounded';
   import MinusIcon from '~icons/material-symbols/remove-rounded';
   import PlusIcon from '~icons/material-symbols/add-rounded';
 
   // Local: the view controls at the bottom right of the diagram: − / the zoom level / ＋ /
-  // 全体 (fit the diagram to the view) | the background grid. They replace the bar that
+  // 全体 (fit the diagram to the view) | 移動 (while pressed a plain drag moves the picture
+  // instead of drawing the selection band; panMode.svelte.ts) | the background grid. They replace the bar that
   // ran across the top of the diagram (zoom, fit, "open in a new tab", hand-drawn, grid);
   // the hand-drawn look moved to the inspector, and the new-tab view was dropped.
   // Local (QA 2026-10-13): while the History sheet is open (`sheetOpen`) it floats over the
@@ -82,6 +85,15 @@
     aria-label={t('panzoom.resetView')}
     data-testid={TID.resetViewButton}
     onclick={() => panZoomState.reset()}>{t('canvas.fit')}</button>
+  <span class="mx-0.5 h-5 w-px bg-border" aria-hidden="true"></span>
+  <button
+    type="button"
+    class={[button, 'gap-1 px-1.5']}
+    title={t('canvas.panHint')}
+    aria-label={t('canvas.panHint')}
+    aria-pressed={panMode.on}
+    data-testid={TID.panToggle}
+    onclick={togglePanMode}><HandIcon />{t('canvas.pan')}</button>
   <span class="mx-0.5 h-5 w-px bg-border" aria-hidden="true"></span>
   <button
     type="button"

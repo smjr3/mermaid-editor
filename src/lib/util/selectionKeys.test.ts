@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { historyCommand, isTypingTarget, keyCommand } from './selectionKeys';
+import { historyCommand, isTypingTarget, keyCommand, selectAllCommand } from './selectionKeys';
 
 const node = { id: 'A', type: 'node' } as const;
 const edge = { index: 0, type: 'edge' } as const;
@@ -57,9 +57,19 @@ describe('isTypingTarget', () => {
 
   it('works on real elements', () => {
     document.body.innerHTML =
-      '<div class="monaco-editor"><span id="in"></span></div><div id="out"></div>';
+      '<div class="monaco-editor"><span id="in"></span></div><div id="out"></div><div role="toolbar"><button id="bar"></button></div>';
     expect(isTypingTarget(document.querySelector('#in'))).toBe(true);
     expect(isTypingTarget(document.querySelector('#out'))).toBe(false);
+    // A focused button of the bar over the diagram: Tab moves on, Enter and Space press it;
+    // Escape, Delete and the arrows are still the selection's.
+    const button = document.querySelector('#bar');
+    expect(isTypingTarget(button)).toBe(false);
+    expect(isTypingTarget(button, 'Tab')).toBe(true);
+    expect(isTypingTarget(button, 'Enter')).toBe(true);
+    expect(isTypingTarget(button, ' ')).toBe(true);
+    expect(isTypingTarget(button, 'Escape')).toBe(false);
+    expect(isTypingTarget(button, 'Delete')).toBe(false);
+    expect(isTypingTarget(document.querySelector('#out'), 'Tab')).toBe(false);
   });
 });
 
@@ -80,5 +90,18 @@ describe('historyCommand', () => {
     expect(historyCommand({ key: 'z' }, false)).toBeUndefined();
     expect(historyCommand({ altKey: true, ctrlKey: true, key: 'z' }, false)).toBeUndefined();
     expect(historyCommand({ ctrlKey: true, key: 'c' }, false)).toBeUndefined();
+  });
+});
+
+describe('selectAllCommand', () => {
+  it('is Ctrl/⌘+A outside the fields, with or without a selection', () => {
+    expect(selectAllCommand({ ctrlKey: true, key: 'a' }, false)).toBe(true);
+    expect(selectAllCommand({ key: 'A', metaKey: true }, false)).toBe(true);
+    expect(selectAllCommand({ ctrlKey: true, key: 'a' }, true)).toBe(false);
+    expect(selectAllCommand({ key: 'a' }, false)).toBe(false);
+    expect(selectAllCommand({ ctrlKey: true, key: 'a', shiftKey: true }, false)).toBe(false);
+    expect(selectAllCommand({ altKey: true, ctrlKey: true, key: 'a' }, false)).toBe(false);
+    expect(selectAllCommand({ ctrlKey: true, isComposing: true, key: 'a' }, false)).toBe(false);
+    expect(selectAllCommand({ ctrlKey: true, key: 'z' }, false)).toBe(false);
   });
 });

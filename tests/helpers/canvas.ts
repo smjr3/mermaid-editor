@@ -103,6 +103,60 @@ export const viewMode = (page: Page, mode: 'diagram' | 'table' | 'both') =>
 export const menuItem = (page: Page, key: string) =>
   page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuItem}-${key}`);
 
+/** A submenu row of the right-click menu by its key (color, shape, lineStyle, selectSame, …). */
+export const menuSub = (page: Page, key: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuSub}-${key}`);
+
+/** The open panel of a submenu. */
+export const menuSubPanel = (page: Page, key: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuSub}-${key}-panel`);
+
+/** A choice inside a submenu by its command key and value (fillColor / blue, shape / circle, …). */
+export const menuChoice = (page: Page, command: string, value: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuChoice}-${command}-${value}`);
+
+/** Opens a submenu of the right-click menu by hovering its row. */
+export const openMenuSub = async (page: Page, key: string): Promise<void> => {
+  await menuSub(page, key).hover();
+  await expect(menuSubPanel(page, key)).toBeVisible();
+};
+
+/** The pan/zoom transform of the drawn diagram (the viewport `<g>`), or null without pan/zoom. */
+export const viewTransform = (page: Page) =>
+  page.locator('#container .svg-pan-zoom_viewport').getAttribute('transform');
+
+/**
+ * Moves the picture by (dx, dy) screen pixels the way a mouse does on /edit: a drag with
+ * the middle (wheel) button, or, with `how: 'space'`, a left drag with Space held. A plain
+ * left drag from the empty canvas draws the rubber band instead (SelectionLayer.svelte).
+ * Starts from `from`, or from the bottom-left corner of the view.
+ */
+export const panBy = async (
+  page: Page,
+  dx: number,
+  dy: number,
+  { from, how = 'middle' }: { from?: { x: number; y: number }; how?: 'middle' | 'space' } = {}
+): Promise<void> => {
+  const view = await page.locator('#view').boundingBox();
+  if (!view) throw new Error('No diagram view');
+  const start = from ?? { x: view.x + 20, y: view.y + view.height - 20 };
+  await page.mouse.move(start.x, start.y);
+  if (how === 'space') {
+    await page.keyboard.down('Space');
+    await page.mouse.down();
+  } else {
+    await page.mouse.down({ button: 'middle' });
+  }
+  await page.mouse.move(start.x + dx / 2, start.y + dy / 2, { steps: 3 });
+  await page.mouse.move(start.x + dx, start.y + dy, { steps: 3 });
+  if (how === 'space') {
+    await page.mouse.up();
+    await page.keyboard.up('Space');
+  } else {
+    await page.mouse.up({ button: 'middle' });
+  }
+};
+
 export const zoomIn = (page: Page) => page.getByTestId(TID.zoomInButton).click();
 export const zoomOut = (page: Page) => page.getByTestId(TID.zoomOutButton).click();
 export const resetView = (page: Page) => page.getByTestId(TID.resetViewButton).click();

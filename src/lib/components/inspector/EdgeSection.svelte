@@ -4,6 +4,7 @@
   import Segmented from '$/components/form/Segmented.svelte';
   import ColorRow from '$/components/inspector/ColorRow.svelte';
   import DetailFieldRow from '$/components/inspector/DetailFieldRow.svelte';
+  import SelectSameRow from '$/components/inspector/SelectSameRow.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
@@ -80,6 +81,8 @@
         </div>
       </FieldRow>
     {/if}
+    <!-- 「同じものを選ぶ」: the same row the multi view has (SelectSameRow). -->
+    <SelectSameRow />
     <div class="flex items-center gap-1">
       {#if can?.reverse}
         <Button

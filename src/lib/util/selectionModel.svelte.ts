@@ -7,10 +7,18 @@
  * those cards' functions. Code edits are applied only if mermaid still parses the
  * result as the same type (`checkEdit`, as the Edit card does); colours go straight
  * in, as the Colours card does.
+ *
+ * The selection may hold several items (selection.svelte.ts): `targets`,
+ * `selectedObjects` and `selectedEdges` list them; the singular `object` / `edge` are
+ * the primary one, which the single-selection rows keep using. `applyToAll` runs a
+ * code rewrite over every item and writes once (one undo step); `commonValue` tells
+ * a row whether the items agree (or shows 「まちまち」). `removeAll` deletes them all
+ * in one step. The command registry (selectionCommands.ts) is built on these.
  */
 import { t } from '$/i18n';
 import type { MessageKey } from '$/i18n/messages';
 import {
+  type ColorSyntax,
   getEdgeColor,
   getObjectColor,
   getObjectStroke,
@@ -60,6 +68,7 @@ import {
   setServiceIcon,
   type EdgeHead,
   type EdgeStyle,
+  type EditEdge,
   type EditEdges,
   type EditObject,
   type EditObjects
@@ -91,6 +100,7 @@ import {
   sameSelection,
   select,
   selection,
+  selectMany,
   type Selected
 } from './selection.svelte';
 import { applyToolEdit, editsBlocked } from './codeHealth.svelte';
@@ -102,6 +112,27 @@ const idRejections = {
   invalid: 'editor.renameInvalid',
   taken: 'editor.renameTaken'
 } as const satisfies Record<string, MessageKey>;
+
+/** One selected item with what it names in the current lists. */
+export interface SelectionTarget {
+  selected: Selected;
+  object?: EditObject;
+  edge?: EditEdge;
+}
+
+/** `commonValue`: the selected items do not agree. */
+export const MIXED: unique symbol = Symbol('mixed');
+export type Mixed = typeof MIXED;
+export const isMixed = (value: unknown): value is Mixed => value === MIXED;
+
+/** Equal, or swatches / plain objects with the same entries. */
+const sameValue = (a: unknown, b: unknown): boolean =>
+  a === b ||
+  (!!a &&
+    !!b &&
+    typeof a === 'object' &&
+    typeof b === 'object' &&
+    JSON.stringify(a) === JSON.stringify(b));
 
 class SelectionModel {
   /** The code the lists below were read from. */
@@ -140,6 +171,18 @@ class SelectionModel {
     const current = selection.current;
     return current?.type === 'edge' ? this.edges?.items[current.index] : undefined;
   });
+  /** Every selected item, in the order chosen, with what it names (items the lists lack are left out). */
+  targets = $derived.by((): SelectionTarget[] =>
+    selection.items
+      .map((selected): SelectionTarget => ({ selected, ...this.resolve(selected) }))
+      .filter(({ object, edge }) => object !== undefined || edge !== undefined)
+  );
+  /** The selected objects, in the order chosen. */
+  selectedObjects = $derived(this.targets.flatMap(({ object }) => (object ? [object] : [])));
+  /** The selected arrows, in the order chosen. */
+  selectedEdges = $derived(this.targets.flatMap(({ edge }) => (edge ? [edge] : [])));
+  /** More than one item is selected: the rows act on all of them. */
+  multiple = $derived(selection.items.length > 1);
   /** How the selected object's colour is written, or undefined where it has none. */
   syntax = $derived(colorSyntaxFor(this.kind, this.object, this.colourable));
   /** A flowchart node's shape, lane and icon. */
@@ -191,20 +234,88 @@ class SelectionModel {
     this.objects = objects;
     this.edges = edges;
     this.colourable = colours?.items.map(({ id }) => id) ?? [];
-    const current = selection.current;
-    if (current?.type === 'node' && !objects?.items.some(({ id }) => id === current.id)) {
-      clearSelection();
-    } else if (current?.type === 'edge' && current.index >= (edges?.items.length ?? 0)) {
-      clearSelection();
+    // Items the code no longer has go; the ones left keep their order and primary.
+    const kept = selection.items.filter((item) =>
+      item.type === 'node'
+        ? objects?.items.some(({ id }) => id === item.id)
+        : item.index < (edges?.items.length ?? 0)
+    );
+    if (kept.length !== selection.items.length) {
+      if (kept.length === 0) clearSelection();
+      else selectMany(kept);
     }
   }
+
+  /** How an object's colour is written (colors.ts), or undefined where it has none. */
+  syntaxOf = (object: EditObject | undefined): ColorSyntax | undefined =>
+    colorSyntaxFor(this.kind, object, this.colourable);
+
+  /**
+   * The value every selected item agrees on, `MIXED` when they differ, undefined when
+   * `getter` has nothing for any of them (items it returns undefined for are skipped).
+   */
+  commonValue = <T>(getter: (target: SelectionTarget) => T | undefined): T | Mixed | undefined => {
+    let found: T | undefined;
+    let any = false;
+    for (const target of this.targets) {
+      const value = getter(target);
+      if (value === undefined) continue;
+      if (any && !sameValue(found, value)) return MIXED;
+      found = value;
+      any = true;
+    }
+    return found;
+  };
+
+  /**
+   * Runs `fn` over every selected item in turn (each call sees the code the one before
+   * returned; undefined leaves the code as it was), checks the result once with mermaid
+   * and writes it once — one undo step. Refused while the code is broken, as every edit
+   * is (codeHealth.svelte.ts). Resolves to whether the code changed.
+   *
+   * The targets carry what the lists said about each item (an arrow's style and head,
+   * an object's line …) for the code the lists were read from. Right after an edit,
+   * before the next `sync` lands, that code is not the current one, and a rewrite made
+   * from the old properties would write them back (a head just removed would return
+   * with the next change). So when the code moved on, the lists are read again first
+   * and the targets named again by id or index; an item the code no longer has is
+   * left out.
+   */
+  applyToAll = async (
+    fn: (code: string, target: SelectionTarget) => string | undefined,
+    done: string = t('edit.updated'),
+    targets: SelectionTarget[] = this.targets
+  ): Promise<boolean> => {
+    if (editsBlocked()) {
+      this.warn('recover.blocked');
+      return false;
+    }
+    let code = inputState.code;
+    const before = code;
+    let items = targets;
+    if (this.code !== code) {
+      await this.sync(code);
+      // The code changed again while the lists were read: that edit was made for the old code.
+      if (inputState.code !== code) return false;
+      items = targets.flatMap((target) => {
+        const resolved = this.resolve(target.selected);
+        return resolved.object || resolved.edge ? [{ selected: target.selected, ...resolved }] : [];
+      });
+    }
+    for (const target of items) {
+      const next = fn(code, target);
+      if (next !== undefined) code = next;
+    }
+    if (code === before) return false;
+    return this.apply(code, done);
+  };
 
   private say(key: MessageKey, params?: Record<string, string>) {
     this.message = t(key, params);
   }
 
   /** A refusal: in the panel, and over the diagram for a few seconds. */
-  private warn(key: MessageKey, params?: Record<string, string>) {
+  warn(key: MessageKey, params?: Record<string, string>) {
     this.say(key, params);
     this.warning = this.message;
     clearTimeout(this.warningTimer);
@@ -342,6 +453,10 @@ class SelectionModel {
   remove = async (keepContents = false) => {
     const { kind, object, edge } = this;
     if (!kind) return;
+    if (this.multiple) {
+      await this.removeAll(keepContents);
+      return;
+    }
     if (object && !object.noDelete) {
       const done = await this.apply(
         deleteObject(inputState.code, kind, object, { keepContents }),
@@ -353,6 +468,46 @@ class SelectionModel {
         clearSelection();
       }
     }
+  };
+
+  /**
+   * Deletes every selected item in one step: the arrows first, from the highest index
+   * (or line) down so the lower ones keep their place, then the objects (a deleted
+   * object takes its arrows with it, which is why the arrows go first).
+   */
+  removeAll = async (keepContents = false) => {
+    const { kind } = this;
+    if (!kind) return;
+    const edges = [...this.selectedEdges].sort(
+      (a, b) => (b.line ?? b.index) - (a.line ?? a.index) || b.index - a.index
+    );
+    // Line-based objects (a mindmap topic, a kanban card) are named by their line, which
+    // a deletion above them shifts: the lowest line goes last.
+    const objects = this.selectedObjects
+      .filter(({ noDelete }) => !noDelete)
+      .sort((a, b) => (b.line ?? -1) - (a.line ?? -1));
+    const count = edges.length + objects.length;
+    if (count === 0) return;
+    const done = await this.applyToAll(
+      (code, { edge, object }) =>
+        edge
+          ? deleteEdge(code, kind, edge)
+          : object
+            ? deleteObject(code, kind, object, { keepContents })
+            : undefined,
+      t('sel.deletedMany', { count: String(count) }),
+      [
+        ...edges.map((edge): SelectionTarget => ({
+          edge,
+          selected: { index: edge.index, type: 'edge' }
+        })),
+        ...objects.map((object): SelectionTarget => ({
+          object,
+          selected: { id: object.id, type: 'node' }
+        }))
+      ]
+    );
+    if (done) clearSelection();
   };
 
   // ---- Colours and text (colors.ts) ----

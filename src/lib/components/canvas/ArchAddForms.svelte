@@ -23,6 +23,9 @@
   // (an icon, a group, and joined on a chosen side of another service) and 接続 between
   // two services (diagramEdit.ts), each a form in a popover. The values live here, so a
   // new group is chosen for the next service and the next service follows the last one.
+  // `inline` / `moreLabel`: how many entries sit on the bar and what the menu of the rest is
+  // called (InsertItems.svelte); none on the bar while the selection's commands take it.
+  let { inline = 5, moreLabel }: { inline?: number; moreLabel?: string } = $props();
   let groups = $state<DiagramObject[]>([]);
   let services = $state<DiagramObject[]>([]);
   $effect(() => {
@@ -154,7 +157,7 @@
   </label>
 {/snippet}
 
-<InsertItems {entries}>
+<InsertItems {entries} {inline} {moreLabel}>
   {#snippet form(key)}
     {#if key === 'group'}
       <AddFormFrame

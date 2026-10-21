@@ -96,7 +96,7 @@ test.describe('Selection', () => {
     await expect.poll(() => code(page)).not.toContain('n3');
   });
 
-  test('the right-click menu has the six edits, one line each, and deletes', async ({
+  test('the right-click menu lists the registry’s commands, one line each, and deletes', async ({
     editPage,
     page
   }) => {
@@ -105,21 +105,34 @@ test.describe('Selection', () => {
     await expect(menu).toBeVisible();
     await expect(outline(page)).toHaveAttribute('data-selected', 'C');
     const items = menu.getByRole('menuitem');
+    // Actions are rows, choices are submenus (色 ▸ gathers the three colour commands);
+    // 削除 is last.
     expect(
       await items.evaluateAll((elements) =>
         elements.map((element) => element.getAttribute('data-testid'))
       )
-    ).toEqual(
-      ['rename', 'color', 'shape', 'add-after', 'connect', 'delete'].map(
-        (key) => `${TID.contextMenuItem}-${key}`
-      )
-    );
+    ).toEqual([
+      `${TID.contextMenuItem}-add-after`,
+      `${TID.contextMenuItem}-addBranch`,
+      `${TID.contextMenuItem}-connect`,
+      `${TID.contextMenuItem}-rename`,
+      `${TID.contextMenuSub}-color`,
+      `${TID.contextMenuSub}-shape`,
+      `${TID.contextMenuSub}-textSize`,
+      `${TID.contextMenuItem}-bold`,
+      `${TID.contextMenuSub}-selectSame`,
+      `${TID.contextMenuItem}-delete`
+    ]);
     await expect(items).toHaveText([
+      `${t('insp.addNext')} Enter`,
+      `${t('insp.addBranch')} Tab`,
+      t('sel.connect'),
       `${t('canvas.menuRename')} F2`,
-      t('canvas.menuColor'),
-      t('canvas.menuShape'),
-      `${t('canvas.menuAddNext')} Enter`,
-      t('canvas.menuConnect'),
+      `${t('sel.color')} ▸`,
+      `${t('sel.shape')} ▸`,
+      `${t('sel.size')} ▸`,
+      t('sel.bold'),
+      `${t('sel.cmd.selectSame')} ▸`,
       `${t('sel.delete')} Del`
     ]);
     // Each item is a single line.
@@ -143,19 +156,20 @@ test.describe('Selection', () => {
     await expect(outline(page)).toHaveAttribute('data-selected', 'n1');
   });
 
-  test('色を変える and 形を変える open the inspector at that row', async ({ page }) => {
+  test('色 and 形 change the diagram in place; the inspector stays folded', async ({ page }) => {
     await page.getByTestId(TID.inspCollapse).click();
     await expect(page.getByTestId(TID.wsInspectorRail)).toBeVisible();
     await node(page, 'Start').click({ button: 'right' });
-    await menuItem(page, 'color').click();
+    await page.getByTestId(`${TID.contextMenuSub}-color`).hover();
+    await page.getByTestId(`${TID.contextMenuChoice}-fillColor-blue`).click();
     await expect(page.getByTestId(TID.contextMenu)).toBeHidden();
-    // The inspector was asked to show its colour row: it unfolds.
-    await expect(page.getByTestId(TID.wsInspectorRail)).toBeHidden();
-    await page.getByTestId(TID.inspCollapse).click();
+    await expect.poll(() => code(page)).toMatch(/style A fill:#dde9fb/);
     await node(page, 'Start').click({ button: 'right' });
-    await menuItem(page, 'shape').click();
-    await expect(page.getByTestId(TID.wsInspectorRail)).toBeHidden();
-    expect(await code(page)).toBe(flow);
+    await page.getByTestId(`${TID.contextMenuSub}-shape`).hover();
+    await page.getByTestId(`${TID.contextMenuChoice}-shape-circle`).click();
+    await expect.poll(() => code(page)).toContain('A((Start))');
+    // Neither asked the inspector to unfold.
+    await expect(page.getByTestId(TID.wsInspectorRail)).toBeVisible();
   });
 
   test('次の処理を追加 from the menu adds after the node', async ({ page }) => {
@@ -171,9 +185,14 @@ test.describe('Selection', () => {
     await page.locator('#view g.edgeLabel', { hasText: 'yes' }).click({ button: 'right' });
     const items = page.getByTestId(TID.contextMenu).getByRole('menuitem');
     await expect(items).toHaveText([
+      // An arrow's name is its label (selectionCommands.ts).
       `${t('sel.renameLabel')} F2`,
-      t('canvas.menuColor'),
-      t('sel.reverse'),
+      `${t('sel.color')} ▸`,
+      `${t('insp.edgeStyle')} ▸`,
+      `${t('sel.head')} ▸`,
+      `${t('edge.length')} ▸`,
+      t('insp.edgeReverse'),
+      `${t('sel.cmd.selectSame')} ▸`,
       `${t('sel.delete')} Del`
     ]);
     await menuItem(page, 'reverse').click();
@@ -235,8 +254,8 @@ test.describe('Selection', () => {
     await page.keyboard.press('Enter');
     await expect.poll(() => code(page)).toContain('s2 --> s3');
     await expect(outline(page)).toHaveAttribute('data-selected', 's3');
-    // The menu says 次を追加 outside flowcharts.
+    // The menu offers ＋次 with its key outside flowcharts too.
     await page.locator('#view .node', { hasText: 's1' }).first().click({ button: 'right' });
-    await expect(menuItem(page, 'add-after')).toHaveText(`${t('canvas.menuAddNextOther')} Enter`);
+    await expect(menuItem(page, 'add-after')).toHaveText(`${t('insp.addNext')} Enter`);
   });
 });

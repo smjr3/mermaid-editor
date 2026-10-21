@@ -1,20 +1,44 @@
 <script lang="ts">
   import { connectMode, stopConnect } from '$/components/canvas/connectMode.svelte';
+  import {
+    dragGesture,
+    panCursor,
+    panMode,
+    stopPanMode,
+    type DragGesture
+  } from '$/components/canvas/panMode.svelte';
   import DiagramContextMenu from '$/components/DiagramContextMenu.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { containing, pickTarget, type PickElement } from '$/util/diagramPick';
+  import {
+    boxBetween,
+    containing,
+    pickTarget,
+    within,
+    type Box,
+    type PickElement
+  } from '$/util/diagramPick';
   import {
     clearSelection,
+    isSelected,
     requestRename,
     sameSelection,
     select,
     selection,
+    selectionKey,
+    selectMany,
     startConnect,
+    toggleSelect,
     type Selected
   } from '$/util/selection.svelte';
   import { canConnect } from '$/util/selectionActions';
-  import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
+  import { allSelectable } from '$/util/selectionCommands';
+  import {
+    historyCommand,
+    isTypingTarget,
+    keyCommand,
+    selectAllCommand
+  } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import type { PanZoomState } from '$/util/panZoom';
   import { settledState } from '$/util/settledState.svelte';
@@ -25,7 +49,14 @@
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
   // marks it (the inspector beside the diagram shows what it is and changes it), a right
   // click opens a menu, a double click renames, and the keys of selectionKeys.ts act on
-  // it. While an arrow is being drawn (the add bar's 矢印, "ここから矢印を引く") a banner says
+  // it. Several items: Ctrl/⌘+click adds one or takes it out; a plain drag that starts on
+  // the empty canvas draws a rubber band and selects every object and arrow drawn wholly
+  // inside it (with Ctrl/⌘ held it adds them); Ctrl/⌘+A selects everything. The mouse
+  // moves the picture with the middle button, with Space held, or while the 移動 button of
+  // the zoom controls is pressed (panMode.svelte.ts; the pans go to `panZoomState`);
+  // svg-pan-zoom's own mouse pan never sees a mouse press here, touch keeps its gestures.
+  // Every selected item gets
+  // an outline, the primary one marked `data-primary`. While an arrow is being drawn (the add bar's 矢印, "ここから矢印を引く") a banner says
   // which shape to click next. Drawn as an overlay so the SVG itself (which PNG and SVG
   // export read) is never touched. Clicks on anything marked `data-selection-ui` (the
   // menu, the banner, the add bar's popovers, the inspector's fields) are not clicks on
@@ -102,7 +133,12 @@
    * are thin), else the smallest lane or group around it (an architecture group's box
    * has no fill, so the click lands on the canvas).
    */
-  const pickNear = (svg: SVGSVGElement, x: number, y: number): Selected | undefined => {
+  const pickNear = (
+    svg: SVGSVGElement,
+    x: number,
+    y: number,
+    groups = true
+  ): Selected | undefined => {
     const ctx = context(svg);
     if (!ctx) return undefined;
     for (const shape of svg.querySelectorAll<SVGGeometryElement>('path, line, polyline')) {
@@ -116,26 +152,35 @@
       shape.style.strokeWidth = width;
       if (hit) return picked;
     }
-    const groups = [...svg.querySelectorAll('g.cluster, rect[id*="-group-"]')];
+    if (!groups) return undefined;
+    const around = [...svg.querySelectorAll('g.cluster, rect[id*="-group-"]')];
     for (const index of containing(
-      groups.map((group) => group.getBoundingClientRect()),
+      around.map((group) => group.getBoundingClientRect()),
       x,
       y
     )) {
-      const picked = pickTarget([describe(groups[index])], ctx);
+      const picked = pickTarget([describe(around[index])], ctx);
       if (picked) return picked;
     }
     return undefined;
   };
 
-  /** The object or arrow under an event's target, or near the click. */
-  const pickAt = (target: EventTarget | null, at?: MouseEvent): Selected | undefined => {
+  /**
+   * The object or arrow under an event's target, or near the click. Without `groups`, the
+   * lane or group merely around the point does not count: a drag inside one draws the
+   * band (a click still selects the group).
+   */
+  const pickAt = (
+    target: EventTarget | null,
+    at?: MouseEvent,
+    groups = true
+  ): Selected | undefined => {
     const svg = svgOf();
     if (!svg || !(target instanceof Element) || !svg.contains(target)) return undefined;
     const ctx = context(svg);
     if (!ctx) return undefined;
     const direct = pickPath(target, ctx);
-    return direct ?? (at ? pickNear(svg, at.clientX, at.clientY) : undefined);
+    return direct ?? (at ? pickNear(svg, at.clientX, at.clientY, groups) : undefined);
   };
 
   const pickPath = (
@@ -174,55 +219,117 @@
     return candidates.find((e) => preferred(e) && matches(e)) ?? candidates.find(matches);
   };
 
-  // Where the selection is drawn, relative to the host; followed every frame while
-  // something is selected, so panning, zooming and re-rendering keep the outline on it.
-  let box = $state<{ x: number; y: number; width: number; height: number } | undefined>();
-  let placed: Selected | undefined;
+  // Where the selected items are drawn, relative to the host, by their key; followed
+  // every frame while something is selected, so panning, zooming and re-rendering keep
+  // the outlines on them.
+  let boxes = $state<Record<string, Box>>({});
   $effect(() => {
-    const selected = selection.current;
-    // Read so a new render or list re-finds the element.
+    const items = selection.items;
+    // Read so a new render or list re-finds the elements.
     void model.objects;
     void model.edges;
-    if (!selected || !host) {
-      box = undefined;
+    if (items.length === 0 || !host) {
+      boxes = {};
       return;
     }
-    // Another selection starts unplaced; the same one after a render keeps its place.
-    // A node just added (its rename already open) keeps the outline where it was until
-    // the new node is drawn.
-    if (!sameSelection(placed, selected) && !untrack(() => selection.renaming)) box = undefined;
-    placed = selected;
-    let element: Element | undefined;
+    untrack(() => {
+      // An item still selected keeps its place after a render; a new one starts unplaced.
+      // A node just added (its rename already open) keeps the outline where it was until
+      // the new node is drawn.
+      const kept: Record<string, Box> = {};
+      for (const item of items) {
+        const key = selectionKey(item);
+        if (boxes[key]) kept[key] = boxes[key];
+      }
+      const previous = Object.values(boxes)[0];
+      if (Object.keys(kept).length === 0 && selection.renaming && items.length === 1 && previous) {
+        kept[selectionKey(items[0])] = previous;
+      }
+      boxes = kept;
+    });
+    const elements: Record<string, Element | undefined> = {};
     let frame = 0;
     const follow = () => {
-      if (!element?.isConnected) element = findElement(selected);
       const hostRect = host?.getBoundingClientRect();
-      const rect = element?.getBoundingClientRect();
-      // Gone for a moment (the diagram is re-rendering): it stays where it was; a
-      // selection the code no longer has is cleared by the model.
-      if (rect && hostRect && (rect.width > 0 || rect.height > 0)) {
-        const next = {
+      const next = { ...boxes };
+      let changed = false;
+      for (const item of items) {
+        const key = selectionKey(item);
+        let element = elements[key];
+        if (!element?.isConnected) {
+          element = findElement(item);
+          elements[key] = element;
+        }
+        const rect = element?.getBoundingClientRect();
+        // Gone for a moment (the diagram is re-rendering): it stays where it was; a
+        // selection the code no longer has is cleared by the model.
+        if (!rect || !hostRect || (rect.width === 0 && rect.height === 0)) continue;
+        const box = {
           height: rect.height,
-          width: rect.width,
-          x: rect.left - hostRect.left,
-          y: rect.top - hostRect.top
+          left: rect.left - hostRect.left,
+          top: rect.top - hostRect.top,
+          width: rect.width
         };
+        const old = next[key];
         if (
-          !box ||
-          Math.abs(box.x - next.x) > 0.5 ||
-          Math.abs(box.y - next.y) > 0.5 ||
-          Math.abs(box.width - next.width) > 0.5 ||
-          Math.abs(box.height - next.height) > 0.5
+          !old ||
+          Math.abs(old.left - box.left) > 0.5 ||
+          Math.abs(old.top - box.top) > 0.5 ||
+          Math.abs(old.width - box.width) > 0.5 ||
+          Math.abs(old.height - box.height) > 0.5
         ) {
-          box = next;
+          next[key] = box;
+          changed = true;
         }
       }
+      if (changed) boxes = next;
       frame = requestAnimationFrame(follow);
     };
     // Not called here: what it reads must not become this effect's dependencies.
     frame = requestAnimationFrame(follow);
     return () => cancelAnimationFrame(frame);
   });
+
+  // The rubber band (a plain drag on the empty canvas), relative to the host while it is drawn.
+  let band = $state<Box | undefined>();
+  // A mouse pan is under way (the cursor closes).
+  let panning = $state(false);
+
+  // The cursor over the diagram: a hand while a pan gesture is available or under way.
+  $effect(() => {
+    const view = host?.querySelector<HTMLElement>('#view');
+    if (!view) return;
+    view.style.cursor = panCursor({ dragging: panning, mode: panMode.on, space: panMode.space });
+    return () => {
+      view.style.cursor = '';
+    };
+  });
+
+  /** Every object and arrow drawn wholly inside `area` (client coordinates). */
+  const insideBand = (area: Box): Selected[] => {
+    const svg = svgOf();
+    const ctx = svg && context(svg);
+    if (!svg || !ctx) return [];
+    const picked: Selected[] = [];
+    const candidates = svg.querySelectorAll(
+      'g[id], g[data-id], g.cluster, path, line, rect.actor, [class*="messageLine"]'
+    );
+    for (const element of candidates) {
+      const tag = element.tagName.toLowerCase();
+      const found = pickTarget([describe(element)], ctx);
+      if (!found) continue;
+      // A node by its group, an arrow by its line, so the box is the drawn one's.
+      if (found.type === 'edge' ? tag === 'g' : tag !== 'g') continue;
+      if (picked.some((item) => sameSelection(item, found))) continue;
+      const rect = element.getBoundingClientRect();
+      if (
+        within({ height: rect.height, left: rect.left, top: rect.top, width: rect.width }, area)
+      ) {
+        picked.push(found);
+      }
+    }
+    return picked;
+  };
 
   // A node just added may be drawn outside the part of the diagram on screen (zoomed in,
   // panned away): once it is drawn and the redraw has settled (its box unchanged for a
@@ -275,13 +382,23 @@
   const inOwnUi = (target: EventTarget | null) =>
     target instanceof Element && !!target.closest('[data-selection-ui]');
 
-  // Clicks: a drag that panned the diagram is not a click.
+  // Clicks: a drag that panned the diagram or drew the band is not a click.
   let downAt: { x: number; y: number } | undefined;
   $effect(() => {
     const element = host;
     if (!element) return;
+    const onView = (target: EventTarget | null) =>
+      !inOwnUi(target) &&
+      target instanceof Element &&
+      !!element.querySelector('#view')?.contains(target);
+    const fromMouse = (event: PointerEvent | MouseEvent) =>
+      !('pointerType' in event) || event.pointerType === 'mouse';
     const onDown = (event: PointerEvent) => {
       downAt = { x: event.clientX, y: event.clientY };
+      // The touch pan listens to pointer events (hammer.js inside svg-pan-zoom): a mouse
+      // press must not reach it, the mouse's drags are decided below. Not prevented, so
+      // the mouse events (and the click) follow.
+      if (fromMouse(event) && onView(event.target)) event.stopPropagation();
       // The diagram's pan/zoom keeps focus where it is, so the rename field would
       // not notice the click: apply what was typed before the click selects anything.
       if (selection.renaming && !inOwnUi(event.target)) void model.commitDraft();
@@ -311,8 +428,84 @@
         startConnect();
         return;
       }
+      // Ctrl/⌘+click: one more, or one less; on the empty canvas nothing changes.
+      if (event.ctrlKey || event.metaKey) {
+        if (picked) toggleSelect(picked);
+        return;
+      }
       if (picked) select(picked);
       else if (svg) clearSelection();
+    };
+    // The mouse's drags (panMode.svelte.ts): a plain left drag from the empty canvas is
+    // the rubber band, the middle button / Space / 移動 move the picture, a drag from an
+    // object does nothing (the click selects it). Every mouse press on the diagram is
+    // stopped in the capture phase, so svg-pan-zoom's own mousedown on the <svg> never
+    // starts its pan; the click that follows a drag is ignored by `onClick` (it moved).
+    let drag:
+      | { kind: DragGesture; from: { x: number; y: number }; last: { x: number; y: number } }
+      | undefined;
+    const bandArea = () => {
+      if (!drag || !band) return undefined;
+      const rect = element.getBoundingClientRect();
+      return { ...band, left: band.left + rect.left, top: band.top + rect.top };
+    };
+    const onDragMove = (event: MouseEvent) => {
+      if (!drag) return;
+      const to = { x: event.clientX, y: event.clientY };
+      if (drag.kind === 'pan') {
+        panZoomState?.panBy({ x: to.x - drag.last.x, y: to.y - drag.last.y });
+        drag.last = to;
+        panning = true;
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      if (!band && Math.hypot(to.x - drag.from.x, to.y - drag.from.y) < 4) return;
+      const area = boxBetween(drag.from, to);
+      band = { ...area, left: area.left - rect.left, top: area.top - rect.top };
+    };
+    const endDrag = () => {
+      window.removeEventListener('mousemove', onDragMove);
+      window.removeEventListener('mouseup', onDragUp);
+      window.removeEventListener('blur', endDrag);
+      drag = undefined;
+      band = undefined;
+      panning = false;
+    };
+    const onDragUp = (event: MouseEvent) => {
+      const area = bandArea();
+      const add = event.ctrlKey || event.metaKey;
+      endDrag();
+      // The drag may have highlighted text in the drawing.
+      window.getSelection()?.removeAllRanges();
+      if (!area) return;
+      const found = insideBand(area);
+      // Plain: what lies inside is the selection; with Ctrl/⌘ it joins what was selected.
+      if (add) {
+        if (found.length > 0) selectMany([...selection.items, ...found]);
+      } else if (found.length > 0) selectMany(found);
+      else clearSelection();
+    };
+    const onMouseDown = (event: MouseEvent) => {
+      if (!fromMouse(event) || !onView(event.target)) return;
+      // Neither svg-pan-zoom's mouse pan nor anything else in the drawing.
+      event.stopPropagation();
+      if (drag) return;
+      const kind = dragGesture({
+        button: event.button,
+        mode: panMode.on,
+        onObject: pickAt(event.target, event, false) !== undefined,
+        space: panMode.space
+      });
+      if (kind === 'none') return;
+      // The middle button would otherwise start the browser's auto-scroll. A left press
+      // is not prevented: its default moves focus out of a field or the code editor, as a
+      // plain click on the diagram does, so the keys that follow are the selection's.
+      if (event.button === 1) event.preventDefault();
+      const at = { x: event.clientX, y: event.clientY };
+      drag = { from: at, kind, last: at };
+      window.addEventListener('mousemove', onDragMove);
+      window.addEventListener('mouseup', onDragUp);
+      window.addEventListener('blur', endDrag);
     };
     const onDoubleClick = (event: MouseEvent) => {
       if (inOwnUi(event.target)) return;
@@ -334,8 +527,10 @@
       }
       event.preventDefault();
       const picked = pickAt(event.target, event);
-      if (picked) select(picked);
-      else clearSelection();
+      // On one of several selected items the menu acts on them all.
+      if (picked) {
+        if (!isSelected(picked)) select(picked);
+      } else clearSelection();
       const rect = element.getBoundingClientRect();
       menu = {
         target: picked ? 'selection' : 'canvas',
@@ -344,14 +539,50 @@
       };
     };
     element.addEventListener('pointerdown', onDown, true);
+    element.addEventListener('mousedown', onMouseDown, true);
     element.addEventListener('click', onClick);
     element.addEventListener('dblclick', onDoubleClick, true);
     element.addEventListener('contextmenu', onContextMenu);
     return () => {
       element.removeEventListener('pointerdown', onDown, true);
+      element.removeEventListener('mousedown', onMouseDown, true);
+      endDrag();
       element.removeEventListener('click', onClick);
       element.removeEventListener('dblclick', onDoubleClick, true);
       element.removeEventListener('contextmenu', onContextMenu);
+    };
+  });
+
+  // Space held (outside a field, the code editor and the buttons Space presses) makes a
+  // left drag move the picture; let go, or the window losing focus, ends it.
+  $effect(() => {
+    const spaceIsPan = (event: KeyboardEvent) => {
+      if (event.key !== ' ' || event.defaultPrevented) return false;
+      const target = event.target as Element | null;
+      if (isTypingTarget(target, ' ')) return false;
+      return !target?.closest?.(
+        'button, a[href], summary, [role="button"], [role="checkbox"], [role="switch"], [role="tab"], [role="menuitem"], [role="option"], [role="slider"]'
+      );
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!spaceIsPan(event)) return;
+      event.preventDefault();
+      panMode.space = true;
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === ' ') panMode.space = false;
+    };
+    const onBlur = () => {
+      panMode.space = false;
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      panMode.space = false;
     };
   });
 
@@ -372,7 +603,22 @@
         event.preventDefault();
         return;
       }
-      const typing = isTypingTarget(event.target as Element);
+      // Escape while 移動 is pressed turns it off; the selection, if any, stays for the next.
+      if (event.key === 'Escape' && panMode.on && !isTypingTarget(event.target as Element)) {
+        stopPanMode();
+        event.preventDefault();
+        return;
+      }
+      // A button of the bar over the diagram keeps Tab, Enter and Space (selectionKeys.ts).
+      const typing = isTypingTarget(event.target as Element, event.key);
+      // Ctrl/⌘+A outside the fields: every object and arrow, selection or not.
+      if (selectAllCommand(event, typing)) {
+        const all = allSelectable(model);
+        if (all.length === 0) return;
+        event.preventDefault();
+        selectMany(all);
+        return;
+      }
       // Ctrl+Z / Ctrl+Y outside the fields: the diagram's undo, selection or not.
       const history = historyCommand(event, typing);
       if (history) {
@@ -410,17 +656,30 @@
   });
 </script>
 
-{#if box && selection.current}
+{#each selection.items as item (selectionKey(item))}
+  {@const box = boxes[selectionKey(item)]}
+  {#if box}
+    <div
+      class="pointer-events-none absolute z-10 rounded-sm outline-2 outline-offset-2 outline-accent outline-dashed"
+      style:left={`${box.left}px`}
+      style:top={`${box.top}px`}
+      style:width={`${box.width}px`}
+      style:height={`${box.height}px`}
+      data-testid={TID.selectionOutline}
+      data-selected={selectionKey(item)}
+      data-primary={sameSelection(item, selection.current) ? 'true' : undefined}>
+    </div>
+  {/if}
+{/each}
+
+{#if band}
   <div
-    class="pointer-events-none absolute z-10 rounded-sm outline-2 outline-offset-2 outline-accent outline-dashed"
-    style:left={`${box.x}px`}
-    style:top={`${box.y}px`}
-    style:width={`${box.width}px`}
-    style:height={`${box.height}px`}
-    data-testid={TID.selectionOutline}
-    data-selected={selection.current.type === 'node'
-      ? selection.current.id
-      : `edge-${selection.current.index}`}>
+    class="pointer-events-none absolute z-10 border border-dashed border-accent bg-accent/10"
+    style:left={`${band.left}px`}
+    style:top={`${band.top}px`}
+    style:width={`${band.width}px`}
+    style:height={`${band.height}px`}
+    data-testid={TID.selectionBand}>
   </div>
 {/if}
 

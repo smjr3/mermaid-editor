@@ -1,6 +1,6 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
-import { panel, pickEdge, segment } from './helpers/inspector';
+import { openLook, panel, pickEdge, segment } from './helpers/inspector';
 import { expect, t, test } from './test';
 
 const chain =
@@ -181,6 +181,7 @@ test.describe('Layout in the inspector', () => {
     await expect(page.getByTestId(`${TID.inspDirection}-LR`)).toBeDisabled();
     // The config rows stay available.
     await expect(page.getByTestId(`${TID.inspEngine}-dagre`)).toBeEnabled();
+    await openLook(page);
     await expect(page.getByTestId(`${TID.inspThemePreset}-neon`)).toBeEnabled();
   });
 });

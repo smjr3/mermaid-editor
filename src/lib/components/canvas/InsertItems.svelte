@@ -24,16 +24,20 @@
   import MoreIcon from '~icons/material-symbols/expand-more-rounded';
 
   // Local: the add bar's buttons (InsertBar.svelte): the first `inline` entries on the
-  // bar, the rest under その他▾. An entry with a form opens it in a popover under its
-  // button (under その他 for the entries in that menu); one popover is open at a time.
+  // bar, the rest under その他▾ (`moreLabel` names that menu otherwise: 追加▾ while the bar
+  // shows the selection's commands and every entry is in the menu). An entry with a form
+  // opens it in a popover under its button (under その他 for the entries in that menu);
+  // one popover is open at a time.
   let {
     entries,
     form,
-    inline = 5
+    inline = 5,
+    moreLabel = t('canvas.more')
   }: {
     entries: InsertEntry[];
     form: Snippet<[key: string]>;
     inline?: number;
+    moreLabel?: string;
   } = $props();
 
   const shown = $derived(entries.slice(0, inline));
@@ -117,8 +121,8 @@
 
 {#if more.length > 0}
   <Popover.Root open={open === 'more'} onOpenChange={(isOpen) => setOpen('more', isOpen)}>
-    <Popover.Trigger class={item} title={t('canvas.more')} data-testid={TID.canvasInsertMore}>
-      <span>{t('canvas.more')}</span><MoreIcon aria-hidden="true" />
+    <Popover.Trigger class={item} title={moreLabel} data-testid={TID.canvasInsertMore}>
+      <span>{moreLabel}</span><MoreIcon aria-hidden="true" />
     </Popover.Trigger>
     <Popover.Content
       align="start"
@@ -128,7 +132,7 @@
       {#if moreForm}
         {@render form(moreForm)}
       {:else}
-        <div role="menu" aria-label={t('canvas.more')} data-testid={TID.canvasInsertMenu}>
+        <div role="menu" aria-label={moreLabel} data-testid={TID.canvasInsertMenu}>
           {#each more as entry (entry.key)}
             <button
               type="button"

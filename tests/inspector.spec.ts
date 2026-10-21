@@ -287,25 +287,35 @@ test.describe('Inspector', () => {
     await expect(page.getByTestId(TID.inspPanel)).toBeVisible();
   });
 
-  test('the right-click menu’s 色を変える focuses the colour row', async ({ editPage, page }) => {
+  test('the right-click menu’s 色 recolours in place, without the inspector', async ({
+    editPage,
+    page
+  }) => {
     await editPage.start(urlFor(flow));
     await editPage.checkTextInView('Pick');
     await nodeByText(page, 'Pick').click({ button: 'right' });
-    await page.getByTestId(`${TID.contextMenuItem}-color`).click();
-    await expect(page.getByTestId(`${TID.inspColorTarget}-fill`)).toBeFocused();
+    await page.getByTestId(`${TID.contextMenuSub}-color`).hover();
+    await page.getByTestId(`${TID.contextMenuChoice}-fillColor-blue`).click();
+    await expect.poll(() => stored(page)).toMatch(/style C fill:#dde9fb/);
+    // The inspector's colour row shows the pick; it was not asked to take focus.
+    await expect(page.getByTestId(`${TID.inspColorTarget}-fill`)).not.toBeFocused();
   });
 
-  test('the right-click menu’s other items focus their rows', async ({ editPage, page }) => {
+  test('the right-click menu’s 形 changes the shape in place; 名前を変更 still opens the name', async ({
+    editPage,
+    page
+  }) => {
     await editPage.start(urlFor(flow));
     await editPage.checkTextInView('Pick');
     await nodeByText(page, 'Pick').click({ button: 'right' });
-    await page.getByTestId(`${TID.contextMenuItem}-shape`).click();
-    await expect(page.getByTestId(TID.inspShape)).toBeFocused();
+    await page.getByTestId(`${TID.contextMenuSub}-shape`).hover();
+    await page.getByTestId(`${TID.contextMenuChoice}-shape-rounded`).click();
+    await expect.poll(() => stored(page)).toContain('C(Pick)');
     await nodeByText(page, 'Pick').click({ button: 'right' });
     await page.getByTestId(`${TID.contextMenuItem}-rename`).click();
     await expect(page.getByTestId(TID.inspName)).toBeFocused();
     await page.keyboard.press('Escape');
-    expect(await stored(page)).toBe(flow);
+    expect(await stored(page)).toContain('C(Pick)');
   });
 
   test('矢じり puts the head at the end, at both ends, or takes it off', async ({

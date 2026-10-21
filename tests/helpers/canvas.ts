@@ -103,6 +103,24 @@ export const viewMode = (page: Page, mode: 'diagram' | 'table' | 'both') =>
 export const menuItem = (page: Page, key: string) =>
   page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuItem}-${key}`);
 
+/** A submenu row of the right-click menu by its key (color, shape, lineStyle, selectSame, …). */
+export const menuSub = (page: Page, key: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuSub}-${key}`);
+
+/** The open panel of a submenu. */
+export const menuSubPanel = (page: Page, key: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuSub}-${key}-panel`);
+
+/** A choice inside a submenu by its command key and value (fillColor / blue, shape / circle, …). */
+export const menuChoice = (page: Page, command: string, value: string) =>
+  page.getByTestId(TID.contextMenu).getByTestId(`${TID.contextMenuChoice}-${command}-${value}`);
+
+/** Opens a submenu of the right-click menu by hovering its row. */
+export const openMenuSub = async (page: Page, key: string): Promise<void> => {
+  await menuSub(page, key).hover();
+  await expect(menuSubPanel(page, key)).toBeVisible();
+};
+
 export const zoomIn = (page: Page) => page.getByTestId(TID.zoomInButton).click();
 export const zoomOut = (page: Page) => page.getByTestId(TID.zoomOutButton).click();
 export const resetView = (page: Page) => page.getByTestId(TID.resetViewButton).click();

@@ -66,6 +66,38 @@ test.describe('Context menu', () => {
     await expect.poll(() => code(page)).not.toMatch(/style A [^\n]*fill:/);
   });
 
+  test('no row ends in whitespace: the key follows the label, or nothing does', async ({
+    page
+  }) => {
+    // The raw text, not Playwright's normalised one: a trailing space is the finding.
+    const rowTexts = () =>
+      menu(page)
+        .getByRole('menuitem')
+        .evaluateAll((elements) => elements.map((element) => element.textContent ?? ''));
+    const expectTrimmed = async () => {
+      const texts = await rowTexts();
+      expect(texts.length).toBeGreaterThan(0);
+      for (const text of texts) {
+        expect(text, `row "${text}"`).toBe(text.trimEnd());
+        expect(text.trimEnd().length).toBeGreaterThan(0);
+      }
+    };
+    // A node: rows with a key (削除 Del) and without (形 ▸).
+    await node(page, 'Start').click({ button: 'right' });
+    await expectTrimmed();
+    await expect(menuItem(page, 'delete')).toHaveText(`${t('sel.delete')} Del`);
+    await page.keyboard.press('Escape');
+    // An arrow: 向きを反転 has no key.
+    await edgeLabel(page, 'yes').click({ button: 'right' });
+    await expectTrimmed();
+    await expect(menuItem(page, 'reverse')).toHaveText(t('insp.edgeReverse'));
+    await page.keyboard.press('Escape');
+    // The empty canvas: neither row has a key.
+    await page.locator('#view').click({ button: 'right', position: { x: 10, y: 10 } });
+    await expectTrimmed();
+    await expect(menuItem(page, 'fit')).toHaveText(t('sel.fit'));
+  });
+
   test('形 ▸ changes the shape; the current one is checked', async ({ page }) => {
     await node(page, 'Middle').click({ button: 'right' });
     await openMenuSub(page, 'shape');

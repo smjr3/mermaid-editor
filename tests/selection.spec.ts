@@ -185,7 +185,8 @@ test.describe('Selection', () => {
     await page.locator('#view g.edgeLabel', { hasText: 'yes' }).click({ button: 'right' });
     const items = page.getByTestId(TID.contextMenu).getByRole('menuitem');
     await expect(items).toHaveText([
-      `${t('canvas.menuRename')} F2`,
+      // An arrow's name is its label (selectionCommands.ts).
+      `${t('sel.renameLabel')} F2`,
       `${t('sel.color')} ▸`,
       `${t('insp.edgeStyle')} ▸`,
       `${t('sel.head')} ▸`,

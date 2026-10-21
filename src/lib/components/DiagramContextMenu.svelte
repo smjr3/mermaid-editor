@@ -25,7 +25,9 @@
   // the empty canvas: add a node, fit the diagram to the view. Arrow keys move, Enter
   // or Space choose, ArrowRight opens a submenu (hover does too), ArrowLeft closes it,
   // Escape closes the menu. A submenu flips to the left near the right edge and is
-  // clamped to the host, so nothing is cut off.
+  // clamped to the host, so nothing is cut off. The space before a key belongs to the
+  // label and is written only with a key, so a row without one ends on its label, not
+  // on whitespace.
   let {
     x,
     y,
@@ -223,8 +225,9 @@
       data-testid={`${TID.contextMenuItem}-${key}`}
       onpointerenter={() => hoverRow()}
       onclick={() => run(action)}>
-      <span class="flex-1 truncate">{label}</span>
-      {#if shortcut}<kbd class="font-sans text-xs text-muted-foreground">{shortcut}</kbd>{/if}
+      <span class="flex-1 truncate">{label}{shortcut ? ' ' : ''}</span>{#if shortcut}<kbd
+          class="font-sans text-xs text-muted-foreground">{shortcut}</kbd
+        >{/if}
     </button>
   {/snippet}
   {#snippet check(on: boolean)}
@@ -255,10 +258,10 @@
           onpointerenter={() => hoverRow()}
           onclick={() => run(() => row.command.run(model))}
           >{#if row.command.current}{@render check(checked)}{/if}<span class="flex-1 truncate"
-            >{commandLabel(row.command, model)}</span>
-          {#if row.command.shortcut}
-            <kbd class="font-sans text-xs text-muted-foreground">{row.command.shortcut}</kbd>
-          {/if}
+            >{commandLabel(row.command, model)}{row.command.shortcut ? ' ' : ''}</span
+          >{#if row.command.shortcut}<kbd class="font-sans text-xs text-muted-foreground"
+              >{row.command.shortcut}</kbd
+            >{/if}
         </button>
       {:else}
         <button

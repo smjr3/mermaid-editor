@@ -86,20 +86,32 @@ export const pickEdge = async (page: Page, index: number): Promise<void> => {
   await expect(crumb(page)).toHaveAttribute('data-crumb', 'insp.crumb.edge');
 };
 
-/** Opens 図全体's 見た目 popover (the theme cards, the built-in theme, font, hand-drawn, line colour). */
+/** The 見た目 popover's content, while it is open (not while it animates shut). */
+const lookContent = (page: Page) =>
+  page.locator(`[data-testid="${TID.inspLookContent}"][data-state="open"]`);
+
+/**
+ * Opens 図全体's 見た目 popover (the theme cards, the built-in theme, font, hand-drawn,
+ * line colour). A closed popover fades out for a moment and still counts as visible,
+ * so what is open is read from the trigger's aria-expanded, never from visibility.
+ */
 export const openLook = async (page: Page): Promise<void> => {
-  const content = page.getByTestId(TID.inspLookContent);
-  if (await content.isVisible()) return;
-  await page.getByTestId(TID.lookPopover).click();
-  await expect(content).toBeVisible();
+  const trigger = page.getByTestId(TID.lookPopover);
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+    // Let a closing one finish before clicking, or the click lands on nothing.
+    await expect(page.getByTestId(TID.inspLookContent)).toBeHidden();
+    await trigger.click();
+  }
+  await expect(lookContent(page)).toBeVisible();
 };
 
 /** Closes the 見た目 popover with Escape. */
 export const closeLook = async (page: Page): Promise<void> => {
-  const content = page.getByTestId(TID.inspLookContent);
-  if (!(await content.isVisible())) return;
-  await page.keyboard.press('Escape');
-  await expect(content).toBeHidden();
+  const trigger = page.getByTestId(TID.lookPopover);
+  if ((await trigger.getAttribute('aria-expanded')) === 'true') {
+    await page.keyboard.press('Escape');
+  }
+  await expect(page.getByTestId(TID.inspLookContent)).toBeHidden();
 };
 
 /** Types a new name into the 名前 (or ラベル) field and applies it with Enter. */

@@ -12,6 +12,7 @@ const { clearSelection, select, selection, selectMany, toggleSelect } =
 const { inputState, updateCode, updateConfig, validatedState } = await import('./state.svelte');
 const { setObjectColor } = await import('./colors');
 const { swatches } = await import('./colors');
+const { setEdgeStyle } = await import('./diagramModify');
 
 const flow = 'flowchart TD\n  A[Start] --> B[Middle]\n  B --> C[End]\n  B --> D{Pick}';
 const broken = 'flowchart TD\n  A[Start] --> B[Middle]\n  B -->';
@@ -120,6 +121,46 @@ describe('applyToAll', () => {
     expect(await model.applyToAll(() => 'pie\n  "a": 1')).toBe(false);
     expect(inputState.code).toBe(flow);
     expect(model.warning).toBe(t('edit.breaks'));
+  });
+
+  it('reads the lists again when the code changed since they were built', slow, async () => {
+    // The arrow's head was removed in the code, but the model has not synced yet: its
+    // lists (and so the target) still say `end`. The rewrite must see the current arrow,
+    // or it would write the old head back along with its own change.
+    select(edge(0));
+    expect(model.edge?.head).toBe('end');
+    const headless = flow.replace('A[Start] --> B[Middle]', 'A[Start] --- B[Middle]');
+    updateCode(headless);
+    await vi.waitFor(() => expect(validatedState.current.code).toBe(headless), {
+      timeout: 10_000
+    });
+    expect(model.code).toBe(flow);
+    const seen: (string | undefined)[] = [];
+    const done = await model.applyToAll((code, { edge: target }) => {
+      seen.push(target?.head);
+      return target ? setEdgeStyle(code, 'flowchart', target, 'dotted') : undefined;
+    });
+    expect(done).toBe(true);
+    expect(seen).toEqual(['none']);
+    expect(inputState.code).toContain('A[Start] -.- B[Middle]');
+    expect(inputState.code).not.toContain('-.->');
+  });
+
+  it('leaves out a target the current code no longer has', slow, async () => {
+    selectMany([node('D'), node('A')]);
+    const without = 'flowchart TD\n  A[Start] --> B[Middle]\n  B --> C[End]';
+    updateCode(without);
+    await vi.waitFor(() => expect(validatedState.current.code).toBe(without), {
+      timeout: 10_000
+    });
+    const seen: string[] = [];
+    await model.applyToAll((code, { object }) => {
+      if (object) seen.push(object.id);
+      return object ? setObjectColor(code, object.id, swatches[1], 'style') : undefined;
+    });
+    expect(seen).toEqual(['A']);
+    expect(inputState.code).toContain('style A fill:#def5e1');
+    expect(inputState.code).not.toContain('style D');
   });
 
   it('refuses while the code is broken, and says so over the diagram', slow, async () => {

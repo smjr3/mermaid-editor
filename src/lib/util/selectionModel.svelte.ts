@@ -272,6 +272,14 @@ class SelectionModel {
    * returned; undefined leaves the code as it was), checks the result once with mermaid
    * and writes it once — one undo step. Refused while the code is broken, as every edit
    * is (codeHealth.svelte.ts). Resolves to whether the code changed.
+   *
+   * The targets carry what the lists said about each item (an arrow's style and head,
+   * an object's line …) for the code the lists were read from. Right after an edit,
+   * before the next `sync` lands, that code is not the current one, and a rewrite made
+   * from the old properties would write them back (a head just removed would return
+   * with the next change). So when the code moved on, the lists are read again first
+   * and the targets named again by id or index; an item the code no longer has is
+   * left out.
    */
   applyToAll = async (
     fn: (code: string, target: SelectionTarget) => string | undefined,
@@ -284,7 +292,17 @@ class SelectionModel {
     }
     let code = inputState.code;
     const before = code;
-    for (const target of targets) {
+    let items = targets;
+    if (this.code !== code) {
+      await this.sync(code);
+      // The code changed again while the lists were read: that edit was made for the old code.
+      if (inputState.code !== code) return false;
+      items = targets.flatMap((target) => {
+        const resolved = this.resolve(target.selected);
+        return resolved.object || resolved.edge ? [{ selected: target.selected, ...resolved }] : [];
+      });
+    }
+    for (const target of items) {
       const next = fn(code, target);
       if (next !== undefined) code = next;
     }

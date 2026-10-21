@@ -87,13 +87,25 @@ interface TargetLike {
   closest?: (selector: string) => unknown;
 }
 
-/** Whether a key press there belongs to what has focus: a field, the code editor, a dialog or a menu. */
-export const isTypingTarget = (target: TargetLike | null | undefined): boolean => {
+/** The keys a focused toolbar button works with: Tab moves along the buttons, Enter and Space press one. */
+const toolbarKeys = new Set(['Tab', 'Enter', ' ']);
+
+/**
+ * Whether a key press there belongs to what has focus: a field, the code editor, a dialog
+ * or a menu; and, given the `key`, a button of a toolbar (the bar over the diagram) for the
+ * keys that work it — the others (Escape, Delete, F2, the arrows) stay the selection's.
+ */
+export const isTypingTarget = (target: TargetLike | null | undefined, key?: string): boolean => {
   if (!target) return false;
   const tag = (target.tagName ?? '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
   if (target.isContentEditable) return true;
-  return !!target.closest?.(
-    '.monaco-editor, .cm-editor, [role="dialog"], [role="menu"], [role="listbox"], [contenteditable="true"]'
-  );
+  if (
+    target.closest?.(
+      '.monaco-editor, .cm-editor, [role="dialog"], [role="menu"], [role="listbox"], [contenteditable="true"]'
+    )
+  ) {
+    return true;
+  }
+  return key !== undefined && toolbarKeys.has(key) && !!target.closest?.('[role="toolbar"]');
 };

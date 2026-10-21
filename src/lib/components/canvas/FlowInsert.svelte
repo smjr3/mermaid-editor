@@ -41,6 +41,9 @@
   // 矢印 joins two shapes by clicking them. Under その他: the other shapes, and the Add
   // card's forms — a shape with its name, shape, lane and the shape it is joined from; a
   // named lane; an arrow between two existing shapes with a label.
+  // `inline` / `moreLabel`: how many entries sit on the bar and what the menu of the rest is
+  // called (InsertItems.svelte); none on the bar while the selection's commands take it.
+  let { inline = 5, moreLabel }: { inline?: number; moreLabel?: string } = $props();
   const lanes = $derived(/^\s*swimlane-beta\b/.test(headerLine(inputState.code)));
   // Swimlane diagrams have lanes; a flowchart's `subgraph` is a group.
   const word = $derived(lanes ? 'lane' : 'group');
@@ -223,7 +226,7 @@
   {/each}
 {/snippet}
 
-<InsertItems {entries}>
+<InsertItems {entries} {inline} {moreLabel}>
   {#snippet form(key)}
     {#if key === 'node'}
       <AddFormFrame

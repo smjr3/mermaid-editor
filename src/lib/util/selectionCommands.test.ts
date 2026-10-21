@@ -18,6 +18,8 @@ const {
 const { selectionModel: model } = await import('./selectionModel.svelte');
 const { clearSelection, select, selection, selectMany } = await import('./selection.svelte');
 const { inputState, updateCode, updateConfig, validatedState } = await import('./state.svelte');
+const { movesReady } = await import('./moveAvailability.svelte');
+const { codeHistory } = await import('./undoStack.svelte');
 
 const flow = `flowchart TD
   A[Start] --> B[Middle]
@@ -499,5 +501,90 @@ describe('on a state diagram', () => {
       node('s3')
     ]);
     expect(sameAs(model, 'edges')).toEqual([edge(0), edge(1), edge(2)]);
+  });
+});
+
+describe('moveLeft / moveRight (reorder.ts through the registry)', () => {
+  const fanOut = `flowchart TD
+  B{Pick}
+  B -->|one| C[Left]
+  B -->|two| D[Right]
+  B -->|three| E[Last]`;
+
+  it('is offered for the one node that can move that way, once the answer is known', async () => {
+    await load(fanOut);
+    select(node('C'));
+    // The first read starts the (async) answer; until it lands nothing is offered.
+    const first = keys();
+    await movesReady(model.code, 'flowchart', 'C');
+    expect(first.filter((key) => key === 'moveLeft' || key === 'moveRight')).toEqual([]);
+    expect(keys()).toContain('moveRight');
+    expect(keys()).not.toContain('moveLeft');
+    expect(keys().indexOf('moveRight')).toBeLessThan(keys().indexOf('delete'));
+
+    select(node('D'));
+    await movesReady(model.code, 'flowchart', 'D');
+    expect(keys()).toContain('moveLeft');
+    expect(keys()).toContain('moveRight');
+
+    select(node('E'));
+    await movesReady(model.code, 'flowchart', 'E');
+    expect(keys()).toContain('moveLeft');
+    expect(keys()).not.toContain('moveRight');
+
+    // A chain has no siblings; a lane and several nodes are never moved.
+    select(node('B'));
+    await movesReady(model.code, 'flowchart', 'B');
+    expect(keys()).not.toContain('moveLeft');
+    expect(keys()).not.toContain('moveRight');
+    selectMany([node('C'), node('D')]);
+    expect(keys()).not.toContain('moveLeft');
+    expect(keys()).not.toContain('moveRight');
+  });
+
+  it('swaps the two lines in one step, and comes back with one undo', slow, async () => {
+    await load(fanOut);
+    codeHistory.reset(fanOut);
+    select(node('C'));
+    await movesReady(model.code, 'flowchart', 'C');
+    await run('moveRight');
+    expect(inputState.code).toBe(`flowchart TD
+  B{Pick}
+  B -->|two| D[Right]
+  B -->|one| C[Left]
+  B -->|three| E[Last]`);
+    // The selection follows the node, not the line.
+    expect(selection.current).toEqual(node('C'));
+    await movesReady(model.code, 'flowchart', 'C');
+    expect(keys()).toContain('moveLeft');
+    expect(keys()).toContain('moveRight');
+    // Recorded as the edit page does (one write, so one step): one undo brings it all back.
+    codeHistory.record(inputState.code, { immediate: true });
+    expect(codeHistory.canUndo).toBe(true);
+    codeHistory.undo();
+    expect(inputState.code).toBe(fanOut);
+    expect(codeHistory.canUndo).toBe(false);
+  });
+
+  it('is not offered for a swimlane, and refuses while the code is broken', slow, async () => {
+    const swim =
+      'swimlane-beta LR\n  subgraph a\n    C\n  end\n  subgraph b\n    D\n    E\n  end\n  C --> D\n  C --> E';
+    await load(swim);
+    select(node('E'));
+    await movesReady(model.code, 'flowchart', 'E');
+    expect(keys()).not.toContain('moveLeft');
+    expect(keys()).not.toContain('moveRight');
+
+    await load(fanOut);
+    select(node('C'));
+    await movesReady(model.code, 'flowchart', 'C');
+    expect(keys()).toContain('moveRight');
+    const broken = `${fanOut}\n  B -->`;
+    updateCode(broken);
+    await vi.waitFor(() => expect(validatedState.current.code).toBe(broken), { timeout: 10_000 });
+    model.warning = '';
+    await commandByKey('moveRight').run(model);
+    expect(inputState.code).toBe(broken);
+    expect(model.warning).toBe(t('recover.blocked'));
   });
 });

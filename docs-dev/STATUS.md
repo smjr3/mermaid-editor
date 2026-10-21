@@ -22,7 +22,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **363**.
+  every locally changed path — currently **383**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -1120,6 +1120,10 @@ WebKit-only defect reported by a user.
 ## Testing
 
 `pnpm test:unit` (vitest, 2,999 tests) and `pnpm test:e2e` (Playwright).
+
+The full Chromium suite was run on a production build on 2026-10-21 (616 passed; the three tests
+that did not pass were fixed afterwards and rerun). The Firefox `@smoke` run was not run in that
+environment.
 
 `.github/workflows/fork-checks.yml` holds the checks only this fork runs, kept out of
 upstream's workflows so those keep merging cleanly: the local-delta check on every pull

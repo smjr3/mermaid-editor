@@ -51,7 +51,10 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
-        'Click a shape, an arrow or a lane in the picture to select it: the tabs at the top of the settings panel (Whole diagram, Shapes, Arrows, Groups; Participants and Messages for a sequence diagram, Tasks and Sections for a gantt) light up the selected kind and the panel switches to its settings. A tab lists the items of its kind to pick from; the Whole diagram tab, Escape or a click on the empty canvas clears. Double-click to rename; right-click for Rename, Change colour, Change shape, Add next, Draw an arrow from here and Delete.',
+        'Click a shape, an arrow or a lane in the picture to select it: the tabs at the top of the settings panel (Whole diagram, Shapes, Arrows, Groups; Participants and Messages for a sequence diagram, Tasks and Sections for a gantt) light up the selected kind and the panel switches to its settings. A tab lists the items of its kind to pick from (Ctrl+click adds one, "Select all" takes them all). Ctrl+click (⌘ on a Mac) on the picture adds a shape or an arrow to the selection or takes it out, Ctrl+drag selects everything inside the box, Ctrl+A selects everything. The Whole diagram tab, Escape or a click on the empty canvas clears. Double-click to rename.',
+        'While something is selected, the bar above the diagram offers what can be done to it — + Next, + Branch, Colour, Shape, Line, Text, Select the same, Left / Right, Reverse, Arrow from here, Delete, as far as they apply (what does not fit goes under More ▾); Add ▾ still adds shapes. The right-click menu lists the same operations with the same words, and its submenus (colour, shape, line type, …) change the item in place (Rename F2, Delete Del).',
+        'With several items selected, the panel shows how many and one row for each value that can be set on all of them (fill, border and text colour, shape, text size, bold, line type, arrowhead, length, lane); where they differ it says "mixed". One change is one undo step. The "Select the same" row (also shown for a single shape or arrow) selects every shape of the same shape, colour or lane, every arrow, or everything downstream of the shape.',
+        'Left / Right moves a flowchart shape one place among the shapes drawn beside it, by exchanging two lines of the code; the diagram means the same. Swimlanes do not offer it, because mermaid orders the shapes in a lane itself.',
         'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text size (with bold and reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it (the neighbour’s name selects that shape, the arrow sign selects the arrow), and + Next, + Branch (beside the shape; on a decision, one more way out of it), Arrow and Delete.',
         'An arrow: from and to, label, line type (solid, dotted, thick, invisible), arrowhead (at the end, both ends, none), colour, reverse and delete — and what mermaid allows for its type: a flowchart arrow’s head shape (arrow, circle, cross), length, animation and curve; a message’s end and activation; a class relation’s kind and multiplicities; an ER relationship’s cardinality at each end; an architecture edge’s sides; a C4 relation’s direction.',
         'A lane: name, colour, how many shapes it holds with a button to add one, its own direction (flowchart subgraphs), and delete (keeping or with what is inside). Architecture services: change the icon, or move the service to another group. An icon shape takes a backdrop (square, circle, rounded) and its label above or below; a participant its symbol, a mindmap topic its shape, a class its annotation and type parameter, a kanban card its assignee, ticket and priority, a requirement its kind, id, text, risk and verification, a block its width.',
@@ -117,7 +120,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         'In the code, F2 on a name renames that ID everywhere in the diagram (the line under the code says so too).',
-        'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it (one more way out of a decision), Delete deletes, F2 renames, the arrow keys move along the arrows, Escape clears.',
+        'Keys on a selected shape (when you are not typing): Enter adds the next node (type its name, Enter again), Tab adds a branch beside it (one more way out of a decision), Delete deletes, F2 renames, the arrow keys move along the arrows, Ctrl+A selects everything, Escape clears.',
         'Fold the settings panel away if you only write code, or the code pane if you only work on the picture; this browser remembers what is folded and how wide each column is.',
         'The sun / moon button at the right of the header switches the app to dark mode (the diagram looks the same). Reset in the header returns everything to the starting diagram (History is kept). If the config (JSON) breaks, "Reset config" on the Config JSON tab puts it back.',
         'When the code has a mistake, the line under the code and a notice over the picture say which line, and the picture stays as it last was. "Revert to the last valid state" puts that code back (Undo brings your change back again); the add bar and the panel wait until the code is fixed, though theme and other settings still work.',
@@ -169,7 +172,10 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
-        '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの一番上のタブ「図全体・図形・矢印・グループ」（図の種類で変わります：シーケンス図なら参加者・メッセージ、ガントならタスク・区分）のうち選んだものが点き、その設定に変わります。タブをクリックすると、その種類の一覧から選べます。「図全体」のタブか Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更、右クリックで「名前を変更・色を変える・形を変える・次の処理を追加・ここから矢印を引く・削除」のメニューが出ます。',
+        '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの一番上のタブ「図全体・図形・矢印・グループ」（図の種類で変わります：シーケンス図なら参加者・メッセージ、ガントならタスク・区分）のうち選んだものが点き、その設定に変わります。タブをクリックすると、その種類の一覧から選べます（Ctrl+クリックで追加、「すべて選ぶ」で全部）。図の中では Ctrl+クリック（Mac は ⌘）で図形や矢印を選択に足したり外したり、Ctrl+ドラッグで囲んだものをまとめて、Ctrl+A で全部を選べます。「図全体」のタブか Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更。',
+        '何かを選んでいる間、図の上のバーは選んだものへの操作に変わります：「＋次」「＋分岐」「色」「形」「線」「文字」「同じものを選ぶ」「左へ」「右へ」「向きを反転」「ここから矢印」「削除」のうち使えるもの（入りきらない分は「その他 ▾」に、「追加 ▾」から図形も足せます）。右クリックのメニューにも同じ操作が同じ言葉で並び、色・形・線の種類などはサブメニューでその場で変わります（名前を変更 F2、削除 Del）。',
+        '複数を選んでいるときは、パネルに個数と、全部にまとめて効く行（塗り・枠・文字の色、形、文字の大きさ、太字、線の種類、矢じり、長さ、レーン）が出ます。値がそろっていないものは「まちまち」。変更は一回の「元に戻す」で戻ります。「同じものを選ぶ」の行（図形や矢印を一つ選んだときにも出ます）で、同じ形・同じ色・同じレーンの図形、すべての矢印、この先にあるものすべてをまとめて選べます。',
+        '「左へ」「右へ」はフローチャートの図形を、横に並んだ図形の中で一つ左か右に動かします。コードの行の順番を変えるだけで、図の意味は変わりません。スイムレーンではレーンの中の順番を Mermaid が決めるので出ません。',
         '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字の大きさ（太字・元に戻すも）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧（相手の名前を押すとその図形、矢印の記号を押すとその矢印が選ばれます）、「＋次」「＋分岐」（横に分岐。分岐の図形では、そこから出る道をもう1本）「矢印」「削除」。',
         '矢印：つなぐ元と先、ラベル、線の種類（実線・点線・太線・見えない）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。図の種類で Mermaid が書けるものも変えられます：フローチャートの矢印の先の形（矢印・丸・×）・長さ・動き・曲線、シーケンスのメッセージの先の形と活性化、クラス図の関係の種類と多重度、ER 図の両端の数、アーキテクチャの接続の辺、C4 の関係の向き。',
         'レーン：名前、色、入っている図形の数と追加、そのレーンだけの向き（フローチャートのサブグラフ）、削除（中身は残す・中身ごと）。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。アイコンの図形は背景（四角・丸・角丸）と文字の位置（上・下）、シーケンスの参加者は種類、マインドマップの話題は形、クラスは注釈と型引数、カンバンのカードは担当・チケット・優先度、要件図の要件は種類・ID・本文・リスク・検証方法、ブロック図のブロックは幅を変えられます。',
@@ -235,7 +241,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'tips',
       items: [
         'コード欄で名前の上にカーソルを置いて F2 を押すと、図の中のその ID をまとめて変えられます（コード欄の下にも案内が出ています）。',
-        '図形を選択中のキー操作（入力中でないとき）：Enter で次の図形を追加（名前を入れて Enter）、Tab で横に分岐を追加（分岐の図形ならそこから出る道を追加）、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除。',
+        '図形を選択中のキー操作（入力中でないとき）：Enter で次の図形を追加（名前を入れて Enter）、Tab で横に分岐を追加（分岐の図形ならそこから出る道を追加）、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Ctrl+A ですべて選択、Esc で選択を解除。',
         'コードだけ書くときは設定パネルを、図だけ触るときはコード欄をたたむと図を広く使えます。たたんだ状態と各列の幅はこのブラウザに記憶されます。',
         'ヘッダー右端の太陽／月のボタンでアプリのダークモードを切り替えます（図の見た目は変わりません）。ヘッダーの「初期化」で図と設定を最初の状態に戻せます（履歴は残ります）。設定（JSON）が壊れたときは「設定 JSON」タブの「設定をリセット」で戻せます。',
         'コードに誤りがあると、コード欄の下と図の上のお知らせに何行目かが出て、図は直前の正しい状態のまま残ります。「直前の正しい状態に戻す」でそのコードに戻せます（「元に戻す」で変更前に戻ることもできます）。コードが直るまで追加バーと設定パネルは図を変更しません（テーマなどの設定は変えられます）。',

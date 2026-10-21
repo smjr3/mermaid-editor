@@ -747,10 +747,10 @@ export const en = {
   'guide.progress': '{current} of {total}',
   'guide.restart': 'Show the first-visit guide again',
   'guide.step1.body':
-    'Add shapes and lanes with the add bar above the diagram, and change names, colours, shapes, direction and themes in the panel on the right. With nothing selected, it holds the whole diagram’s settings.',
+    'Add shapes and lanes with the add bar above the diagram, and change names, colours, shapes and direction in the panel on the right. With nothing selected, it holds the whole diagram’s settings; Look → Change… picks a theme.',
   'guide.step1.title': 'Build and fix with the add bar and the panel',
   'guide.step2.body':
-    'Click a shape or an arrow to select it; the panel on the right switches to its settings. Right-click for rename, colour, shape, add and delete. Drag to move the picture and use the wheel to zoom.',
+    'Click a shape or an arrow to select it; the bar above the diagram and the panel on the right switch to its actions. Ctrl+click (⌘ on a Mac) selects several, Ctrl+drag what is inside the box, Ctrl+A everything. The right-click menu changes colour, shape, name and more in place. Drag to move the picture and use the wheel to zoom.',
   'guide.step2.title': 'Click or right-click the diagram',
   'guide.step3.body':
     'New in the header starts another diagram, Share gives links and embed code, and Export saves PNG, SVG and more. How to use explains everything.',

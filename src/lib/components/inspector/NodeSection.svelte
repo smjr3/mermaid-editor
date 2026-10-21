@@ -24,7 +24,8 @@
   // service, topic, task, …), each a one-line row: its name (also the inline rename),
   // shape, colour (fill, border or text) and text style, icon, lane or group, id
   // (renamed everywhere, as F2 does), its properties and members (ObjectFields), the
-  // arrows to and from it, and ＋次 / ＋分岐 / 矢印 / 削除. Every control is one of the
+  // arrows to and from it (a click on the glyph or label selects the arrow, on the name
+  // the neighbour), and ＋次 / ＋分岐 / 矢印 / 削除. Every control is one of the
   // selection model's edits (selectionModel.svelte.ts); what the diagram type has no
   // edit for is left out.
   type Target = 'fill' | 'stroke' | 'text';
@@ -55,6 +56,8 @@
   const selectClass =
     'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
   const smallButton = 'h-7 px-2 text-xs';
+  const linkButton =
+    'cursor-pointer rounded px-1 py-0.5 hover:bg-muted hover:underline focus-visible:bg-muted focus-visible:outline-none';
   // The 形 row: the Add card's five under their names, then every other mermaid shape.
   const commonShapes: [FlowShapeName, NodeShape][] = [
     ['rect', 'rect'],
@@ -148,7 +151,7 @@
             onpick={model.setTextColor} />
         {/if}
       </FieldRow>
-      <FieldRow label={t('sel.text')}>
+      <FieldRow label={t('insp.textSize')}>
         {#if model.textStyle}
           {@const style = model.textStyle}
           <Segmented
@@ -296,23 +299,41 @@
 
   <PanelGroup>
     {#if links.length > 0}
+      <!-- つながり: one row per arrow; its glyph and label select the arrow, the
+           neighbour's name selects that node. -->
       <ul class="flex flex-col" aria-label={t('insp.links')} data-testid={TID.inspLinks}>
         {#each links as link (link.index)}
-          <li>
+          {@const out = link.from === object.id}
+          {@const other = nameOf(out ? link.to : link.from)}
+          <li
+            class="flex min-w-0 items-center gap-1 rounded text-xs"
+            data-index={link.index}
+            data-testid={TID.inspLink}>
             <button
               type="button"
-              class="flex w-full min-w-0 items-center gap-2 rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
-              data-index={link.index}
-              data-testid={TID.inspLink}
-              onclick={() => select({ index: link.index, type: 'edge' })}>
-              <span class="min-w-0 flex-1 truncate"
-                >{link.from === object.id
-                  ? `→ ${nameOf(link.to)}`
-                  : `← ${nameOf(link.from)}`}</span>
-              {#if link.label}
-                <small class="max-w-[40%] truncate text-muted-foreground">{link.label}</small>
-              {/if}
-            </button>
+              class={linkButton}
+              title={t('insp.linkEdge')}
+              aria-label={`${t('insp.linkEdge')}: ${link.title}`}
+              data-testid={TID.inspLinkEdge}
+              onclick={() => select({ index: link.index, type: 'edge' })}>{out ? '→' : '←'}</button>
+            <button
+              type="button"
+              class={[linkButton, 'min-w-0 flex-1 truncate text-left']}
+              title={t('insp.linkNode', { name: other })}
+              data-id={out ? link.to : link.from}
+              data-testid={TID.inspLinkNode}
+              onclick={() => select({ id: out ? link.to : link.from, type: 'node' })}
+              >{other}</button>
+            {#if link.label}
+              <button
+                type="button"
+                class={[linkButton, 'max-w-[40%] truncate text-muted-foreground']}
+                title={t('insp.linkEdge')}
+                aria-label={`${t('insp.linkEdge')}: ${link.title}`}
+                data-testid={TID.inspLinkEdge}
+                onclick={() => select({ index: link.index, type: 'edge' })}
+                ><small>{link.label}</small></button>
+            {/if}
           </li>
         {/each}
       </ul>

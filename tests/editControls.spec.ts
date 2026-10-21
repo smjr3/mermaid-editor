@@ -1,6 +1,16 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
-import { crumb, field, panel, pickEdge, pickObject, renameTo, segment } from './helpers/inspector';
+import {
+  crumb,
+  expectAtRoot,
+  field,
+  openTab,
+  panel,
+  pickEdge,
+  pickObject,
+  renameTo,
+  segment
+} from './helpers/inspector';
 import { expect, t, test } from './test';
 
 // Editing every diagram type from the inspector (the old Edit card's cases): the 要素 and
@@ -98,7 +108,7 @@ test.describe('Editing in the inspector', () => {
     await expect(page.locator('#view .flowchart-link')).toHaveCount(2);
     await expect(page.getByTestId(TID.errorContainer)).toHaveCount(0);
     // The selection went with it: back at 図全体.
-    await expect(page.getByTestId(TID.inspClose)).toBeHidden();
+    await expectAtRoot(page);
   });
 
   test('deletes a lane keeping what is inside', async ({ editPage, page }) => {
@@ -184,7 +194,7 @@ test.describe('Editing in the inspector', () => {
     await expect(links.nth(0)).toContainText('← Accept order');
     await expect(links.nth(0)).toContainText('yes');
     await expect(links.nth(1)).toContainText('→ Place order');
-    await links.nth(1).click();
+    await links.nth(1).getByTestId(TID.inspLinkEdge).first().click();
     await expect(crumb(page)).toHaveAttribute('data-crumb', 'insp.crumb.edge');
     await expect(page.getByTestId(TID.inspEdgeLabel)).toHaveValue('no');
   });
@@ -335,7 +345,8 @@ test.describe('Editing in the inspector', () => {
     );
     await editPage.checkTextInView('Math');
     await expect(panel(page)).toContainText(t('edit.unsupported'));
-    await expect(page.getByTestId(TID.inspObjectSelect)).toHaveCount(0);
+    // Only 図全体: no tab lists its parts.
+    await expect(panel(page).getByTestId(TID.inspTab)).toHaveCount(1);
   });
 
   test('changes, adds and deletes a class member', async ({ editPage, page }) => {
@@ -431,9 +442,8 @@ test.describe('Editing in the inspector', () => {
     );
     await editPage.checkTextInView('Packing');
     // Arrows are editable even with a composite state in the diagram.
-    await expect(
-      page.getByTestId(TID.inspEdgeSelect).locator('option:not([disabled])')
-    ).toHaveCount(5);
+    await openTab(page, 'edge');
+    await expect(page.getByTestId(TID.inspPickItem)).toHaveCount(5);
     await pickEdge(page, 3);
     await renameTo(page, TID.inspEdgeLabel, '梱包済み');
     await expect.poll(() => stored(page)).toContain('    Packing --> Shipped : 梱包済み\n');
@@ -531,7 +541,8 @@ test.describe('Editing in the inspector', () => {
     await editPage.start(urlFor(`kanban\n  todo[To do]\n    t1[Write blog]${meta}\n    t2[Test]`));
     await editPage.checkTextInView('Write blog');
     // The list shows the card's text only, not the brackets or the metadata.
-    const options = await page.getByTestId(TID.inspObjectSelect).locator('option').allInnerTexts();
+    await openTab(page, 'object');
+    const options = await page.getByTestId(TID.inspPickItem).allInnerTexts();
     expect(options.map((option) => option.replaceAll(/\s+/g, ' ').trim())).toContain('Write blog');
     expect(options.join('')).not.toContain('@{');
 

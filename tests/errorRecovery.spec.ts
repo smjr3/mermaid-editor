@@ -154,6 +154,7 @@ test.describe('Error recovery: a mistake in the code', () => {
     await expect(page.getByTestId(TID.inspBlocked)).toContainText(t('insp.blocked'));
     await expect(page.getByTestId(TID.canvasInsertBlocked)).toBeVisible();
     // The theme rows stay usable: settings are not blocked.
+    await page.getByTestId(TID.lookPopover).click();
     await expect(page.locator(`[data-testid^="${TID.inspThemePreset}-"]`).first()).toBeEnabled();
   });
 

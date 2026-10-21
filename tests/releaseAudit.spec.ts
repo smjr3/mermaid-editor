@@ -1,6 +1,7 @@
 import { defaultState, TID } from '$/constants';
 import { serializeState } from '$/util/serde';
 import { chooseExport, readDownload, saveExport } from './helpers/exportDlg';
+import { activeTab } from './helpers/inspector';
 import { collapseCode, expandCode } from './helpers/shell';
 import { expect, t, test } from './test';
 
@@ -169,7 +170,7 @@ test.describe('An English browser', () => {
     await editPage.start(editUrl('flowchart TD\n  A --> B'));
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
     await expect(page.getByTestId(TID.wsExportButton)).toContainText(t('ws.export'));
-    await expect(page.getByTestId(TID.inspCrumbRoot)).toHaveText(t('ws.inspectorRoot'));
+    await expect(activeTab(page)).toHaveText(t('ws.inspectorRoot'));
     // The removed language button.
     await expect(page.getByTestId('locale-toggle-button')).toHaveCount(0);
   });

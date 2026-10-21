@@ -1,7 +1,7 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
 import { formField, formMessage, openForm, submitForm, viewMode } from './helpers/canvas';
-import { crumb, pickEdge, renameTo, toRoot } from './helpers/inspector';
+import { crumb, openTab, pickEdge, renameTo, toRoot } from './helpers/inspector';
 import { openNewDialog } from './helpers/newDlg';
 import { expect, t, test } from './test';
 
@@ -50,15 +50,11 @@ const table = async (page: Page) => {
   return page.getByTestId(TID.canvasTable).getByTestId(TID.tableEditor);
 };
 
-/** Chooses an object in 図全体's 要素 list by the text it shows, and renames it. */
+/** Chooses an object in the object tab's list by the text it shows, and renames it. */
 const renameInInspector = async (page: Page, shown: string, name: string) => {
-  const select = page.getByTestId(TID.inspObjectSelect);
-  const value = await select
-    .locator('option')
-    .filter({ hasText: shown })
-    .first()
-    .getAttribute('value');
-  await select.selectOption(value ?? '');
+  await toRoot(page);
+  await openTab(page, 'object');
+  await page.getByTestId(TID.inspPickItem).filter({ hasText: shown }).first().click();
   await renameTo(page, TID.inspName, name);
 };
 
@@ -352,10 +348,8 @@ test.describe('QA findings, second pass', () => {
     await expect(page.getByTestId(`${TID.contextMenu}-name`)).toHaveText(/承認 \(n[13]\)/);
     await page.keyboard.press('Escape');
     await toRoot(page);
-    const options = await page
-      .getByTestId(TID.inspObjectSelect)
-      .locator('option:not([disabled])')
-      .allTextContents();
+    await openTab(page, 'object');
+    const options = await page.getByTestId(TID.inspPickItem).allTextContents();
     expect(options).toEqual(['承認 (n1)', '改名', '承認 (n3)', '終了']);
   });
 

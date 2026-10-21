@@ -2,10 +2,15 @@ import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
 import { nodeByText, selectByText } from './helpers/canvas';
 import {
+  activeTab,
   backToRoot,
   closeSelection,
   crumb,
+  expectAtRoot,
+  expectSelected,
   field,
+  openLook,
+  openTab,
   panel,
   pickEdge,
   pickObject,
@@ -34,15 +39,15 @@ const stored = async (page: Page) =>
     .then((code) => code.replaceAll('\r\n', '\n'));
 
 test.describe('Inspector', () => {
-  test('shows 図全体, then the breadcrumb of what is selected, and goes back', async ({
+  test('shows 図全体, then the tab of what is selected, and goes back', async ({
     editPage,
     page
   }) => {
     await editPage.start(urlFor(flow));
     await editPage.checkTextInView('Pick');
-    await expect(page.getByTestId(TID.inspCrumbRoot)).toHaveText(t('ws.inspectorRoot'));
+    await expect(activeTab(page)).toHaveText(t('ws.inspectorRoot'));
     await expect(page.getByTestId(TID.inspTip)).toHaveText(t('insp.tip'));
-    await expect(page.getByTestId(TID.inspClose)).toHaveCount(0);
+    await expectAtRoot(page);
 
     await selectByText(page, 'Check');
     await expect(crumb(page)).toHaveText(t('insp.crumb.node'));
@@ -57,13 +62,18 @@ test.describe('Inspector', () => {
     await expect(page.getByTestId(TID.inspLaneCount)).toHaveText(
       t('insp.laneCount', { count: '1' })
     );
-    // The breadcrumb's 図全体 goes back too.
+    // The 図全体 tab goes back too.
     await backToRoot(page);
-    await expect(page.getByTestId(TID.inspClose)).toHaveCount(0);
+    await expectAtRoot(page);
 
-    // An arrow, from the node's list of connections.
+    // An arrow, from the node's list of connections (its glyph selects the arrow).
     await pickObject(page, 'B');
-    await page.getByTestId(TID.inspLink).filter({ hasText: 'Pick' }).click();
+    await page
+      .getByTestId(TID.inspLink)
+      .filter({ hasText: 'Pick' })
+      .getByTestId(TID.inspLinkEdge)
+      .first()
+      .click();
     await expect(crumb(page)).toHaveText(t('insp.crumb.edge'));
     await expect(page.getByTestId(TID.inspEdgeEnds)).toContainText('Check');
     await expect(page.getByTestId(TID.inspEdgeEnds)).toContainText('Pick');
@@ -353,13 +363,15 @@ test.describe('Inspector', () => {
     await expect.poll(() => stored(page)).not.toContain('font-weight:bold');
   });
 
-  test('renames a mindmap topic chosen from 図全体’s 要素 list', async ({ editPage, page }) => {
+  test('renames a mindmap topic chosen from the トピック tab’s list', async ({
+    editPage,
+    page
+  }) => {
     await editPage.start(urlFor('mindmap\n  root((Centre))\n    A\n    B'));
     await editPage.checkTextInView('Centre');
-    const select = page.getByTestId(TID.inspObjectSelect);
-    const value = await select.locator('option', { hasText: 'B' }).first().getAttribute('value');
-    await select.selectOption(value ?? '');
-    await expect(page.getByTestId(TID.inspClose)).toBeVisible();
+    await openTab(page, 'object');
+    await page.getByTestId(TID.inspPickItem).filter({ hasText: 'B' }).first().click();
+    await expectSelected(page);
     await renameTo(page, TID.inspName, '予算');
     await expect.poll(() => stored(page)).toContain('    予算');
     await editPage.checkTextInView('予算');
@@ -453,11 +465,14 @@ test.describe('Inspector: mermaid’s other options', () => {
     await expect.poll(() => config(page)).toContain('"curve": "linear"');
     await option(page, 'look').selectOption('neo');
     await expect.poll(() => config(page)).toContain('"look": "neo"');
+    await openLook(page);
     await page.getByTestId(TID.inspBuiltinTheme).selectOption('dark');
     await expect.poll(() => config(page)).toContain('"theme": "dark"');
     // The dark theme is the user's: the next validation leaves it.
     await editPage.checkTextInView('Check');
     await expect(page.getByTestId(TID.inspBuiltinTheme)).toHaveValue('dark');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(TID.inspLookContent)).toBeHidden();
     const title = option(page, 'accTitle');
     await title.fill('Order flow');
     await title.press('Enter');

@@ -51,9 +51,9 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
-        'Click a shape, an arrow or a lane in the picture to select it: the top of the settings panel shows "Whole diagram › Shape" (or Arrow, Lane, Task) and the panel switches to its settings; ✕, Escape or a click on the empty canvas clears. Double-click to rename; right-click for Rename, Change colour, Change shape, Add next, Draw an arrow from here and Delete.',
-        'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text (size, bold, reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it, and + Next, + Branch (beside the shape; on a decision, one more way out of it), Arrow and Delete.',
-        'An arrow: from and to, label, line (solid, dotted, thick, invisible), arrowhead (at the end, both ends, none), colour, reverse and delete — and what mermaid allows for its type: a flowchart arrow’s head shape (arrow, circle, cross), length, animation and curve; a message’s end and activation; a class relation’s kind and multiplicities; an ER relationship’s cardinality at each end; an architecture edge’s sides; a C4 relation’s direction.',
+        'Click a shape, an arrow or a lane in the picture to select it: the tabs at the top of the settings panel (Whole diagram, Shapes, Arrows, Groups; Participants and Messages for a sequence diagram, Tasks and Sections for a gantt) light up the selected kind and the panel switches to its settings. A tab lists the items of its kind to pick from; the Whole diagram tab, Escape or a click on the empty canvas clears. Double-click to rename; right-click for Rename, Change colour, Change shape, Add next, Draw an arrow from here and Delete.',
+        'A shape: name, shape (any of the 53 mermaid draws), colour (switch between fill, border and text, then pick the theme colour, one of eight, any colour or a recent one), text size (with bold and reset), icon, lane, ID (changing it renames it everywhere in the diagram), the arrows that touch it (the neighbour’s name selects that shape, the arrow sign selects the arrow), and + Next, + Branch (beside the shape; on a decision, one more way out of it), Arrow and Delete.',
+        'An arrow: from and to, label, line type (solid, dotted, thick, invisible), arrowhead (at the end, both ends, none), colour, reverse and delete — and what mermaid allows for its type: a flowchart arrow’s head shape (arrow, circle, cross), length, animation and curve; a message’s end and activation; a class relation’s kind and multiplicities; an ER relationship’s cardinality at each end; an architecture edge’s sides; a C4 relation’s direction.',
         'A lane: name, colour, how many shapes it holds with a button to add one, its own direction (flowchart subgraphs), and delete (keeping or with what is inside). Architecture services: change the icon, or move the service to another group. An icon shape takes a backdrop (square, circle, rounded) and its label above or below; a participant its symbol, a mindmap topic its shape, a class its annotation and type parameter, a kanban card its assignee, ticket and priority, a requirement its kind, id, text, risk and verification, a block its width.',
         'A change that would break the diagram is not made; the panel says so instead.',
         'Diagrams whose parts cannot be clicked (gantt, kanban, pie, …) list them in the settings panel to choose from. Class members, ER attributes, gantt tasks (section, start, predecessor, days, status and marks) and pie values can be changed too; sections, composite states, C4 boundaries and nested blocks can go with or without what is inside.',
@@ -74,8 +74,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'colours',
       items: [
-        'Theme (Whole diagram): twelve designs for the whole diagram (modern, neon, pastel, business, high contrast, …) as cards. The theme you choose goes into shared links and exports.',
-        'Standard picks one of mermaid’s nine built-in themes, dark ones included (none by default). Line colour sets the colour of every line, Font the typeface, and Hand-drawn draws the picture as if by hand, exports included.',
+        'The Look row of Whole diagram names the current theme; Change… opens twelve designs for the whole diagram (modern, neon, pastel, business, high contrast, …) as cards. The theme you choose goes into shared links and exports.',
+        'In the same Change… popover, Standard picks one of mermaid’s nine built-in themes, dark ones included (none by default). Line colour sets the colour of every line, Font the typeface, and Hand-drawn draws the picture as if by hand, exports included.',
         'Lanes, shapes (node, state, class, entity, …) and arrows: select one, then use Colour in the panel. Lanes colours every lane or none at once; Arrows puts every arrow back to its own colour.',
         'Text per shape: bold, font size and text colour; C4 elements take a text colour only.',
         '"+" picks any colour; colours you picked are offered again as recent ones.'
@@ -169,12 +169,12 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
-        '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの上に「図全体 › 図形」（矢印・レーン・タスク）と出て、その設定に変わります。✕ か Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更、右クリックで「名前を変更・色を変える・形を変える・次の処理を追加・ここから矢印を引く・削除」のメニューが出ます。',
-        '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字（大きさ・太字・元に戻す）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧、「＋次」「＋分岐」（横に分岐。分岐の図形では、そこから出る道をもう1本）「矢印」「削除」。',
-        '矢印：つなぐ元と先、ラベル、線（実線・点線・太線・見えない）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。図の種類で Mermaid が書けるものも変えられます：フローチャートの矢印の先の形（矢印・丸・×）・長さ・動き・曲線、シーケンスのメッセージの先の形と活性化、クラス図の関係の種類と多重度、ER 図の両端の数、アーキテクチャの接続の辺、C4 の関係の向き。',
+        '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの一番上のタブ「図全体・図形・矢印・グループ」（図の種類で変わります：シーケンス図なら参加者・メッセージ、ガントならタスク・区分）のうち選んだものが点き、その設定に変わります。タブをクリックすると、その種類の一覧から選べます。「図全体」のタブか Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更、右クリックで「名前を変更・色を変える・形を変える・次の処理を追加・ここから矢印を引く・削除」のメニューが出ます。',
+        '図形：名前、形（Mermaid で描ける 53 種）、色（塗り・枠・文字を切り替えて、テーマの色・8色・好きな色・最近使った色から）、文字の大きさ（太字・元に戻すも）、アイコン、入れるレーン、ID（変えると図の中の使用箇所もまとめて変わります）、つながっている矢印の一覧（相手の名前を押すとその図形、矢印の記号を押すとその矢印が選ばれます）、「＋次」「＋分岐」（横に分岐。分岐の図形では、そこから出る道をもう1本）「矢印」「削除」。',
+        '矢印：つなぐ元と先、ラベル、線の種類（実線・点線・太線・見えない）、矢じり（先だけ・両方・なし）、色、向きの反転、削除。図の種類で Mermaid が書けるものも変えられます：フローチャートの矢印の先の形（矢印・丸・×）・長さ・動き・曲線、シーケンスのメッセージの先の形と活性化、クラス図の関係の種類と多重度、ER 図の両端の数、アーキテクチャの接続の辺、C4 の関係の向き。',
         'レーン：名前、色、入っている図形の数と追加、そのレーンだけの向き（フローチャートのサブグラフ）、削除（中身は残す・中身ごと）。アーキテクチャ図のサービスは、アイコンの変更と別のグループへの移動ができます。アイコンの図形は背景（四角・丸・角丸）と文字の位置（上・下）、シーケンスの参加者は種類、マインドマップの話題は形、クラスは注釈と型引数、カンバンのカードは担当・チケット・優先度、要件図の要件は種類・ID・本文・リスク・検証方法、ブロック図のブロックは幅を変えられます。',
         '図が壊れる変更は行われず、パネルにその旨が表示されます。',
-        'クリックで選べない図（ガント・カンバン・円グラフなど）は、設定パネルの一覧から要素を選びます。クラスの「メンバー」（属性・メソッド）、ER 図の属性、ガントのタスク（区分・開始日・前のタスク・日数・状況・印）、円グラフの値なども変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。',
+        'クリックで選べない図（ガント・カンバン・円グラフなど）は、設定パネルのタブ（タスク・カード・項目など）の一覧から選びます。クラスの「メンバー」（属性・メソッド）、ER 図の属性、ガントのタスク（区分・開始日・前のタスク・日数・状況・印）、円グラフの値なども変えられます。セクション・入れ子の状態・C4 の境界・入れ子のブロックは、中身ごとか中身を残して削除できます。',
         'ガントのタスク・カンバンのカード・タイムラインの期間・円グラフの項目・ER 図のエンティティの属性など表の形の図は、図の上の「図 ／ 表 ／ 並べる」で表として編集できます。セルを書き換えて離れるか Enter で反映、行の追加・削除・上下の移動、カードの別の列への移動ができ、Excel でコピーした行を貼り付けると行として追加されます。'
       ],
       title: '変更と削除'
@@ -192,8 +192,8 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'colours',
       items: [
-        '「図全体」のテーマ：モダン・ネオン・パステル・ビジネス・ハイコントラストなど 12 種類のカードから、図全体の見た目を選べます。選んだテーマは共有リンクや書き出しにも残ります。',
-        '「標準」で Mermaid の組み込みテーマ 9 種（ダークを含む）から選べます（既定は「使わない」）。「線の色」で図全体の線の色を、「フォント」で文字の書体を変えられます。「手描き風」をオンにすると手で描いたような線になり、書き出しにも反映されます。',
+        '「図全体」の「見た目」の行に今のテーマが出ます。「変更…」を押すと、モダン・ネオン・パステル・ビジネス・ハイコントラストなど 12 種類のカードから、図全体の見た目を選べます。選んだテーマは共有リンクや書き出しにも残ります。',
+        '同じ「変更…」の中の「標準」で Mermaid の組み込みテーマ 9 種（ダークを含む）から選べます（既定は「使わない」）。「線の色」で図全体の線の色を、「フォント」で文字の書体を変えられます。「手描き風」をオンにすると手で描いたような線になり、書き出しにも反映されます。',
         'レーン・図形（状態・クラス・エンティティなども）・矢印は、選んでから設定パネルの「色」で色を付けます。「レーン」の色分け・色なしでまとめて塗り分け、「矢印」の「すべて元の色に」で矢印の色を戻せます。',
         '図形ごとに文字を太字にしたり、文字サイズや文字の色を変えられます（C4 の要素は文字の色のみ）。',
         '「＋」で好きな色を選べ、選んだ色は次から最近使った色として並びます。'

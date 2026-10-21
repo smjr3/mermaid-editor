@@ -20,7 +20,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'basics',
       items: [
         'The screen has three columns: the code on the left, the diagram in the middle and the settings panel on the right; the picture follows every change. Add shapes with the add bar above the diagram, and change what you selected (its name, colour, shape, …) in the panel. With nothing selected, the panel shows the whole diagram (theme, direction, title, …).',
-        'Drag the picture to move it; use the wheel or − / + at the bottom right of the diagram to zoom, and "Fit" to show all of it. The button beside them turns the background grid on or off.',
+        'A plain drag on the empty canvas selects; to move the picture press "Move" at the bottom right (Escape or the button again turns it off), or drag with the middle (wheel) button, or hold Space and drag. Use the wheel or − / + to zoom, and "Fit" to show all of it. The last button turns the background grid on or off.',
         'Your work is kept in this browser. History (the clock in the header) brings back earlier versions: saved and timeline entries, import and export, rename, restore and delete.',
         'The header holds Undo and Redo on the left and New ▾, Share and Export on the right, then How to use, History, Reset and the light / dark switch. The button at the top of the code pane or of the settings panel folds it to a thin strip; the button on the strip opens it again. Widths you drag the dividers to are remembered.'
       ],
@@ -51,7 +51,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
-        'Click a shape, an arrow or a lane in the picture to select it: the tabs at the top of the settings panel (Whole diagram, Shapes, Arrows, Groups; Participants and Messages for a sequence diagram, Tasks and Sections for a gantt) light up the selected kind and the panel switches to its settings. A tab lists the items of its kind to pick from (Ctrl+click adds one, "Select all" takes them all). Ctrl+click (⌘ on a Mac) on the picture adds a shape or an arrow to the selection or takes it out, Ctrl+drag selects everything inside the box, Ctrl+A selects everything. The Whole diagram tab, Escape or a click on the empty canvas clears. Double-click to rename.',
+        'Click a shape, an arrow or a lane in the picture to select it: the tabs at the top of the settings panel (Whole diagram, Shapes, Arrows, Groups; Participants and Messages for a sequence diagram, Tasks and Sections for a gantt) light up the selected kind and the panel switches to its settings. A tab lists the items of its kind to pick from (Ctrl+click adds one, "Select all" takes them all). Ctrl+click (⌘ on a Mac) on the picture adds a shape or an arrow to the selection or takes it out, a drag from the empty canvas selects everything inside the box (with Ctrl held it adds them), Ctrl+A selects everything. The Whole diagram tab, Escape or a click on the empty canvas clears. Double-click to rename.',
         'While something is selected, the bar above the diagram offers what can be done to it — + Next, + Branch, Colour, Shape, Line, Text, Select the same, Left / Right, Reverse, Arrow from here, Delete, as far as they apply (what does not fit goes under More ▾); Add ▾ still adds shapes. The right-click menu lists the same operations with the same words, and its submenus (colour, shape, line type, …) change the item in place (Rename F2, Delete Del).',
         'With several items selected, the panel shows how many and one row for each value that can be set on all of them (fill, border and text colour, shape, text size, bold, line type, arrowhead, length, lane); where they differ it says "mixed". One change is one undo step. The "Select the same" row (also shown for a single shape or arrow) selects every shape of the same shape, colour or lane, every arrow, or everything downstream of the shape.',
         'Left / Right moves a flowchart shape one place among the shapes drawn beside it, by exchanging two lines of the code; the diagram means the same. Swimlanes do not offer it, because mermaid orders the shapes in a lane itself.',
@@ -141,7 +141,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
       id: 'basics',
       items: [
         '画面は左から「コード」「図」「設定パネル」の3列です。どこを変えても図はすぐに変わります。図の上の追加バーで図形を足し、右の設定パネルで選んだものの名前・色・形などを変えます。何も選んでいないとき、設定パネルには「図全体」（テーマ・向き・タイトルなど）が出ます。',
-        '図はドラッグで動かし、マウスホイールか図の右下の − ／ ＋ で拡大・縮小、「全体」で図全体を表示します。隣のボタンで背景のグリッドを切り替えます。',
+        '何もないところのドラッグは範囲選択です。図を動かすには右下の「移動」を押す（Esc かもう一度押すと解除）か、ホイールボタン（中ボタン）でドラッグ、または Space を押しながらドラッグします。マウスホイールか − ／ ＋ で拡大・縮小、「全体」で図全体を表示。右端のボタンで背景のグリッドを切り替えます。',
         '作業内容はこのブラウザに保存されます。ヘッダーの時計のアイコン（履歴）で前の状態に戻せます（保存済み・タイムライン、読み込み・書き出し、名前の変更、復元、削除）。',
         'ヘッダーの左に「元に戻す」「やり直す」、右に「新規 ▾」「共有」「書き出す」と、使い方・履歴・初期化・ライト／ダークのボタンがあります。コード欄と設定パネルは上部のボタンで細い帯にたため、帯のボタンで元に戻せます。境目をドラッグした幅は記憶されます。'
       ],
@@ -172,7 +172,7 @@ export const helpContent: Record<Locale, HelpSection[]> = {
     {
       id: 'edit',
       items: [
-        '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの一番上のタブ「図全体・図形・矢印・グループ」（図の種類で変わります：シーケンス図なら参加者・メッセージ、ガントならタスク・区分）のうち選んだものが点き、その設定に変わります。タブをクリックすると、その種類の一覧から選べます（Ctrl+クリックで追加、「すべて選ぶ」で全部）。図の中では Ctrl+クリック（Mac は ⌘）で図形や矢印を選択に足したり外したり、Ctrl+ドラッグで囲んだものをまとめて、Ctrl+A で全部を選べます。「図全体」のタブか Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更。',
+        '図の中の図形・矢印・レーンをクリックすると選ばれ、設定パネルの一番上のタブ「図全体・図形・矢印・グループ」（図の種類で変わります：シーケンス図なら参加者・メッセージ、ガントならタスク・区分）のうち選んだものが点き、その設定に変わります。タブをクリックすると、その種類の一覧から選べます（Ctrl+クリックで追加、「すべて選ぶ」で全部）。図の中では Ctrl+クリック（Mac は ⌘）で図形や矢印を選択に足したり外したり、何もないところからのドラッグで囲んだものをまとめて（Ctrl を押しながらなら選択に足して）、Ctrl+A で全部を選べます。「図全体」のタブか Esc、何もないところのクリックで選択を解除します。ダブルクリックで名前を変更。',
         '何かを選んでいる間、図の上のバーは選んだものへの操作に変わります：「＋次」「＋分岐」「色」「形」「線」「文字」「同じものを選ぶ」「左へ」「右へ」「向きを反転」「ここから矢印」「削除」のうち使えるもの（入りきらない分は「その他 ▾」に、「追加 ▾」から図形も足せます）。右クリックのメニューにも同じ操作が同じ言葉で並び、色・形・線の種類などはサブメニューでその場で変わります（名前を変更 F2、削除 Del）。',
         '複数を選んでいるときは、パネルに個数と、全部にまとめて効く行（塗り・枠・文字の色、形、文字の大きさ、太字、線の種類、矢じり、長さ、レーン）が出ます。値がそろっていないものは「まちまち」。変更は一回の「元に戻す」で戻ります。「同じものを選ぶ」の行（図形や矢印を一つ選んだときにも出ます）で、同じ形・同じ色・同じレーンの図形、すべての矢印、この先にあるものすべてをまとめて選べます。',
         '「左へ」「右へ」はフローチャートの図形を、横に並んだ図形の中で一つ左か右に動かします。コードの行の順番を変えるだけで、図の意味は変わりません。スイムレーンではレーンの中の順番を Mermaid が決めるので出ません。',

@@ -1,5 +1,12 @@
 <script lang="ts">
   import { connectMode, stopConnect } from '$/components/canvas/connectMode.svelte';
+  import {
+    dragGesture,
+    panCursor,
+    panMode,
+    stopPanMode,
+    type DragGesture
+  } from '$/components/canvas/panMode.svelte';
   import DiagramContextMenu from '$/components/DiagramContextMenu.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
@@ -42,9 +49,13 @@
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
   // marks it (the inspector beside the diagram shows what it is and changes it), a right
   // click opens a menu, a double click renames, and the keys of selectionKeys.ts act on
-  // it. Several items: Ctrl/⌘+click adds one or takes it out; Ctrl/⌘+drag draws a rubber
-  // band and adds every object and arrow drawn wholly inside it (a plain drag stays the
-  // pan, which svg-pan-zoom owns); Ctrl/⌘+A selects everything. Every selected item gets
+  // it. Several items: Ctrl/⌘+click adds one or takes it out; a plain drag that starts on
+  // the empty canvas draws a rubber band and selects every object and arrow drawn wholly
+  // inside it (with Ctrl/⌘ held it adds them); Ctrl/⌘+A selects everything. The mouse
+  // moves the picture with the middle button, with Space held, or while the 移動 button of
+  // the zoom controls is pressed (panMode.svelte.ts; the pans go to `panZoomState`);
+  // svg-pan-zoom's own mouse pan never sees a mouse press here, touch keeps its gestures.
+  // Every selected item gets
   // an outline, the primary one marked `data-primary`. While an arrow is being drawn (the add bar's 矢印, "ここから矢印を引く") a banner says
   // which shape to click next. Drawn as an overlay so the SVG itself (which PNG and SVG
   // export read) is never touched. Clicks on anything marked `data-selection-ui` (the
@@ -122,7 +133,12 @@
    * are thin), else the smallest lane or group around it (an architecture group's box
    * has no fill, so the click lands on the canvas).
    */
-  const pickNear = (svg: SVGSVGElement, x: number, y: number): Selected | undefined => {
+  const pickNear = (
+    svg: SVGSVGElement,
+    x: number,
+    y: number,
+    groups = true
+  ): Selected | undefined => {
     const ctx = context(svg);
     if (!ctx) return undefined;
     for (const shape of svg.querySelectorAll<SVGGeometryElement>('path, line, polyline')) {
@@ -136,26 +152,35 @@
       shape.style.strokeWidth = width;
       if (hit) return picked;
     }
-    const groups = [...svg.querySelectorAll('g.cluster, rect[id*="-group-"]')];
+    if (!groups) return undefined;
+    const around = [...svg.querySelectorAll('g.cluster, rect[id*="-group-"]')];
     for (const index of containing(
-      groups.map((group) => group.getBoundingClientRect()),
+      around.map((group) => group.getBoundingClientRect()),
       x,
       y
     )) {
-      const picked = pickTarget([describe(groups[index])], ctx);
+      const picked = pickTarget([describe(around[index])], ctx);
       if (picked) return picked;
     }
     return undefined;
   };
 
-  /** The object or arrow under an event's target, or near the click. */
-  const pickAt = (target: EventTarget | null, at?: MouseEvent): Selected | undefined => {
+  /**
+   * The object or arrow under an event's target, or near the click. Without `groups`, the
+   * lane or group merely around the point does not count: a drag inside one draws the
+   * band (a click still selects the group).
+   */
+  const pickAt = (
+    target: EventTarget | null,
+    at?: MouseEvent,
+    groups = true
+  ): Selected | undefined => {
     const svg = svgOf();
     if (!svg || !(target instanceof Element) || !svg.contains(target)) return undefined;
     const ctx = context(svg);
     if (!ctx) return undefined;
     const direct = pickPath(target, ctx);
-    return direct ?? (at ? pickNear(svg, at.clientX, at.clientY) : undefined);
+    return direct ?? (at ? pickNear(svg, at.clientX, at.clientY, groups) : undefined);
   };
 
   const pickPath = (
@@ -265,8 +290,20 @@
     return () => cancelAnimationFrame(frame);
   });
 
-  // The rubber band (Ctrl/⌘+drag), relative to the host while it is drawn.
+  // The rubber band (a plain drag on the empty canvas), relative to the host while it is drawn.
   let band = $state<Box | undefined>();
+  // A mouse pan is under way (the cursor closes).
+  let panning = $state(false);
+
+  // The cursor over the diagram: a hand while a pan gesture is available or under way.
+  $effect(() => {
+    const view = host?.querySelector<HTMLElement>('#view');
+    if (!view) return;
+    view.style.cursor = panCursor({ dragging: panning, mode: panMode.on, space: panMode.space });
+    return () => {
+      view.style.cursor = '';
+    };
+  });
 
   /** Every object and arrow drawn wholly inside `area` (client coordinates). */
   const insideBand = (area: Box): Selected[] => {
@@ -345,16 +382,23 @@
   const inOwnUi = (target: EventTarget | null) =>
     target instanceof Element && !!target.closest('[data-selection-ui]');
 
-  // Clicks: a drag that panned the diagram is not a click.
+  // Clicks: a drag that panned the diagram or drew the band is not a click.
   let downAt: { x: number; y: number } | undefined;
   $effect(() => {
     const element = host;
     if (!element) return;
+    const onView = (target: EventTarget | null) =>
+      !inOwnUi(target) &&
+      target instanceof Element &&
+      !!element.querySelector('#view')?.contains(target);
+    const fromMouse = (event: PointerEvent | MouseEvent) =>
+      !('pointerType' in event) || event.pointerType === 'mouse';
     const onDown = (event: PointerEvent) => {
       downAt = { x: event.clientX, y: event.clientY };
-      // The pan listens to pointer events (hammer.js inside svg-pan-zoom): a rubber band's
-      // start must not reach it. Not prevented, so the mouse events (and the click) follow.
-      if (startsBand(event)) event.stopPropagation();
+      // The touch pan listens to pointer events (hammer.js inside svg-pan-zoom): a mouse
+      // press must not reach it, the mouse's drags are decided below. Not prevented, so
+      // the mouse events (and the click) follow.
+      if (fromMouse(event) && onView(event.target)) event.stopPropagation();
       // The diagram's pan/zoom keeps focus where it is, so the rename field would
       // not notice the click: apply what was typed before the click selects anything.
       if (selection.renaming && !inOwnUi(event.target)) void model.commitDraft();
@@ -392,51 +436,76 @@
       if (picked) select(picked);
       else if (svg) clearSelection();
     };
-    // Ctrl/⌘+drag: a rubber band instead of a pan. Stopped in the capture phase, so
-    // neither svg-pan-zoom's own mousedown on the <svg> nor the pointer events its pan
-    // gesture reads ever see it; the click that follows a drag is ignored by `onClick`
-    // (it moved). Mouse only: touch keeps the pan.
-    let bandFrom: { x: number; y: number } | undefined;
-    const startsBand = (event: MouseEvent) =>
-      event.button === 0 &&
-      (event.ctrlKey || event.metaKey) &&
-      (!('pointerType' in event) || (event as PointerEvent).pointerType === 'mouse') &&
-      !inOwnUi(event.target) &&
-      event.target instanceof Element &&
-      !!element.querySelector('#view')?.contains(event.target);
+    // The mouse's drags (panMode.svelte.ts): a plain left drag from the empty canvas is
+    // the rubber band, the middle button / Space / 移動 move the picture, a drag from an
+    // object does nothing (the click selects it). Every mouse press on the diagram is
+    // stopped in the capture phase, so svg-pan-zoom's own mousedown on the <svg> never
+    // starts its pan; the click that follows a drag is ignored by `onClick` (it moved).
+    let drag:
+      | { kind: DragGesture; from: { x: number; y: number }; last: { x: number; y: number } }
+      | undefined;
     const bandArea = () => {
-      if (!bandFrom || !band) return undefined;
+      if (!drag || !band) return undefined;
       const rect = element.getBoundingClientRect();
       return { ...band, left: band.left + rect.left, top: band.top + rect.top };
     };
-    const onBandMove = (event: MouseEvent) => {
-      if (!bandFrom) return;
-      const rect = element.getBoundingClientRect();
+    const onDragMove = (event: MouseEvent) => {
+      if (!drag) return;
       const to = { x: event.clientX, y: event.clientY };
-      if (!band && Math.hypot(to.x - bandFrom.x, to.y - bandFrom.y) < 4) return;
-      const area = boxBetween(bandFrom, to);
+      if (drag.kind === 'pan') {
+        panZoomState?.panBy({ x: to.x - drag.last.x, y: to.y - drag.last.y });
+        drag.last = to;
+        panning = true;
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      if (!band && Math.hypot(to.x - drag.from.x, to.y - drag.from.y) < 4) return;
+      const area = boxBetween(drag.from, to);
       band = { ...area, left: area.left - rect.left, top: area.top - rect.top };
     };
-    const onBandUp = () => {
-      window.removeEventListener('mousemove', onBandMove);
-      const area = bandArea();
-      bandFrom = undefined;
+    const endDrag = () => {
+      window.removeEventListener('mousemove', onDragMove);
+      window.removeEventListener('mouseup', onDragUp);
+      window.removeEventListener('blur', endDrag);
+      drag = undefined;
       band = undefined;
-      if (!area) return;
+      panning = false;
+    };
+    const onDragUp = (event: MouseEvent) => {
+      const area = bandArea();
+      const add = event.ctrlKey || event.metaKey;
+      endDrag();
       // The drag may have highlighted text in the drawing.
       window.getSelection()?.removeAllRanges();
-      // Added to what is selected, as Ctrl/⌘ means everywhere here.
+      if (!area) return;
       const found = insideBand(area);
-      if (found.length > 0) selectMany([...selection.items, ...found]);
+      // Plain: what lies inside is the selection; with Ctrl/⌘ it joins what was selected.
+      if (add) {
+        if (found.length > 0) selectMany([...selection.items, ...found]);
+      } else if (found.length > 0) selectMany(found);
+      else clearSelection();
     };
-    const onBandDown = (event: MouseEvent) => {
-      if (!startsBand(event)) return;
-      // Not prevented: the default moves focus out of a field or the code editor, as a
-      // plain click on the diagram does, so the keys that follow are the selection's.
+    const onMouseDown = (event: MouseEvent) => {
+      if (!fromMouse(event) || !onView(event.target)) return;
+      // Neither svg-pan-zoom's mouse pan nor anything else in the drawing.
       event.stopPropagation();
-      bandFrom = { x: event.clientX, y: event.clientY };
-      window.addEventListener('mousemove', onBandMove);
-      window.addEventListener('mouseup', onBandUp, { once: true });
+      if (drag) return;
+      const kind = dragGesture({
+        button: event.button,
+        mode: panMode.on,
+        onObject: pickAt(event.target, event, false) !== undefined,
+        space: panMode.space
+      });
+      if (kind === 'none') return;
+      // The middle button would otherwise start the browser's auto-scroll. A left press
+      // is not prevented: its default moves focus out of a field or the code editor, as a
+      // plain click on the diagram does, so the keys that follow are the selection's.
+      if (event.button === 1) event.preventDefault();
+      const at = { x: event.clientX, y: event.clientY };
+      drag = { from: at, kind, last: at };
+      window.addEventListener('mousemove', onDragMove);
+      window.addEventListener('mouseup', onDragUp);
+      window.addEventListener('blur', endDrag);
     };
     const onDoubleClick = (event: MouseEvent) => {
       if (inOwnUi(event.target)) return;
@@ -470,18 +539,50 @@
       };
     };
     element.addEventListener('pointerdown', onDown, true);
-    element.addEventListener('mousedown', onBandDown, true);
+    element.addEventListener('mousedown', onMouseDown, true);
     element.addEventListener('click', onClick);
     element.addEventListener('dblclick', onDoubleClick, true);
     element.addEventListener('contextmenu', onContextMenu);
     return () => {
       element.removeEventListener('pointerdown', onDown, true);
-      element.removeEventListener('mousedown', onBandDown, true);
-      window.removeEventListener('mousemove', onBandMove);
-      window.removeEventListener('mouseup', onBandUp);
+      element.removeEventListener('mousedown', onMouseDown, true);
+      endDrag();
       element.removeEventListener('click', onClick);
       element.removeEventListener('dblclick', onDoubleClick, true);
       element.removeEventListener('contextmenu', onContextMenu);
+    };
+  });
+
+  // Space held (outside a field, the code editor and the buttons Space presses) makes a
+  // left drag move the picture; let go, or the window losing focus, ends it.
+  $effect(() => {
+    const spaceIsPan = (event: KeyboardEvent) => {
+      if (event.key !== ' ' || event.defaultPrevented) return false;
+      const target = event.target as Element | null;
+      if (isTypingTarget(target, ' ')) return false;
+      return !target?.closest?.(
+        'button, a[href], summary, [role="button"], [role="checkbox"], [role="switch"], [role="tab"], [role="menuitem"], [role="option"], [role="slider"]'
+      );
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!spaceIsPan(event)) return;
+      event.preventDefault();
+      panMode.space = true;
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === ' ') panMode.space = false;
+    };
+    const onBlur = () => {
+      panMode.space = false;
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      panMode.space = false;
     };
   });
 
@@ -499,6 +600,12 @@
         !isTypingTarget(event.target as Element)
       ) {
         stopConnect();
+        event.preventDefault();
+        return;
+      }
+      // Escape while 移動 is pressed turns it off; the selection, if any, stays for the next.
+      if (event.key === 'Escape' && panMode.on && !isTypingTarget(event.target as Element)) {
+        stopPanMode();
         event.preventDefault();
         return;
       }

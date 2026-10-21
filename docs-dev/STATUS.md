@@ -22,7 +22,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **383**.
+  every locally changed path — currently **385**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -764,8 +764,9 @@ selection files.
 **Multi-selection, the selection bar and the command registry (2026-10-21).** The selection
 holds several items (`selection.svelte.ts`: `items` in the order chosen, `current` is the last
 one, so every single-selection reader keeps working): Ctrl/⌘+click on the picture adds an item or
-takes it out (`toggleSelect`; the owner's rule: Ctrl, not Shift), Ctrl/⌘+drag draws a rubber band
-and selects every object and arrow wholly inside it (a plain drag still pans), Ctrl/⌘+A selects
+takes it out (`toggleSelect`; the owner's rule: Ctrl, not Shift), a plain drag from the empty canvas
+draws a rubber band and selects every object and arrow wholly inside it (with Ctrl/⌘ held it adds
+them; a drag from an object does nothing, the click selects it), Ctrl/⌘+A selects
 everything (`selectionKeys.ts`, when not typing), and 「同じものを選ぶ」 replaces the selection with
 the items like the primary one — same shape, same colour, same lane (or a lane's members), every
 arrow, everything downstream of a node (`selectMany`; `sameAs` in `selectionCommands.ts`). Every
@@ -777,6 +778,14 @@ once, `updateCode` once; `removeAll` deletes arrows first, from the highest inde
 code moved on since the lists were read (an edit before the next sync), `applyToAll` reads them
 again and names its targets again by id or index, so a stale arrow property is never written
 back. As every edit, it refuses while the code is broken (`TID.selectionWarning`).
+The mouse pans the picture with the middle (wheel) button, with Space+left drag, or while the 移動
+button of the zoom controls is pressed (`ZoomControls.svelte`, `TID.panToggle`, `aria-pressed`;
+Escape or the button again turns it off; a hand cursor while either is on): `canvas/panMode.svelte.ts`
+holds the mode and decides the gesture (`dragGesture`), `SelectionLayer.svelte` stops every mouse
+press on the diagram in the capture phase so svg-pan-zoom's own mouse pan never starts, and feeds
+the pans to `PanZoomState.panBy`; touch (one finger pans, pinch zooms) keeps svg-pan-zoom's hammer
+handlers and `/view` keeps the plain-drag pan. `tests/multiSelect.spec.ts`; the `panBy` helper in
+`tests/helpers/canvas.ts` is the gesture for every spec that pans.
 
 The **command registry** (`selectionCommands.ts`) is the single source of what can be done to a
 selection and what it is called: one entry per command (＋次, ＋分岐, ここから矢印, 名前を変更 /

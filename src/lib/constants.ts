@@ -187,6 +187,7 @@ export const TID = {
   newDlgTab: 'new-dlg-tab',
   newDlgTitle: 'new-dlg-title',
   noticeResetConfig: 'notice-reset-config',
+  panToggle: 'pan-toggle',
   privacyButton: 'privacy-button',
   redoButton: 'redo-button',
   resetAllButton: 'reset-all-button',

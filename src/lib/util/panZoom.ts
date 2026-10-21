@@ -161,6 +161,21 @@ export class PanZoomState {
   }
 
   /**
+   * Local: moves the view by `delta` screen pixels. The selection layer's mouse pans
+   * (Space+drag, a middle-button drag, the 移動 button; `canvas/panMode.svelte.ts`) go
+   * through here: svg-pan-zoom's own mouse pan never sees a mouse press on /edit, so a
+   * plain drag can draw the rubber band instead. Touch keeps svg-pan-zoom's gestures.
+   */
+  public panBy(delta: Point) {
+    this.pzoom?.panBy(delta);
+  }
+
+  /** Local: where the view is, or undefined before the diagram is drawn. */
+  public getPan(): Point | undefined {
+    return this.pzoom?.getPan();
+  }
+
+  /**
    * Local: moves the view so `box` (screen pixels) is fully visible in `viewport`, at the
    * current zoom unless it is bigger than the viewport (revealView.ts). False when the
    * view did not move.

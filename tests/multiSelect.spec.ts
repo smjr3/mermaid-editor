@@ -1,10 +1,13 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
+import { panBy, viewTransform } from './helpers/canvas';
 import { expect, t, test } from './test';
 
 // Several things selected at once (selection.svelte.ts, SelectionLayer.svelte): Ctrl+click
-// adds and removes, Ctrl+drag draws a rubber band, Ctrl+A takes everything, Delete removes
-// them all in one undo step, Escape clears; edits are refused while the code is broken.
+// adds and removes, a plain drag from the empty canvas draws a rubber band (Ctrl+drag adds
+// what it holds), Ctrl+A takes everything, Delete removes them all in one undo step, Escape
+// clears; edits are refused while the code is broken. The mouse pans with the middle button
+// or Space+drag (panMode.svelte.ts), never with a plain drag.
 const urlFor = (code: string) =>
   `/edit#base64:${Buffer.from(JSON.stringify({ code, mermaid: '{}' })).toString('base64')}`;
 const flow = 'flowchart TD\n  A[Start] -->|yes| B[Middle]\n  B --> C[End]\n  B --> D[Other]';
@@ -85,7 +88,8 @@ test.describe('Multi-select', () => {
     await expect(outlines(page)).toHaveCount(0);
   });
 
-  test('Ctrl+drag draws a rubber band that selects what lies inside it', async ({ page }) => {
+  /** The corners of a band from the canvas left of Start down to below Middle. */
+  const bandCorners = async (page: Page) => {
     const [start, middle, end, view] = await Promise.all([
       node(page, 'Start').boundingBox(),
       node(page, 'Middle').boundingBox(),
@@ -93,40 +97,153 @@ test.describe('Multi-select', () => {
       page.locator('#view').boundingBox()
     ]);
     if (!start || !middle || !end || !view) throw new Error('boxes missing');
-    // From the empty canvas left of Start down to below Middle: Start, Middle and the
-    // arrow between them lie inside; End and Other (beside and below) do not.
+    // Start, Middle and the arrow between them lie inside; End and Other (beside and
+    // below) do not.
     const x0 = Math.max(view.x + 4, start.x - 40);
     const y0 = Math.max(view.y + 4, start.y - 20);
     const x1 = Math.max(start.x + start.width, middle.x + middle.width) + 12;
     const y1 = middle.y + middle.height + 12;
     expect(y1).toBeLessThan(end.y);
+    return { start, view, x0, x1, y0, y1 };
+  };
+
+  test('a plain drag on the empty canvas draws a rubber band that selects what lies inside it', async ({
+    page
+  }) => {
+    const { start, view, x0, x1, y0, y1 } = await bandCorners(page);
+    // Something selected first: the band replaces it.
+    await node(page, 'Other').click();
+    expect(await selected(page)).toEqual(['D']);
+    const before = await viewTransform(page);
     await page.mouse.move(x0, y0);
-    await page.keyboard.down('Control');
     await page.mouse.down();
     await page.mouse.move(x0 + 30, y0 + 30);
     await expect(page.getByTestId(TID.selectionBand)).toBeVisible();
     await page.mouse.move(x1, y1, { steps: 4 });
     await page.mouse.up();
-    await page.keyboard.up('Control');
     await expect(page.getByTestId(TID.selectionBand)).toBeHidden();
     await expect(outlines(page)).toHaveCount(3);
     expect((await selected(page)).sort()).toEqual(['A', 'B', 'edge-0']);
     // The diagram did not pan: Start is where it was.
     const after = await node(page, 'Start').boundingBox();
     expect(Math.abs((after?.x ?? 0) - start.x)).toBeLessThan(2);
+    expect(await viewTransform(page)).toBe(before);
 
-    // A plain drag on the canvas still pans, and does not change the selection.
+    // A plain drag over nothing clears the selection.
     await page.mouse.move(view.x + 20, view.y + view.height - 20);
     await page.mouse.down();
     await page.mouse.move(view.x + 80, view.y + view.height - 60, { steps: 4 });
     await page.mouse.up();
-    const panned = await node(page, 'Start').boundingBox();
-    expect(Math.abs((panned?.x ?? 0) - start.x)).toBeGreaterThan(30);
-    await expect(outlines(page)).toHaveCount(3);
-
-    // A click on the empty canvas clears.
-    await page.mouse.click(view.x + 20, view.y + view.height - 20);
     await expect(outlines(page)).toHaveCount(0);
+    expect(await viewTransform(page)).toBe(before);
+  });
+
+  test('Ctrl+drag adds what the band holds to the selection', async ({ page }) => {
+    const { x0, x1, y0, y1 } = await bandCorners(page);
+    await node(page, 'Other').click();
+    await page.mouse.move(x0, y0);
+    await page.keyboard.down('Control');
+    await page.mouse.down();
+    await page.mouse.move(x1, y1, { steps: 4 });
+    await page.mouse.up();
+    await page.keyboard.up('Control');
+    await expect(outlines(page)).toHaveCount(4);
+    expect((await selected(page)).sort()).toEqual(['A', 'B', 'D', 'edge-0']);
+  });
+
+  test('a plain drag that starts on a node neither pans nor draws the band; the click selects', async ({
+    page
+  }) => {
+    const before = await viewTransform(page);
+    const box = await node(page, 'Middle').boundingBox();
+    if (!box) throw new Error('box missing');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2 + 40, { steps: 4 });
+    await expect(page.getByTestId(TID.selectionBand)).toBeHidden();
+    await page.mouse.up();
+    expect(await viewTransform(page)).toBe(before);
+    const after = await node(page, 'Middle').boundingBox();
+    expect(Math.abs((after?.x ?? 0) - box.x)).toBeLessThan(2);
+    await expect(outlines(page)).toHaveCount(0);
+    await node(page, 'Middle').click();
+    expect(await selected(page)).toEqual(['B']);
+  });
+
+  test('the middle button and Space+drag pan the diagram and keep the selection', async ({
+    page
+  }) => {
+    await node(page, 'Start').click();
+    const start = await node(page, 'Start').boundingBox();
+    const before = await viewTransform(page);
+    if (!start) throw new Error('box missing');
+
+    await panBy(page, 60, -40);
+    await expect.poll(() => viewTransform(page)).not.toBe(before);
+    const panned = await node(page, 'Start').boundingBox();
+    if (!panned) throw new Error('box missing');
+    expect(panned.x - start.x).toBeGreaterThan(40);
+    expect(panned.y - start.y).toBeLessThan(-25);
+    await expect(outlines(page)).toHaveCount(1);
+    await expect(page.getByTestId(TID.selectionBand)).toBeHidden();
+
+    // Space held: a hand cursor, and a left drag moves the picture (over a node too).
+    const middle = await viewTransform(page);
+    await page.keyboard.down('Space');
+    await expect(page.locator('#view')).toHaveCSS('cursor', 'grab');
+    await page.keyboard.up('Space');
+    await expect(page.locator('#view')).toHaveCSS('cursor', 'auto');
+    await panBy(page, -60, 40, { from: { x: panned.x + 10, y: panned.y + 10 }, how: 'space' });
+    await expect.poll(() => viewTransform(page)).not.toBe(middle);
+    const back = await node(page, 'Start').boundingBox();
+    expect(Math.abs((back?.x ?? 0) - start.x)).toBeLessThan(2);
+    expect(Math.abs((back?.y ?? 0) - start.y)).toBeLessThan(2);
+    await expect(outlines(page)).toHaveCount(1);
+
+    // Space in the code editor is a space, not a pan key.
+    await page.locator('.monaco-editor').first().click();
+    await page.keyboard.down('Space');
+    await expect(page.locator('#view')).toHaveCSS('cursor', 'auto');
+    await page.keyboard.up('Space');
+    await expect(outlines(page)).toHaveCount(1);
+  });
+
+  test('the 移動 button: a plain drag pans and draws no band; Escape or the button turns it off', async ({
+    page
+  }) => {
+    const toggle = page.getByTestId(TID.panToggle);
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    const { x0, x1, y0, y1 } = await bandCorners(page);
+    const before = await viewTransform(page);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#view')).toHaveCSS('cursor', 'grab');
+    // The band's drag now moves the picture.
+    await page.mouse.move(x0, y0);
+    await page.mouse.down();
+    await page.mouse.move(x0 + 40, y0 + 40, { steps: 3 });
+    await expect(page.getByTestId(TID.selectionBand)).toBeHidden();
+    await expect(page.locator('#view')).toHaveCSS('cursor', 'grabbing');
+    await page.mouse.up();
+    await expect.poll(() => viewTransform(page)).not.toBe(before);
+    await expect(outlines(page)).toHaveCount(0);
+    // Escape turns it off (the focus is on the diagram after the drag).
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#view')).toHaveCSS('cursor', 'auto');
+    // And the band is back.
+    const moved = await viewTransform(page);
+    await page.mouse.move(x0, y0);
+    await page.mouse.down();
+    await page.mouse.move(x1, y1, { steps: 4 });
+    await expect(page.getByTestId(TID.selectionBand)).toBeVisible();
+    await page.mouse.up();
+    expect(await viewTransform(page)).toBe(moved);
+    // Clicking the button again turns it off too.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('Ctrl+A selects everything; Delete removes it all as one undo step', async ({

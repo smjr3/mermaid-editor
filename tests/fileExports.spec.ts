@@ -8,6 +8,7 @@ import {
   readDownload,
   saveExport
 } from './helpers/exportDlg';
+import { panBy } from './helpers/canvas';
 import { expect, t, test } from './test';
 
 // The .drawio / .vsdx files of the 書き出す dialog (drawioExport.ts, vsdxExport.ts) and the
@@ -295,11 +296,10 @@ test.describe('The SVG file after zooming the view', () => {
       for (let index = 0; index < 3; index++) await page.getByTestId(TID.zoomInButton).click();
       const box = await page.locator('#container').boundingBox();
       if (box) {
-        const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
-        await page.mouse.move(x, y);
-        await page.mouse.down();
-        await page.mouse.move(x - 120, y + 60, { steps: 5 });
-        await page.mouse.up();
+        // A middle-button drag from the middle of the picture (a plain drag selects).
+        await panBy(page, -120, 60, {
+          from: { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        });
       }
       const viewport = page.locator('#container .svg-pan-zoom_viewport');
       const zoomed = await viewport.getAttribute('transform');

@@ -651,6 +651,8 @@ modifications as if they were local customizations.
 | Added    | `src/lib/components/canvas/ViewModeSwitch.svelte`     |
 | Added    | `src/lib/components/canvas/ZoomControls.svelte`       |
 | Added    | `src/lib/components/canvas/connectMode.svelte.ts`     |
+| Added    | `src/lib/components/canvas/panMode.svelte.test.ts`    |
+| Added    | `src/lib/components/canvas/panMode.svelte.ts`         |
 | Added    | `src/lib/components/dialogs/ExportDialog.svelte`      |
 | Added    | `src/lib/components/dialogs/NewDiagramDialog.svelte`  |
 | Added    | `src/lib/components/dialogs/ShareDialog.svelte`       |

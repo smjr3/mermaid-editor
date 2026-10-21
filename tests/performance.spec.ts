@@ -1,6 +1,7 @@
 import { C, defaultState } from '$/constants';
 import { serializeState } from '$/util/serde';
 import type { Page } from '@playwright/test';
+import { panBy } from './helpers/canvas';
 import { expect, test } from './test';
 
 // Guards against the "rendering sometimes becomes extremely slow" regressions:
@@ -112,12 +113,8 @@ test.describe('rendering performance', () => {
     const before = await settled(page);
     const box = await page.locator('#view').boundingBox();
     if (!box) throw new Error('no view');
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    for (let step = 0; step < 10; step++) {
-      await page.mouse.move(box.x + box.width / 2 + step * 10, box.y + box.height / 2 + step * 5);
-    }
-    await page.mouse.up();
+    // The middle button pans (a plain drag draws the selection band).
+    await panBy(page, 90, 45, { from: { x: box.x + box.width / 2, y: box.y + box.height / 2 } });
     await page.mouse.wheel(0, -200);
     expect(await settled(page)).toBe(before);
   });

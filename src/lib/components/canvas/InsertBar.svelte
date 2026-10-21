@@ -1,6 +1,7 @@
 <script lang="ts">
   import ArchAddForms from '$/components/canvas/ArchAddForms.svelte';
   import FlowInsert from '$/components/canvas/FlowInsert.svelte';
+  import { connecting } from '$/components/canvas/connectMode.svelte';
   import SelectionBar from '$/components/canvas/SelectionBar.svelte';
   import SpecInsert from '$/components/canvas/SpecInsert.svelte';
   import { TID } from '$/constants';
@@ -23,7 +24,12 @@
   // broken code or not: its buttons refuse and say why. The add entries keep working
   // meanwhile — a shape joined after the selected one, a form — from one 追加 ▾ menu at
   // the right end, so nothing the bar offered is lost while something is selected.
-  const selecting = $derived(selection.items.length > 0);
+  // While an arrow is being drawn (connectMode.svelte.ts) the add bar stays, with 矢印
+  // pressed: the first shape clicked becomes selected as the arrow's start, and the two
+  // clicks must not have the bar change under them; the banner over the diagram has やめる.
+  // Started with a shape selected (矢印 under 追加 ▾, the selection's 矢印を引く, the menu,
+  // the inspector) it shows the same pressed 矢印 until the arrow is drawn or given up.
+  const selecting = $derived(selection.items.length > 0 && !connecting());
   const architecture = $derived(isArchitecture(inputState.code));
   const spec = $derived(specFor(inputState.code));
   const flow = $derived(canAdd(inputState.code));

@@ -2,7 +2,9 @@
  * Local: the add bar's 矢印 (InsertBar.svelte) with nothing selected — the next shape
  * clicked becomes the arrow's start, and then `selection.connectFrom` (selection.svelte.ts)
  * waits for the shape to connect to, as "ここから矢印を引く" does. SelectionLayer reads it on
- * a click; the banner over the diagram says which of the two clicks is next.
+ * a click; the banner over the diagram says which of the two clicks is next. While either
+ * click is awaited (`connecting`), InsertBar keeps the add bar with 矢印 pressed instead of
+ * switching to the selection's commands, whichever way the arrow was started.
  */
 import { cancelConnect, selection, startConnect } from '$/util/selection.svelte';
 

@@ -3,18 +3,35 @@
   import DiagramContextMenu from '$/components/DiagramContextMenu.svelte';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { containing, pickTarget, type PickElement } from '$/util/diagramPick';
+  import {
+    boxBetween,
+    containing,
+    pickTarget,
+    within,
+    type Box,
+    type PickElement
+  } from '$/util/diagramPick';
   import {
     clearSelection,
+    isSelected,
     requestRename,
     sameSelection,
     select,
     selection,
+    selectionKey,
+    selectMany,
     startConnect,
+    toggleSelect,
     type Selected
   } from '$/util/selection.svelte';
   import { canConnect } from '$/util/selectionActions';
-  import { historyCommand, isTypingTarget, keyCommand } from '$/util/selectionKeys';
+  import { allSelectable } from '$/util/selectionCommands';
+  import {
+    historyCommand,
+    isTypingTarget,
+    keyCommand,
+    selectAllCommand
+  } from '$/util/selectionKeys';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import type { PanZoomState } from '$/util/panZoom';
   import { settledState } from '$/util/settledState.svelte';
@@ -25,7 +42,10 @@
   // pane: a click on a drawn object or arrow selects it (diagramPick.ts), an outline
   // marks it (the inspector beside the diagram shows what it is and changes it), a right
   // click opens a menu, a double click renames, and the keys of selectionKeys.ts act on
-  // it. While an arrow is being drawn (the add bar's 矢印, "ここから矢印を引く") a banner says
+  // it. Several items: Ctrl/⌘+click adds one or takes it out; Ctrl/⌘+drag draws a rubber
+  // band and adds every object and arrow drawn wholly inside it (a plain drag stays the
+  // pan, which svg-pan-zoom owns); Ctrl/⌘+A selects everything. Every selected item gets
+  // an outline, the primary one marked `data-primary`. While an arrow is being drawn (the add bar's 矢印, "ここから矢印を引く") a banner says
   // which shape to click next. Drawn as an overlay so the SVG itself (which PNG and SVG
   // export read) is never touched. Clicks on anything marked `data-selection-ui` (the
   // menu, the banner, the add bar's popovers, the inspector's fields) are not clicks on
@@ -174,55 +194,105 @@
     return candidates.find((e) => preferred(e) && matches(e)) ?? candidates.find(matches);
   };
 
-  // Where the selection is drawn, relative to the host; followed every frame while
-  // something is selected, so panning, zooming and re-rendering keep the outline on it.
-  let box = $state<{ x: number; y: number; width: number; height: number } | undefined>();
-  let placed: Selected | undefined;
+  // Where the selected items are drawn, relative to the host, by their key; followed
+  // every frame while something is selected, so panning, zooming and re-rendering keep
+  // the outlines on them.
+  let boxes = $state<Record<string, Box>>({});
   $effect(() => {
-    const selected = selection.current;
-    // Read so a new render or list re-finds the element.
+    const items = selection.items;
+    // Read so a new render or list re-finds the elements.
     void model.objects;
     void model.edges;
-    if (!selected || !host) {
-      box = undefined;
+    if (items.length === 0 || !host) {
+      boxes = {};
       return;
     }
-    // Another selection starts unplaced; the same one after a render keeps its place.
-    // A node just added (its rename already open) keeps the outline where it was until
-    // the new node is drawn.
-    if (!sameSelection(placed, selected) && !untrack(() => selection.renaming)) box = undefined;
-    placed = selected;
-    let element: Element | undefined;
+    untrack(() => {
+      // An item still selected keeps its place after a render; a new one starts unplaced.
+      // A node just added (its rename already open) keeps the outline where it was until
+      // the new node is drawn.
+      const kept: Record<string, Box> = {};
+      for (const item of items) {
+        const key = selectionKey(item);
+        if (boxes[key]) kept[key] = boxes[key];
+      }
+      const previous = Object.values(boxes)[0];
+      if (Object.keys(kept).length === 0 && selection.renaming && items.length === 1 && previous) {
+        kept[selectionKey(items[0])] = previous;
+      }
+      boxes = kept;
+    });
+    const elements: Record<string, Element | undefined> = {};
     let frame = 0;
     const follow = () => {
-      if (!element?.isConnected) element = findElement(selected);
       const hostRect = host?.getBoundingClientRect();
-      const rect = element?.getBoundingClientRect();
-      // Gone for a moment (the diagram is re-rendering): it stays where it was; a
-      // selection the code no longer has is cleared by the model.
-      if (rect && hostRect && (rect.width > 0 || rect.height > 0)) {
-        const next = {
+      const next = { ...boxes };
+      let changed = false;
+      for (const item of items) {
+        const key = selectionKey(item);
+        let element = elements[key];
+        if (!element?.isConnected) {
+          element = findElement(item);
+          elements[key] = element;
+        }
+        const rect = element?.getBoundingClientRect();
+        // Gone for a moment (the diagram is re-rendering): it stays where it was; a
+        // selection the code no longer has is cleared by the model.
+        if (!rect || !hostRect || (rect.width === 0 && rect.height === 0)) continue;
+        const box = {
           height: rect.height,
-          width: rect.width,
-          x: rect.left - hostRect.left,
-          y: rect.top - hostRect.top
+          left: rect.left - hostRect.left,
+          top: rect.top - hostRect.top,
+          width: rect.width
         };
+        const old = next[key];
         if (
-          !box ||
-          Math.abs(box.x - next.x) > 0.5 ||
-          Math.abs(box.y - next.y) > 0.5 ||
-          Math.abs(box.width - next.width) > 0.5 ||
-          Math.abs(box.height - next.height) > 0.5
+          !old ||
+          Math.abs(old.left - box.left) > 0.5 ||
+          Math.abs(old.top - box.top) > 0.5 ||
+          Math.abs(old.width - box.width) > 0.5 ||
+          Math.abs(old.height - box.height) > 0.5
         ) {
-          box = next;
+          next[key] = box;
+          changed = true;
         }
       }
+      if (changed) boxes = next;
       frame = requestAnimationFrame(follow);
     };
     // Not called here: what it reads must not become this effect's dependencies.
     frame = requestAnimationFrame(follow);
     return () => cancelAnimationFrame(frame);
   });
+
+  // The rubber band (Ctrl/⌘+drag), relative to the host while it is drawn.
+  let band = $state<Box | undefined>();
+
+  /** Every object and arrow drawn wholly inside `area` (client coordinates). */
+  const insideBand = (area: Box): Selected[] => {
+    const svg = svgOf();
+    const ctx = svg && context(svg);
+    if (!svg || !ctx) return [];
+    const picked: Selected[] = [];
+    const candidates = svg.querySelectorAll(
+      'g[id], g[data-id], g.cluster, path, line, rect.actor, [class*="messageLine"]'
+    );
+    for (const element of candidates) {
+      const tag = element.tagName.toLowerCase();
+      const found = pickTarget([describe(element)], ctx);
+      if (!found) continue;
+      // A node by its group, an arrow by its line, so the box is the drawn one's.
+      if (found.type === 'edge' ? tag === 'g' : tag !== 'g') continue;
+      if (picked.some((item) => sameSelection(item, found))) continue;
+      const rect = element.getBoundingClientRect();
+      if (
+        within({ height: rect.height, left: rect.left, top: rect.top, width: rect.width }, area)
+      ) {
+        picked.push(found);
+      }
+    }
+    return picked;
+  };
 
   // A node just added may be drawn outside the part of the diagram on screen (zoomed in,
   // panned away): once it is drawn and the redraw has settled (its box unchanged for a
@@ -282,6 +352,9 @@
     if (!element) return;
     const onDown = (event: PointerEvent) => {
       downAt = { x: event.clientX, y: event.clientY };
+      // The pan listens to pointer events (hammer.js inside svg-pan-zoom): a rubber band's
+      // start must not reach it. Not prevented, so the mouse events (and the click) follow.
+      if (startsBand(event)) event.stopPropagation();
       // The diagram's pan/zoom keeps focus where it is, so the rename field would
       // not notice the click: apply what was typed before the click selects anything.
       if (selection.renaming && !inOwnUi(event.target)) void model.commitDraft();
@@ -311,8 +384,59 @@
         startConnect();
         return;
       }
+      // Ctrl/⌘+click: one more, or one less; on the empty canvas nothing changes.
+      if (event.ctrlKey || event.metaKey) {
+        if (picked) toggleSelect(picked);
+        return;
+      }
       if (picked) select(picked);
       else if (svg) clearSelection();
+    };
+    // Ctrl/⌘+drag: a rubber band instead of a pan. Stopped in the capture phase, so
+    // neither svg-pan-zoom's own mousedown on the <svg> nor the pointer events its pan
+    // gesture reads ever see it; the click that follows a drag is ignored by `onClick`
+    // (it moved). Mouse only: touch keeps the pan.
+    let bandFrom: { x: number; y: number } | undefined;
+    const startsBand = (event: MouseEvent) =>
+      event.button === 0 &&
+      (event.ctrlKey || event.metaKey) &&
+      (!('pointerType' in event) || (event as PointerEvent).pointerType === 'mouse') &&
+      !inOwnUi(event.target) &&
+      event.target instanceof Element &&
+      !!element.querySelector('#view')?.contains(event.target);
+    const bandArea = () => {
+      if (!bandFrom || !band) return undefined;
+      const rect = element.getBoundingClientRect();
+      return { ...band, left: band.left + rect.left, top: band.top + rect.top };
+    };
+    const onBandMove = (event: MouseEvent) => {
+      if (!bandFrom) return;
+      const rect = element.getBoundingClientRect();
+      const to = { x: event.clientX, y: event.clientY };
+      if (!band && Math.hypot(to.x - bandFrom.x, to.y - bandFrom.y) < 4) return;
+      const area = boxBetween(bandFrom, to);
+      band = { ...area, left: area.left - rect.left, top: area.top - rect.top };
+    };
+    const onBandUp = () => {
+      window.removeEventListener('mousemove', onBandMove);
+      const area = bandArea();
+      bandFrom = undefined;
+      band = undefined;
+      if (!area) return;
+      // The drag may have highlighted text in the drawing.
+      window.getSelection()?.removeAllRanges();
+      // Added to what is selected, as Ctrl/⌘ means everywhere here.
+      const found = insideBand(area);
+      if (found.length > 0) selectMany([...selection.items, ...found]);
+    };
+    const onBandDown = (event: MouseEvent) => {
+      if (!startsBand(event)) return;
+      // Not prevented: the default moves focus out of a field or the code editor, as a
+      // plain click on the diagram does, so the keys that follow are the selection's.
+      event.stopPropagation();
+      bandFrom = { x: event.clientX, y: event.clientY };
+      window.addEventListener('mousemove', onBandMove);
+      window.addEventListener('mouseup', onBandUp, { once: true });
     };
     const onDoubleClick = (event: MouseEvent) => {
       if (inOwnUi(event.target)) return;
@@ -334,8 +458,10 @@
       }
       event.preventDefault();
       const picked = pickAt(event.target, event);
-      if (picked) select(picked);
-      else clearSelection();
+      // On one of several selected items the menu acts on them all.
+      if (picked) {
+        if (!isSelected(picked)) select(picked);
+      } else clearSelection();
       const rect = element.getBoundingClientRect();
       menu = {
         target: picked ? 'selection' : 'canvas',
@@ -344,11 +470,15 @@
       };
     };
     element.addEventListener('pointerdown', onDown, true);
+    element.addEventListener('mousedown', onBandDown, true);
     element.addEventListener('click', onClick);
     element.addEventListener('dblclick', onDoubleClick, true);
     element.addEventListener('contextmenu', onContextMenu);
     return () => {
       element.removeEventListener('pointerdown', onDown, true);
+      element.removeEventListener('mousedown', onBandDown, true);
+      window.removeEventListener('mousemove', onBandMove);
+      window.removeEventListener('mouseup', onBandUp);
       element.removeEventListener('click', onClick);
       element.removeEventListener('dblclick', onDoubleClick, true);
       element.removeEventListener('contextmenu', onContextMenu);
@@ -373,6 +503,14 @@
         return;
       }
       const typing = isTypingTarget(event.target as Element);
+      // Ctrl/⌘+A outside the fields: every object and arrow, selection or not.
+      if (selectAllCommand(event, typing)) {
+        const all = allSelectable(model);
+        if (all.length === 0) return;
+        event.preventDefault();
+        selectMany(all);
+        return;
+      }
       // Ctrl+Z / Ctrl+Y outside the fields: the diagram's undo, selection or not.
       const history = historyCommand(event, typing);
       if (history) {
@@ -410,17 +548,30 @@
   });
 </script>
 
-{#if box && selection.current}
+{#each selection.items as item (selectionKey(item))}
+  {@const box = boxes[selectionKey(item)]}
+  {#if box}
+    <div
+      class="pointer-events-none absolute z-10 rounded-sm outline-2 outline-offset-2 outline-accent outline-dashed"
+      style:left={`${box.left}px`}
+      style:top={`${box.top}px`}
+      style:width={`${box.width}px`}
+      style:height={`${box.height}px`}
+      data-testid={TID.selectionOutline}
+      data-selected={selectionKey(item)}
+      data-primary={sameSelection(item, selection.current) ? 'true' : undefined}>
+    </div>
+  {/if}
+{/each}
+
+{#if band}
   <div
-    class="pointer-events-none absolute z-10 rounded-sm outline-2 outline-offset-2 outline-accent outline-dashed"
-    style:left={`${box.x}px`}
-    style:top={`${box.y}px`}
-    style:width={`${box.width}px`}
-    style:height={`${box.height}px`}
-    data-testid={TID.selectionOutline}
-    data-selected={selection.current.type === 'node'
-      ? selection.current.id
-      : `edge-${selection.current.index}`}>
+    class="pointer-events-none absolute z-10 border border-dashed border-accent bg-accent/10"
+    style:left={`${band.left}px`}
+    style:top={`${band.top}px`}
+    style:width={`${band.width}px`}
+    style:height={`${band.height}px`}
+    data-testid={TID.selectionBand}>
   </div>
 {/if}
 

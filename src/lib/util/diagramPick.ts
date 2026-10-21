@@ -180,6 +180,22 @@ export const containing = (boxes: Box[], x: number, y: number): number[] =>
     .sort((a, b) => a.area - b.area)
     .map(({ index }) => index);
 
+/** The box between two corners (a rubber band's), whichever way it was dragged. */
+export const boxBetween = (a: { x: number; y: number }, b: { x: number; y: number }): Box => ({
+  height: Math.abs(a.y - b.y),
+  left: Math.min(a.x, b.x),
+  top: Math.min(a.y, b.y),
+  width: Math.abs(a.x - b.x)
+});
+
+/** Whether `box` lies wholly inside `band` (a rubber band selects what it encloses). */
+export const within = (box: Box, band: Box): boolean =>
+  (box.width > 0 || box.height > 0) &&
+  box.left >= band.left &&
+  box.top >= band.top &&
+  box.left + box.width <= band.left + band.width &&
+  box.top + box.height <= band.top + band.height;
+
 /** The object or arrow under a click: `path` is the target and its ancestors, innermost first. */
 export const pickTarget = (path: PickElement[], context: PickContext): Selected | undefined => {
   for (const element of path) {

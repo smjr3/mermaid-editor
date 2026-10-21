@@ -181,6 +181,7 @@ export const TID = {
   resetViewButton: 'reset-view-button',
   revertToValid: 'revert-to-valid',
   roughToggle: 'rough-toggle',
+  selectionBand: 'selection-band',
   selectionHint: 'selection-hint',
   selectionOutline: 'selection-outline',
   selectionWarning: 'selection-warning',

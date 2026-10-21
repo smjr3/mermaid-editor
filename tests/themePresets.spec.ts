@@ -1,6 +1,7 @@
 import { TID } from '$/constants';
 import { readFileSync } from 'node:fs';
 import { chooseExport, downloadPNG, downloadSVG } from './helpers/exportDlg';
+import { closeLook, openLook } from './helpers/inspector';
 import { expect, t, test } from './test';
 import type { Page } from '@playwright/test';
 
@@ -36,11 +37,13 @@ const styleOf = (page: Page) =>
   });
 
 const pickNeon = async (page: Page) => {
+  await openLook(page);
   await page.getByTestId(`${TID.inspThemePreset}-neon`).click();
   await expect(page.getByTestId(`${TID.inspThemePreset}-neon`)).toHaveAttribute(
     'aria-pressed',
     'true'
   );
+  await closeLook(page);
 };
 
 test.describe('Theme presets', () => {
@@ -128,7 +131,9 @@ test.describe('Theme presets', () => {
     await other.close();
 
     // Standard: no variables or CSS left, and the theme follows dark mode again.
+    await openLook(page);
     await page.getByTestId(`${TID.inspThemePreset}-standard`).click();
+    await closeLook(page);
     await expect.poll(async () => (await config(page)).theme).toBe('redux-color');
     const standard = await config(page);
     expect(standard.themeVariables).toBeUndefined();
@@ -157,16 +162,23 @@ test.describe('Theme presets', () => {
 });
 
 test.describe('Theme presets from the keyboard', () => {
-  test('the cards fit the inspector and work from the keyboard', async ({ editPage, page }) => {
+  test('the cards fit the 見た目 popover and work from the keyboard', async ({
+    editPage,
+    page
+  }) => {
     await editPage.start(url);
     await editPage.checkTextInView('Start');
+    await openLook(page);
     const grid = page.getByTestId(TID.inspThemePreset);
-    const panel = await page.getByTestId(TID.inspPanel).boundingBox();
+    const popover = await page.getByTestId(TID.inspLookContent).boundingBox();
     const box = await grid.boundingBox();
-    if (!box || !panel) throw new Error('picker missing');
-    // Three columns inside the inspector, no sideways scrolling.
-    expect(box.x).toBeGreaterThanOrEqual(panel.x);
-    expect(box.x + box.width).toBeLessThanOrEqual(panel.x + panel.width);
+    const viewport = page.viewportSize();
+    if (!box || !popover || !viewport) throw new Error('picker missing');
+    // Three columns inside the popover, which is inside the window: no sideways scrolling.
+    expect(box.x).toBeGreaterThanOrEqual(popover.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(popover.x + popover.width);
+    expect(popover.x).toBeGreaterThanOrEqual(0);
+    expect(popover.x + popover.width).toBeLessThanOrEqual(viewport.width);
     const columns = await grid
       .locator('button')
       .evaluateAll((buttons) => new Set(buttons.map((b) => b.getBoundingClientRect().x)).size);

@@ -1,6 +1,14 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
-import { crumb, pickEdge, pickObject, segment, toRoot } from './helpers/inspector';
+import {
+  crumb,
+  expectSelected,
+  openLook,
+  pickEdge,
+  pickObject,
+  segment,
+  toRoot
+} from './helpers/inspector';
 import { expect, t, test } from './test';
 
 const lanes = `swimlane-beta LR
@@ -84,6 +92,7 @@ test.describe('Colours in the inspector', () => {
   test('picks a built-in theme and returns to none', async ({ editPage, page }) => {
     await editPage.start(urlFor(lanes));
     await editPage.checkTextInView('Accept order');
+    await openLook(page);
     await expect(page.getByTestId(TID.inspBuiltinTheme)).toHaveValue('auto');
 
     await page.getByTestId(TID.inspBuiltinTheme).selectOption('forest');
@@ -97,6 +106,7 @@ test.describe('Colours in the inspector', () => {
     await editPage.start(urlFor(lanes));
     await editPage.checkTextInView('Accept order');
 
+    await openLook(page);
     await page.getByTestId(`${TID.inspLineColor}-#d64545`).click();
     await expect.poll(async () => (await config(page)).themeVariables?.lineColor).toBe('#d64545');
     const edge = page.locator('#view .flowchart-link').first();
@@ -222,10 +232,12 @@ test.describe('Colours in the inspector', () => {
 
     await page.reload();
     await editPage.checkTextInView('Accept order');
+    await openLook(page);
     await expect(page.getByTestId(`${TID.inspLineColor}-recent-0`)).toHaveAttribute(
       'data-color',
       '#336699'
     );
+    await page.keyboard.press('Escape');
     await pickObject(page, 'Customer');
     await expect(page.getByTestId(`${TID.inspColor}-recent-0`)).toHaveAttribute(
       'data-color',
@@ -258,7 +270,7 @@ test.describe('Colours in the inspector', () => {
       await editPage.checkTextInView(text);
 
       await page.locator('#view svg').getByText(text, { exact: true }).first().click();
-      await expect(page.getByTestId(TID.inspClose)).toBeVisible();
+      await expectSelected(page);
       await page.getByTestId(`${TID.inspColor}-red`).click();
       const red = '#fde2e1';
       await expect

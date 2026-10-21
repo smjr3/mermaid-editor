@@ -1,6 +1,7 @@
 import { TID } from '$/constants';
 import type { Page } from '@playwright/test';
 import { formField, formMessage, openForm, submitForm } from './helpers/canvas';
+import { expectAtRoot } from './helpers/inspector';
 import { assertInvariants, readCode, urlFor, watchErrors } from './invariants';
 import { expect, t, test } from './test';
 
@@ -180,7 +181,7 @@ test.describe('Contradictory and out-of-order operations', () => {
     await assertInvariants(page, errors, { label: 'flowchart → sequence' });
     // One without it: the selection goes, rather than pointing at nothing.
     await paste('pie title Pets\n  "Dogs" : 3\n  "Cats" : 2');
-    await expect(page.getByTestId(TID.inspClose)).toBeHidden();
+    await expectAtRoot(page);
     await expect(outline(page)).toBeHidden();
     await assertInvariants(page, errors, { label: 'sequence → pie' });
     // Back to a flowchart: nothing is selected until clicked, and clicking still works.

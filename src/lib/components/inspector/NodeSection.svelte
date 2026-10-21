@@ -5,6 +5,7 @@
   import IconChooser from '$/components/IconChooser.svelte';
   import ColorRow from '$/components/inspector/ColorRow.svelte';
   import ObjectFields from '$/components/inspector/ObjectFields.svelte';
+  import SelectSameRow from '$/components/inspector/SelectSameRow.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
@@ -338,6 +339,8 @@
         {/each}
       </ul>
     {/if}
+    <!-- 「同じものを選ぶ」: the same row the multi view has (SelectSameRow). -->
+    <SelectSameRow />
     <div class="flex flex-wrap items-center gap-1">
       {#if model.canAddAfter}
         <Button

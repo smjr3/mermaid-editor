@@ -9,6 +9,7 @@
   import EdgeSection from '$/components/inspector/EdgeSection.svelte';
   import LaneSection from '$/components/inspector/LaneSection.svelte';
   import { labelColumn } from '$/components/form/FieldRow.svelte';
+  import MultiSection from '$/components/inspector/MultiSection.svelte';
   import NameField from '$/components/inspector/NameField.svelte';
   import NodeSection from '$/components/inspector/NodeSection.svelte';
   import TargetPicker from '$/components/inspector/TargetPicker.svelte';
@@ -19,8 +20,9 @@
   import { codeHealth, describe } from '$/util/codeHealth.svelte';
   import { headerLine } from '$/util/diagramEdit';
   import { editorUi } from '$/util/editorUi.svelte';
+  import { SELECTION_TAB, tabOfItems } from '$/util/inspectorMulti';
   import { inspectorTabs, tabOfSelection, type InspectorTabId } from '$/util/inspectorTabs';
-  import { clearSelection, selection } from '$/util/selection.svelte';
+  import { clearSelection, selection, toggleSelect, type Selected } from '$/util/selection.svelte';
   import { selectionModel as model } from '$/util/selectionModel.svelte';
   import { inputState } from '$/util/state.svelte';
   import { tick, untrack } from 'svelte';
@@ -45,23 +47,46 @@
   // ---- The target: which object (or arrow) the panel shows. ----
   // `model.code` is the code the lists were read from (the last valid one).
   const items = $derived(model.objects?.items ?? []);
-  const tabs = $derived(inspectorTabs(model.code, items));
-  const selectedTab = $derived(tabOfSelection(model.code, selection.current, items));
-  // The tab whose list is open, if any; a change of selection closes it.
+  // Several items (Ctrl+click, a rubber band, 「同じものを選ぶ」): the panel shows the rows
+  // that apply to all of them (MultiSection). Their tab is the kind's when they are of
+  // one kind; a mixed selection gets 「選択」 beside 図全体 (inspectorMulti.ts).
+  const multiple = $derived(selection.items.length > 1);
+  const selectedTab = $derived(
+    multiple
+      ? tabOfItems(model.code, selection.items, items)
+      : tabOfSelection(model.code, selection.current, items)
+  );
+  const tabs = $derived.by(() => {
+    const own = inspectorTabs(model.code, items);
+    return selectedTab === SELECTION_TAB
+      ? [own[0], { id: SELECTION_TAB, label: 'insp.tab.selection' as const }, ...own.slice(1)]
+      : own;
+  });
+  // The tab whose list is open, if any; a change of selection closes it — except a
+  // Ctrl/⌘+click in the list itself (`holdPicker`), which adds to the selection and
+  // keeps the list open for the next one.
   let picking = $state<InspectorTabId | undefined>();
+  let holdPicker = false;
   $effect(() => {
     void selection.current;
-    picking = undefined;
+    if (!untrack(() => holdPicker)) picking = undefined;
   });
+  const onToggle = async (next: Selected) => {
+    holdPicker = true;
+    toggleSelect(next);
+    await tick();
+    holdPicker = false;
+  };
   const pickerTab = $derived(tabs.find(({ id }) => id === picking && id !== 'all'));
   const activeTab = $derived(pickerTab?.id ?? selectedTab);
   // What the panel shows: the selection, unless a list is open over it. This is the one
   // place that decides which object the rows below are for.
   const shown = $derived(pickerTab ? undefined : selection.current);
-  const object = $derived(shown ? model.object : undefined);
-  const edge = $derived(shown ? model.edge : undefined);
+  const object = $derived(shown && !multiple ? model.object : undefined);
+  const edge = $derived(shown && !multiple ? model.edge : undefined);
   // The old breadcrumb's word for the selection, kept on the active tab (`data-crumb`).
   const crumb = $derived.by((): MessageKey | undefined => {
+    if (shown && multiple) return 'insp.tab.selection';
     if (edge) return 'insp.crumb.edge';
     if (!object) return undefined;
     if (model.kind === 'gantt') return object.group ? 'insp.crumb.section' : 'insp.crumb.task';
@@ -78,7 +103,9 @@
       clearSelection();
       return;
     }
-    picking = id;
+    // 「選択」 has no list: it shows the multi view again over an open list. A tab whose
+    // list is open closes it (back to the rows of what was Ctrl+clicked in it).
+    picking = id === SELECTION_TAB || picking === id ? undefined : id;
   };
   // The tabs from the keyboard: ← → move between them and open the one reached.
   const onTabKey = (event: KeyboardEvent, index: number) => {
@@ -201,7 +228,17 @@
     {/if}
 
     {#if pickerTab}
-      <TargetPicker tab={pickerTab} onpick={() => (picking = undefined)} />
+      <TargetPicker tab={pickerTab} onpick={() => (picking = undefined)} ontoggle={onToggle} />
+    {:else if shown && multiple}
+      <MultiSection {blocked} />
+      {#if model.message}
+        <p
+          role="status"
+          class="px-3 py-1 text-xs text-muted-foreground"
+          data-testid={TID.inspStatus}>
+          {model.message}
+        </p>
+      {/if}
     {:else if edge || object}
       <fieldset disabled={blocked} class="contents">
         {#if hasName}

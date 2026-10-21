@@ -3,6 +3,7 @@
   import PanelGroup from '$/components/form/PanelGroup.svelte';
   import ColorRow from '$/components/inspector/ColorRow.svelte';
   import ObjectFields from '$/components/inspector/ObjectFields.svelte';
+  import SelectSameRow from '$/components/inspector/SelectSameRow.svelte';
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
@@ -75,6 +76,8 @@
       </FieldRow>
     {/if}
     <ObjectFields />
+    <!-- 「同じものを選ぶ」 (同じレーン: the lane with what it holds), as the node rows have it. -->
+    <SelectSameRow />
     <FieldRow label={t('sel.delete')}>
       {#if object.noDelete}
         <span class="text-xs text-muted-foreground">{t('edit.noDelete')}</span>

@@ -57,9 +57,19 @@ describe('isTypingTarget', () => {
 
   it('works on real elements', () => {
     document.body.innerHTML =
-      '<div class="monaco-editor"><span id="in"></span></div><div id="out"></div>';
+      '<div class="monaco-editor"><span id="in"></span></div><div id="out"></div><div role="toolbar"><button id="bar"></button></div>';
     expect(isTypingTarget(document.querySelector('#in'))).toBe(true);
     expect(isTypingTarget(document.querySelector('#out'))).toBe(false);
+    // A focused button of the bar over the diagram: Tab moves on, Enter and Space press it;
+    // Escape, Delete and the arrows are still the selection's.
+    const button = document.querySelector('#bar');
+    expect(isTypingTarget(button)).toBe(false);
+    expect(isTypingTarget(button, 'Tab')).toBe(true);
+    expect(isTypingTarget(button, 'Enter')).toBe(true);
+    expect(isTypingTarget(button, ' ')).toBe(true);
+    expect(isTypingTarget(button, 'Escape')).toBe(false);
+    expect(isTypingTarget(button, 'Delete')).toBe(false);
+    expect(isTypingTarget(document.querySelector('#out'), 'Tab')).toBe(false);
   });
 });
 

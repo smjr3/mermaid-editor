@@ -22,7 +22,13 @@
   // popover; past the fifth, under その他. The forms' values live here, so they survive a
   // popover closing, and an add fills in what should follow (the new participant as the
   // next message's receiver). Mounted per diagram type (keyed by the spec's kind).
-  let { spec }: { spec: AddSpec } = $props();
+  // `inline` / `moreLabel`: how many entries sit on the bar and what the menu of the rest is
+  // called (InsertItems.svelte); none on the bar while the selection's commands take it.
+  let {
+    inline = 5,
+    moreLabel,
+    spec
+  }: { inline?: number; moreLabel?: string; spec: AddSpec } = $props();
 
   let parts = $state<Record<string, DiagramObject[]>>({});
   $effect(() => {
@@ -126,7 +132,7 @@
   );
 </script>
 
-<InsertItems {entries}>
+<InsertItems {entries} {inline} {moreLabel}>
   {#snippet form(key)}
     {@const action = shown.find((candidate) => candidate.id === key)}
     {#if action}

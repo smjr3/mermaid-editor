@@ -502,7 +502,8 @@
         event.preventDefault();
         return;
       }
-      const typing = isTypingTarget(event.target as Element);
+      // A button of the bar over the diagram keeps Tab, Enter and Space (selectionKeys.ts).
+      const typing = isTypingTarget(event.target as Element, event.key);
       // Ctrl/⌘+A outside the fields: every object and arrow, selection or not.
       if (selectAllCommand(event, typing)) {
         const all = allSelectable(model);

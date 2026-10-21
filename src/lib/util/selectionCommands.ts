@@ -14,8 +14,8 @@
  *
  * `selectSame` builds a new selection from the model's lists (same shape, same colour,
  * same lane, every arrow, everything downstream of a node) and hands it to
- * `selectMany`. `moveLeft` / `moveRight` (順番の入れ替え) are reserved and not yet
- * applicable; see the TODO at their definition.
+ * `selectMany`. `moveLeft` / `moveRight` (順番の入れ替え) swap two lines of a flowchart's
+ * code (reorder.ts) and are offered where `canMove` allows (moveAvailability.svelte.ts).
  */
 import type { MessageKey } from '$/i18n/messages';
 import {
@@ -53,6 +53,8 @@ import {
   type EditObject
 } from './diagramModify';
 import { displayName } from './displayName';
+import { movesFor } from './moveAvailability.svelte';
+import { moveNode, type MoveDirection } from './reorder';
 import { flowShapeNames, type FlowShapeName } from './flowShapes';
 import { reverseDuplicates } from './selectionActions';
 import { requestRename, selectMany, startConnect, type Selected } from './selection.svelte';
@@ -292,6 +294,27 @@ export const sameAs = (model: Model, which: SameKey): Selected[] => {
     default:
       return [];
   }
+};
+
+/** The one flowchart node selected, when it is a node that can be reordered (not a lane). */
+const movableNode = (model: Model): EditObject | undefined =>
+  model.kind === 'flowchart' && single(model) && model.object && !model.object.group
+    ? model.object
+    : undefined;
+
+const movable = (model: Model, direction: MoveDirection): boolean => {
+  const object = movableNode(model);
+  return !!object && !!movesFor(model.code, 'flowchart', object.id)?.[direction];
+};
+
+/** The line swap, written through `applyToAll` (one undo step, refused while the code is broken). */
+const move = async (model: Model, direction: MoveDirection): Promise<void> => {
+  const object = movableNode(model);
+  if (!object) return;
+  const from = code();
+  const next = await moveNode(from, 'flowchart', object.id, direction);
+  // With nothing to write, `applyToAll` still says so while the code is broken.
+  await model.applyToAll((text) => (text === from ? next : undefined));
 };
 
 export const selectionCommands: SelectionCommand[] = [
@@ -631,23 +654,24 @@ export const selectionCommands: SelectionCommand[] = [
       );
     }
   },
-  // TODO(reorder): 順番の入れ替え — moving a node left or right within its rank by reordering
-  // the lines of the code (meaning unchanged). The rewrite lives in `src/lib/util/reorder.ts`
-  // (another agent writes it); the integrator wires `appliesTo` and `run` to it. Until then
-  // the two keys are reserved and never offered.
+  // 順番の入れ替え: a flowchart node one place left or right among the nodes drawn beside
+  // it, by swapping two lines of the code (reorder.ts; the meaning is unchanged). Offered
+  // only where `canMove` says the swap exists; that answer is async, so it is read from
+  // the cache in moveAvailability.svelte.ts, which the bar's `$derived` re-reads when it
+  // lands. Swimlanes are refused there: their layout does not follow the code's order.
   {
-    appliesTo: () => false,
+    appliesTo: (model) => movable(model, 'left'),
     key: 'moveLeft',
     kind: 'action',
     label: 'sel.cmd.moveLeft',
-    run: () => undefined
+    run: (model) => move(model, 'left')
   },
   {
-    appliesTo: () => false,
+    appliesTo: (model) => movable(model, 'right'),
     key: 'moveRight',
     kind: 'action',
     label: 'sel.cmd.moveRight',
-    run: () => undefined
+    run: (model) => move(model, 'right')
   },
   {
     appliesTo: (model) =>

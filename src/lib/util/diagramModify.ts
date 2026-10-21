@@ -215,21 +215,21 @@ const flowKeyword =
   /^\s*(?:flowchart-elk|flowchart|graph|swimlane-beta|subgraph|end|direction|style|linkStyle|classDef|class|click|accTitle|accDescr|title)\b/;
 const idPattern = /^[\p{L}\p{N}_]+(?:-(?=[\p{L}\p{N}_])[\p{L}\p{N}_]+)*/u;
 
-interface NodeRef {
+export interface NodeRef {
   id: string;
   /** The node as written, `A["x"]:::cls`. */
   text: string;
 }
-interface Chain {
+export interface Chain {
   groups: NodeRef[][];
   links: string[];
 }
-interface FlowLine {
+export interface FlowLine {
   index: number;
   indent: string;
   chains: Chain[];
 }
-interface FlowEdge {
+export interface FlowEdge {
   index: number;
   line: number;
   chain: number;
@@ -320,7 +320,7 @@ const parseChains = (line: string): Chain[] | undefined => {
   return chains;
 };
 
-const flowLines = (lines: string[]): FlowLine[] => {
+export const flowLines = (lines: string[]): FlowLine[] => {
   const header = headerIndex(lines);
   const found: FlowLine[] = [];
   lines.forEach((line, index) => {
@@ -339,7 +339,7 @@ const chainEdges = (chain: Chain): [NodeRef, NodeRef][] =>
     )
   );
 
-const flowEdges = (flow: FlowLine[]): FlowEdge[] => {
+export const flowEdges = (flow: FlowLine[]): FlowEdge[] => {
   const edges: FlowEdge[] = [];
   for (const { chains, index: line } of flow) {
     chains.forEach((chain, chainIndex) => {
@@ -2844,14 +2844,14 @@ const nodeDefinition = (lines: string[], id: string) => {
   return refs.find(({ node }) => hasShape(node)) ?? refs[0];
 };
 
-interface Range {
+export interface Range {
   id?: string;
   start: number;
   end: number;
 }
 
 /** Every subgraph's `subgraph` and `end` lines, inner ones first (the order they close in). */
-const subgraphRanges = (lines: string[]): Range[] => {
+export const subgraphRanges = (lines: string[]): Range[] => {
   const open: { id?: string; start: number }[] = [];
   const ranges: Range[] = [];
   lines.forEach((line, index) => {
@@ -3075,7 +3075,7 @@ export const setNodeIconOptions = (
 };
 
 /** `linkStyle` numbers carried over to the arrows' new order (matched by their ends). */
-const renumberAfterMove = (before: FlowEdge[], lines: string[]) => {
+export const renumberAfterMove = (before: FlowEdge[], lines: string[]) => {
   const after = flowEdges(flowLines(lines));
   const key = (edge: FlowEdge) => `${edge.from.id}\u0000${edge.to.id}`;
   const used = new Set<number>();

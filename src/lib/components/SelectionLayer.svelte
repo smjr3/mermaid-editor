@@ -352,6 +352,9 @@
     if (!element) return;
     const onDown = (event: PointerEvent) => {
       downAt = { x: event.clientX, y: event.clientY };
+      // The pan listens to pointer events (hammer.js inside svg-pan-zoom): a rubber band's
+      // start must not reach it. Not prevented, so the mouse events (and the click) follow.
+      if (startsBand(event)) event.stopPropagation();
       // The diagram's pan/zoom keeps focus where it is, so the rename field would
       // not notice the click: apply what was typed before the click selects anything.
       if (selection.renaming && !inOwnUi(event.target)) void model.commitDraft();
@@ -389,10 +392,18 @@
       if (picked) select(picked);
       else if (svg) clearSelection();
     };
-    // Ctrl/⌘+drag: a rubber band instead of a pan. Stopped here, in the capture phase,
-    // so svg-pan-zoom's own mousedown on the <svg> never sees it; the click that follows a
-    // drag is ignored by `onClick` (it moved). Mouse only: touch keeps the pan.
+    // Ctrl/⌘+drag: a rubber band instead of a pan. Stopped in the capture phase, so
+    // neither svg-pan-zoom's own mousedown on the <svg> nor the pointer events its pan
+    // gesture reads ever see it; the click that follows a drag is ignored by `onClick`
+    // (it moved). Mouse only: touch keeps the pan.
     let bandFrom: { x: number; y: number } | undefined;
+    const startsBand = (event: MouseEvent) =>
+      event.button === 0 &&
+      (event.ctrlKey || event.metaKey) &&
+      (!('pointerType' in event) || (event as PointerEvent).pointerType === 'mouse') &&
+      !inOwnUi(event.target) &&
+      event.target instanceof Element &&
+      !!element.querySelector('#view')?.contains(event.target);
     const bandArea = () => {
       if (!bandFrom || !band) return undefined;
       const rect = element.getBoundingClientRect();
@@ -412,20 +423,17 @@
       bandFrom = undefined;
       band = undefined;
       if (!area) return;
+      // The drag may have highlighted text in the drawing.
+      window.getSelection()?.removeAllRanges();
       // Added to what is selected, as Ctrl/⌘ means everywhere here.
       const found = insideBand(area);
       if (found.length > 0) selectMany([...selection.items, ...found]);
     };
     const onBandDown = (event: MouseEvent) => {
-      if (event.button !== 0 || !(event.ctrlKey || event.metaKey) || inOwnUi(event.target)) return;
-      if (
-        !(event.target instanceof Element) ||
-        !element.querySelector('#view')?.contains(event.target)
-      ) {
-        return;
-      }
+      if (!startsBand(event)) return;
+      // Not prevented: the default moves focus out of a field or the code editor, as a
+      // plain click on the diagram does, so the keys that follow are the selection's.
       event.stopPropagation();
-      event.preventDefault();
       bandFrom = { x: event.clientX, y: event.clientY };
       window.addEventListener('mousemove', onBandMove);
       window.addEventListener('mouseup', onBandUp, { once: true });

@@ -6,10 +6,15 @@
  * tested apart from the components.
  */
 import type { EditObject } from './diagramModify';
-import { swatches, type Swatch } from './colors';
+import type { Swatch } from './colors';
 import { tabOfSelection, type InspectorTabId } from './inspectorTabs';
 import type { Selected } from './selection.svelte';
-import type { CommandKey, SelectionCommand } from './selectionCommands';
+import {
+  fillSwatchOf,
+  fillValueOf,
+  type CommandKey,
+  type SelectionCommand
+} from './selectionCommands';
 
 /** The tab 「選択」 that heads a selection of several kinds (図形 and 矢印 together). */
 export const SELECTION_TAB: InspectorTabId = 'selection';
@@ -56,26 +61,22 @@ export const rowCommands = (available: SelectionCommand[]): SelectionCommand[] =
   available.filter((command) => rowControl(command.key) !== undefined);
 
 /**
- * The swatch the 塗り row shows for a fill value: the named swatch, undefined for 'none'
- * (the theme's colour) and a swatch no button has for a colour outside the palette or
- * for 「まちまち」, so that no button is pressed.
+ * The swatch the 塗り row shows for a fill value (the registry's, selectionCommands.ts):
+ * the named swatch, the colour itself for one outside the palette, undefined for 'none'
+ * (the theme's colour), and a swatch no button has for 「まちまち」 or a value that is no
+ * colour, so that no button is pressed.
  */
 export const fillSwatch = (value: string | undefined): Swatch | undefined => {
   if (value === undefined || value === 'none') return undefined;
-  return swatches.find(({ name }) => name === value) ?? { fill: 'mixed', stroke: 'mixed' };
+  return fillSwatchOf(value) ?? { fill: 'mixed', stroke: 'mixed' };
 };
 
 /**
  * The 塗り command's value for a swatch the buttons picked: the swatch's name, 'none'
- * for the theme's colour, undefined for a colour outside the built-in palette (a
- * deployment's presets, ＋好きな色), which the row writes through `applyToAll` itself.
+ * for the theme's colour, the colour itself for one outside the built-in palette (a
+ * deployment's presets, ＋好きな色, a recent colour) — the registry writes all three.
  */
-export const fillValue = (swatch: Swatch | undefined): string | undefined => {
-  if (!swatch) return 'none';
-  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-  return swatches.find(({ fill, stroke }) => same(fill, swatch.fill) && same(stroke, swatch.stroke))
-    ?.name;
-};
+export const fillValue = (swatch: Swatch | undefined): string => fillValueOf(swatch);
 
 /** A line colour (枠, 文字) as the ColorRow shows it: the hex, undefined for 'none' or 「まちまち」. */
 export const lineCurrent = (value: string | undefined, mixed: boolean): string | undefined =>

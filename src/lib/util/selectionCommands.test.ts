@@ -11,6 +11,9 @@ const {
   availableCommands,
   commandByKey,
   downstream,
+  fillSwatchOf,
+  fillValueOf,
+  labelKey,
   MIXED,
   sameAs,
   selectionCommands
@@ -18,6 +21,7 @@ const {
 const { selectionModel: model } = await import('./selectionModel.svelte');
 const { clearSelection, select, selection, selectMany } = await import('./selection.svelte');
 const { inputState, updateCode, updateConfig, validatedState } = await import('./state.svelte');
+const { swatches } = await import('./colors');
 const { movesReady } = await import('./moveAvailability.svelte');
 const { codeHistory } = await import('./undoStack.svelte');
 
@@ -102,7 +106,8 @@ describe('the registry', () => {
       'selectSame'
     ]);
     for (const command of selectionCommands) {
-      expect(t(command.label)).not.toBe(command.label);
+      const key = labelKey(command, model);
+      expect(t(key)).not.toBe(key);
       expect(['action', 'choice']).toContain(command.kind);
       if (command.kind === 'choice') expect(command.choices).toBeDefined();
     }
@@ -198,6 +203,78 @@ describe('on a flowchart', () => {
     expect(inputState.code).not.toContain('style A');
     expect(inputState.code).not.toContain('style B');
     expect(current('fillColor')).toBe('none');
+  });
+
+  it(
+    'fill colour: any colour is a value too, and the colour set shows as one more choice',
+    slow,
+    async () => {
+      // The names and 'none' as before; a hex is the border with its tint; `fill/stroke`
+      // a pair of its own (a deployment's presets).
+      expect(fillSwatchOf('green')).toEqual({ fill: '#def5e1', stroke: '#3f9b52' });
+      expect(fillSwatchOf('none')).toBeUndefined();
+      expect(fillSwatchOf('#123456')).toEqual({ fill: '#d9dfe4', stroke: '#123456' });
+      expect(fillSwatchOf('#ffffff/#123456')).toEqual({ fill: '#ffffff', stroke: '#123456' });
+      expect(fillSwatchOf('custom')).toBeNull();
+      expect(fillSwatchOf('#12/#123456')).toBeNull();
+      expect(fillValueOf(undefined)).toBe('none');
+      expect(fillValueOf({ fill: '#DEF5E1', stroke: '#3F9B52' })).toBe('green');
+      expect(fillValueOf({ fill: '#d9dfe4', stroke: '#123456' })).toBe('#123456');
+      expect(fillValueOf({ fill: '#ffffff', stroke: '#123456' })).toBe('#ffffff/#123456');
+
+      selectMany([node('A'), node('B')]);
+      await run('fillColor', '#123456');
+      expect(inputState.code).toContain('style A fill:#d9dfe4,stroke:#123456');
+      expect(inputState.code).toContain('style B fill:#d9dfe4,stroke:#123456');
+      expect(current('fillColor')).toBe('#123456');
+      const extra = choices('fillColor').at(-1);
+      expect(extra).toEqual({
+        label: 'sel.cmd.custom',
+        swatch: { fill: '#d9dfe4', stroke: '#123456' },
+        value: '#123456'
+      });
+      expect(choices('fillColor')).toHaveLength(swatches.length + 2);
+      // A value that is no colour writes nothing (it does not clear).
+      await run('fillColor', 'nonsense');
+      expect(inputState.code).toContain('style A fill:#d9dfe4,stroke:#123456');
+      await run('fillColor', 'none');
+      expect(choices('fillColor')).toHaveLength(swatches.length + 1);
+    }
+  );
+
+  it(
+    'stroke and text colour: any hex, shown as one more choice; no other value',
+    slow,
+    async () => {
+      select(node('A'));
+      await run('strokeColor', '#123456');
+      expect(inputState.code).toContain('style A fill:#dde9fb,stroke:#123456');
+      expect(choices('strokeColor').at(-1)).toEqual({
+        label: 'sel.cmd.custom',
+        swatch: { stroke: '#123456' },
+        value: '#123456'
+      });
+      await run('strokeColor', 'nonsense');
+      expect(inputState.code).toContain('style A fill:#dde9fb,stroke:#123456');
+      await run('textColor', '#654321');
+      expect(inputState.code).toContain('color:#654321');
+      expect(choices('textColor').at(-1)?.value).toBe('#654321');
+      await run('textColor', 'none');
+      expect(inputState.code).not.toContain('color:#654321');
+    }
+  );
+
+  it('names the commands for what is selected: rename, the border, the lane', () => {
+    select(node('A'));
+    expect(labelKey(commandByKey('rename'), model)).toBe('canvas.menuRename');
+    expect(labelKey(commandByKey('strokeColor'), model)).toBe('insp.colorStroke');
+    expect(labelKey(commandByKey('moveToLane'), model)).toBe('insp.lane');
+    select(edge(0));
+    expect(labelKey(commandByKey('rename'), model)).toBe('sel.renameLabel');
+    expect(labelKey(commandByKey('strokeColor'), model)).toBe('sel.edgeColor');
+    selectMany([node('A'), edge(0)]);
+    expect(labelKey(commandByKey('strokeColor'), model)).toBe('insp.colorStroke');
+    expect(labelKey(commandByKey('fillColor'), model)).toBe('insp.colorFill');
   });
 
   it('stroke colour: a node border and a flowchart arrow in one go', slow, async () => {

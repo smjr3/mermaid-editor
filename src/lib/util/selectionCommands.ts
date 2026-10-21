@@ -17,6 +17,7 @@
  * `selectMany`. `moveLeft` / `moveRight` (順番の入れ替え) swap two lines of a flowchart's
  * code (reorder.ts) and are offered where `canMove` allows (moveAvailability.svelte.ts).
  */
+import { t } from '$/i18n';
 import type { MessageKey } from '$/i18n/messages';
 import {
   getEdgeColor,
@@ -32,6 +33,7 @@ import {
   setTextStyle,
   swatches,
   textSizeChoices,
+  tint,
   type Swatch,
   type TextSize
 } from './colors';
@@ -95,7 +97,8 @@ export interface CommandChoice {
 
 export interface SelectionCommand {
   key: CommandKey;
-  label: MessageKey;
+  /** The i18n key of its name; a function where the name depends on what is selected. */
+  label: MessageKey | ((model: Model) => MessageKey);
   kind: 'action' | 'choice';
   /** The key that also does it, shown beside the label in a menu. */
   shortcut?: string;
@@ -113,6 +116,14 @@ export interface SelectionCommand {
 }
 
 const code = () => inputState.code;
+
+/** The i18n key of a command's name for what is selected now. */
+export const labelKey = (command: SelectionCommand, model: Model): MessageKey =>
+  typeof command.label === 'function' ? command.label(model) : command.label;
+
+/** A command's name for what is selected now: the one word the bar, the menu and the panel show. */
+export const commandLabel = (command: SelectionCommand, model: Model): string =>
+  t(labelKey(command, model));
 
 /** The selected objects that have a colour syntax (colors.ts), with it. */
 const colourable = (model: Model) =>
@@ -136,12 +147,42 @@ const shapedNodes = (model: Model) =>
 
 const single = (model: Model) => model.targets.length === 1;
 
-/** The swatch name for a fill colour, 'custom' for one outside the palette, 'none' for none. */
-const swatchValue = (swatch: Swatch | undefined): string =>
-  swatch
-    ? (swatches.find(({ fill, stroke }) => fill === swatch.fill && stroke === swatch.stroke)
-        ?.name ?? 'custom')
-    : 'none';
+const hexPattern = /^#[\da-f]{6}$/i;
+const sameHex = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * The 塗り command's value for a fill: the swatch's name, 'none' for the theme's colour,
+ * and for a colour outside the built-in palette (＋好きな色, a recent colour, a
+ * deployment's presets) the border's hex — with the fill before it, `fill/stroke`, when
+ * the fill is not the border's usual tint.
+ */
+export const fillValueOf = (swatch: Swatch | undefined): string => {
+  if (!swatch) return 'none';
+  const named = swatches.find(
+    ({ fill, stroke }) => sameHex(fill, swatch.fill) && sameHex(stroke, swatch.stroke)
+  );
+  if (named) return named.name;
+  return sameHex(tint(swatch.stroke), swatch.fill)
+    ? swatch.stroke
+    : `${swatch.fill}/${swatch.stroke}`;
+};
+
+/**
+ * The swatch a 塗り value names: undefined for 'none' (the theme's colour), null for a
+ * value that is no colour (nothing is written for it).
+ */
+export const fillSwatchOf = (value: string | undefined): Swatch | undefined | null => {
+  if (value === undefined || value === 'none') return undefined;
+  const named = swatches.find(({ name }) => name === value);
+  if (named) return { fill: named.fill, stroke: named.stroke };
+  const [first, second] = value.split('/');
+  if (second !== undefined) {
+    return hexPattern.test(first) && hexPattern.test(second)
+      ? { fill: first, stroke: second }
+      : null;
+  }
+  return hexPattern.test(first) ? { fill: tint(first), stroke: first } : null;
+};
 
 const fillChoices: CommandChoice[] = [
   { label: 'colors.lineDefault', value: 'none' },
@@ -160,6 +201,23 @@ const lineChoices: CommandChoice[] = [
     value: stroke
   }))
 ];
+
+/**
+ * The palette, plus the selected items' own colour as one more choice 「ほかの色」 when
+ * it is outside it, so that the bar and the menu show the colour that is set.
+ */
+const withCustom = (
+  choices: CommandChoice[],
+  current: string | Mixed | undefined,
+  swatch: (value: string) => Partial<Swatch> | undefined
+): CommandChoice[] => {
+  if (typeof current !== 'string' || choices.some(({ value }) => value === current)) return choices;
+  const custom = swatch(current);
+  return custom
+    ? [...choices, { label: 'sel.cmd.custom', swatch: custom, value: current }]
+    : choices;
+};
+const lineSwatch = (value: string) => (hexPattern.test(value) ? { stroke: value } : undefined);
 
 /** A line colour's value: the hex, 'none' when none. */
 const lineValue = (color: string | undefined) => color ?? 'none';
@@ -317,6 +375,24 @@ const move = async (model: Model, direction: MoveDirection): Promise<void> => {
   await model.applyToAll((text) => (text === from ? next : undefined));
 };
 
+const fillCurrent = (model: Model) =>
+  model.commonValue(({ object }) => {
+    const syntax = model.syntaxOf(object);
+    return object && syntax ? fillValueOf(getObjectColor(code(), object.id, syntax)) : undefined;
+  });
+const strokeCurrent = (model: Model) =>
+  model.commonValue(({ object, edge }) => {
+    const syntax = model.syntaxOf(object);
+    if (object && syntax) return lineValue(getObjectStroke(code(), object.id, syntax));
+    if (edge && model.kind === 'flowchart') return lineValue(getEdgeColor(code(), edge.index));
+    return undefined;
+  });
+const textCurrent = (model: Model) =>
+  model.commonValue(({ object }) => {
+    const syntax = model.syntaxOf(object);
+    return object && syntax ? lineValue(getTextColor(code(), object.id, syntax)) : undefined;
+  });
+
 export const selectionCommands: SelectionCommand[] = [
   {
     appliesTo: (model) => single(model) && model.canAddAfter,
@@ -347,25 +423,23 @@ export const selectionCommands: SelectionCommand[] = [
       (model.object ? !model.object.noRename : !!model.edge && !!model.edges?.can.label),
     key: 'rename',
     kind: 'action',
-    label: 'canvas.menuRename',
+    // 「ラベルを変更」 for an arrow, 「名前を変更」 for an object.
+    label: (model) => (model.object ? 'canvas.menuRename' : 'sel.renameLabel'),
     run: () => requestRename(),
     shortcut: 'F2'
   },
   {
     appliesTo: (model) => colourable(model).length > 0,
-    choices: () => fillChoices,
-    current: (model) =>
-      model.commonValue(({ object }) => {
-        const syntax = model.syntaxOf(object);
-        return object && syntax
-          ? swatchValue(getObjectColor(code(), object.id, syntax))
-          : undefined;
-      }),
+    choices: (model) =>
+      withCustom(fillChoices, fillCurrent(model), (value) => fillSwatchOf(value) ?? undefined),
+    current: fillCurrent,
     key: 'fillColor',
     kind: 'choice',
     label: 'insp.colorFill',
     run: async (model, value) => {
-      const swatch = swatches.find(({ name }) => name === value);
+      const swatch = fillSwatchOf(value);
+      // Neither a swatch, a colour nor 'none': nothing to write.
+      if (swatch === null) return;
       await model.applyToAll(
         (text, { object }) => {
           const syntax = model.syntaxOf(object);
@@ -381,19 +455,15 @@ export const selectionCommands: SelectionCommand[] = [
     appliesTo: (model) =>
       colourable(model).length > 0 ||
       (model.kind === 'flowchart' && model.selectedEdges.length > 0),
-    choices: () => lineChoices,
-    current: (model) =>
-      model.commonValue(({ object, edge }) => {
-        const syntax = model.syntaxOf(object);
-        if (object && syntax) return lineValue(getObjectStroke(code(), object.id, syntax));
-        if (edge && model.kind === 'flowchart') return lineValue(getEdgeColor(code(), edge.index));
-        return undefined;
-      }),
+    choices: (model) => withCustom(lineChoices, strokeCurrent(model), lineSwatch),
+    current: strokeCurrent,
     key: 'strokeColor',
     kind: 'choice',
-    label: 'insp.colorStroke',
+    // 「枠」 of an object; 「線の色」 when only arrows are selected.
+    label: (model) => (model.selectedObjects.length > 0 ? 'insp.colorStroke' : 'sel.edgeColor'),
     run: async (model, value) => {
       const color = lineColor(value);
+      if (color !== undefined && !hexPattern.test(color)) return;
       await model.applyToAll((text, { object, edge }) => {
         const syntax = model.syntaxOf(object);
         if (object && syntax) return setObjectStroke(text, object.id, color, syntax);
@@ -404,17 +474,14 @@ export const selectionCommands: SelectionCommand[] = [
   },
   {
     appliesTo: (model) => colourable(model).length > 0,
-    choices: () => lineChoices,
-    current: (model) =>
-      model.commonValue(({ object }) => {
-        const syntax = model.syntaxOf(object);
-        return object && syntax ? lineValue(getTextColor(code(), object.id, syntax)) : undefined;
-      }),
+    choices: (model) => withCustom(lineChoices, textCurrent(model), lineSwatch),
+    current: textCurrent,
     key: 'textColor',
     kind: 'choice',
     label: 'insp.colorText',
     run: async (model, value) => {
       const color = lineColor(value);
+      if (color !== undefined && !hexPattern.test(color)) return;
       await model.applyToAll(
         (text, { object }) => {
           const syntax = model.syntaxOf(object);
@@ -638,7 +705,8 @@ export const selectionCommands: SelectionCommand[] = [
       model.commonValue(({ object }) => (object ? laneOf(model, object) : undefined)),
     key: 'moveToLane',
     kind: 'choice',
-    label: 'sel.moveTo',
+    // The row's name in the panel: 「レーン」, 「グループ」 for an architecture service.
+    label: (model) => (model.kind === 'architecture' ? 'insp.group' : 'insp.lane'),
     run: async (model, value) => {
       if (value === undefined) return;
       const service = model.kind === 'architecture';

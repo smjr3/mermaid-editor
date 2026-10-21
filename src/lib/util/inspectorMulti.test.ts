@@ -70,17 +70,21 @@ describe('rowCommands', () => {
 });
 
 describe('the colour rows', () => {
-  it('shows a named swatch, nothing for none, and no button for custom or mixed', () => {
-    expect(fillSwatch('green')).toEqual({ fill: '#def5e1', name: 'green', stroke: '#3f9b52' });
+  it('shows a named swatch, a colour as itself, nothing for none, no button for mixed', () => {
+    expect(fillSwatch('green')).toEqual({ fill: '#def5e1', stroke: '#3f9b52' });
+    expect(fillSwatch('#123456')).toEqual({ fill: '#d9dfe4', stroke: '#123456' });
+    expect(fillSwatch('#ffffff/#123456')).toEqual({ fill: '#ffffff', stroke: '#123456' });
     expect(fillSwatch('none')).toBeUndefined();
     expect(fillSwatch(undefined)).toBeUndefined();
-    expect(fillSwatch('custom')).toEqual({ fill: 'mixed', stroke: 'mixed' });
+    expect(fillSwatch('mixed')).toEqual({ fill: 'mixed', stroke: 'mixed' });
+    expect(fillSwatch('nonsense')).toEqual({ fill: 'mixed', stroke: 'mixed' });
   });
 
-  it('turns a picked swatch into the command value, or undefined outside the palette', () => {
+  it('turns a picked swatch into the command value, any colour included', () => {
     expect(fillValue({ fill: '#DEF5E1', stroke: '#3F9B52' })).toBe('green');
     expect(fillValue(undefined)).toBe('none');
-    expect(fillValue({ fill: '#ffffff', stroke: '#123456' })).toBeUndefined();
+    expect(fillValue({ fill: '#d9dfe4', stroke: '#123456' })).toBe('#123456');
+    expect(fillValue({ fill: '#ffffff', stroke: '#123456' })).toBe('#ffffff/#123456');
   });
 
   it('shows a line colour as itself, none as the theme, mixed as no button', () => {

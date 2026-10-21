@@ -4,6 +4,7 @@
   import { displayName } from '$/util/displayName';
   import {
     availableCommands,
+    commandLabel,
     MIXED,
     type CommandChoice,
     type CommandKey,
@@ -81,7 +82,12 @@
         }
         if (colours.kind === 'sub') colours.commands.push(command);
       } else if (command.kind === 'choice') {
-        list.push({ commands: [command], key: command.key, kind: 'sub', label: t(command.label) });
+        list.push({
+          commands: [command],
+          key: command.key,
+          kind: 'sub',
+          label: commandLabel(command, model)
+        });
       } else {
         list.push({ command, key: legacyKey[command.key] ?? command.key, kind: 'action' });
       }
@@ -249,7 +255,7 @@
           onpointerenter={() => hoverRow()}
           onclick={() => run(() => row.command.run(model))}
           >{#if row.command.current}{@render check(checked)}{/if}<span class="flex-1 truncate"
-            >{t(row.command.label)}</span>
+            >{commandLabel(row.command, model)}</span>
           {#if row.command.shortcut}
             <kbd class="font-sans text-xs text-muted-foreground">{row.command.shortcut}</kbd>
           {/if}
@@ -273,7 +279,13 @@
     {#if deleteCommand}
       {@const command = deleteCommand}
       <div class="my-1 h-px bg-border"></div>
-      {@render entry('delete', t(command.label), () => command.run(model), command.shortcut, true)}
+      {@render entry(
+        'delete',
+        commandLabel(command, model),
+        () => command.run(model),
+        command.shortcut,
+        true
+      )}
     {/if}
     {#each rows as row (row.key)}
       {#if row.kind === 'sub' && openSub === row.key}
@@ -294,7 +306,7 @@
             {#each row.commands as command (command.key)}
               {@const value = current(command)}
               <div class="flex items-center gap-[3px] px-2 py-1 whitespace-nowrap">
-                <span class="w-8 shrink-0 text-sm">{t(command.label)}</span>
+                <span class="min-w-8 shrink-0 text-sm">{commandLabel(command, model)}</span>
                 {#if value === MIXED}
                   <span class="mr-1 text-xs text-muted-foreground">{t('sel.cmd.mixed')}</span>
                 {/if}

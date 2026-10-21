@@ -1368,6 +1368,7 @@ export const en = {
     'Keys: Enter adds the next node, Tab adds a branch, Delete deletes, F2 renames, the arrow keys move along the arrows, Esc clears the selection, Ctrl+Z undoes. Double-click to rename, right-click for a menu.',
   'sel.keysLabel': 'Keyboard and mouse',
   'sel.label': 'Label',
+  'sel.line': 'Line',
   'sel.menu': 'Diagram menu',
   'sel.moveTo': 'Move to',
   'sel.name': 'Name',

@@ -1366,6 +1366,7 @@ export const ja = {
     'キー: Enter で次の図形を追加、Tab で分岐を追加、Delete で削除、F2 で名前を変更、矢印キーで矢印をたどる、Esc で選択を解除、Ctrl+Z で元に戻す。ダブルクリックで名前を変更、右クリックでメニュー。',
   'sel.keysLabel': 'キーとマウスの操作',
   'sel.label': 'ラベル',
+  'sel.line': '線',
   'sel.menu': '図のメニュー',
   'sel.moveTo': '移動先',
   'sel.name': '名前',

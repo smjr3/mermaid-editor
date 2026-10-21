@@ -7,7 +7,7 @@
   import { Button } from '$/components/ui/button';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
-  import { setObjectColor, type Swatch } from '$/util/colors';
+  import type { Swatch } from '$/util/colors';
   import {
     fillSwatch,
     fillValue,
@@ -19,6 +19,7 @@
   import {
     availableCommands,
     commandByKey,
+    commandLabel,
     type CommandChoice,
     type SelectionCommand
   } from '$/util/selectionCommands';
@@ -43,19 +44,11 @@
 
   const run = (command: SelectionCommand, value?: string) => void command.run(model, value);
   const choiceLabel = (choice: CommandChoice) => (choice.label ? t(choice.label) : choice.text);
-  // A fill outside the built-in palette (a deployment's presets, ＋好きな色): written to
-  // every object through the same colour function the registry's run uses.
-  const pickFill = (command: SelectionCommand, swatch: Swatch | undefined) => {
-    const value = fillValue(swatch);
-    if (value !== undefined) {
-      run(command, value);
-      return;
-    }
-    void model.applyToAll((text, { object }) => {
-      const syntax = model.syntaxOf(object);
-      return object && syntax ? setObjectColor(text, object.id, swatch, syntax) : undefined;
-    });
-  };
+  // A fill outside the built-in palette (a deployment's presets, ＋好きな色, a recent
+  // colour) is a value of the registry's too (`fillValueOf`), so every fill goes one way.
+  const pickFill = (command: SelectionCommand, swatch: Swatch | undefined) =>
+    run(command, fillValue(swatch));
+  const label = (command: SelectionCommand) => commandLabel(command, model);
   const controlId = (command: SelectionCommand) => `${TID.inspMultiControl}-${command.key}`;
   const selectClass =
     'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
@@ -91,19 +84,19 @@
           {@const control = rowControl(command.key)}
           {@const choices = command.choices?.(model) ?? []}
           <div class="contents" data-key={command.key} data-testid={TID.inspMultiRow}>
-            <FieldRow label={t(command.label)}>
+            <FieldRow label={label(command)}>
               {#if control === 'fill'}
                 <ColorRow
                   mode="fill"
                   current={mixed ? { fill: 'mixed', stroke: 'mixed' } : fillSwatch(value)}
-                  label={t(command.label)}
+                  label={label(command)}
                   testID={controlId(command)}
                   onpick={(swatch) => pickFill(command, swatch)} />
               {:else if control === 'line'}
                 <ColorRow
                   mode="line"
                   current={lineCurrent(value, mixed)}
-                  label={t(command.label)}
+                  label={label(command)}
                   noneLabel={command.key === 'textColor' ? t('colors.textColorDefault') : undefined}
                   testID={controlId(command)}
                   onpick={(color) => run(command, color ?? 'none')} />
@@ -112,7 +105,7 @@
                 <select
                   class={selectClass}
                   value={mixed ? 'mixed' : known ? value : 'other'}
-                  aria-label={t(command.label)}
+                  aria-label={label(command)}
                   data-insp-focus={command.key === 'shape' ? 'shape' : undefined}
                   data-testid={controlId(command)}
                   onchange={(event) => run(command, event.currentTarget.value)}>
@@ -143,7 +136,7 @@
                   value={value ?? ''}
                   dense={command.key === 'lineStyle'}
                   full
-                  ariaLabel={t(command.label)}
+                  ariaLabel={label(command)}
                   testID={controlId(command)}
                   options={choices.map((choice) => ({
                     label: choiceLabel(choice) ?? choice.value,
@@ -163,8 +156,8 @@
                       ? 'bg-muted text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   ]}
-                  title={t(command.label)}
-                  aria-label={t(command.label)}
+                  title={label(command)}
+                  aria-label={label(command)}
                   aria-pressed={value === 'true'}
                   data-testid={controlId(command)}
                   onclick={() => run(command)}>B</button>

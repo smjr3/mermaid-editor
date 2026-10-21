@@ -152,7 +152,7 @@
             onpick={model.setTextColor} />
         {/if}
       </FieldRow>
-      <FieldRow label={t('insp.textSize')}>
+      <FieldRow label={t('sel.size')}>
         {#if model.textStyle}
           {@const style = model.textStyle}
           <Segmented
@@ -366,7 +366,7 @@
           title={t('sel.connect')}
           aria-pressed={!!selection.connectFrom}
           data-testid={TID.inspConnect}
-          onclick={startConnect}><ConnectIcon />{t('insp.connect')}</Button>
+          onclick={startConnect}><ConnectIcon />{t('sel.connect')}</Button>
       {/if}
       <span class="flex-1"></span>
       {#if object.noDelete}

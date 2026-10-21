@@ -7,6 +7,7 @@
   import { clearSelection, selection } from '$/util/selection.svelte';
   import {
     availableCommands,
+    commandLabel,
     MIXED,
     type CommandChoice,
     type CommandKey,
@@ -38,7 +39,7 @@
   }
   const groups: Group[] = [
     { key: 'color', label: 'sel.color', members: ['fillColor', 'strokeColor', 'textColor'] },
-    { key: 'line', label: 'insp.edgeStyle', members: ['lineStyle', 'arrowHead', 'edgeLength'] },
+    { key: 'line', label: 'sel.line', members: ['lineStyle', 'arrowHead', 'edgeLength'] },
     { key: 'text', label: 'sel.text', members: ['textSize', 'bold'] }
   ];
   /** The bar's order; a command the registry does not offer for the selection is left out. */
@@ -56,9 +57,6 @@
     'connectFrom',
     'delete'
   ];
-  // The row labels inside a group's popover; 線の種類 rather than the command's own 線,
-  // which names the group's button.
-  const rowLabels: Partial<Record<CommandKey, MessageKey>> = { lineStyle: 'sel.edgeStyle' };
   const colourCommands = new Set<CommandKey>(['fillColor', 'strokeColor', 'textColor']);
 
   interface BarItem {
@@ -87,7 +85,7 @@
       }
       const command = byKey.get(key as CommandKey);
       if (!command) continue;
-      const label = t(command.label);
+      const label = commandLabel(command, model);
       out.push({
         command,
         danger: key === 'delete',
@@ -183,7 +181,7 @@
   const currentOf = (command: SelectionCommand) => command.current?.(model);
   const choiceText = (choice: CommandChoice) =>
     choice.text ?? (choice.label ? t(choice.label) : choice.value);
-  const rowLabel = (command: SelectionCommand) => t(rowLabels[command.key] ?? command.label);
+  const rowLabel = (command: SelectionCommand) => commandLabel(command, model);
 
   const item =
     'inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-sm whitespace-nowrap text-foreground hover:bg-muted aria-expanded:bg-muted aria-pressed:bg-accent/20 aria-pressed:text-accent aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0';
@@ -205,7 +203,7 @@
   {@const current = currentOf(command)}
   <div
     role="menu"
-    aria-label={t(command.label)}
+    aria-label={rowLabel(command)}
     data-testid={TID.selectionBarMenu}
     data-cmd={command.key}
     data-current={current === MIXED ? 'mixed' : current}>
@@ -249,10 +247,10 @@
           class={seg}
           aria-pressed={current === 'true'}
           aria-disabled={blocked || undefined}
-          title={t(command.label)}
+          title={rowLabel(command)}
           data-testid={TID.selectionBarChoice}
           data-value="bold"
-          onclick={() => run(command)}>{t(command.label)}</button>
+          onclick={() => run(command)}>{rowLabel(command)}</button>
       {:else}
         {#each command.choices?.(model) ?? [] as choice (choice.value)}
           {#if colour}

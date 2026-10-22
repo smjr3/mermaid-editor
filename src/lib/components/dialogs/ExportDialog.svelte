@@ -35,6 +35,7 @@
     saveHtml,
     saveMarkdown,
     savePng,
+    savePptx,
     saveSvg,
     saveVsdx,
     themeColour,
@@ -78,6 +79,7 @@
     html: { hint: 'exportDlg.fmtHtmlHint', name: 'exportDlg.fmtHtml' },
     md: { hint: 'exportDlg.fmtMdHint', name: 'exportDlg.fmtMd' },
     png: { hint: 'exportDlg.fmtPngHint', name: 'exportDlg.fmtPng' },
+    pptx: { hint: 'exportDlg.fmtPptxHint', name: 'exportDlg.fmtPptx' },
     svg: { hint: 'exportDlg.fmtSvgHint', name: 'exportDlg.fmtSvg' },
     vsdx: { hint: 'exportDlg.fmtVsdxHint', name: 'exportDlg.fmtVsdx' }
   };
@@ -148,6 +150,9 @@
       case 'md': {
         return `${t('actions.gitlabHint')} / ${backgroundNote}`;
       }
+      case 'pptx': {
+        return t('saveAs.pptxHint');
+      }
       case 'svg': {
         return t('actions.noteSvg', { background: backgroundNote, size: t('actions.noteAsIs') });
       }
@@ -189,6 +194,7 @@
     copy: 'notify.copyFailed',
     drawio: 'saveAs.failed',
     png: 'actions.pngFailed',
+    pptx: 'saveAs.failed',
     svg: 'saveAs.failed',
     vsdx: 'saveAs.failed'
   };
@@ -249,6 +255,10 @@
       }
       case 'png': {
         await savePng(name, options, signal);
+        break;
+      }
+      case 'pptx': {
+        await savePptx(name, options, state, signal);
         break;
       }
       case 'svg': {

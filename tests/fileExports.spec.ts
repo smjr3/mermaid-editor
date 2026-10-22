@@ -227,10 +227,95 @@ test.describe('.drawio: every element its own draw.io cell', () => {
   });
 });
 
+/** What the slide of a .pptx file holds, read in the page (which has DOMParser). */
+const readPptxSlide = ({ notes, slide }: { notes: string; slide: string }) => {
+  const A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+  const P = 'http://schemas.openxmlformats.org/presentationml/2006/main';
+  const parse = (text: string) => new DOMParser().parseFromString(text, 'application/xml');
+  const document = parse(slide);
+  const all = (scope: Document | Element, ns: string, name: string) => [
+    ...scope.getElementsByTagNameNS(ns, name)
+  ];
+  const textOf = (scope: Element) =>
+    all(scope, A, 'p')
+      .map((paragraph) =>
+        all(paragraph, A, 't')
+          .map((node) => node.textContent)
+          .join('')
+      )
+      .join('\n');
+  const shapes = all(document, P, 'sp');
+  const ids = new Set(shapes.map((shape) => all(shape, P, 'cNvPr')[0].getAttribute('id') ?? ''));
+  const connectors = all(document, P, 'cxnSp');
+  const glued = (connector: Element, tag: string) =>
+    ids.has(all(connector, A, tag)[0]?.getAttribute('id') ?? '');
+  return {
+    connected: connectors.filter((c) => glued(c, 'stCxn') && glued(c, 'endCxn')).length,
+    connectors: connectors.length,
+    dashed: connectors.filter((c) => all(c, A, 'custDash').length > 0).length,
+    notes: textOf(parse(notes).documentElement),
+    parsed: [document, parse(notes)].every(
+      (doc) => doc.getElementsByTagName('parsererror').length === 0
+    ),
+    pictures: all(document, P, 'pic').length,
+    texts: shapes.map(textOf).filter(Boolean)
+  };
+};
+
+test.describe('.pptx: every element its own PowerPoint object', () => {
+  test('a flowchart: shapes with their labels, glued connectors, the source in the notes', async ({
+    editPage,
+    page
+  }) => {
+    const flowchart = [
+      'flowchart LR',
+      '  A[Request] --> B{Check}',
+      '  B -->|ok| C([Done])',
+      '  B -.->|back| A',
+      '  subgraph S[Office]',
+      '    C --> D[(Store)]',
+      '    D --> E((End))',
+      '  end'
+    ].join('\n');
+    await editPage.start(drawioUrl(flowchart));
+    await editPage.checkTextInView('Office');
+    await chooseExport(page, 'pptx');
+    await expect(page.getByTestId(TID.exportDlgNote)).toHaveText(t('saveAs.pptxHint'));
+    await expect(page.getByTestId(TID.exportDlgExtension)).toHaveText('.pptx');
+    const download = await saveExport(page, 'pptx');
+    expect(download.suggestedFilename()).toBe('diagram.pptx');
+    const file = await readDownload(download);
+    expect([...file.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+    const parts = unzipSync(new Uint8Array(file));
+    expect(Object.keys(parts)[0]).toBe('[Content_Types].xml');
+    expect(Object.keys(parts)).toEqual(
+      expect.arrayContaining([
+        'ppt/presentation.xml',
+        'ppt/slides/slide1.xml',
+        'ppt/notesSlides/notesSlide1.xml'
+      ])
+    );
+    const slide = await page.evaluate(readPptxSlide, {
+      notes: strFromU8(parts['ppt/notesSlides/notesSlide1.xml']),
+      slide: strFromU8(parts['ppt/slides/slide1.xml'])
+    });
+    expect(slide.parsed).toBe(true);
+    expect(slide.pictures).toBe(0);
+    // The five nodes, the subgraph and the two link labels, each with its text.
+    expect(slide.texts).toEqual(
+      expect.arrayContaining(['Request', 'Check', 'Done', 'Store', 'End', 'Office', 'ok', 'back'])
+    );
+    expect(slide.connectors).toBe(5);
+    expect(slide.connected).toBe(5);
+    expect(slide.dashed).toBe(1);
+    expect(slide.notes).toBe(`Mermaid\n${flowchart}`);
+  });
+});
+
 // Review N01 (2026-10-13): キャンセル during a .drawio / .vsdx export stops it, so it never
 // finishes against a diagram edited after the dialog closed.
 test.describe('An export cancelled while it is made', () => {
-  for (const format of ['drawio', 'vsdx'] as const) {
+  for (const format of ['drawio', 'vsdx', 'pptx'] as const) {
     test(`saves no ${format} after キャンセル, even once the code is edited`, async ({
       editPage,
       page

@@ -15,7 +15,7 @@
  * selected. See docs-dev/EXPORTS.md.
  */
 import { deflateRaw } from 'pako';
-import type { Point } from './svgPath';
+import type { Box, Point, Segment } from './svgPath';
 import { escapeXml } from './xmlText';
 
 export type DrawioStyle = Record<string, number | string>;
@@ -24,6 +24,8 @@ export interface DrawioVertex {
   height: number;
   id: string;
   kind: 'vertex';
+  /** A custom outline relative to the cell's top left (for other formats; not written). */
+  outline?: Segment[];
   parent: string;
   style: DrawioStyle;
   /** The label, as HTML (`html=1`). */
@@ -37,9 +39,13 @@ export interface DrawioVertex {
 export interface DrawioEdge {
   id: string;
   kind: 'edge';
+  /** The label's box, relative to the parent cell (for other formats; not written). */
+  labelBox?: Box;
   /** The label's offset from the middle of the edge. */
   labelOffset?: Point;
   parent: string;
+  /** The route as drawn, relative to the parent cell (for other formats; not written). */
+  path?: Segment[];
   /** Waypoints, relative to the parent cell. */
   points: Point[];
   source?: string;

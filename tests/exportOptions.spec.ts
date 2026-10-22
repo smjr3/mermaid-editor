@@ -71,6 +71,7 @@ test.describe('Export options', () => {
       html: { background: 0, html: 2, scale: 0 },
       md: { background: 3, html: 0, scale: 0 },
       png: { background: 3, html: 0, scale: 3 },
+      pptx: { background: 0, html: 0, scale: 0 },
       svg: { background: 3, html: 0, scale: 0 },
       vsdx: { background: 0, html: 0, scale: 0 }
     } as const;
@@ -85,6 +86,8 @@ test.describe('Export options', () => {
     await expect(page.getByTestId(TID.exportDlgNote)).toHaveText(t('saveAs.drawioHint'));
     await chooseExport(page, 'vsdx');
     await expect(page.getByTestId(TID.exportDlgNote)).toHaveText(t('saveAs.vsdxHint'));
+    await chooseExport(page, 'pptx');
+    await expect(page.getByTestId(TID.exportDlgNote)).toHaveText(t('saveAs.pptxHint'));
   });
 
   test('the file name and extension follow the format; copies have none', async ({ page }) => {
@@ -94,6 +97,7 @@ test.describe('Export options', () => {
     for (const [format, ext] of [
       ['png', '.png'],
       ['svg', '.svg'],
+      ['pptx', '.pptx'],
       ['drawio', '.drawio'],
       ['vsdx', '.vsdx'],
       ['html', '.html'],

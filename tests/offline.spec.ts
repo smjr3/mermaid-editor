@@ -25,7 +25,7 @@ test.describe('Offline build', () => {
     // The config tab is where the schema used to be downloaded from.
     await editPage.setEditorMode('Config');
     await editPage.setEditorMode('Code');
-    for (const format of ['svg', 'png', 'html', 'md', 'drawio', 'vsdx'] as const) {
+    for (const format of ['svg', 'png', 'html', 'md', 'pptx', 'drawio', 'vsdx'] as const) {
       const file = (await readDownload(await saveExport(page, format))).toString('utf8');
       expect(file).not.toContain('cdnjs');
       if (format === 'svg') expect(file).not.toContain('xml-stylesheet');

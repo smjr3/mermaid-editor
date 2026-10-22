@@ -3,7 +3,7 @@ import { expect, type Download, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { verifyFileSizeGreaterThan } from '../utils';
 
-export type ExportFormat = 'copy' | 'drawio' | 'html' | 'md' | 'png' | 'svg' | 'vsdx';
+export type ExportFormat = 'copy' | 'drawio' | 'html' | 'md' | 'png' | 'pptx' | 'svg' | 'vsdx';
 
 export interface ExportChoice {
   background?: 'theme' | 'transparent' | 'white';

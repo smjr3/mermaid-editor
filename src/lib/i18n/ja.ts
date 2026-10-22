@@ -714,6 +714,8 @@ export const ja = {
   'exportDlg.fmtMdHint': 'GitLab などに貼る（SVG＋編集リンク）',
   'exportDlg.fmtPng': 'PNG 画像',
   'exportDlg.fmtPngHint': '資料やチャットに貼る',
+  'exportDlg.fmtPptx': 'PowerPoint',
+  'exportDlg.fmtPptxHint': 'スライドで図形ごとに編集',
   'exportDlg.fmtSvg': 'SVG',
   'exportDlg.fmtSvgHint': '拡大しても粗くならない',
   'exportDlg.fmtVsdx': 'Visio',
@@ -1329,6 +1331,8 @@ export const ja = {
   'saveAs.drawioHint':
     'draw.io（diagrams.net）で開けるファイルを保存します。図形・矢印・文字・グループがそれぞれ別の draw.io の要素になるので、一つずつ選んで動かしたり、文字や色を直したりできます。Mermaid のコードは図のデータとしてファイルに残ります。',
   'saveAs.failed': 'ファイルを保存できませんでした。もう一度お試しください。',
+  'saveAs.pptxHint':
+    'PowerPoint で開けるファイル（.pptx）を保存します。図形・矢印・文字がそれぞれ別の PowerPoint の図形になるので、一つずつ選んで動かしたり、文字や色を直したりできます。矢印は図形につながったコネクタです。大きな図はスライド（16:9）に収まるよう縮小されます。Mermaid のコードはノートに残ります。',
   'saveAs.vsdxHint':
     'Microsoft Visio で開けるファイルを保存します。図はページに1枚の画像として入ります（移動や拡大縮小はできますが、Visio の図形としては編集できません）。Mermaid のコードは図形のデータに残ります。',
   'security.unsafeConfigConfirm':

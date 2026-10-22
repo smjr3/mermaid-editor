@@ -25,10 +25,10 @@ import {
 const NS = 'http://www.w3.org/2000/svg';
 
 describe('options', () => {
-  it('offers the three backgrounds, the three scales and seven formats in order', () => {
+  it('offers the three backgrounds, the three scales and eight formats in order', () => {
     expect(EXPORT_BACKGROUNDS).toEqual(['white', 'transparent', 'theme']);
     expect(EXPORT_SCALES).toEqual([1, 2, 3]);
-    expect(EXPORT_FORMATS).toEqual(['png', 'svg', 'drawio', 'vsdx', 'html', 'md', 'copy']);
+    expect(EXPORT_FORMATS).toEqual(['png', 'svg', 'pptx', 'drawio', 'vsdx', 'html', 'md', 'copy']);
   });
 
   it('starts a new user on a transparent background at 2x', () => {
@@ -43,6 +43,7 @@ describe('options', () => {
     expect(isExportScale(4)).toBe(false);
     expect(isExportScale('2')).toBe(false);
     expect(isExportFormat('vsdx')).toBe(true);
+    expect(isExportFormat('pptx')).toBe(true);
     expect(isExportFormat('pdf')).toBe(false);
     expect(isHtmlMode('tag')).toBe(true);
     expect(isHtmlMode('page')).toBe(false);
@@ -65,6 +66,7 @@ describe('options', () => {
     expect(EXPORT_FORMATS.map((format) => formatExtension(format, file))).toEqual([
       'png',
       'svg',
+      'pptx',
       'drawio',
       'vsdx',
       'html',

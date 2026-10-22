@@ -106,18 +106,22 @@ export const slidePlacement = (
 // ---------------------------------------------------------------------------
 // Pure helpers
 
-/** A draw.io HTML label (htmlLabel) as plain lines. */
+/**
+ * A draw.io label (htmlLabel: text escaped, line breaks as `<br>`) as plain lines. It
+ * holds no other markup, and the lines go into XML text (escaped again), never HTML.
+ */
 export const labelLines = (value: string): string[] =>
-  value.split(/<br\s*\/?>/i).map((line) =>
-    line
-      .replaceAll(/<[^>]*>/g, '')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&quot;', '"')
-      .replaceAll('&#39;', "'")
-      .replaceAll('&nbsp;', ' ')
-      .replaceAll('&amp;', '&')
-  );
+  value
+    .split(/<br\s*\/?>/i)
+    .map((line) =>
+      line
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+    );
 
 /** `#rrggbb` as PowerPoint's `RRGGBB`, or undefined for none or anything else. */
 export const hexColour = (value: number | string | undefined): string | undefined => {

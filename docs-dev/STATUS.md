@@ -22,7 +22,7 @@ The standing constraints, which shape almost every decision recorded here:
 - **Keep the upstream delta small.** Prefer a feature flag or a wrapper over deleting or
   rewriting upstream code, so a future upstream merge takes their side and re-applies ours.
 - **Keep the boundary explicit.** `docs-dev/UPSTREAM.md` holds a regenerated inventory of
-  every locally changed path — currently **385**.
+  every locally changed path — currently **387**.
 - Public on GitHub and published to npmjs.org by `.github/workflows/publish.yml`
   (`PACKAGING.md`); it builds into a static site that any static host can serve, with a GitLab Pages example in `docs-dev/GITLAB-PAGES.md`.
 - Deployed to GitHub Pages at <https://smjr3.github.io/mermaid-editor/> on every push to `master` by
@@ -41,7 +41,7 @@ The standing constraints, which shape almost every decision recorded here:
 | `I18N.md`                     | The message catalogue, `t()` and its interpolation, what stays in English, and how the e2e suite avoids depending on translated text     |
 | `PACKAGING.md`                | npm packaging and the tarball → rebuild round trip                                                                                       |
 | `GITLAB-PAGES.md`             | A GitLab Pages publishing example                                                                                                        |
-| `EXPORTS.md`                  | The 書き出す dialog, file names, what the `.drawio` and `.vsdx` files hold and what draw.io and Visio do with them                       |
+| `EXPORTS.md`                  | The 書き出す dialog, file names, what the `.pptx`, `.drawio` and `.vsdx` files hold and what PowerPoint, draw.io and Visio do with them  |
 | `QUALITY-AUDIT-2026-08-31.md` | An external portability audit, its three findings, and a follow-up for each recording how it was resolved                                |
 
 ## What is delivered
@@ -641,7 +641,7 @@ went was audited item by item at the merge; the result is in the PR that introdu
   templates, 「レーンや手順を入力してから作る…」 (the template forms of 0.2.2). Both open the
   diagram in a new tab (`newTab.ts`), so the current one keeps its diagram and nothing asks first.
 - **書き出す** (`dialogs/ExportDialog.svelte`, `exportDiagram.ts`, `EXPORTS.md`): a preview with the
-  backdrop on the left; the formats as cards (PNG 画像, SVG, draw.io, Visio, HTML, Markdown 用 — the
+  backdrop on the left; the formats as cards (PNG 画像, SVG, PowerPoint, draw.io, Visio, HTML, Markdown 用 — the
   GitLab export —, 画像をコピー); 解像度 for PNG and the copy, 背景 (白 / 透明 / テーマの色, default
   now 透明) for PNG, SVG, the copy and Markdown, ファイルで保存 / タグをコピー for HTML; the file
   name and extension at the bottom. The file is saved at once under that name: no second
@@ -1041,6 +1041,14 @@ draw.io web app for nine diagram types; `drawioExport.ts`). 「.vsdx で保存�
 diagram as a PNG picture, the source in its Shape Data (`vsdxExport.ts`, zipped with `fflate`,
 a new MIT dependency) — a picture in Visio, not editable shapes. `tests/fileExports.spec.ts` covers
 both formats and the names.
+
+**PowerPoint (.pptx) (2026-10-22)** (`EXPORTS.md`). 書き出す > PowerPoint saves one 16:9 slide on which
+every element of the diagram is its own PowerPoint object, from the same cells as the `.drawio`:
+nodes as preset shapes (or freeforms of their exact outline) holding their labels, nodes with parts
+as groups, links as connectors glued to their shapes (elbow or straight where that draws mermaid's
+route), arrowheads PowerPoint lacks as small shapes, labels and titles as text boxes, icons as SVG
+pictures; the source in the notes (`pptxExport.ts`). Checked with `python-pptx` and LibreOffice
+Impress for seven diagram types; PowerPoint itself is still to be tried by a person.
 
 ## What is open
 

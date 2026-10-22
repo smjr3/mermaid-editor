@@ -91,6 +91,8 @@ interface VertexItem {
   /** Mermaid ids this node answers to, for matching edge ends. */
   keys: string[];
   kind: 'vertex';
+  /** A custom outline (a stencil shape), relative to the box's top left. */
+  outline?: Segment[];
   role: 'cluster' | 'image' | 'node' | 'shape' | 'text';
   /** Degrees, for text drawn rotated. */
   rotation?: number;
@@ -105,6 +107,10 @@ interface EdgeItem {
   key?: string;
   kind: 'edge';
   labelAt?: Point;
+  /** The label's own box, absolute. */
+  labelBox?: Box;
+  /** The route exactly as drawn (curves kept), absolute. */
+  path?: Segment[];
   /** Absolute route: start, waypoints, end. */
   points: Point[];
   source?: VertexItem;
@@ -132,6 +138,8 @@ interface PendingLabel {
 }
 
 const round = (value: number) => Math.round(value * 100) / 100;
+const moved = (segments: Segment[], by: Point) =>
+  transformSegments(segments, { ...IDENTITY, e: -by.x, f: -by.y });
 const area = (box: Box) => box.width * box.height;
 const center = (box: Box): Point => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
 const tag = (element: Element) => element.localName.toLowerCase();
@@ -779,11 +787,13 @@ class Converter {
     // An open outline that is not filled is a line (or a curve, kept as drawn).
     if (!filled && !closed) {
       if (straightOnly && lines.length === 1) return this.line(element, lines[0].points, paint);
-      return this.vertex(box, {
+      const curve = this.vertex(box, {
         shape: stencilShape(stencilXml(segments, box, false)),
         ...paintStyle(paint),
         fillColor: 'none'
       });
+      curve.outline = moved(segments, box);
+      return curve;
     }
     const known =
       lines.length === 1
@@ -792,7 +802,9 @@ class Converter {
           : outlineShape(lines[0].points, box)
         : undefined;
     const shape = known ?? { shape: stencilShape(stencilXml(segments, box, true)) };
-    return this.vertex(box, { ...shape, ...paintStyle(paint) });
+    const vertex = this.vertex(box, { ...shape, ...paintStyle(paint) });
+    if (!known) vertex.outline = moved(segments, box);
+    return vertex;
   }
 
   private vertex(box: Box, style: DrawioStyle, role: VertexItem['role'] = 'shape'): VertexItem {
@@ -1198,7 +1210,8 @@ class Converter {
     } else {
       segments = parsePath(element.getAttribute('d'));
     }
-    const lines = flatten(transformSegments(segments, m));
+    const drawn = transformSegments(segments, m);
+    const lines = flatten(drawn);
     const traced = lines.flatMap((line) => line.points);
     if (traced.length < 2) return;
     const start = traced[0];
@@ -1243,6 +1256,7 @@ class Converter {
       connector: true,
       key: raw.startsWith(this.prefix) ? raw.slice(this.prefix.length) : raw,
       kind: 'edge',
+      path: drawn,
       points: route.length >= 2 ? route : [start, end],
       style,
       value: ''
@@ -1312,6 +1326,7 @@ class Converter {
       if (edge) {
         edge.value = label.text.value;
         edge.labelAt = center(label.box);
+        edge.labelBox = label.box;
         const { labelBackgroundColor, ...font } = label.text.textStyle ?? {};
         Object.assign(edge.style, font, {
           labelBackgroundColor: labelBackgroundColor ?? 'none'
@@ -1428,6 +1443,7 @@ class Converter {
           height: item.box.height,
           id,
           kind: 'vertex',
+          outline: item.outline,
           parent,
           style: item.style,
           value: item.value,
@@ -1453,8 +1469,10 @@ class Converter {
       cells.push({
         id,
         kind: 'edge',
+        labelBox: item.labelBox && { ...item.labelBox, ...relative(item.labelBox) },
         labelOffset,
         parent,
+        path: item.path && moved(item.path, base),
         points: inner.map(relative),
         source: item.source ? ids.get(item.source) : undefined,
         sourcePoint: relative(start),

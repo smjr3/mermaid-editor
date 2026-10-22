@@ -1,7 +1,7 @@
-# Saving files: the 書き出す dialog, names, .drawio and .vsdx
+# Saving files: the 書き出す dialog, names, .pptx, .drawio and .vsdx
 
-What the header's 書き出す dialog writes, what other programs do with the `.drawio` and `.vsdx`
-files, and how that was checked. Added 2026-10-08 from user feedback (「ファイルで保存する際は名前を
+What the header's 書き出す dialog writes, what other programs do with the `.pptx`, `.drawio` and
+`.vsdx` files, and how that was checked. Added 2026-10-08 from user feedback (「ファイルで保存する際は名前を
 付けて保存できるように」「.drawio形式で保存可能なようにして」「.vsdx形式で保存可能なようにして」);
 the dialog replaced the 出す card on 2026-10-12 (the inspector redesign).
 
@@ -11,28 +11,29 @@ the dialog replaced the 出す card on 2026-10-12 (the inspector redesign).
   removed, framed by its own drawing because svg-pan-zoom takes the viewBox away) on the
   backdrop the file will get; transparent shows a checkerboard.
 - **Right:** the formats as cards in two columns, each a name and one line: PNG 画像, SVG,
-  draw.io, Visio, HTML, Markdown 用 (the GitLab export), 画像をコピー (only where the browser has
+  PowerPoint, draw.io, Visio, HTML, Markdown 用 (the GitLab export), 画像をコピー (only where the browser has
   `ClipboardItem`). Under them only what the chosen format takes:
   - 解像度 標準 / 高画質 / 最高画質 (1x / 2x / 3x) for PNG and the copy;
   - 背景 白 / 透明 / テーマの色 for PNG, SVG, the copy and Markdown. The default for a new user is
     透明; the choice and the scale are remembered (`exportBackground`, `exportScale`). A theme
     preset's own background replaces white or the theme colour (`exportBackdrop`);
   - 方法 ファイルで保存 / HTML タグをコピー for HTML;
-  - a note on what the file will be (the background and the scale, or the draw.io, Visio, HTML
-    and Markdown explanations).
+  - a note on what the file will be (the background and the scale, or the PowerPoint, draw.io,
+    Visio, HTML and Markdown explanations).
   - With an external renderer configured (`MERMAID_RENDERER_URL`, `MERMAID_KROKI_RENDERER_URL`;
     empty by default) a 外部 row links to the mermaid.ink PNG and SVG and to Kroki, and the
     mermaid.ink Markdown field (`TID.copyMarkdown`) appears. None of this shows by default.
 - **Bottom:** the file name (the diagram's title by default) with the extension next to it, and
   キャンセル / 保存 (コピー for the two copies, which have no file name). The button shows the
-  outcome (`data-export-state`: busy, done, failed). Failures of PNG, SVG, `.drawio`, `.vsdx`
+  outcome (`data-export-state`: busy, done, failed). Failures of PNG, SVG, `.pptx`, `.drawio`, `.vsdx`
   and the copy are notified; for HTML and Markdown, which render the diagram afresh, a diagram
   that does not render is reported in the dialog and nothing is saved. キャンセル stops an export
   that is still running (see "One state per file" below).
 
 The PNG width and height in pixels and the size presets are gone (user decisions, 2026-10-08 and
-2026-10-12). `.drawio` and `.vsdx` show no background choice; they use the remembered one, as
-the export card did, so with the default the draw.io page and the Visio picture are transparent.
+2026-10-12). `.pptx`, `.drawio` and `.vsdx` show no background choice; they use the remembered
+one, as the export card did, so with the default the draw.io page and the Visio picture are
+transparent and the PowerPoint slide keeps its own white.
 
 All exports draw from the diagram on screen with pan/zoom paused (`createPanZoomPause`), except
 HTML and Markdown, which render it afresh from one snapshot of the state (`takeExportSnapshot`),
@@ -165,6 +166,74 @@ and falls back if draw.io does not have it), so text widths can differ slightly;
 by draw.io from the waypoints, so a moved node re-routes like any draw.io edge; mermaid's drop
 shadows, gradients (the first stop is used) and `themeCSS` effects do not carry over; sequence
 messages are not attached to the lifelines; the hand-drawn look turns into many small strokes.
+
+## .pptx (`src/lib/util/pptxExport.ts`)
+
+Added 2026-10-22 (「パワーポイントにひとつひとつのアイテムが編集可能なオブジェクトとして貼り付け」, option 1 of
+the proposal: a PowerPoint file of native shapes). Before it, nothing reached PowerPoint as
+editable shapes: PNG, the copy and Visio are one picture, and an SVG put through PowerPoint's
+「図形に変換」 loses the node text (mermaid draws it in `foreignObject`, which PowerPoint does not
+show) and the colours (they live in the SVG's stylesheet).
+
+The file starts from the same cells as the `.drawio` (`svgToDrawio` reads the SVG on screen with
+pan/zoom paused; the converter also hands over each custom outline, each link's drawn route and
+each link label's box, which the `.drawio` writer does not use), so the two formats split the
+diagram the same way. One slide, 16:9 (13.33 × 7.5 in, `12192000 × 6858000` EMU, 96 px per
+inch): a diagram that fits keeps its size, centred; a larger one is scaled down to fit inside a
+quarter-inch margin, text sizes with it. The page background of a theme preset (or the white or
+theme backdrop, if remembered) becomes the slide colour.
+
+| In the diagram (draw.io cell)                                              | On the slide                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| a node: rect, rounded, ellipse, rhombus, hexagon, parallelogram, trapezoid | a shape of that preset (`rect`, `roundRect` with the corner radius, `ellipse`, `diamond`, `hexagon`, `parallelogram`, `trapezoid`, flips kept), its fill, line, width, dash and opacity, holding the label (one paragraph per line, font, size in pt, colour, bold/italic/underline, alignment, no wrapping)                                                 |
+| a node of any other outline (stadium, cylinder, hand-drawn…)               | a freeform (`custGeom`) with exactly the outline, and four connection sites                                                                                                                                                                                                                                                                                  |
+| a node with parts (class members, ER attributes, icons)                    | a group of the shape and its parts, so they move together and can still be edited one by one                                                                                                                                                                                                                                                                 |
+| a subgraph, composite state, lane, architecture group                      | a shape behind the nodes inside it (not a group: the nodes stay free to move out)                                                                                                                                                                                                                                                                            |
+| a link                                                                     | a connector glued to the shapes it joins (`stCxn` / `endCxn`, the connection site nearest to where the line meets the shape), drawn as an elbow connector (`bentConnector2`–`5`, rotated and flipped as needed, the bends as adjust values) or a straight one where that draws mermaid's route; any other route as a freeform line of exactly the drawn path |
+| arrowheads                                                                 | the line ends PowerPoint has (filled triangle, open arrow, filled oval); the others (hollow triangle, diamonds, ER cardinalities, cross, hollow circle) as small freeforms at the end of the line                                                                                                                                                            |
+| a link label                                                               | a text box where mermaid put it, with its background colour                                                                                                                                                                                                                                                                                                  |
+| titles, messages, axis labels, percentages                                 | text boxes; lines without ends (lifelines, axes) are connectors without glue                                                                                                                                                                                                                                                                                 |
+| icons and pictures                                                         | pictures: the SVG (`asvg:svgBlip`) with a PNG fallback at 2× drawn in the browser; nothing is fetched, a picture that is not inside the diagram is left out                                                                                                                                                                                                  |
+| a caption beside an icon                                                   | a text box below (or beside) the picture                                                                                                                                                                                                                                                                                                                     |
+
+Small steps mermaid puts in a route to meet a node's centre (under 6 px between two parallel
+segments) are taken out so the route fits an elbow connector; where mermaid stops a link short
+of a box to leave room for its arrowhead (class diagrams), the line is carried on to the box so
+the arrowhead touches it. The Mermaid source is the slide's notes (first paragraph `Mermaid`,
+then one paragraph per line). Shapes are named after their label (PowerPoint's selection pane),
+connectors `Connector n`.
+
+The package: `[Content_Types].xml` first, `_rels/.rels`, `docProps/core.xml` (title = file name)
+and `app.xml`, `ppt/presentation.xml` (one slide, one notes master), one blank master and layout,
+two themes (Office colours; Calibri, 游ゴシック for Japanese), `presProps`, `viewProps`,
+`tableStyles`, `ppt/slides/slide1.xml`, `ppt/notesSlides/notesSlide1.xml`, the notes master, and
+`ppt/media/` for pictures. Zipped with `fflate`; PNGs stored.
+
+How it was checked: `pptxExport.test.ts` builds a file from a set of cells and checks every part
+is well-formed, the content types, the slide size, the notes, each shape's preset, text and
+font, positions, the group and the container, the picture with its SVG, the glue (ids and
+connection sites), the elbow connector's adjust value, the dashes, the drawn arrowheads, unique
+ids; and the pure pieces (placement, presets, sites, line ends, route corners and jogs, connector
+choice with rotation and flips, carrying a short line on to its box). `tests/fileExports.spec.ts`
+saves a flowchart from the site and checks the shapes with their labels, the five glued
+connectors, the dashed one and the notes; `offline.spec.ts` that the export asks nothing of the
+network. On 2026-10-22 files saved from the site for flowchart (subgraph, labels, seven node
+shapes), sequence, class, ER, state, pie and architecture were opened with `python-pptx` (every
+object read back: shapes, freeforms, connectors, groups, pictures, text boxes, notes) and
+rendered with LibreOffice Impress 24.2 and compared with the diagram on screen.
+**Microsoft PowerPoint itself was not available here**, so the first open in PowerPoint is still
+to be confirmed by a person. Two things to know when comparing: LibreOffice re-routes every
+glued connector by its own rules when it opens the file (PowerPoint draws the stored route until a
+shape is moved), so a route can look different there; with the glue removed it draws the routes
+as stored, and those matched the diagram. And PowerPoint itself re-routes a connector, as an elbow
+or a straight line, when one of its shapes is moved; a freeform route then becomes PowerPoint's
+own.
+
+Limitations: text is laid out with PowerPoint's font metrics (the diagram's font is named; if the
+machine lacks it, PowerPoint substitutes), so a label can come out slightly wider or narrower;
+mermaid's rounded bends become square elbows; shadows, gradients (the first stop is used),
+`themeCSS` effects and the hand-drawn look's fill hatching do not carry over; sequence messages are
+not glued to the lifelines; there is one slide, so a very large diagram gets small text.
 
 ## .vsdx (`src/lib/util/vsdxExport.ts`)
 

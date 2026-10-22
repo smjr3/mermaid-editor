@@ -712,6 +712,8 @@ export const en = {
   'exportDlg.fmtMdHint': 'For GitLab and others (SVG + edit link)',
   'exportDlg.fmtPng': 'PNG image',
   'exportDlg.fmtPngHint': 'For documents and chats',
+  'exportDlg.fmtPptx': 'PowerPoint',
+  'exportDlg.fmtPptxHint': 'Edit each shape on a slide',
   'exportDlg.fmtSvg': 'SVG',
   'exportDlg.fmtSvgHint': 'Sharp at any size',
   'exportDlg.fmtVsdx': 'Visio',
@@ -1331,6 +1333,8 @@ export const en = {
   'saveAs.drawioHint':
     'Saves a file for draw.io (diagrams.net). Every shape, arrow, text and group becomes its own draw.io element, to select, move and restyle one by one. The Mermaid code stays in the file as the diagram data.',
   'saveAs.failed': 'The file could not be saved. Try again.',
+  'saveAs.pptxHint':
+    'Saves a PowerPoint file (.pptx). Every shape, arrow and text becomes its own PowerPoint shape, to select, move and restyle one by one; arrows are connectors glued to the shapes. A large diagram is scaled down to fit the 16:9 slide. The Mermaid code is kept in the notes.',
   'saveAs.vsdxHint':
     'Saves a file for Microsoft Visio. The diagram is one picture on the page (it can be moved and resized, not edited as Visio shapes); the Mermaid code is kept in the shape data.',
   'security.unsafeConfigConfirm':

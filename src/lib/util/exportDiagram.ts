@@ -1,5 +1,5 @@
 /**
- * Local: every export of the 書き出す dialog (ExportDialog.svelte) — PNG, SVG, .drawio,
+ * Local: every export of the 書き出す dialog (ExportDialog.svelte) — PNG, SVG, .pptx, .drawio,
  * .vsdx, HTML (a file or an <img> tag), the Markdown export for GitLab (an SVG file and
  * Markdown that shows it) and the image copy. Moved here from the export card
  * (Actions.svelte, HtmlExport.svelte) unchanged in what the files hold:
@@ -42,6 +42,7 @@ import { getDrawnFrom } from './renderView';
 import { anchorDownload, defaultFileBase, fileNameFromInput, withExtension } from './saveFile';
 import { inputState, updateCodeStore, validatedState } from './state.svelte';
 import { logEvent } from './stats';
+import { buildPptx, decodeDataUrl, pictureSources, type PptxPicture } from './pptxExport';
 import { parseColour, svgToDrawio } from './svgToDrawio';
 import { presetBackground } from './themePresets';
 import { buildVsdx } from './vsdxExport';
@@ -51,7 +52,7 @@ import { buildVsdx } from './vsdxExport';
 
 export type ExportBackground = 'theme' | 'transparent' | 'white';
 export type ExportScale = 1 | 2 | 3;
-export type ExportFormat = 'copy' | 'drawio' | 'html' | 'md' | 'png' | 'svg' | 'vsdx';
+export type ExportFormat = 'copy' | 'drawio' | 'html' | 'md' | 'png' | 'pptx' | 'svg' | 'vsdx';
 export type HtmlMode = 'file' | 'tag';
 
 export const EXPORT_BACKGROUNDS: ExportBackground[] = ['white', 'transparent', 'theme'];
@@ -60,6 +61,7 @@ export const EXPORT_SCALES: ExportScale[] = [1, 2, 3];
 export const EXPORT_FORMATS: ExportFormat[] = [
   'png',
   'svg',
+  'pptx',
   'drawio',
   'vsdx',
   'html',
@@ -90,6 +92,10 @@ export const FORMAT_FILES: Record<
   html: { extension: 'html', mime: 'text/html' },
   md: { extension: 'svg', mime: 'image/svg+xml' },
   png: { extension: 'png', mime: 'image/png' },
+  pptx: {
+    extension: 'pptx',
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  },
   svg: { extension: 'svg', mime: 'image/svg+xml' },
   vsdx: { extension: 'vsdx', mime: 'application/vnd.ms-visio.drawing.main+xml' }
 };
@@ -517,6 +523,71 @@ export const saveDrawio = async (
   signal?.throwIfAborted();
   anchorDownload(blob, name);
   logEvent('download', { type: 'drawio' });
+};
+
+// Icons and pictures in a .pptx: a PNG at this many times their size beside the SVG.
+const PPTX_PICTURE_SCALE = 2;
+
+/** An image cell's picture as a PNG (and the SVG itself); undefined if it cannot be read. */
+const pptxPicture = async (url: string): Promise<PptxPicture | undefined> => {
+  const decoded = decodeDataUrl(url);
+  // Only pictures held in the diagram itself: nothing is fetched from elsewhere.
+  if (!decoded) return undefined;
+  if (decoded.type === 'image/png') return { png: decoded.bytes };
+  const image = await loadImage(url.replace(/^data:([^;,]+),/, 'data:$1;base64,'));
+  const width = Math.max(1, Math.round((image.naturalWidth || 64) * PPTX_PICTURE_SCALE));
+  const height = Math.max(1, Math.round((image.naturalHeight || 64) * PPTX_PICTURE_SCALE));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d')?.drawImage(image, 0, 0, width, height);
+  const png = new Uint8Array(await (await canvasToBlob(canvas)).arrayBuffer());
+  return decoded.type === 'image/svg+xml' ? { png, svg: decoded.bytes } : { png };
+};
+
+/**
+ * Saves a PowerPoint file with every element as its own PowerPoint object (pptxExport.ts,
+ * docs-dev/EXPORTS.md): read from the diagram on screen as for the .drawio, with the
+ * source in the slide's notes. Rejects with `ExportStaleError` if the view no longer
+ * shows `state`.
+ */
+export const savePptx = async (
+  name: string,
+  { background }: Pick<ImageOptions, 'background'>,
+  state: State,
+  signal?: AbortSignal
+): Promise<void> => {
+  const source = captureSource(state);
+  const blob = await withDiagram(
+    async (svg) => {
+      const page = svgToDrawio(svg as unknown as SVGSVGElement);
+      const content = getContentSize(svg);
+      const fill = parseColour(currentBackdrop(background, source.mermaid) ?? undefined);
+      const pictures = new Map<string, PptxPicture>();
+      for (const url of pictureSources(page.cells)) {
+        try {
+          const picture = await pptxPicture(url);
+          if (picture) pictures.set(url, picture);
+        } catch (error) {
+          console.warn('A picture of the diagram was left out of the .pptx', error);
+        }
+      }
+      const file = buildPptx({
+        background: fill.colour === 'none' ? undefined : fill.colour,
+        cells: page.cells,
+        code: source.code,
+        height: page.height || content.height,
+        pictures,
+        title: stem(name, 'pptx'),
+        width: page.width || content.width
+      });
+      return new Blob([file as Uint8Array<ArrayBuffer>], { type: FORMAT_FILES.pptx.mime });
+    },
+    { signal, source }
+  );
+  signal?.throwIfAborted();
+  anchorDownload(blob, name);
+  logEvent('download', { type: 'pptx' });
 };
 
 // The diagram as a PNG at twice its size, for the Visio picture.

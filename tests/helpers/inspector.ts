@@ -105,6 +105,21 @@ export const openLook = async (page: Page): Promise<void> => {
   await expect(lookContent(page)).toBeVisible();
 };
 
+/**
+ * Opens 図全体's 詳細 popover (ELK's own options, the accessible title and description),
+ * read from the trigger's aria-expanded as 見た目's is.
+ */
+export const openDetails = async (page: Page): Promise<void> => {
+  const trigger = page.getByTestId(TID.inspDetailsPopover);
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+    await expect(page.getByTestId(TID.inspDetailsContent)).toBeHidden();
+    await trigger.click();
+  }
+  await expect(
+    page.locator(`[data-testid="${TID.inspDetailsContent}"][data-state="open"]`)
+  ).toBeVisible();
+};
+
 /** Closes the 見た目 popover with Escape. */
 export const closeLook = async (page: Page): Promise<void> => {
   const trigger = page.getByTestId(TID.lookPopover);

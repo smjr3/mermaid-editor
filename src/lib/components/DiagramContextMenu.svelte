@@ -257,9 +257,11 @@
           data-testid={`${TID.contextMenuItem}-${row.key}`}
           onpointerenter={() => hoverRow()}
           onclick={() => run(() => row.command.run(model))}
-          >{#if row.command.current}{@render check(checked)}{/if}<span class="flex-1 truncate"
+          ><span class="flex-1 truncate"
             >{commandLabel(row.command, model)}{row.command.shortcut ? ' ' : ''}</span
-          >{#if row.command.shortcut}<kbd class="font-sans text-xs text-muted-foreground"
+          >{#if row.command.current && checked}<span class="shrink-0 text-xs" aria-hidden="true"
+              >✓</span
+            >{/if}{#if row.command.shortcut}<kbd class="font-sans text-xs text-muted-foreground"
               >{row.command.shortcut}</kbd
             >{/if}
         </button>

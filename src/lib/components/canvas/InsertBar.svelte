@@ -23,7 +23,9 @@
   // selected the bar shows the selection's actions instead (SelectionBar.svelte), one row,
   // broken code or not: its buttons refuse and say why. The add entries keep working
   // meanwhile — a shape joined after the selected one, a form — from one 追加 ▾ menu at
-  // the right end, so nothing the bar offered is lost while something is selected.
+  // the left end, where the add buttons stand otherwise (QA 2026-10-24: at the right end it
+  // jumped across the bar as the selection came and went), so nothing the bar offered is
+  // lost while something is selected.
   // While an arrow is being drawn (connectMode.svelte.ts) the add bar stays, with 矢印
   // pressed: the first shape clicked becomes selected as the arrow's start, and the two
   // clicks must not have the bar change under them; the banner over the diagram has やめる.
@@ -73,10 +75,11 @@
   data-testid={TID.canvasInsertBar}
   data-mode={selecting ? 'selection' : 'add'}>
   {#if selecting}
-    <SelectionBar />
     {#if !blocked}
       {@render adders(0, t('canvas.addMenu'))}
+      <span class="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden="true"></span>
     {/if}
+    <SelectionBar />
   {:else if blocked}
     <span class="truncate px-2 text-sm text-muted-foreground" data-testid={TID.canvasInsertBlocked}
       >{t('canvas.blocked')}</span>

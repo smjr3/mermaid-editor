@@ -200,7 +200,11 @@
   id="view"
   bind:this={view}
   data-render-count={renderCount}
-  class={['view-bg h-full w-full', shouldShowGrid && 'grid-bg', error && 'opacity-50']}>
+  class={[
+    'view-bg h-full w-full dark:overflow-hidden dark:rounded-md',
+    shouldShowGrid && 'grid-bg',
+    error && 'opacity-50'
+  ]}>
   <div id="container" bind:this={container} class="h-full overflow-auto"></div>
 </div>
 

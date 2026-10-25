@@ -127,7 +127,8 @@
             ]} />
         </div>
       </FieldRow>
-      <FieldRow label="">
+      <!-- The palette takes the panel's whole width, so its dots can be full size. -->
+      <div class="min-w-0">
         {#if target === 'fill'}
           <ColorRow
             mode="fill"
@@ -151,7 +152,7 @@
             testID={TID.inspColor}
             onpick={model.setTextColor} />
         {/if}
-      </FieldRow>
+      </div>
       <FieldRow label={t('sel.size')}>
         {#if model.textStyle}
           {@const style = model.textStyle}

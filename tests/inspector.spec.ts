@@ -9,6 +9,7 @@ import {
   expectAtRoot,
   expectSelected,
   field,
+  openDetails,
   openLook,
   openTab,
   panel,
@@ -410,6 +411,8 @@ test.describe('Inspector', () => {
     await editPage.checkTextInView('Check');
 
     // ELK is mermaid 12's default engine: its placement and merged arrows go into the config.
+    // They sit behind 詳細 │ 変更….
+    await openDetails(page);
     await page.getByTestId(TID.inspElkPlacement).selectOption('LINEAR_SEGMENTS');
     await page.getByTestId(TID.inspElkMerge).click();
     await expect
@@ -483,6 +486,9 @@ test.describe('Inspector: mermaid’s other options', () => {
     await expect(page.getByTestId(TID.inspBuiltinTheme)).toHaveValue('dark');
     await page.keyboard.press('Escape');
     await expect(page.getByTestId(TID.inspLookContent)).toBeHidden();
+    // The accessible title sits behind 詳細 │ 変更…, not in the panel itself.
+    await expect(option(page, 'accTitle')).toHaveCount(0);
+    await openDetails(page);
     const title = option(page, 'accTitle');
     await title.fill('Order flow');
     await title.press('Enter');

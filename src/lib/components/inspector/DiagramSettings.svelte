@@ -1,6 +1,6 @@
 <script lang="ts">
   import AiIconPrompt from '$/components/AiIconPrompt.svelte';
-  import FieldRow from '$/components/form/FieldRow.svelte';
+  import FieldRow, { labelColumn } from '$/components/form/FieldRow.svelte';
   import PanelGroup from '$/components/form/PanelGroup.svelte';
   import Segmented from '$/components/form/Segmented.svelte';
   import SwitchRow from '$/components/form/SwitchRow.svelte';
@@ -10,6 +10,7 @@
   import UnknownIcons from '$/components/UnknownIcons.svelte';
   import { Button } from '$/components/ui/button';
   import * as Dialog from '$/components/ui/dialog';
+  import * as Popover from '$/components/ui/popover';
   import { TID } from '$/constants';
   import { t } from '$/i18n';
   import { messages, type MessageKey } from '$/i18n/messages';
@@ -63,7 +64,10 @@
   // colour, behind 変更…: LookRow.svelte), the layout (direction, engine, spacing:
   // layout.ts), the type's own options (diagramOptions.ts), colours written in the code
   // (lanes, every object, every arrow: colors.ts), the title (diagramTitle.ts) and the
-  // icons (the picker and the pack dialogs, the unknown names, the AI briefing). The
+  // icons (the picker and the pack dialogs, the unknown names, the AI briefing). What is
+  // touched while working comes first (見た目, 向き, タイトル, 配置, 間隔); ELK's own options
+  // and the accessible title and description sit behind 詳細 │ 変更… (a popover, as 見た目
+  // does, not a collapsible section). The
   // parts themselves are picked from the tabs over the panel (Inspector.svelte). Rows the
   // diagram type has no use for are left out, or say why.
   // `blocked`: the code is broken, so the rows that edit the code are disabled; the
@@ -150,7 +154,21 @@
 
   // ---- Local: the type's own options (diagramOptions.ts): code ones are checked and
   // refused while the code is broken, config ones always apply. ----
-  const typeOptions = $derived(diagramOptions(inputState.code, inputState.mermaid));
+  const allOptions = $derived(diagramOptions(inputState.code, inputState.mermaid));
+  // The accessible title and description are rarely touched: they go behind 詳細.
+  const accessibleKeys = new Set(['accTitle', 'accDescr']);
+  const typeOptions = $derived(allOptions.filter(({ key }) => !accessibleKeys.has(key)));
+  const accessibleOptions = $derived(allOptions.filter(({ key }) => accessibleKeys.has(key)));
+  let detailsOpen = $state(false);
+  // What 詳細 holds for this diagram, named on its row.
+  const detailsSummary = $derived(
+    [
+      direction && options.engine === 'elk' ? t('insp.detailsElk') : '',
+      accessibleOptions.length > 0 ? t('insp.detailsAccessible') : ''
+    ]
+      .filter(Boolean)
+      .join('・')
+  );
   const applyOption = async (option: DiagramOption, value: string) => {
     if (option.value === value) return;
     message = '';
@@ -254,6 +272,7 @@
           onchange={onDirection} />
       </FieldRow>
     </fieldset>
+    {@render titleRow()}
     <FieldRow label={t('insp.engine')}>
       <Segmented
         value={options.engine}
@@ -280,72 +299,6 @@
         }))}
         onchange={(spacing) => applyOptions({ spacing: spacing as LayoutOptions['spacing'] })} />
     </FieldRow>
-    {#if options.engine === 'elk'}
-      <!-- ELK's own options (mermaid's `elk` config): how nodes are placed, merged arrows. -->
-      <FieldRow label={t('insp.elkPlacement')}>
-        <select
-          class={selectClass}
-          value={elk.placement}
-          aria-label={t('insp.elkPlacement')}
-          title={t('insp.elkPlacementHint')}
-          data-testid={TID.inspElkPlacement}
-          onchange={(event) =>
-            updateConfig(
-              setElkOptions(inputState.mermaid, {
-                placement: event.currentTarget.value as ElkOptions['placement']
-              })
-            )}>
-          <option value="">{t('insp.elkPlacement.default')}</option>
-          {#each elkPlacements as placement (placement)}
-            <option value={placement}>{t(`insp.elkPlacement.${placement}`)}</option>
-          {/each}
-        </select>
-      </FieldRow>
-      <FieldRow label={t('insp.elkCycle')}>
-        <select
-          class={selectClass}
-          value={elk.cycle}
-          aria-label={t('insp.elkCycle')}
-          title={t('insp.elkCycleHint')}
-          data-testid={TID.inspElkCycle}
-          onchange={(event) =>
-            updateConfig(
-              setElkOptions(inputState.mermaid, {
-                cycle: event.currentTarget.value as ElkOptions['cycle']
-              })
-            )}>
-          <option value="">{t('insp.elkPlacement.default')}</option>
-          {#each elkCycles as cycle (cycle)}
-            <option value={cycle}>{t(`insp.elkCycle.${cycle}`)}</option>
-          {/each}
-        </select>
-      </FieldRow>
-      <FieldRow label={t('insp.elkOrder')}>
-        <select
-          class={selectClass}
-          value={elk.modelOrder}
-          aria-label={t('insp.elkOrder')}
-          title={t('insp.elkOrderHint')}
-          data-testid={TID.inspElkOrder}
-          onchange={(event) =>
-            updateConfig(
-              setElkOptions(inputState.mermaid, {
-                modelOrder: event.currentTarget.value as ElkOptions['modelOrder']
-              })
-            )}>
-          <option value="">{t('insp.elkPlacement.default')}</option>
-          {#each elkModelOrders as order (order)}
-            <option value={order}>{t(`insp.elkOrder.${order}`)}</option>
-          {/each}
-        </select>
-      </FieldRow>
-      <SwitchRow
-        label={t('insp.elkMerge')}
-        checked={elk.mergeEdges}
-        testID={TID.inspElkMerge}
-        onchange={(mergeEdges) =>
-          updateConfig(setElkOptions(inputState.mermaid, { mergeEdges }))} />
-    {/if}
   {:else}
     <FieldRow label={t('layout.direction')}>
       <span
@@ -353,6 +306,10 @@
         title={`${t(directionUnsupportedKey(inputState.code))} ${t('layout.noEngine')}`}
         data-testid={TID.layoutNoEngine}>{t(directionUnsupportedKey(inputState.code))}</span>
     </FieldRow>
+    {@render titleRow()}
+  {/if}
+  {#if (direction && options.engine === 'elk') || accessibleOptions.length > 0}
+    {@render details()}
   {/if}
 </PanelGroup>
 
@@ -360,45 +317,7 @@
 {#if typeOptions.length > 0}
   <PanelGroup>
     {#each typeOptions as option (option.key)}
-      <fieldset disabled={blocked && !option.config} class="contents">
-        {#if option.kind === 'switch'}
-          <SwitchRow
-            label={t(option.label)}
-            checked={option.value === 'on'}
-            testID={`${TID.inspOption}-${option.key}`}
-            onchange={(on) => void applyOption(option, on ? 'on' : 'off')} />
-        {:else}
-          <FieldRow label={t(option.label)}>
-            {#if option.kind === 'choice'}
-              <select
-                class={selectClass}
-                value={option.value}
-                aria-label={t(option.label)}
-                title={t(option.label)}
-                data-testid={`${TID.inspOption}-${option.key}`}
-                onchange={(event) => void applyOption(option, event.currentTarget.value)}>
-                {#each option.options ?? [] as value (value)}
-                  <option {value}>{optionLabel(option, value)}</option>
-                {/each}
-              </select>
-            {:else}
-              <input
-                class="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"
-                type={option.kind}
-                min={option.kind === 'number' ? 1 : undefined}
-                value={option.value}
-                placeholder={t('opt.empty')}
-                aria-label={t(option.label)}
-                title={t(option.label)}
-                data-testid={`${TID.inspOption}-${option.key}`}
-                onkeydown={(event) => {
-                  if (event.key === 'Enter') event.currentTarget.blur();
-                }}
-                onchange={(event) => void applyOption(option, event.currentTarget.value)} />
-            {/if}
-          </FieldRow>
-        {/if}
-      </fieldset>
+      {@render optionRow(option)}
     {/each}
   </PanelGroup>
 {/if}
@@ -463,41 +382,6 @@
       <p class={muted} title={t('colors.objectsNone')}>{t('colors.objectsNone')}</p>
     {/if}
   </fieldset>
-</PanelGroup>
-
-<!-- タイトル (code). -->
-<PanelGroup>
-  <FieldRow label={t('layout.diagramTitle')}>
-    {#if showsTitle}
-      <fieldset disabled={blocked} class="flex min-w-0 flex-1 items-center gap-1">
-        <input
-          bind:value={titleText}
-          class="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"
-          placeholder={t('insp.titleNone')}
-          aria-label={t('layout.diagramTitle')}
-          title={t('layout.titlePlaceholder')}
-          data-testid={TID.inspTitle}
-          onkeydown={(event) => {
-            if (event.key === 'Enter') void applyTitle(titleText);
-            if (event.key === 'Escape') titleText = title;
-          }}
-          onblur={() => void applyTitle(titleText)} />
-        {#if title}
-          <Button
-            size="sm"
-            variant="ghost"
-            class={smallButton}
-            data-testid={TID.inspTitleRemove}
-            onclick={() => {
-              titleText = '';
-              void applyTitle('');
-            }}>{t('layout.titleRemove')}</Button>
-        {/if}
-      </fieldset>
-    {:else}
-      <span class={muted} title={t('layout.titleUnsupported')}>{t('layout.titleUnsupported')}</span>
-    {/if}
-  </FieldRow>
 </PanelGroup>
 
 <!-- アイコン: the picker and the packs (dialogs), unknown names, the AI briefing. -->
@@ -575,3 +459,171 @@
     </div>
   </Dialog.Content>
 </Dialog.Root>
+
+{#snippet titleRow()}
+  <FieldRow label={t('layout.diagramTitle')}>
+    {#if showsTitle}
+      <fieldset disabled={blocked} class="flex min-w-0 flex-1 items-center gap-1">
+        <input
+          bind:value={titleText}
+          class="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+          placeholder={t('insp.titleNone')}
+          aria-label={t('layout.diagramTitle')}
+          title={t('layout.titlePlaceholder')}
+          data-testid={TID.inspTitle}
+          onkeydown={(event) => {
+            if (event.key === 'Enter') void applyTitle(titleText);
+            if (event.key === 'Escape') titleText = title;
+          }}
+          onblur={() => void applyTitle(titleText)} />
+        {#if title}
+          <Button
+            size="sm"
+            variant="ghost"
+            class={smallButton}
+            data-testid={TID.inspTitleRemove}
+            onclick={() => {
+              titleText = '';
+              void applyTitle('');
+            }}>{t('layout.titleRemove')}</Button>
+        {/if}
+      </fieldset>
+    {:else}
+      <span class={muted} title={t('layout.titleUnsupported')}>{t('layout.titleUnsupported')}</span>
+    {/if}
+  </FieldRow>
+{/snippet}
+
+{#snippet optionRow(option: DiagramOption)}
+  <fieldset disabled={blocked && !option.config} class="contents">
+    {#if option.kind === 'switch'}
+      <SwitchRow
+        label={t(option.label)}
+        checked={option.value === 'on'}
+        testID={`${TID.inspOption}-${option.key}`}
+        onchange={(on) => void applyOption(option, on ? 'on' : 'off')} />
+    {:else}
+      <FieldRow label={t(option.label)}>
+        {#if option.kind === 'choice'}
+          <select
+            class={selectClass}
+            value={option.value}
+            aria-label={t(option.label)}
+            title={t(option.label)}
+            data-testid={`${TID.inspOption}-${option.key}`}
+            onchange={(event) => void applyOption(option, event.currentTarget.value)}>
+            {#each option.options ?? [] as value (value)}
+              <option {value}>{optionLabel(option, value)}</option>
+            {/each}
+          </select>
+        {:else}
+          <input
+            class="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+            type={option.kind}
+            min={option.kind === 'number' ? 1 : undefined}
+            value={option.value}
+            placeholder={t('opt.empty')}
+            aria-label={t(option.label)}
+            title={t(option.label)}
+            data-testid={`${TID.inspOption}-${option.key}`}
+            onkeydown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur();
+            }}
+            onchange={(event) => void applyOption(option, event.currentTarget.value)} />
+        {/if}
+      </FieldRow>
+    {/if}
+  </fieldset>
+{/snippet}
+
+<!-- 詳細 │ 変更…: ELK's own options (mermaid's `elk` config: how nodes are placed, merged
+     arrows) and the accessible title and description, in a popover as 見た目 has. -->
+{#snippet details()}
+  <FieldRow label={t('insp.details')}>
+    <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={detailsSummary}
+      >{detailsSummary}</span>
+    <Popover.Root bind:open={detailsOpen}>
+      <Popover.Trigger
+        class="inline-flex h-7 shrink-0 items-center rounded-md border border-input bg-background px-2 text-xs whitespace-nowrap hover:bg-muted aria-expanded:bg-muted"
+        title={t('insp.detailsHint')}
+        aria-label={`${t('insp.details')}: ${t('insp.lookChange')}`}
+        data-testid={TID.inspDetailsPopover}>{t('insp.lookChange')}</Popover.Trigger>
+      <Popover.Content
+        align="end"
+        class="w-[21rem] max-w-[calc(100vw-2rem)] p-3"
+        data-selection-ui
+        data-testid={TID.inspDetailsContent}>
+        <div class="flex flex-col gap-1" use:labelColumn>
+          {#if direction && options.engine === 'elk'}
+            <FieldRow label={t('insp.elkPlacement')}>
+              <select
+                class={selectClass}
+                value={elk.placement}
+                aria-label={t('insp.elkPlacement')}
+                title={t('insp.elkPlacementHint')}
+                data-testid={TID.inspElkPlacement}
+                onchange={(event) =>
+                  updateConfig(
+                    setElkOptions(inputState.mermaid, {
+                      placement: event.currentTarget.value as ElkOptions['placement']
+                    })
+                  )}>
+                <option value="">{t('insp.elkPlacement.default')}</option>
+                {#each elkPlacements as placement (placement)}
+                  <option value={placement}>{t(`insp.elkPlacement.${placement}`)}</option>
+                {/each}
+              </select>
+            </FieldRow>
+            <FieldRow label={t('insp.elkCycle')}>
+              <select
+                class={selectClass}
+                value={elk.cycle}
+                aria-label={t('insp.elkCycle')}
+                title={t('insp.elkCycleHint')}
+                data-testid={TID.inspElkCycle}
+                onchange={(event) =>
+                  updateConfig(
+                    setElkOptions(inputState.mermaid, {
+                      cycle: event.currentTarget.value as ElkOptions['cycle']
+                    })
+                  )}>
+                <option value="">{t('insp.elkPlacement.default')}</option>
+                {#each elkCycles as cycle (cycle)}
+                  <option value={cycle}>{t(`insp.elkCycle.${cycle}`)}</option>
+                {/each}
+              </select>
+            </FieldRow>
+            <FieldRow label={t('insp.elkOrder')}>
+              <select
+                class={selectClass}
+                value={elk.modelOrder}
+                aria-label={t('insp.elkOrder')}
+                title={t('insp.elkOrderHint')}
+                data-testid={TID.inspElkOrder}
+                onchange={(event) =>
+                  updateConfig(
+                    setElkOptions(inputState.mermaid, {
+                      modelOrder: event.currentTarget.value as ElkOptions['modelOrder']
+                    })
+                  )}>
+                <option value="">{t('insp.elkPlacement.default')}</option>
+                {#each elkModelOrders as order (order)}
+                  <option value={order}>{t(`insp.elkOrder.${order}`)}</option>
+                {/each}
+              </select>
+            </FieldRow>
+            <SwitchRow
+              label={t('insp.elkMerge')}
+              checked={elk.mergeEdges}
+              testID={TID.inspElkMerge}
+              onchange={(mergeEdges) =>
+                updateConfig(setElkOptions(inputState.mermaid, { mergeEdges }))} />
+          {/if}
+          {#each accessibleOptions as option (option.key)}
+            {@render optionRow(option)}
+          {/each}
+        </div>
+      </Popover.Content>
+    </Popover.Root>
+  </FieldRow>
+{/snippet}

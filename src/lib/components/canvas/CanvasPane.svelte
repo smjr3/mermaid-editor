@@ -46,11 +46,7 @@
       data-selection-ui>
       <CodeErrorNotice testID={TID.diagramErrorNotice} />
     </div>
-    <!-- In dark mode the white view is a sheet with a dark margin round it, rather than
-         white to the pane's edges (QA 2026-10-24); the picture itself is unchanged. -->
-    <div
-      class="relative flex min-h-0 flex-1 flex-col overflow-hidden dark:p-1.5"
-      bind:this={viewHost}>
+    <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" bind:this={viewHost}>
       <View {panZoomState} shouldShowGrid={validatedState.current.grid} />
       <!-- Click the diagram to select, then change it (SelectionLayer). -->
       <SelectionLayer host={viewHost} {panZoomState} />

@@ -200,11 +200,7 @@
   id="view"
   bind:this={view}
   data-render-count={renderCount}
-  class={[
-    'view-bg h-full w-full dark:overflow-hidden dark:rounded-md',
-    shouldShowGrid && 'grid-bg',
-    error && 'opacity-50'
-  ]}>
+  class={['view-bg h-full w-full', shouldShowGrid && 'grid-bg', error && 'opacity-50']}>
   <div id="container" bind:this={container} class="h-full overflow-auto"></div>
 </div>
 
@@ -213,6 +209,13 @@
      is white in both (only the app chrome follows the mode). */
   .view-bg {
     background-color: #fff;
+  }
+
+  /* In dark mode the white view reads as a sheet: a dark margin painted inside its edges
+     (QA 2026-10-24), as a shadow so the view, and so the picture's size and zoom, stay
+     exactly as in light mode; the picture is drawn over it. */
+  :global(.dark) .view-bg {
+    box-shadow: inset 0 0 0 6px var(--background);
   }
 
   .grid-bg {

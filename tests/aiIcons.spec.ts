@@ -62,8 +62,9 @@ test.describe('AI icon helpers', () => {
     await page.getByTestId(`${TID.unknownIconReplace}-aws:lambda`).click();
     await expect(editPage.editor).toContainText('fn(logos:aws-lambda)[Fn]');
     await expect(section).toBeHidden({ timeout: 60_000 });
-    await expect(count).toHaveAttribute('data-count', '0');
-    await expect(page.getByTestId(TID.inspUnknownReplace)).toBeDisabled();
+    // With every name known, the row itself goes.
+    await expect(count).toBeHidden();
+    await expect(page.getByTestId(TID.inspUnknownReplace)).toBeHidden();
   });
 
   test('replaces every unknown icon with its suggestion at once', async ({ editPage, page }) => {
@@ -74,6 +75,6 @@ test.describe('AI icon helpers', () => {
     await page.getByTestId(TID.inspUnknownReplace).click();
     await expect(editPage.editor).toContainText('fn(logos:aws-lambda)[Fn]');
     await expect(editPage.editor).not.toContainText('(aws:dynamodb)');
-    await expect(count).toHaveAttribute('data-count', '0', { timeout: 60_000 });
+    await expect(count).toBeHidden({ timeout: 60_000 });
   });
 });

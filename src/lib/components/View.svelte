@@ -211,6 +211,13 @@
     background-color: #fff;
   }
 
+  /* In dark mode the white view reads as a sheet: a dark margin painted inside its edges
+     (QA 2026-10-24), as a shadow so the view, and so the picture's size and zoom, stay
+     exactly as in light mode; the picture is drawn over it. */
+  :global(.dark) .view-bg {
+    box-shadow: inset 0 0 0 6px var(--background);
+  }
+
   .grid-bg {
     background-size: 30px 30px;
     background-image: radial-gradient(circle, #e4e4e48c 2px, #0000 2px);

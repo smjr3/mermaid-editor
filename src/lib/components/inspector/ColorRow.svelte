@@ -8,7 +8,10 @@
   // palette (a deployment's MERMAID_COLOR_PRESETS, or the built-in one), ＋好きな色 (any
   // colour, remembered in colorRecent.svelte.ts) and the last three colours picked freely.
   // `fill` mode picks a fill with its border (an object, a lane); `line` mode one colour
-  // (a border, a text colour, an arrow, the line colour).
+  // (a border, a text colour, an arrow, the line colour). The none button, the palette
+  // and ＋ share one line whatever the panel's width: each grows to 20px and shrinks to
+  // fit (QA 2026-10-24: at 16px ＋ wrapped onto a line of its own); the recent colours
+  // follow on the next line when there is no room.
   type Props = {
     testID: string;
     label: string;
@@ -93,47 +96,55 @@
     pickColor(color);
   };
   const dot = 'size-4 shrink-0 rounded-full border-2 outline-offset-1';
+  // A palette dot: up to 20px, shrinking with the row rather than wrapping.
+  const fitDot =
+    'aspect-square max-w-5 min-w-3.5 flex-1 basis-0 rounded-full border-2 outline-offset-1';
+  // The none button: a circle struck through, as colour pickers mark "no colour".
+  const struck =
+    'linear-gradient(to top right, transparent calc(50% - 1px), var(--color-muted-foreground) calc(50% - 1px), var(--color-muted-foreground) calc(50% + 1px), transparent calc(50% + 1px))';
 </script>
 
 <div
-  class="flex min-w-0 flex-wrap items-center gap-[3px]"
+  class="flex min-w-0 flex-wrap items-center gap-x-[3px] gap-y-1"
   role="group"
   aria-label={props.label}
   data-testid={props.testID}>
-  <button
-    type="button"
-    class={[dot, 'border-dashed border-border', isNone && 'outline-2 outline-foreground']}
-    title={props.noneLabel ?? t('insp.colorNone')}
-    aria-label={props.noneLabel ?? t('insp.colorNone')}
-    aria-pressed={isNone}
-    data-testid={`${props.testID}-none`}
-    onclick={() => props.onpick(undefined)}></button>
-  {#each dots as item (item.key)}
+  <div class="flex w-full min-w-0 items-center gap-[3px]">
     <button
       type="button"
-      class={[dot, item.active && 'outline-2 outline-foreground']}
-      style:background-color={item.fill}
-      style:border-color={item.stroke}
-      title={item.label}
-      aria-label={item.label}
-      aria-pressed={item.active}
-      data-testid={`${props.testID}-${item.key}`}
-      onclick={item.pick}></button>
-  {/each}
-  <label
-    class="relative flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-input text-xs leading-none text-muted-foreground hover:bg-muted"
-    title={t('insp.colorAny')}>
-    ＋
-    <input
-      type="color"
-      class="absolute inset-0 size-full cursor-pointer opacity-0"
-      value={pickedValue}
-      aria-label={`${props.label}: ${t('insp.colorAny')}`}
-      data-testid={`${props.testID}-custom`}
-      onchange={(event) => pickAny(event.currentTarget.value)} />
-  </label>
+      class={[fitDot, 'border-border bg-background', isNone && 'outline-2 outline-foreground']}
+      style:background-image={struck}
+      title={props.noneLabel ?? t('insp.colorNone')}
+      aria-label={props.noneLabel ?? t('insp.colorNone')}
+      aria-pressed={isNone}
+      data-testid={`${props.testID}-none`}
+      onclick={() => props.onpick(undefined)}></button>
+    {#each dots as item (item.key)}
+      <button
+        type="button"
+        class={[fitDot, item.active && 'outline-2 outline-foreground']}
+        style:background-color={item.fill}
+        style:border-color={item.stroke}
+        title={item.label}
+        aria-label={item.label}
+        aria-pressed={item.active}
+        data-testid={`${props.testID}-${item.key}`}
+        onclick={item.pick}></button>
+    {/each}
+    <label
+      class="relative flex aspect-square max-w-5 min-w-3.5 flex-1 basis-0 cursor-pointer items-center justify-center rounded-full border border-input text-xs leading-none text-muted-foreground hover:bg-muted"
+      title={t('insp.colorAny')}>
+      ＋
+      <input
+        type="color"
+        class="absolute inset-0 size-full cursor-pointer opacity-0"
+        value={pickedValue}
+        aria-label={`${props.label}: ${t('insp.colorAny')}`}
+        data-testid={`${props.testID}-custom`}
+        onchange={(event) => pickAny(event.currentTarget.value)} />
+    </label>
+  </div>
   {#if recents.length > 0}
-    <span class="mx-0.5 h-3.5 w-px shrink-0 bg-border" aria-hidden="true"></span>
     {#each recents as color, index (color)}
       <button
         type="button"

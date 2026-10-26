@@ -266,10 +266,14 @@
         </p>
       {/if}
     {:else}
-      <DiagramSettings {blocked} />
-      <p class="px-3 py-2 text-xs text-muted-foreground" data-testid={TID.inspTip}>
+      <!-- How to reach the parts' rows, first: at the end of 図全体 it fell below the fold
+           (QA 2026-10-24). -->
+      <p
+        class="border-b border-border px-3 py-1.5 text-xs text-muted-foreground"
+        data-testid={TID.inspTip}>
         {t(model.kind === 'gantt' ? 'insp.tipGantt' : 'insp.tip')}
       </p>
+      <DiagramSettings {blocked} />
     {/if}
   </div>
 </div>

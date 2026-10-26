@@ -95,6 +95,8 @@ export const TID = {
   inspConnect: 'insp-connect',
   inspDelete: 'insp-delete',
   inspDeleteKeep: 'insp-delete-keep',
+  inspDetailsContent: 'insp-details-content',
+  inspDetailsPopover: 'insp-details-popover',
   inspDirection: 'insp-direction',
   inspEdgeColor: 'insp-edge-color',
   inspEdgeEnds: 'insp-edge-ends',

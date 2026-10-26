@@ -1050,6 +1050,17 @@ route), arrowheads PowerPoint lacks as small shapes, labels and titles as text b
 pictures; the source in the notes (`pptxExport.ts`). Checked with `python-pptx` and LibreOffice
 Impress for seven diagram types; PowerPoint itself is still to be tried by a person.
 
+**Design pass (2026-10-24).** 図全体 now reads 見た目, 向き, タイトル, 配置, 間隔, then 詳細 │ 変更…, a
+popover (as 見た目's) holding ELK's own options (並べ方, 循環, 書いた順, 束ねる) and the accessible
+title and description, which left the panel's top half. Its how-to line moved from the panel's
+foot (below the fold at 1280×720) to its top; the unknown-icon row shows only when there is one.
+The palette's dots grow to 20px and shrink rather than wrap, so ＋ stays on their line, and the
+none dot is struck through; a shape's palette takes the panel's whole width. The menu's 太字 shows
+its ✓ at the end rather than indenting the word; the selection bar keeps 追加 ▾ at the left end,
+where the add buttons stand otherwise; in dark mode the white view is a sheet with a dark margin
+round it (the picture is unchanged). The same action appearing in the bar, the menu and the panel
+is deliberate and stays.
+
 ## What is open
 
 One standing decision is recorded in `QUALITY-AUDIT-2026-08-31.md` rather than in the issue

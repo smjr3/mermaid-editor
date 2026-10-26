@@ -9,7 +9,8 @@
 
   // Local: the icon names in the code that no pack provides (an AI's guess, a typo):
   // how many, a button that swaps every one for its chosen candidate, and under it each
-  // name with a choice of existing names and a button to swap only that one.
+  // name with a choice of existing names and a button to swap only that one. Nothing
+  // shows while every name is known.
   let unknown = $state<UnknownIcon[]>([]);
   let choice = $state<Record<string, string>>({});
 
@@ -53,21 +54,21 @@
     'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1 text-xs text-foreground';
 </script>
 
-<FieldRow label={t('insp.unknown')}>
-  <span
-    class="truncate text-xs text-muted-foreground"
-    title={t('icons.unknownHint')}
-    data-testid={TID.inspUnknownCount}
-    data-count={unknown.length}>{t('insp.unknownCount', { count: String(unknown.length) })}</span>
-  <Button
-    size="sm"
-    variant="outline"
-    class="ml-auto h-7 px-2 text-xs"
-    disabled={replaceable === 0}
-    data-testid={TID.inspUnknownReplace}
-    onclick={replaceAll}>{t('insp.unknownReplace')}</Button>
-</FieldRow>
 {#if unknown.length > 0}
+  <FieldRow label={t('insp.unknown')}>
+    <span
+      class="truncate text-xs text-muted-foreground"
+      title={t('icons.unknownHint')}
+      data-testid={TID.inspUnknownCount}
+      data-count={unknown.length}>{t('insp.unknownCount', { count: String(unknown.length) })}</span>
+    <Button
+      size="sm"
+      variant="outline"
+      class="ml-auto h-7 px-2 text-xs"
+      disabled={replaceable === 0}
+      data-testid={TID.inspUnknownReplace}
+      onclick={replaceAll}>{t('insp.unknownReplace')}</Button>
+  </FieldRow>
   <ul
     class="flex flex-col gap-1"
     aria-label={t('icons.unknownTitle')}
